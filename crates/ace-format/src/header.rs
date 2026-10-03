@@ -7,7 +7,7 @@ use ace_core::{
 pub const MAGIC: [u8; 4] = *b"ACE1";
 /// Current major format version.
 pub const FORMAT_MAJOR: u8 = 1;
-/// Current minor format version written by ACE 0.2.
+/// Current minor format version written by ACE 0.2.1.
 pub const FORMAT_MINOR: u8 = 1;
 /// Serialized file-header size in bytes.
 pub const FILE_HEADER_SIZE: usize = 32;
@@ -17,7 +17,7 @@ pub const BLOCK_HEADER_SIZE: usize = 32;
 pub const FILE_FLAG_HAS_INDEX: u16 = 0x0001;
 /// File flag indicating that one or more block dictionary references may be present.
 pub const FILE_FLAG_HAS_DICTIONARIES: u16 = 0x0002;
-/// Set of format-1.1 flags understood by ACE 0.2.
+/// Set of format-1.1 flags understood by ACE 0.2.1.
 pub const SUPPORTED_FILE_FLAGS: u16 = FILE_FLAG_HAS_INDEX | FILE_FLAG_HAS_DICTIONARIES;
 /// Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors.
 pub const BLOCK_FLAG_HAS_DICTIONARY: u8 = 0x01;
