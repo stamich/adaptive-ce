@@ -1,3 +1,7 @@
 target/
-demo/data/*.ace
-demo/data/restored.bin
+*.tmp
+examples/results/*.json
+!examples/results/README.md
+!examples/results/.gitkeep
+examples/data/**
+!examples/data/.gitkeep
