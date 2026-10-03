@@ -1,4 +1,4 @@
-//! Reversible preprocessing transforms for ACE 0.2.
+//! Reversible preprocessing transforms for ACE 0.2.1.
 
 use ace_core::{AceResult, TransformId};
 
