@@ -1,4 +1,4 @@
-//! Deterministic block-statistics collection used by the ACE 0.2 planner.
+//! Deterministic block-statistics collection used by the ACE 0.2.1 planner.
 
 mod analyzer;
 mod entropy;

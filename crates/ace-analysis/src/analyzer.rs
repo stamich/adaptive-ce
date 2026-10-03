@@ -7,7 +7,7 @@ pub trait BlockAnalyzer {
     fn analyze(&self, input: &[u8]) -> BlockProfile;
 }
 
-/// Default deterministic ACE 0.2 analyzer.
+/// Default deterministic ACE 0.2.1 analyzer.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultBlockAnalyzer;
 
