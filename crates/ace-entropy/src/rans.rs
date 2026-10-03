@@ -1,6 +1,6 @@
 use ace_core::{AceError, AceResult};
 
-/// Number of probability bits used by ACE 0.2 scalar rANS.
+/// Number of probability bits used by the ACE 0.2/0.2.1 scalar rANS implementation.
 pub const RANS_SCALE_BITS: u32 = 12;
 /// Sum of every normalized frequency table.
 pub const RANS_SCALE: u32 = 1 << RANS_SCALE_BITS;

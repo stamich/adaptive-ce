@@ -1,4 +1,4 @@
-//! Entropy coders used as the final stage of ACE 0.2 physical compression plans.
+//! Entropy coders used as the final stage of ACE 0.2.1 physical compression plans.
 
 mod huffman;
 mod rans;
