@@ -1,4 +1,4 @@
-//! Primary structural byte codecs used by ACE 0.2.
+//! Primary structural byte codecs used by ACE 0.2.1.
 
 mod lz;
 mod raw;
