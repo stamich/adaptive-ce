@@ -1,8 +1,8 @@
-use std::io::{Read, Seek};
-use std::ops::Range;
+use crate::decode_encoded_block;
 use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_index::AceIndexReader;
-use crate::decode_encoded_block;
+use std::io::{Read, Seek};
+use std::ops::Range;
 
 /// Physical work implied by one logical random-access range request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,7 +20,11 @@ pub struct RangeAccessMetrics {
 impl RangeAccessMetrics {
     /// Returns physical bytes read divided by logical bytes requested.
     pub fn overread_ratio(&self) -> f64 {
-        if self.logical_bytes_requested == 0 { 0.0 } else { self.physical_bytes_read as f64 / self.logical_bytes_requested as f64 }
+        if self.logical_bytes_requested == 0 {
+            0.0
+        } else {
+            self.physical_bytes_read as f64 / self.logical_bytes_requested as f64
+        }
     }
 }
 
@@ -46,11 +50,14 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
     /// Returns physical-read diagnostics for a logical range without decoding it.
     pub fn range_metrics(&self, range: Range<u64>) -> AceResult<RangeAccessMetrics> {
         if range.start > range.end || range.end > self.indexed.file_header.original_size {
-            return Err(AceError::Malformed("requested range lies outside reconstructed file"));
+            return Err(AceError::Malformed(
+                "requested range lies outside reconstructed file",
+            ));
         }
         let entries = self.indexed.index.intersecting(range.start, range.end);
         let physical_bytes_read = entries.iter().try_fold(0u64, |acc, entry| {
-            acc.checked_add(entry.encoded_span as u64).ok_or(AceError::Malformed("physical range byte count overflow"))
+            acc.checked_add(entry.encoded_span as u64)
+                .ok_or(AceError::Malformed("physical range byte count overflow"))
         })?;
         Ok(RangeAccessMetrics {
             logical_bytes_requested: range.end.saturating_sub(range.start),
@@ -76,7 +83,9 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
         range: Range<u64>,
     ) -> AceResult<(Vec<u8>, RangeAccessMetrics)> {
         if range.start > range.end || range.end > self.indexed.file_header.original_size {
-            return Err(AceError::Malformed("requested range lies outside reconstructed file"));
+            return Err(AceError::Malformed(
+                "requested range lies outside reconstructed file",
+            ));
         }
         if range.start == range.end {
             return Ok((
@@ -126,5 +135,7 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
     }
 
     /// Returns the number of indexed independent blocks.
-    pub fn block_count(&self) -> usize { self.indexed.index.entries.len() }
+    pub fn block_count(&self) -> usize {
+        self.indexed.index.entries.len()
+    }
 }

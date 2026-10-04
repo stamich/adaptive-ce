@@ -1,6 +1,6 @@
 use ace_core::{
-    CodecId, CompressionProfile, CostWeights, EntropyCodecId, LzMode,
-    PhysicalCompressionPlan, PlanCost,
+    CodecId, CompressionProfile, CostWeights, EntropyCodecId, LzMode, PhysicalCompressionPlan,
+    PlanCost,
 };
 
 /// Deterministic ACE 0.2.1-buildfix1 cost model.
@@ -60,18 +60,11 @@ impl DeterministicCostModel {
     /// represented as static work units per input byte. Profile-specific scale factors make
     /// encoder work competitive with size only for FAST, while BALANCED and DENSE remain
     /// progressively more size-oriented. No wall-clock measurement participates in selection.
-    pub fn score(
-        &self,
-        profile: CompressionProfile,
-        cost: PlanCost,
-        input_bytes: usize,
-    ) -> u128 {
+    pub fn score(&self, profile: CompressionProfile, cost: PlanCost, input_bytes: usize) -> u128 {
         let w = CostWeights::for_profile(profile);
         let divisor = input_bytes.max(1) as u128;
 
-        let size_ppm = (cost.predicted_size_bytes as u128)
-            .saturating_mul(1_000_000)
-            / divisor;
+        let size_ppm = (cost.predicted_size_bytes as u128).saturating_mul(1_000_000) / divisor;
         let encode_units_per_byte = cost.encode_units as u128 / divisor;
         let decode_units_per_byte = cost.decode_units as u128 / divisor;
         let memory_bytes_per_byte = cost.memory_bytes as u128 / divisor;
@@ -93,8 +86,7 @@ impl DeterministicCostModel {
             .saturating_mul(1_000)
             .saturating_mul(w.memory as u128);
 
-        size
-            .saturating_add(encode)
+        size.saturating_add(encode)
             .saturating_add(decode)
             .saturating_add(memory)
     }

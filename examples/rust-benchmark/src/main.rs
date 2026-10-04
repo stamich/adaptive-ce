@@ -7,8 +7,8 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{
-    AceConfig, CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId,
-    LzMode, PhysicalCompressionPlan, TransformId,
+    AceConfig, CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId, LzMode,
+    PhysicalCompressionPlan, TransformId,
 };
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use ace_entropy::{huffman_encode, rans_encode};
@@ -53,7 +53,13 @@ struct SampleStats {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let family = std::env::args().nth(1).unwrap_or_else(|| "all".to_string());
     let families: Vec<&str> = if family == "all" {
-        vec!["compression", "entropy", "planner", "parallel", "random-access"]
+        vec![
+            "compression",
+            "entropy",
+            "planner",
+            "parallel",
+            "random-access",
+        ]
     } else {
         vec![family.as_str()]
     };
@@ -85,7 +91,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             workloads,
         };
         let path = result_path(family);
-        if let Some(parent) = path.parent() { fs::create_dir_all(parent)?; }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         fs::write(&path, serde_json::to_vec_pretty(&document)?)?;
         println!("results written to {}", path.display());
     }
@@ -95,11 +103,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Returns machine/build metadata required for reproducible cross-milestone comparisons.
 fn environment_json() -> Value {
     let cpu_model = fs::read_to_string("/proc/cpuinfo").ok().and_then(|text| {
-        text.lines().find_map(|line| line.strip_prefix("model name\t: ").map(str::to_string))
+        text.lines()
+            .find_map(|line| line.strip_prefix("model name\t: ").map(str::to_string))
     });
     let memory_bytes = fs::read_to_string("/proc/meminfo").ok().and_then(|text| {
         text.lines().find_map(|line| {
-            line.strip_prefix("MemTotal:").and_then(|rest| rest.split_whitespace().next()).and_then(|kb| kb.parse::<u64>().ok()).map(|kb| kb * 1024)
+            line.strip_prefix("MemTotal:")
+                .and_then(|rest| rest.split_whitespace().next())
+                .and_then(|kb| kb.parse::<u64>().ok())
+                .map(|kb| kb * 1024)
         })
     });
     json!({
@@ -117,14 +129,20 @@ fn environment_json() -> Value {
 /// Resolves the canonical `examples/results/0.2.1-buildfix1-<family>.json` path.
 fn result_path(family: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent().expect("benchmark crate lives under examples")
-        .join("results").join(format!("0.2.1-buildfix1-{family}.json"))
+        .parent()
+        .expect("benchmark crate lives under examples")
+        .join("results")
+        .join(format!("0.2.1-buildfix1-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
 fn measure<F, T>(mut operation: F) -> Result<(SampleStats, T), Box<dyn std::error::Error>>
-where F: FnMut() -> Result<T, Box<dyn std::error::Error>> {
-    for _ in 0..WARMUPS { black_box(operation()?); }
+where
+    F: FnMut() -> Result<T, Box<dyn std::error::Error>>,
+{
+    for _ in 0..WARMUPS {
+        black_box(operation()?);
+    }
     let mut samples = Vec::with_capacity(RUNS);
     let mut last = None;
     for _ in 0..RUNS {
@@ -147,15 +165,23 @@ fn summarize(mut samples: Vec<u64>) -> SampleStats {
     let mean = raw.iter().copied().map(|v| v as f64).sum::<f64>() / raw.len() as f64;
     SampleStats {
         samples_ns: raw,
-        median_ns: percentile(0.50), p95_ns: percentile(0.95), p99_ns: percentile(0.99),
-        mean_ns: mean, min_ns: *samples.first().unwrap_or(&0), max_ns: *samples.last().unwrap_or(&0),
+        median_ns: percentile(0.50),
+        p95_ns: percentile(0.95),
+        p99_ns: percentile(0.99),
+        mean_ns: mean,
+        min_ns: *samples.first().unwrap_or(&0),
+        max_ns: *samples.last().unwrap_or(&0),
     }
 }
 
 /// Converts samples to the common ACE timing and throughput representation.
 fn timing_json(stats: &SampleStats, bytes: usize) -> Value {
     let seconds = stats.median_ns / 1_000_000_000.0;
-    let mb_s = if seconds == 0.0 { 0.0 } else { bytes as f64 / 1_048_576.0 / seconds };
+    let mb_s = if seconds == 0.0 {
+        0.0
+    } else {
+        bytes as f64 / 1_048_576.0 / seconds
+    };
     json!({
         "runs": RUNS, "warmup_iterations": WARMUPS,
         "median_ns": stats.median_ns, "p95_ns": stats.p95_ns, "p99_ns": stats.p99_ns,
@@ -175,11 +201,16 @@ fn mixed_data(mebibytes: usize) -> Vec<u8> {
         data.extend_from_slice(&v);
     }
     while data.len() < quarter * 3 {
-        data.extend_from_slice(b"{\"status\":\"ACTIVE\",\"service\":\"graphnet\",\"region\":\"eu\"}\n");
+        data.extend_from_slice(
+            b"{\"status\":\"ACTIVE\",\"service\":\"graphnet\",\"region\":\"eu\"}\n",
+        );
     }
     let mut x = 0x9e37_79b9u32;
     while data.len() < target {
-        x ^= x << 13; x ^= x >> 17; x ^= x << 5; data.push((x & 0xff) as u8);
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        data.push((x & 0xff) as u8);
     }
     data.truncate(target);
     data
@@ -188,15 +219,26 @@ fn mixed_data(mebibytes: usize) -> Vec<u8> {
 /// Returns a stable coarse data-class label for one quarter of the synthetic mixed corpus.
 fn data_class(block_index: usize, block_count: usize) -> &'static str {
     let quarter = (block_count / 4).max(1);
-    match block_index / quarter { 0 => "zeros", 1 => "numeric", 2 => "structured", _ => "random" }
+    match block_index / quarter {
+        0 => "zeros",
+        1 => "numeric",
+        2 => "structured",
+        _ => "random",
+    }
 }
 
 /// Benchmarks end-to-end ACE profiles against LZ4, Zstd level 3 and gzip level 6.
 fn compression_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let data = mixed_data(16);
     let mut results = Vec::new();
-    for (name, profile) in [("ace-fast", CompressionProfile::Fast), ("ace-balanced", CompressionProfile::Balanced), ("ace-dense", CompressionProfile::Dense)] {
-        let mut cfg = AceConfig::default(); cfg.profile = profile; cfg.threads = 1;
+    for (name, profile) in [
+        ("ace-fast", CompressionProfile::Fast),
+        ("ace-balanced", CompressionProfile::Balanced),
+        ("ace-dense", CompressionProfile::Dense),
+    ] {
+        let mut cfg = AceConfig::default();
+        cfg.profile = profile;
+        cfg.threads = 1;
         let engine = AceEngine::new(cfg)?;
         let (enc_stats, encoded) = measure(|| Ok(engine.compress(&data)?))?;
         let (_, telemetry) = engine.compress_with_stats(&data)?;
@@ -216,15 +258,27 @@ fn compression_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     }
 
     let (stats, lz4) = measure(|| Ok(lz4_flex::compress_prepend_size(&data)))?;
-    let (dec, restored) = measure(|| Ok(lz4_flex::decompress_size_prepended(&lz4)?))?; assert_eq!(restored, data);
+    let (dec, restored) = measure(|| Ok(lz4_flex::decompress_size_prepended(&lz4)?))?;
+    assert_eq!(restored, data);
     results.push(json!({"workload_id":"mixed_16m","path":"lz4","input_bytes":data.len(),"compressed_bytes":lz4.len(),"compression_ratio":data.len() as f64/lz4.len() as f64,"compression":timing_json(&stats,data.len()),"decompression":timing_json(&dec,data.len())}));
 
     let (stats, zstd_data) = measure(|| Ok(zstd::stream::encode_all(Cursor::new(&data), 3)?))?;
-    let (dec, restored) = measure(|| Ok(zstd::stream::decode_all(Cursor::new(&zstd_data))?))?; assert_eq!(restored, data);
+    let (dec, restored) = measure(|| Ok(zstd::stream::decode_all(Cursor::new(&zstd_data))?))?;
+    assert_eq!(restored, data);
     results.push(json!({"workload_id":"mixed_16m","path":"zstd-3","input_bytes":data.len(),"compressed_bytes":zstd_data.len(),"compression_ratio":data.len() as f64/zstd_data.len() as f64,"compression":timing_json(&stats,data.len()),"decompression":timing_json(&dec,data.len())}));
 
-    let (stats, gzip) = measure(|| { let mut e=GzEncoder::new(Vec::new(), Compression::new(6)); e.write_all(&data)?; Ok(e.finish()?) })?;
-    let (gzip_dec, restored) = measure(|| { let mut d=GzDecoder::new(Cursor::new(&gzip)); let mut out=Vec::new(); d.read_to_end(&mut out)?; Ok(out) })?; assert_eq!(restored,data);
+    let (stats, gzip) = measure(|| {
+        let mut e = GzEncoder::new(Vec::new(), Compression::new(6));
+        e.write_all(&data)?;
+        Ok(e.finish()?)
+    })?;
+    let (gzip_dec, restored) = measure(|| {
+        let mut d = GzDecoder::new(Cursor::new(&gzip));
+        let mut out = Vec::new();
+        d.read_to_end(&mut out)?;
+        Ok(out)
+    })?;
+    assert_eq!(restored, data);
     results.push(json!({"workload_id":"mixed_16m","path":"gzip-6","input_bytes":data.len(),"compressed_bytes":gzip.len(),"compression_ratio":data.len() as f64/gzip.len() as f64,"compression":timing_json(&stats,data.len()),"decompression":timing_json(&gzip_dec,data.len())}));
     Ok(results)
 }
@@ -232,10 +286,17 @@ fn compression_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 /// Benchmarks Huffman and scalar rANS independently on representative symbol distributions.
 fn entropy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut workloads = Vec::new();
-    let datasets = vec![("skewed", b"aaaaabbbbcccdde".repeat(200_000)), ("mixed", mixed_data(4))];
+    let datasets = vec![
+        ("skewed", b"aaaaabbbbcccdde".repeat(200_000)),
+        ("mixed", mixed_data(4)),
+    ];
     for (id, data) in datasets {
         for path in ["huffman", "rans"] {
-            let (stats, (metadata, payload)) = if path == "huffman" { measure(|| Ok(huffman_encode(&data)?))? } else { measure(|| Ok(rans_encode(&data)?))? };
+            let (stats, (metadata, payload)) = if path == "huffman" {
+                measure(|| Ok(huffman_encode(&data)?))?
+            } else {
+                measure(|| Ok(rans_encode(&data)?))?
+            };
             workloads.push(json!({"workload_id":id,"path":path,"input_bytes":data.len(),"metadata_bytes":metadata.len(),"payload_bytes":payload.len(),"encoded_bytes":metadata.len()+payload.len(),"compression_ratio":data.len() as f64/(metadata.len()+payload.len()).max(1) as f64,"encode":timing_json(&stats,data.len())}));
         }
     }
@@ -246,10 +307,12 @@ fn entropy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let data = mixed_data(8);
     let cfg = AceConfig::default();
-    let analyzer = DefaultBlockAnalyzer; let planner = DefaultCompressionPlanner;
+    let analyzer = DefaultBlockAnalyzer;
+    let planner = DefaultCompressionPlanner;
     let blocks = data.chunks(cfg.block_size).collect::<Vec<_>>();
-    let mut regret = 0i64; let mut recall = 0u64;
-    let mut recall_by_class: BTreeMap<&str, (u64,u64)> = BTreeMap::new();
+    let mut regret = 0i64;
+    let mut recall = 0u64;
+    let mut recall_by_class: BTreeMap<&str, (u64, u64)> = BTreeMap::new();
     let mut details = Vec::new();
 
     for (idx, block) in blocks.iter().enumerate() {
@@ -257,13 +320,24 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let candidates = planner.candidates(&profile, &cfg);
         let selected = evaluate_candidates(block, &candidates, &cfg)?;
         let selected_size = encoded_plan_size(block, &selected)? as i64;
-        let oracle = oracle_plans().into_iter().map(|plan| {
-            let size = encoded_plan_size(block, &plan).unwrap_or(usize::MAX); (size, plan)
-        }).min_by_key(|(size, _)| *size).expect("oracle plans are non-empty");
+        let oracle = oracle_plans()
+            .into_iter()
+            .map(|plan| {
+                let size = encoded_plan_size(block, &plan).unwrap_or(usize::MAX);
+                (size, plan)
+            })
+            .min_by_key(|(size, _)| *size)
+            .expect("oracle plans are non-empty");
         let hit = candidates.iter().any(|p| same_plan(p, &oracle.1));
         let class = data_class(idx, blocks.len());
-        let entry = recall_by_class.entry(class).or_insert((0,0)); entry.1 += 1; if hit { entry.0 += 1; recall += 1; }
-        let block_regret = selected_size - oracle.0 as i64; regret += block_regret;
+        let entry = recall_by_class.entry(class).or_insert((0, 0));
+        entry.1 += 1;
+        if hit {
+            entry.0 += 1;
+            recall += 1;
+        }
+        let block_regret = selected_size - oracle.0 as i64;
+        regret += block_regret;
         details.push(json!({
             "block_id":idx, "data_class":class, "candidate_count":candidates.len(), "oracle_was_candidate":hit,
             "selected_plan":plan_id(&selected), "oracle_plan":plan_id(&oracle.1),
@@ -272,10 +346,43 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         }));
     }
 
-    let analysis_stats = measure(|| { for block in &blocks { black_box(analyzer.analyze(block)); } Ok(()) })?.0;
-    let candidate_stats = measure(|| { for block in &blocks { let p=analyzer.analyze(block); black_box(planner.candidates(&p,&cfg)); } Ok(()) })?.0;
-    let evaluation_stats = measure(|| { for block in &blocks { let p=analyzer.analyze(block); let c=planner.candidates(&p,&cfg); black_box(evaluate_candidates(block,&c,&cfg)?); } Ok(()) })?.0;
-    let by_class = recall_by_class.into_iter().map(|(k,(hits,total))| (k, if total==0 {0.0} else {hits as f64/total as f64})).collect::<BTreeMap<_,_>>();
+    let analysis_stats = measure(|| {
+        for block in &blocks {
+            black_box(analyzer.analyze(block));
+        }
+        Ok(())
+    })?
+    .0;
+    let candidate_stats = measure(|| {
+        for block in &blocks {
+            let p = analyzer.analyze(block);
+            black_box(planner.candidates(&p, &cfg));
+        }
+        Ok(())
+    })?
+    .0;
+    let evaluation_stats = measure(|| {
+        for block in &blocks {
+            let p = analyzer.analyze(block);
+            let c = planner.candidates(&p, &cfg);
+            black_box(evaluate_candidates(block, &c, &cfg)?);
+        }
+        Ok(())
+    })?
+    .0;
+    let by_class = recall_by_class
+        .into_iter()
+        .map(|(k, (hits, total))| {
+            (
+                k,
+                if total == 0 {
+                    0.0
+                } else {
+                    hits as f64 / total as f64
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
 
     Ok(vec![json!({
         "workload_id":"mixed_8m", "path":"deterministic_cost_model_v2_1", "blocks":blocks.len(),
@@ -292,14 +399,24 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 
 /// Benchmarks worker-count scaling and verifies bit-identical output across worker counts.
 fn parallel_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
-    let data = mixed_data(16); let mut results = Vec::new(); let mut reference: Option<Vec<u8>> = None;
+    let data = mixed_data(16);
+    let mut results = Vec::new();
+    let mut reference: Option<Vec<u8>> = None;
     let max_threads = num_cpus::get().max(1);
-    let requested = [1usize,2,4,6,8,12];
-    for threads in requested.into_iter().filter(|n| *n <= max_threads || *n == 1) {
-        let mut cfg=AceConfig::default(); cfg.threads=threads;
-        let engine=AceEngine::new(cfg)?;
-        let (stats,encoded)=measure(|| Ok(engine.compress(&data)?))?;
-        if let Some(ref bytes)=reference { assert_eq!(bytes,&encoded); } else { reference=Some(encoded.clone()); }
+    let requested = [1usize, 2, 4, 6, 8, 12];
+    for threads in requested
+        .into_iter()
+        .filter(|n| *n <= max_threads || *n == 1)
+    {
+        let mut cfg = AceConfig::default();
+        cfg.threads = threads;
+        let engine = AceEngine::new(cfg)?;
+        let (stats, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+        if let Some(ref bytes) = reference {
+            assert_eq!(bytes, &encoded);
+        } else {
+            reference = Some(encoded.clone());
+        }
         results.push(json!({"workload_id":"mixed_16m","path":format!("threads-{threads}"),"threads":threads,"encoded_bytes":encoded.len(),"deterministic_vs_1t":true,"compression":timing_json(&stats,data.len())}));
     }
     Ok(results)
@@ -307,68 +424,141 @@ fn parallel_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 
 /// Benchmarks full reconstruction, codec-diverse single blocks and crossing logical ranges.
 fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
-    let data=mixed_data(16); let engine=AceEngine::default_engine(); let encoded=engine.compress(&data)?;
-    let (full,restored)=measure(|| Ok(engine.decompress(&encoded)?))?; assert_eq!(restored,data);
-    let mut out=vec![json!({"workload_id":"mixed_16m","path":"full_decompress","bytes_returned":data.len(),"timing":timing_json(&full,data.len())})];
+    let data = mixed_data(16);
+    let engine = AceEngine::default_engine();
+    let encoded = engine.compress(&data)?;
+    let (full, restored) = measure(|| Ok(engine.decompress(&encoded)?))?;
+    assert_eq!(restored, data);
+    let mut out = vec![
+        json!({"workload_id":"mixed_16m","path":"full_decompress","bytes_returned":data.len(),"timing":timing_json(&full,data.len())}),
+    ];
 
     // Opening/index validation is measured separately so random-access latency represents
     // an already-open archive, which is the storage-engine usage model.
-    let (open_stats, opened) = measure(|| Ok(AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?))?;
+    let (open_stats, opened) = measure(|| {
+        Ok(AceIndexedDecoder::open(
+            Cursor::new(&encoded),
+            ace_core::DecodeLimits::default(),
+        )?)
+    })?;
     out.push(json!({
         "workload_id":"mixed_16m", "path":"decoder_open", "bytes_returned":0,
         "timing":timing_json(&open_stats, encoded.len())
     }));
     drop(opened);
 
-    for block_id in [0u64,20,40,60] {
-        let metrics_decoder=AceIndexedDecoder::open(Cursor::new(&encoded),ace_core::DecodeLimits::default())?;
-        let start=block_id*262_144; let end=(start+262_144).min(data.len() as u64);
-        let metrics=metrics_decoder.range_metrics(start..end)?;
-        let mut decoder=AceIndexedDecoder::open(Cursor::new(&encoded),ace_core::DecodeLimits::default())?;
-        let (stats,block)=measure(|| Ok(decoder.decode_block(block_id)?))?;
+    for block_id in [0u64, 20, 40, 60] {
+        let metrics_decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+        let start = block_id * 262_144;
+        let end = (start + 262_144).min(data.len() as u64);
+        let metrics = metrics_decoder.range_metrics(start..end)?;
+        let mut decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+        let (stats, block) = measure(|| Ok(decoder.decode_block(block_id)?))?;
         out.push(json!({"workload_id":"mixed_16m","path":"decode_block","block_id":block_id,"data_class":data_class(block_id as usize,64),"bytes_returned":block.len(),"physical_bytes_read":metrics.physical_bytes_read,"blocks_touched":metrics.blocks_touched,"overread_ratio":metrics.overread_ratio(),"timing":timing_json(&stats,block.len())}));
     }
 
-    for (name,start,len) in [("range_64k_inside",3_000_000u64,65_536u64),("range_cross_2",262_144-32_768,131_072),("range_cross_4",262_144*3-65_536,786_432)] {
-        let end=(start+len).min(data.len() as u64);
-        let mut decoder=AceIndexedDecoder::open(Cursor::new(&encoded),ace_core::DecodeLimits::default())?;
-        let (stats,(range,metrics))=measure(|| Ok(decoder.read_range_with_metrics(start..end)?))?;
-        assert_eq!(range,data[start as usize..end as usize]);
+    for (name, start, len) in [
+        ("range_64k_inside", 3_000_000u64, 65_536u64),
+        ("range_cross_2", 262_144 - 32_768, 131_072),
+        ("range_cross_4", 262_144 * 3 - 65_536, 786_432),
+    ] {
+        let end = (start + len).min(data.len() as u64);
+        let mut decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+        let (stats, (range, metrics)) =
+            measure(|| Ok(decoder.read_range_with_metrics(start..end)?))?;
+        assert_eq!(range, data[start as usize..end as usize]);
         out.push(json!({"workload_id":"mixed_16m","path":name,"offset":start,"logical_bytes_requested":end-start,"bytes_returned":range.len(),"physical_bytes_read":metrics.physical_bytes_read,"blocks_touched":metrics.blocks_touched,"blocks_decoded":metrics.blocks_decoded,"overread_ratio":metrics.overread_ratio(),"timing":timing_json(&stats,range.len())}));
     }
     Ok(out)
 }
 
 /// Returns serialized bytes produced by one internal physical plan.
-fn encoded_plan_size(input:&[u8], plan:&PhysicalCompressionPlan)->Result<usize,Box<dyn std::error::Error>>{
-    let (metadata,payload,_)=encode_plan_payload(input,plan)?;
-    let prefix=if matches!(plan.decoding.entropy,EntropyCodecId::None){0}else{4};
-    Ok(metadata.len()+payload.len()+prefix)
+fn encoded_plan_size(
+    input: &[u8],
+    plan: &PhysicalCompressionPlan,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let (metadata, payload, _) = encode_plan_payload(input, plan)?;
+    let prefix = if matches!(plan.decoding.entropy, EntropyCodecId::None) {
+        0
+    } else {
+        4
+    };
+    Ok(metadata.len() + payload.len() + prefix)
 }
 
 /// Returns true when two candidates have identical decoder semantics and LZ search policy.
-fn same_plan(a:&PhysicalCompressionPlan,b:&PhysicalCompressionPlan)->bool{a.decoding==b.decoding&&a.lz_mode==b.lz_mode}
+fn same_plan(a: &PhysicalCompressionPlan, b: &PhysicalCompressionPlan) -> bool {
+    a.decoding == b.decoding && a.lz_mode == b.lz_mode
+}
 
 /// Returns a stable textual physical-plan identifier for JSON diagnostics.
-fn plan_id(p:&PhysicalCompressionPlan)->String{
-    let mut parts=p.decoding.transforms.iter().map(|t|match t{TransformId::None=>"none",TransformId::DeltaByte=>"delta"}).collect::<Vec<_>>();
-    parts.push(match(p.decoding.codec,p.lz_mode){(CodecId::Raw,_)=>"raw",(CodecId::Rle,_)=>"rle",(CodecId::Lz,Some(LzMode::Balanced))=>"lz_balanced",(CodecId::Lz,_)=>"lz_fast"});
-    parts.push(match p.decoding.entropy{EntropyCodecId::None=>"none",EntropyCodecId::Huffman=>"huffman",EntropyCodecId::Rans=>"rans"});
+fn plan_id(p: &PhysicalCompressionPlan) -> String {
+    let mut parts = p
+        .decoding
+        .transforms
+        .iter()
+        .map(|t| match t {
+            TransformId::None => "none",
+            TransformId::DeltaByte => "delta",
+        })
+        .collect::<Vec<_>>();
+    parts.push(match (p.decoding.codec, p.lz_mode) {
+        (CodecId::Raw, _) => "raw",
+        (CodecId::Rle, _) => "rle",
+        (CodecId::Lz, Some(LzMode::Balanced)) => "lz_balanced",
+        (CodecId::Lz, _) => "lz_fast",
+    });
+    parts.push(match p.decoding.entropy {
+        EntropyCodecId::None => "none",
+        EntropyCodecId::Huffman => "huffman",
+        EntropyCodecId::Rans => "rans",
+    });
     parts.join("+")
 }
 
 /// Returns the JSON label for one candidate tier.
-fn tier_name(t:CandidateTier)->&'static str{match t{CandidateTier::Mandatory=>"mandatory",CandidateTier::Likely=>"likely",CandidateTier::Exploratory=>"exploratory"}}
+fn tier_name(t: CandidateTier) -> &'static str {
+    match t {
+        CandidateTier::Mandatory => "mandatory",
+        CandidateTier::Likely => "likely",
+        CandidateTier::Exploratory => "exploratory",
+    }
+}
 
 /// Builds the offline oracle search space; it is intentionally broader than runtime candidate pruning.
-fn oracle_plans()->Vec<PhysicalCompressionPlan>{
-    let mut plans=Vec::new();
-    let mut add=|transforms:Vec<TransformId>,codec:CodecId,entropy:EntropyCodecId,lz:Option<LzMode>|plans.push(PhysicalCompressionPlan{decoding:DecodingPlan{transforms,codec,dictionary:None,entropy},lz_mode:lz,tier:CandidateTier::Exploratory,cost:Default::default(),score:0,reason:"oracle"});
-    add(vec![],CodecId::Raw,EntropyCodecId::None,None);
-    add(vec![],CodecId::Rle,EntropyCodecId::None,None);
-    for e in [EntropyCodecId::Huffman,EntropyCodecId::Rans]{
-        add(vec![],CodecId::Raw,e,None); add(vec![],CodecId::Rle,e,None); add(vec![TransformId::DeltaByte],CodecId::Raw,e,None);
-        for lz in [LzMode::Fast,LzMode::Balanced]{add(vec![],CodecId::Lz,e,Some(lz));add(vec![TransformId::DeltaByte],CodecId::Lz,e,Some(lz));}
+fn oracle_plans() -> Vec<PhysicalCompressionPlan> {
+    let mut plans = Vec::new();
+    let mut add = |transforms: Vec<TransformId>,
+                   codec: CodecId,
+                   entropy: EntropyCodecId,
+                   lz: Option<LzMode>| {
+        plans.push(PhysicalCompressionPlan {
+            decoding: DecodingPlan {
+                transforms,
+                codec,
+                dictionary: None,
+                entropy,
+            },
+            lz_mode: lz,
+            tier: CandidateTier::Exploratory,
+            cost: Default::default(),
+            score: 0,
+            reason: "oracle",
+        })
+    };
+    add(vec![], CodecId::Raw, EntropyCodecId::None, None);
+    add(vec![], CodecId::Rle, EntropyCodecId::None, None);
+    for e in [EntropyCodecId::Huffman, EntropyCodecId::Rans] {
+        add(vec![], CodecId::Raw, e, None);
+        add(vec![], CodecId::Rle, e, None);
+        add(vec![TransformId::DeltaByte], CodecId::Raw, e, None);
+        for lz in [LzMode::Fast, LzMode::Balanced] {
+            add(vec![], CodecId::Lz, e, Some(lz));
+            add(vec![TransformId::DeltaByte], CodecId::Lz, e, Some(lz));
+        }
     }
     plans
 }
