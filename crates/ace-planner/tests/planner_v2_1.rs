@@ -40,9 +40,7 @@ fn fast_excludes_balanced_lz() {
     let mut cfg = AceConfig::default();
     cfg.profile = CompressionProfile::Fast;
     let candidates = DefaultCompressionPlanner.candidates(&profile, &cfg);
-    assert!(candidates
-        .iter()
-        .all(|p| p.lz_mode != Some(LzMode::Balanced)));
+    assert!(candidates.iter().all(|p| p.lz_mode != Some(LzMode::Balanced)));
 }
 
 /// Ensures FAST does not treat scalar rANS as a mandatory baseline.
@@ -77,12 +75,12 @@ fn balanced_covers_deeper_lz_oracle_families() {
     let profile = structured_profile();
     let cfg = AceConfig::default();
     let candidates = DefaultCompressionPlanner.candidates(&profile, &cfg);
-    assert!(candidates
-        .iter()
-        .any(|p| p.lz_mode == Some(LzMode::Balanced)));
-    assert!(candidates
-        .iter()
-        .any(|p| !p.decoding.transforms.is_empty() && p.lz_mode.is_some()));
+    assert!(candidates.iter().any(|p| p.lz_mode == Some(LzMode::Balanced)));
+    assert!(
+        candidates
+            .iter()
+            .any(|p| !p.decoding.transforms.is_empty() && p.lz_mode.is_some())
+    );
 }
 
 /// Ensures rANS eligibility remains profile-specific and deterministic.

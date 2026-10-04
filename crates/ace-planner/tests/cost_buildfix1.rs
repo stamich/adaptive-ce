@@ -1,6 +1,5 @@
 use ace_core::{
-    CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId,
-    PhysicalCompressionPlan,
+    CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId, PhysicalCompressionPlan,
 };
 use ace_planner::DeterministicCostModel;
 
