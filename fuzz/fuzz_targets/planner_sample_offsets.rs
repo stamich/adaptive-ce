@@ -6,7 +6,7 @@ use ace_cost::{deterministic_sample_ranges, SamplePolicy};
 fuzz_target!(|data: &[u8]| {
     if data.len() < 3 { return; }
     let len = ((data[0] as usize) << 12) | ((data[1] as usize) << 4) | (data[2] as usize & 0x0f);
-    let policy = SamplePolicy { sample_bytes: 4096, sample_count: 3, top_k: 3, second_stage_bytes: 0,second_stage_count: 0,second_stage_top_k: 0};
+    let policy = SamplePolicy { sample_bytes: 4096, sample_count: 3, top_k: 3 };
     for range in deterministic_sample_ranges(len, policy) {
         assert!(range.start <= range.end);
         assert!(range.end <= len);

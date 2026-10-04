@@ -127,7 +127,7 @@ fn apply_entropy_selection_policy(
     }
 }
 
-/// Planner V3.4 telemetry used by engine statistics, `ace explain` and benchmarks.
+/// Planner V3.5 telemetry used by engine statistics, `ace explain` and benchmarks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlannerTelemetry {
     /// True when a deterministic fast path selected the plan without candidate sampling.
@@ -138,6 +138,12 @@ pub struct PlannerTelemetry {
     pub sampled_candidates: usize,
     /// Number of candidates entering the larger second-stage verifier.
     pub second_stage_candidates: usize,
+    /// Number of LZ candidates refined by bounded production-codec micro-trials.
+    pub hybrid_lz_candidates: usize,
+    /// Total source bytes processed by bounded LZ micro-trials for this block.
+    pub hybrid_lz_sample_bytes: usize,
+    /// Largest analytical-vs-micro-trial LZ disagreement observed, in parts per million.
+    pub hybrid_lz_max_disagreement_ppm: u64,
     /// Number of candidates that passed the profile-specific quality envelope.
     pub quality_qualified_candidates: usize,
     /// Smallest blended size observed in the final candidate pool.
@@ -154,7 +160,7 @@ pub struct PlannerTelemetry {
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the ACE 0.3-buildfix6 Planner V3.3 hot path.
+/// Result returned by the ACE 0.3-buildfix8 Planner V3.5 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
@@ -177,7 +183,7 @@ pub struct PlannerDecision {
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3-buildfix7 keeps zero full trials, ranking-only sampling and the quality envelope while using the calibrated LZ estimator V2 and guarded fast paths.
+/// ACE 0.3-buildfix8 starts from buildfix6, retains zero full trials and the quality envelope, and replaces LZ reset-window verification with a bounded hybrid production-codec micro-trial.
 /// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
 /// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
 /// blended compressed size, then the cost model selects the cheapest quality-safe plan.
@@ -200,6 +206,9 @@ pub fn evaluate_candidates_v3(
                 estimated_candidates: 0,
                 sampled_candidates: 0,
                 second_stage_candidates: 0,
+                hybrid_lz_candidates: 0,
+                hybrid_lz_sample_bytes: 0,
+                hybrid_lz_max_disagreement_ppm: 0,
                 quality_qualified_candidates: 1,
                 best_blended_size_bytes: 0,
                 quality_limit_bytes: 0,
@@ -240,17 +249,32 @@ pub fn evaluate_candidates_v3(
         .map(|c| c.plan.clone())
         .collect::<Vec<_>>();
     let model = CostModelV3;
+    let hybrid = crate::HybridLzEstimator;
+    let mut hybrid_lz_candidates = 0usize;
+    let mut hybrid_lz_sample_bytes = 0usize;
+    let mut hybrid_lz_max_disagreement_ppm = 0u64;
 
     let mut stage_one = Vec::with_capacity(stage_one_pool.len());
     for candidate in stage_one_pool {
-        stage_one.push(verify_candidate_samples(
-            input,
-            candidate,
-            config.profile,
-            policy,
-            1,
-            &model,
-        )?);
+        if matches!(candidate.plan.decoding.codec, CodecId::Lz) {
+            let (refined, observation) =
+                hybrid.refine(input, candidate, config.profile, 1, &model)?;
+            hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
+            hybrid_lz_sample_bytes =
+                hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
+            hybrid_lz_max_disagreement_ppm =
+                hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
+            stage_one.push(refined);
+        } else {
+            stage_one.push(verify_candidate_samples(
+                input,
+                candidate,
+                config.profile,
+                policy,
+                1,
+                &model,
+            )?);
+        }
     }
     apply_entropy_policy_estimates(&mut stage_one, config.profile);
     stage_one.sort_by(estimated_order);
@@ -267,21 +291,32 @@ pub fn evaluate_candidates_v3(
         .map(|c| c.plan.clone())
         .collect::<Vec<_>>();
 
-    // Planner V3.4 is ranking-only: stage two may refine a candidate's score, but it does not
+    // Planner V3.5 is ranking-only: stage two may refine a candidate's score, but it does not
     // remove candidates that survived stage one. This preserves Top-K quality while retaining
     // zero full-block trial encodes. Candidates outside the stage-two budget keep their stage-one
     // score and remain eligible for the final deterministic ranking.
     let mut final_pool = Vec::with_capacity(stage_one.len());
     for (idx, candidate) in stage_one.into_iter().enumerate() {
         if idx < stage_two_k {
-            final_pool.push(verify_candidate_samples(
-                input,
-                candidate,
-                config.profile,
-                policy,
-                2,
-                &model,
-            )?);
+            if matches!(candidate.plan.decoding.codec, CodecId::Lz) {
+                let (refined, observation) =
+                    hybrid.refine(input, candidate, config.profile, 2, &model)?;
+                hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
+                hybrid_lz_sample_bytes =
+                    hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
+                hybrid_lz_max_disagreement_ppm =
+                    hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
+                final_pool.push(refined);
+            } else {
+                final_pool.push(verify_candidate_samples(
+                    input,
+                    candidate,
+                    config.profile,
+                    policy,
+                    2,
+                    &model,
+                )?);
+            }
         } else {
             final_pool.push(candidate);
         }
@@ -346,6 +381,9 @@ pub fn evaluate_candidates_v3(
             estimated_candidates: candidates.len(),
             sampled_candidates: top_k_plans.len(),
             second_stage_candidates: second_stage_plans.len(),
+            hybrid_lz_candidates,
+            hybrid_lz_sample_bytes,
+            hybrid_lz_max_disagreement_ppm,
             quality_qualified_candidates: quality_qualified_plans.len(),
             best_blended_size_bytes,
             quality_limit_bytes,
@@ -436,7 +474,10 @@ fn semantic_family_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8) {
     (transforms, plan.decoding.codec as u8, lz)
 }
 
-/// Applies codec-specific sample verification while retaining analytical, sampled and blended size diagnostics.
+/// Applies non-LZ sample verification while retaining analytical, sampled and blended size diagnostics.
+///
+/// LZ candidates are handled by [`crate::HybridLzEstimator`] so reset-window pessimism cannot
+/// dominate the buildfix6 full-block analytical model.
 fn verify_candidate_samples(
     input: &[u8],
     mut candidate: ace_cost::EstimatedCandidate,
@@ -488,7 +529,7 @@ fn verify_candidate_samples(
     Ok(candidate)
 }
 
-/// Returns deterministic sample/analytical blending weights for Planner V3.4.
+/// Returns deterministic sample/analytical blending weights for non-LZ candidates in Planner V3.5.
 ///
 /// High-confidence analytical estimates retain most of the authority. LZ always receives a
 /// stronger analytical weight because short windows cannot faithfully reproduce long-range
@@ -504,14 +545,12 @@ fn verification_blend_weights(
     let medium = confidence >= 0.75;
     let sample: u64 = match codec {
         CodecId::Lz => {
-            // Reset-window samples systematically miss long-range matches. Buildfix7 gives the
-            // calibrated full-block LZ model substantially more authority.
             if high {
-                8
+                20
             } else if medium {
-                12
+                25
             } else {
-                18
+                30
             }
         }
         _ => {

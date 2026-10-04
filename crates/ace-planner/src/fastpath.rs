@@ -13,7 +13,7 @@ pub trait PlannerFastPath: Send + Sync {
     ) -> Option<PhysicalCompressionPlan>;
 }
 
-/// Default ACE 0.3-buildfix7 fast-path classifier with quality guards.
+/// Default ACE 0.3-buildfix8 fast-path classifier with a zero-heavy quality guard.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultPlannerFastPath;
 
@@ -27,16 +27,16 @@ impl PlannerFastPath for DefaultPlannerFastPath {
             return Some(PhysicalCompressionPlan::raw());
         }
         if p.zero_ratio > 0.985 || p.run_score > 0.92 {
-            // FAST may intentionally prefer the extremely cheap RLE path. BALANCED and DENSE
-            // must compare RLE against entropy-coded RAW/RLE candidates because buildfix6 showed
-            // that all-zero blocks can be much smaller as RAW+rANS than as bare RLE packets.
+            // FAST keeps the cheap RLE shortcut. BALANCED and DENSE must compare entropy-coded
+            // alternatives because buildfix6 showed all-zero blocks can be much smaller as
+            // RAW+rANS / RLE+entropy than as bare RLE packets.
             if matches!(config.profile, ace_core::CompressionProfile::Fast) {
                 return Some(simple_plan(
                     CodecId::Rle,
                     EntropyCodecId::None,
                     None,
                     Vec::new(),
-                    "0.3-buildfix7 fast path: extreme run density under FAST quality policy",
+                    "0.3-buildfix8 fast path: extreme run density under FAST quality policy",
                 ));
             }
             return None;
@@ -93,11 +93,11 @@ fn simple_plan(
 }
 
 #[cfg(test)]
-mod tests {
+mod buildfix8_tests {
     use super::*;
     use ace_core::CompressionProfile;
 
-    /// Builds an extreme zero-heavy profile that triggered the buildfix6 fast-path regret.
+    /// Builds an extreme zero-heavy profile that previously bypassed entropy alternatives.
     fn zero_heavy_profile() -> BlockProfile {
         BlockProfile {
             size: 262_144,
@@ -107,18 +107,15 @@ mod tests {
             run_score: 1.0,
             delta_score: 0.0,
             repetition_score: 1.0,
-            sampled_match_length: 130.0,
-            sampled_match_p95: 130.0,
-            sampled_match_coverage: 1.0,
-            long_match_ratio: 1.0,
+            sampled_match_length: 64.0,
             unique_byte_count: 1,
             incompressibility_score: 0.0,
         }
     }
 
-    /// Ensures BALANCED does not bypass entropy alternatives on all-zero blocks.
+    /// BALANCED must compare entropy alternatives instead of forcing bare RLE.
     #[test]
-    fn balanced_zero_heavy_block_uses_general_planner() {
+    fn balanced_zero_heavy_uses_general_planner() {
         let mut config = AceConfig::default();
         config.profile = CompressionProfile::Balanced;
         assert!(DefaultPlannerFastPath
@@ -126,9 +123,9 @@ mod tests {
             .is_none());
     }
 
-    /// Ensures DENSE also keeps the quality comparison for all-zero blocks.
+    /// DENSE must compare entropy alternatives instead of forcing bare RLE.
     #[test]
-    fn dense_zero_heavy_block_uses_general_planner() {
+    fn dense_zero_heavy_uses_general_planner() {
         let mut config = AceConfig::default();
         config.profile = CompressionProfile::Dense;
         assert!(DefaultPlannerFastPath
@@ -136,14 +133,14 @@ mod tests {
             .is_none());
     }
 
-    /// Ensures FAST keeps the intended speed-first RLE shortcut.
+    /// FAST preserves the speed-first RLE shortcut.
     #[test]
-    fn fast_zero_heavy_block_keeps_rle_shortcut() {
+    fn fast_zero_heavy_keeps_rle_shortcut() {
         let mut config = AceConfig::default();
         config.profile = CompressionProfile::Fast;
         let plan = DefaultPlannerFastPath
             .try_plan(&zero_heavy_profile(), &config)
-            .expect("FAST zero-heavy profile should use a shortcut");
+            .expect("FAST zero-heavy profile should use fast path");
         assert_eq!(plan.decoding.codec, CodecId::Rle);
         assert_eq!(plan.decoding.entropy, EntropyCodecId::None);
     }

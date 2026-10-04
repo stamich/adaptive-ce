@@ -3,11 +3,13 @@
 mod cost;
 mod evaluator;
 mod fastpath;
+mod hybrid;
 mod planner;
 mod policy;
 
 pub use cost::*;
 pub use evaluator::*;
 pub use fastpath::*;
+pub use hybrid::*;
 pub use planner::*;
 pub use policy::*;

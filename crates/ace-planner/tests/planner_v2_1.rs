@@ -14,9 +14,6 @@ fn structured_profile() -> BlockProfile {
         delta_score: 0.12,
         repetition_score: 0.22,
         sampled_match_length: 12.0,
-        sampled_match_p95: 28.0,
-        sampled_match_coverage: 0.24,
-        long_match_ratio: 0.18,
         unique_byte_count: 96,
         incompressibility_score: 0.28,
     }

@@ -214,7 +214,7 @@ fn explain_command(input: &str, profile: CompressionProfile) -> Result<()> {
             println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason);
         }
         println!(
-            "  selected {:?}/{:?} transforms={:?} fast_path={} estimated={} sampled={} stage2={} quality={} best_blended={} quality_limit={} selected_blended={} size_rank={} cost_rank={} full_trials={}\n",
+            "  selected {:?}/{:?} transforms={:?} fast_path={} estimated={} sampled={} stage2={} hybrid_lz={} hybrid_bytes={} hybrid_disagreement_ppm={} quality={} best_blended={} quality_limit={} selected_blended={} size_rank={} cost_rank={} full_trials={}\n",
             explanation.selected.decoding.codec,
             explanation.selected.decoding.entropy,
             explanation.selected.decoding.transforms,
@@ -222,6 +222,9 @@ fn explain_command(input: &str, profile: CompressionProfile) -> Result<()> {
             explanation.telemetry.estimated_candidates,
             explanation.telemetry.sampled_candidates,
             explanation.telemetry.second_stage_candidates,
+            explanation.telemetry.hybrid_lz_candidates,
+            explanation.telemetry.hybrid_lz_sample_bytes,
+            explanation.telemetry.hybrid_lz_max_disagreement_ppm,
             explanation.telemetry.quality_qualified_candidates,
             explanation.telemetry.best_blended_size_bytes,
             explanation.telemetry.quality_limit_bytes,

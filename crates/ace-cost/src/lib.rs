@@ -1,8 +1,9 @@
 //! Deterministic candidate-size and resource estimators used by the ACE 0.3 planner.
 //!
-//! ACE 0.3-buildfix7 calibrates the analytical estimator against the production LZ token model.
-//! It keeps the quality envelope from buildfix6 while adding coverage, long-match and p95-match
-//! signals so long-range repetition is not systematically undervalued by reset-window samples.
+//! ACE 0.3-buildfix6 keeps the cheap analytical estimator introduced in 0.3 and adds
+//! an explicit quality envelope before final scalar-cost selection. Candidate estimates retain
+//! analytical, sampled and blended size components so planner diagnostics can distinguish
+//! estimation error from an intentional CPU/ratio trade-off.
 
 use ace_core::{
     BlockProfile, CodecId, CompressionProfile, CostWeights, EntropyCodecId, LzMode,
@@ -44,7 +45,7 @@ pub trait CandidateEstimator: Send + Sync {
     ) -> EstimatedCandidate;
 }
 
-/// Default analytical estimator used by ACE 0.3-buildfix7.
+/// Default analytical estimator used by ACE 0.3-buildfix6.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultCandidateEstimator;
 
@@ -80,30 +81,29 @@ impl CandidateEstimator for DefaultCandidateEstimator {
                     confidence.max((0.62 + p.run_score.max(p.zero_ratio) * 0.36).clamp(0.0, 0.99));
             }
             CodecId::Lz => {
-                let lz_ratio = lz_primary_ratio_v2(p, candidate.lz_mode);
-                primary_ratio *= lz_ratio;
-                let structural = p
-                    .sampled_match_coverage
-                    .max(p.repetition_score)
-                    .max(p.long_match_ratio * 0.85)
-                    .clamp(0.0, 1.0);
-                confidence = confidence.max((0.66 + structural * 0.30).clamp(0.0, 0.97));
+                let repetition = p.repetition_score.clamp(0.0, 1.0) as f64;
+                let match_signal = (p.sampled_match_length / 48.0).clamp(0.0, 1.0) as f64;
+                let signal = repetition.max(match_signal);
+                let depth_bonus = match candidate.lz_mode {
+                    Some(LzMode::Balanced) => 0.72,
+                    _ => 0.62,
+                };
+                primary_ratio *= (1.0 - signal * depth_bonus).clamp(0.05, 1.04);
+                // LZ confidence deliberately remains lower than pure entropy/RLE confidence:
+                // small analyzer sketches cannot fully represent long-range matches.
+                confidence = confidence.max((0.54 + signal as f32 * 0.34).clamp(0.0, 0.94));
             }
         }
 
-        let entropy_factor = if matches!(candidate.decoding.codec, CodecId::Lz) {
-            lz_entropy_factor_v2(p, candidate.decoding.entropy)
-        } else {
-            match candidate.decoding.entropy {
-                EntropyCodecId::None => 1.0,
-                EntropyCodecId::Huffman => {
-                    let h = (p.entropy_h0 as f64 / 8.0).clamp(0.02, 1.0);
-                    (0.04 + h * 0.96).clamp(0.04, 1.03)
-                }
-                EntropyCodecId::Rans | EntropyCodecId::Rans4x => {
-                    let h = (p.entropy_h0 as f64 / 8.0).clamp(0.02, 1.0);
-                    (0.025 + h * 0.94).clamp(0.03, 1.02)
-                }
+        let entropy_factor = match candidate.decoding.entropy {
+            EntropyCodecId::None => 1.0,
+            EntropyCodecId::Huffman => {
+                let h = (p.entropy_h0 as f64 / 8.0).clamp(0.02, 1.0);
+                (0.04 + h * 0.96).clamp(0.04, 1.03)
+            }
+            EntropyCodecId::Rans | EntropyCodecId::Rans4x => {
+                let h = (p.entropy_h0 as f64 / 8.0).clamp(0.02, 1.0);
+                (0.025 + h * 0.94).clamp(0.03, 1.02)
             }
         };
         let metadata = match candidate.decoding.entropy {
@@ -161,58 +161,6 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             score,
             confidence,
         }
-    }
-}
-
-/// Predicts the primary LZ token-stream ratio using features aligned with the production codec.
-///
-/// The ACE LZ stream spends three bytes per match token and one control byte per at most 128
-/// literal bytes. The predictor therefore estimates covered match bytes and literal bytes rather
-/// than deriving size from one generic repetition score. BALANCED receives a small deterministic
-/// coverage bonus because its bounded chain search can discover alternatives missed by FAST.
-fn lz_primary_ratio_v2(profile: &BlockProfile, mode: Option<LzMode>) -> f64 {
-    let mean_len = (profile.sampled_match_length as f64).clamp(4.0, 130.0);
-    let p95_len = (profile.sampled_match_p95 as f64).clamp(mean_len, 130.0);
-    let long_ratio = (profile.long_match_ratio as f64).clamp(0.0, 1.0);
-    let collision = (profile.repetition_score as f64).clamp(0.0, 1.0);
-    let sampled_coverage = (profile.sampled_match_coverage as f64).clamp(0.0, 1.0);
-
-    let length_signal = (0.65 * (mean_len / 130.0) + 0.35 * (p95_len / 130.0)).clamp(0.0, 1.0);
-    let inferred_coverage = (collision * (0.35 + 0.65 * length_signal)).clamp(0.0, 1.0);
-    let mut coverage = sampled_coverage
-        .max(inferred_coverage)
-        .max(long_ratio * 0.72)
-        .clamp(0.0, 0.985);
-
-    coverage = match mode {
-        Some(LzMode::Balanced) => (coverage * 1.08 + 0.015 * long_ratio).clamp(0.0, 0.99),
-        Some(LzMode::Fast) => (coverage * 0.98).clamp(0.0, 0.985),
-        None => coverage,
-    };
-
-    let effective_match_len = (0.70 * mean_len + 0.30 * p95_len).clamp(4.0, 130.0);
-    let match_token_ratio = (3.0 / effective_match_len).clamp(3.0 / 130.0, 0.75);
-    let literal_token_ratio = 1.0 + 1.0 / 128.0;
-    let predicted = (1.0 - coverage) * literal_token_ratio + coverage * match_token_ratio;
-    predicted.clamp(0.025, 1.04)
-}
-
-/// Predicts the secondary entropy-coder factor for an LZ token stream.
-///
-/// Original byte entropy is a poor proxy after LZ tokenization. The token stream contains
-/// literal packets, match controls and distances, so buildfix7 scales the expected entropy gain
-/// by LZ structural coverage instead. Nearly incompressible inputs stay close to `1.0`, while
-/// highly covered match streams receive a modest deterministic entropy bonus.
-fn lz_entropy_factor_v2(profile: &BlockProfile, entropy: EntropyCodecId) -> f64 {
-    let structure = (profile.sampled_match_coverage as f64)
-        .max(profile.long_match_ratio as f64 * 0.85)
-        .max(profile.repetition_score as f64 * 0.65)
-        .clamp(0.0, 1.0);
-    match entropy {
-        EntropyCodecId::None => 1.0,
-        EntropyCodecId::Huffman => (1.0 - structure * 0.08).clamp(0.90, 1.01),
-        EntropyCodecId::Rans => (1.0 - structure * 0.12).clamp(0.86, 1.01),
-        EntropyCodecId::Rans4x => (1.0 - structure * 0.115).clamp(0.865, 1.01),
     }
 }
 
@@ -447,50 +395,5 @@ mod tests {
     #[test]
     fn dense_has_quality_floor() {
         assert_eq!(adaptive_top_k(CompressionProfile::Dense, 0.99, 6, 20), 4);
-    }
-
-    /// Verifies the calibrated LZ model predicts a compact token stream for long periodic matches.
-    #[test]
-    fn lz_v2_rewards_long_covered_matches() {
-        let profile = BlockProfile {
-            size: 262_144,
-            entropy_h0: 6.0,
-            entropy_h1: 2.0,
-            zero_ratio: 0.0,
-            run_score: 0.0,
-            delta_score: 0.0,
-            repetition_score: 0.80,
-            sampled_match_length: 72.0,
-            sampled_match_p95: 120.0,
-            sampled_match_coverage: 0.86,
-            long_match_ratio: 0.90,
-            unique_byte_count: 128,
-            incompressibility_score: 0.15,
-        };
-        let fast = lz_primary_ratio_v2(&profile, Some(LzMode::Fast));
-        let balanced = lz_primary_ratio_v2(&profile, Some(LzMode::Balanced));
-        assert!(fast < 0.30);
-        assert!(balanced <= fast);
-    }
-
-    /// Verifies weak repetition evidence does not create an unrealistically tiny LZ estimate.
-    #[test]
-    fn lz_v2_keeps_weak_match_data_near_literal_cost() {
-        let profile = BlockProfile {
-            size: 262_144,
-            entropy_h0: 7.9,
-            entropy_h1: 7.8,
-            zero_ratio: 0.0,
-            run_score: 0.0,
-            delta_score: 0.0,
-            repetition_score: 0.01,
-            sampled_match_length: 4.0,
-            sampled_match_p95: 4.0,
-            sampled_match_coverage: 0.01,
-            long_match_ratio: 0.0,
-            unique_byte_count: 256,
-            incompressibility_score: 0.98,
-        };
-        assert!(lz_primary_ratio_v2(&profile, Some(LzMode::Fast)) > 0.90);
     }
 }

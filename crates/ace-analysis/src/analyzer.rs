@@ -13,7 +13,7 @@ pub trait BlockAnalyzer {
 pub struct DefaultBlockAnalyzer;
 
 impl BlockAnalyzer for DefaultBlockAnalyzer {
-    /// Computes zero-order entropy, sampled H1, run, delta and LZ-oriented repetition statistics.
+    /// Computes zero-order entropy, sampled H1, run, delta and repetition statistics.
     fn analyze(&self, input: &[u8]) -> BlockProfile {
         if input.is_empty() {
             return BlockProfile {
@@ -25,14 +25,10 @@ impl BlockAnalyzer for DefaultBlockAnalyzer {
                 delta_score: 0.0,
                 repetition_score: 0.0,
                 sampled_match_length: 0.0,
-                sampled_match_p95: 0.0,
-                sampled_match_coverage: 0.0,
-                long_match_ratio: 0.0,
                 unique_byte_count: 0,
                 incompressibility_score: 0.0,
             };
         }
-
         let mut histogram = [0u32; 256];
         let mut delta_histogram = [0u32; 256];
         let zero_count = count_zeroes(input);
@@ -47,7 +43,6 @@ impl BlockAnalyzer for DefaultBlockAnalyzer {
                 previous = byte;
             }
         }
-
         let h0 = entropy_h0(&histogram, input.len());
         let delta_h = entropy_h0(&delta_histogram, input.len());
         let h1 = sampled_entropy_h1(input, 8);
@@ -60,11 +55,9 @@ impl BlockAnalyzer for DefaultBlockAnalyzer {
         let strongest_structure = run_score
             .max(delta_score)
             .max(repetition.collision_ratio)
-            .max(repetition.match_coverage)
             .clamp(0.0, 1.0);
         let incompressibility_score =
             (0.72 * entropy_component + 0.28 * (1.0 - strongest_structure)).clamp(0.0, 1.0);
-
         BlockProfile {
             size: input.len(),
             entropy_h0: h0,
@@ -74,9 +67,6 @@ impl BlockAnalyzer for DefaultBlockAnalyzer {
             delta_score,
             repetition_score: repetition.collision_ratio,
             sampled_match_length: repetition.mean_match_length,
-            sampled_match_p95: repetition.p95_match_length,
-            sampled_match_coverage: repetition.match_coverage,
-            long_match_ratio: repetition.long_match_ratio,
             unique_byte_count,
             incompressibility_score,
         }

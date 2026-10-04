@@ -62,12 +62,12 @@ struct EstimatorErrorStats {
     signed_error_sum: i128,
     /// Sum of absolute percentage errors.
     absolute_percentage_error_sum: f64,
-    /// Individual absolute errors used to report a deterministic p95.
+    /// Individual absolute errors used to report deterministic p95.
     absolute_errors: Vec<u64>,
 }
 
 impl EstimatorErrorStats {
-    /// Records one analytical prediction and the corresponding diagnostic full encode size.
+    /// Records one prediction and its diagnostic full-encode size.
     fn observe(&mut self, predicted: u64, actual: u64) {
         let signed = predicted as i128 - actual as i128;
         let absolute = if signed < 0 {
@@ -85,7 +85,7 @@ impl EstimatorErrorStats {
         self.absolute_errors.push(absolute);
     }
 
-    /// Serializes MAE, MAPE, signed bias and p95 absolute error for JSON benchmark output.
+    /// Serializes MAE, MAPE, signed bias and p95 absolute error for JSON output.
     fn json(&self) -> Value {
         if self.count == 0 {
             return json!({"count":0,"mae_bytes":0.0,"mape":0.0,"bias_bytes":0.0,"p95_absolute_error_bytes":0});
@@ -132,12 +132,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             other => return Err(format!("unknown benchmark family: {other}").into()),
         };
         let document = BenchmarkDocument {
-            schema_version: "1.7",
+            schema_version: "1.8",
             project: "ace",
-            milestone: "0.3-buildfix7",
+            milestone: "0.3-buildfix8",
             base: "0.3-buildfix6",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3-buildfix7",
+            benchmark_contract_origin: "ace-0.3-buildfix8",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: json!({
@@ -191,7 +191,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3-buildfix7-{family}.json"))
+        .join(format!("0.3-buildfix8-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -397,6 +397,9 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut sampled_total = 0u64;
     let mut second_stage_total = 0u64;
     let mut full_trial_total = 0u64;
+    let mut hybrid_lz_candidates_total = 0u64;
+    let mut hybrid_lz_sample_bytes_total = 0u64;
+    let mut hybrid_lz_max_disagreement_ppm = 0u64;
     let mut generated_recall_by_class: BTreeMap<&str, (u64, u64)> = BTreeMap::new();
     let mut regret_by_class: BTreeMap<&str, (i64, u64)> = BTreeMap::new();
     let mut estimator_by_family: BTreeMap<String, EstimatorErrorStats> = BTreeMap::new();
@@ -409,8 +412,8 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let candidates = planner.candidates(&profile, &cfg);
         let class = data_class(idx, blocks.len());
 
-        // Diagnostic-only calibration: these full encodes are outside the timed planner hot path
-        // and never contribute to the runtime `full_trial_encodes_per_block` metric.
+        // Diagnostic-only full encodes calibrate the cheap buildfix6 analytical model. They are
+        // outside the timed planner hot path and do not count as planner full-trial encodes.
         for candidate in &candidates {
             let estimate = estimator.estimate(candidate, &profile, cfg.profile);
             let actual = encoded_plan_size(block, candidate)? as u64;
@@ -435,6 +438,10 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         sampled_total += decision.telemetry.sampled_candidates as u64;
         second_stage_total += decision.telemetry.second_stage_candidates as u64;
         full_trial_total += decision.telemetry.full_trial_encodes as u64;
+        hybrid_lz_candidates_total += decision.telemetry.hybrid_lz_candidates as u64;
+        hybrid_lz_sample_bytes_total += decision.telemetry.hybrid_lz_sample_bytes as u64;
+        hybrid_lz_max_disagreement_ppm =
+            hybrid_lz_max_disagreement_ppm.max(decision.telemetry.hybrid_lz_max_disagreement_ppm);
         quality_candidates_total += decision.telemetry.quality_qualified_candidates as u64;
         selected_size_rank_total += decision.telemetry.selected_size_rank as u64;
         selected_cost_rank_total += decision.telemetry.selected_cost_rank as u64;
@@ -559,7 +566,6 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let selected_size = encoded_plan_size(block, &selected)? as i64;
         let block_regret = selected_size - oracle.0 as i64;
         regret += block_regret;
-
         let recall_entry = generated_recall_by_class.entry(class).or_insert((0, 0));
         recall_entry.1 += 1;
         if generated_hit {
@@ -591,12 +597,10 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             "selected_blended_size_bytes":decision.telemetry.selected_blended_size_bytes,
             "selected_prediction_error_bytes":decision.telemetry.selected_blended_size_bytes as i64 - selected_size,
             "selected_prediction_error_percent":if selected_size==0 {0.0} else {(decision.telemetry.selected_blended_size_bytes as f64-selected_size as f64)/selected_size as f64},
+            "hybrid_lz_candidates":decision.telemetry.hybrid_lz_candidates,
+            "hybrid_lz_sample_bytes":decision.telemetry.hybrid_lz_sample_bytes,
+            "hybrid_lz_max_disagreement_ppm":decision.telemetry.hybrid_lz_max_disagreement_ppm,
             "predicted_size_regret_bytes":decision.telemetry.selected_blended_size_bytes.saturating_sub(decision.telemetry.best_blended_size_bytes),
-            "analysis_repetition_score":profile.repetition_score,
-            "analysis_match_length_mean":profile.sampled_match_length,
-            "analysis_match_length_p95":profile.sampled_match_p95,
-            "analysis_match_coverage":profile.sampled_match_coverage,
-            "analysis_long_match_ratio":profile.long_match_ratio,
             "selected_size_rank":decision.telemetry.selected_size_rank,
             "selected_cost_rank":decision.telemetry.selected_cost_rank,
             "selected_plan":plan_id(&selected),
@@ -671,7 +675,7 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 
     Ok(vec![json!({
         "workload_id":"mixed_8m",
-        "path":"planner_v3_4_lz_calibrated_quality_guard",
+        "path":"planner_v3_5_hybrid_lz_selective_rollback",
         "blocks":blocks.len(),
         "oracle_regret_bytes":regret,
         "normalized_regret_bytes_per_block":regret as f64/block_count,
@@ -702,6 +706,9 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         "sampled_candidates_per_block":sampled_total as f64/block_count,
         "second_stage_candidates_per_block":second_stage_total as f64/block_count,
         "full_trial_encodes_per_block":full_trial_total as f64/block_count,
+        "hybrid_lz_candidates_per_block":hybrid_lz_candidates_total as f64/block_count,
+        "hybrid_lz_sample_bytes_per_block":hybrid_lz_sample_bytes_total as f64/block_count,
+        "hybrid_lz_max_disagreement_ppm":hybrid_lz_max_disagreement_ppm,
         "estimator_calibration":estimator_calibration,
         "estimator_calibration_by_data_class":estimator_calibration_by_class,
         "timing":{
