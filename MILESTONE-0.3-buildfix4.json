@@ -1,0 +1,28 @@
+{
+  "project": "ace",
+  "milestone": "0.3-buildfix4",
+  "workspace_version": "0.3.4",
+  "base": "0.3-buildfix3",
+  "format": {
+    "writer": "1.2",
+    "reader": ["1.0", "1.1", "1.2"]
+  },
+  "focus": "Planner V3.2 sample-verifier quality preservation",
+  "invariants": [
+    "deterministic output",
+    "full_trial_encodes_per_block == 0",
+    "stage-two sampling does not discard stage-one survivors",
+    "Format 1.2 wire compatibility unchanged"
+  ],
+  "gates": {
+    "generated_recall_min": 0.99,
+    "top_k_recall_min": 0.98,
+    "sample_survival_recall_min": 0.97,
+    "regret_bytes_per_block_max": 1024,
+    "dense_ratio_vs_0_2_1_buildfix1_min_fraction": 0.995,
+    "fast_speedup_min": 2.0,
+    "balanced_speedup_min": 4.0,
+    "dense_speedup_min": 3.5,
+    "warm_random_access_latency_max_fraction_of_baseline": 1.15
+  }
+}

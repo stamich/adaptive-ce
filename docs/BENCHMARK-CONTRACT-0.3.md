@@ -1,6 +1,6 @@
 # ACE 0.3 benchmark contract
 
-Official results live under `examples/results/0.3-buildfix3-<family>.json`.
+Official results live under `examples/results/0.3-buildfix4-<family>.json`.
 
 Families:
 
@@ -15,6 +15,6 @@ Families:
 
 The benchmark format remains version-independent: `milestone`, `base`, `scope` and `benchmark_contract_origin` must be mutually consistent.
 
-## Planner V3.1 quality fields
+## Planner V3.2 quality fields
 
-Buildfix3 adds `candidate_generation_recall`, `top_k_recall`, `sample_verifier_recall`, `final_selection_recall`, stage-specific denominators and `regret_bytes_per_block_by_class`. Top-K/sample recall excludes blocks handled directly by `PlannerFastPath`, because those blocks never enter the corresponding stage.
+Buildfix4 keeps `candidate_generation_recall`, `top_k_recall`, `final_selection_recall` and `regret_bytes_per_block_by_class`, and adds `sample_survival_recall`, oracle mean rank before/after sampling, plus Top-1/Top-2/Top-3 oracle rates after sampling. Top-K/sample metrics exclude blocks handled directly by `PlannerFastPath`, because those blocks never enter the corresponding stage. Stage-two sampling is ranking-only and therefore cannot discard a stage-one survivor.
