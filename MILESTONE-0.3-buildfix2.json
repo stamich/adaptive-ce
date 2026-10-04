@@ -1,0 +1,18 @@
+{
+  "project": "ace",
+  "milestone": "0.3-buildfix2",
+  "base": "0.3-buildfix1",
+  "engine_line": "0.3",
+  "format_version": "1.2",
+  "scope": "rle-boundary-hardening",
+  "changes": [
+    "fix RLE literal packet boundary overflow",
+    "add RLE boundary and regression tests",
+    "add RLE fuzz roundtrip target",
+    "render entropy sentinel scores as penalized in ace explain"
+  ],
+  "compatibility": {
+    "reader": ["1.0", "1.1", "1.2"],
+    "writer": "1.2"
+  }
+}

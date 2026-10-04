@@ -75,6 +75,7 @@ dependencies = [
 name = "ace-fuzz"
 version = "0.0.0"
 dependencies = [
+ "ace-codecs",
  "ace-core",
  "ace-cost",
  "ace-engine",
