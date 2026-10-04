@@ -11,13 +11,17 @@ pub struct RunStats {
 
 /// Scans an input slice and returns statistics for repeated-byte runs of length at least four.
 pub fn analyze_runs(input: &[u8]) -> RunStats {
-    if input.is_empty() { return RunStats::default(); }
+    if input.is_empty() {
+        return RunStats::default();
+    }
     let mut stats = RunStats::default();
     let mut start = 0usize;
     while start < input.len() {
         let byte = input[start];
         let mut end = start + 1;
-        while end < input.len() && input[end] == byte { end += 1; }
+        while end < input.len() && input[end] == byte {
+            end += 1;
+        }
         let len = end - start;
         if len >= 4 {
             stats.run_count += 1;

@@ -1,0 +1,304 @@
+{
+  "schema_version": "1.0",
+  "project": "ace",
+  "milestone": "0.2",
+  "base": "0.1.0",
+  "scope": "compression",
+  "benchmark_contract_origin": "ace-0.2",
+  "generated_at_utc_epoch_seconds": 1789219974,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "logical_cpus": 12,
+    "os": "linux"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "runs": 7,
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "compressed_bytes": 6993456,
+      "compression": {
+        "max_ns": 667431244,
+        "mean_ns": 660747123.2857143,
+        "median_mb_s": 24.25772925240056,
+        "median_ns": 659583584.0,
+        "min_ns": 654671044,
+        "p95_ns": 667431244.0,
+        "p99_ns": 667431244.0,
+        "runs": 7,
+        "samples_ns": [
+          663455336,
+          654671044,
+          659583584,
+          659330901,
+          661336349,
+          667431244,
+          659421405
+        ],
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2.398987853787884,
+      "decompression": {
+        "max_ns": 313155844,
+        "mean_ns": 296757841.4285714,
+        "median_mb_s": 54.680817219167054,
+        "median_ns": 292607185.0,
+        "min_ns": 290906819,
+        "p95_ns": 313155844.0,
+        "p99_ns": 313155844.0,
+        "runs": 7,
+        "samples_ns": [
+          300421984,
+          298129671,
+          290922495,
+          291160892,
+          290906819,
+          313155844,
+          292607185
+        ],
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "path": "ace-balanced",
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compressed_bytes": 6993456,
+      "compression": {
+        "max_ns": 440223926,
+        "mean_ns": 437394213.28571427,
+        "median_mb_s": 36.61199005375796,
+        "median_ns": 437015305.0,
+        "min_ns": 435249986,
+        "p95_ns": 440223926.0,
+        "p99_ns": 440223926.0,
+        "runs": 7,
+        "samples_ns": [
+          436640593,
+          437015305,
+          437981342,
+          435572786,
+          439075555,
+          435249986,
+          440223926
+        ],
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2.398987853787884,
+      "decompression": {
+        "max_ns": 298415424,
+        "mean_ns": 295550543.5714286,
+        "median_mb_s": 54.12855121566552,
+        "median_ns": 295592615.0,
+        "min_ns": 292545136,
+        "p95_ns": 298415424.0,
+        "p99_ns": 298415424.0,
+        "runs": 7,
+        "samples_ns": [
+          298415424,
+          292545136,
+          297939877,
+          295592615,
+          296132872,
+          293512182,
+          294715699
+        ],
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "path": "ace-fast",
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compressed_bytes": 4821493,
+      "compression": {
+        "max_ns": 776785060,
+        "mean_ns": 761417344.1428572,
+        "median_mb_s": 21.092091746544142,
+        "median_ns": 758578153.0,
+        "min_ns": 747057253,
+        "p95_ns": 776785060.0,
+        "p99_ns": 776785060.0,
+        "runs": 7,
+        "samples_ns": [
+          776785060,
+          755052530,
+          749561180,
+          773624491,
+          758578153,
+          769262742,
+          747057253
+        ],
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 3.479672375340999,
+      "decompression": {
+        "max_ns": 100673272,
+        "mean_ns": 96444554.28571428,
+        "median_mb_s": 167.0014419322,
+        "median_ns": 95807556.0,
+        "min_ns": 94712136,
+        "p95_ns": 100673272.0,
+        "p99_ns": 100673272.0,
+        "runs": 7,
+        "samples_ns": [
+          100673272,
+          96440836,
+          97089072,
+          95807556,
+          95621721,
+          94712136,
+          94767287
+        ],
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "path": "ace-dense",
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compressed_bytes": 5293265,
+      "compression": {
+        "max_ns": 10231257,
+        "mean_ns": 8752382.714285715,
+        "median_mb_s": 1891.0504383336724,
+        "median_ns": 8460906.0,
+        "min_ns": 8183861,
+        "p95_ns": 10231257.0,
+        "p99_ns": 10231257.0,
+        "runs": 7,
+        "samples_ns": [
+          8421598,
+          10231257,
+          9281500,
+          8460906,
+          8489075,
+          8183861,
+          8198482
+        ],
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 3.1695401609403646,
+      "decompression": {
+        "max_ns": 7689216,
+        "mean_ns": 7509984.428571428,
+        "median_mb_s": 2116.7955155687,
+        "median_ns": 7558595.0,
+        "min_ns": 7279771,
+        "p95_ns": 7689216.0,
+        "p99_ns": 7689216.0,
+        "runs": 7,
+        "samples_ns": [
+          7361886,
+          7620372,
+          7279771,
+          7603947,
+          7558595,
+          7689216,
+          7456104
+        ],
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "path": "lz4",
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compressed_bytes": 4461438,
+      "compression": {
+        "max_ns": 14227455,
+        "mean_ns": 12711294.57142857,
+        "median_mb_s": 1264.1789521157457,
+        "median_ns": 12656436.0,
+        "min_ns": 11885366,
+        "p95_ns": 14227455.0,
+        "p99_ns": 14227455.0,
+        "runs": 7,
+        "samples_ns": [
+          12795611,
+          14227455,
+          12857165,
+          12117578,
+          12439451,
+          11885366,
+          12656436
+        ],
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 3.7604951587358157,
+      "decompression": {
+        "max_ns": 10183431,
+        "mean_ns": 6943679.857142857,
+        "median_mb_s": 2507.550862534808,
+        "median_ns": 6380728.0,
+        "min_ns": 6268509,
+        "p95_ns": 10183431.0,
+        "p99_ns": 10183431.0,
+        "runs": 7,
+        "samples_ns": [
+          10183431,
+          6360093,
+          6459449,
+          6352388,
+          6601161,
+          6380728,
+          6268509
+        ],
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "path": "zstd-3",
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compressed_bytes": 4614306,
+      "compression": {
+        "max_ns": 246101208,
+        "mean_ns": 241593430.42857143,
+        "median_mb_s": 65.84988608093177,
+        "median_ns": 242976882.0,
+        "min_ns": 236734784,
+        "p95_ns": 246101208.0,
+        "p99_ns": 246101208.0,
+        "runs": 7,
+        "samples_ns": [
+          238510789,
+          236734784,
+          242976882,
+          243539162,
+          243767238,
+          246101208,
+          239523950
+        ],
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 3.635913179576734,
+      "decompression": {
+        "max_ns": 18796572,
+        "mean_ns": 18021170.57142857,
+        "median_mb_s": 893.0374945699135,
+        "median_ns": 17916381.0,
+        "min_ns": 17676452,
+        "p95_ns": 18796572.0,
+        "p99_ns": 18796572.0,
+        "runs": 7,
+        "samples_ns": [
+          18796572,
+          17830849,
+          17676452,
+          17815141,
+          18193201,
+          17919598,
+          17916381
+        ],
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "path": "gzip-6",
+      "workload_id": "mixed_16m"
+    }
+  ]
+}

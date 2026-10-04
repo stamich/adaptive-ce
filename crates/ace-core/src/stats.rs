@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 /// Aggregate telemetry produced by one compression operation.
@@ -21,12 +22,18 @@ pub struct CompressionStats {
     pub huffman_blocks: u64,
     /// Number of blocks finalized by rANS.
     pub rans_blocks: u64,
-    /// Time spent collecting block statistics.
+    /// Stable physical-plan label to selected-block count mapping.
+    pub plan_distribution: BTreeMap<String, u64>,
+    /// Time spent collecting block statistics, summed across workers.
     pub analysis_time: Duration,
-    /// Time spent in deterministic planning.
+    /// Time spent generating/evaluating candidates, summed across workers.
     pub planning_time: Duration,
-    /// Time spent encoding selected plans.
+    /// Time spent encoding selected plans, summed across workers.
     pub encoding_time: Duration,
+    /// Time spent assembling block headers/payloads into deterministic file order.
+    pub serialization_time: Duration,
+    /// Time spent building and serializing the final block index/trailer.
+    pub index_time: Duration,
 }
 
 impl CompressionStats {
@@ -37,5 +44,11 @@ impl CompressionStats {
         } else {
             self.input_bytes as f64 / self.output_bytes as f64
         }
+    }
+
+    /// Increments the stable counter associated with one selected physical plan.
+    pub fn record_plan(&mut self, label: impl Into<String>) {
+        let entry = self.plan_distribution.entry(label.into()).or_insert(0);
+        *entry = entry.saturating_add(1);
     }
 }

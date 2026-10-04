@@ -1,4 +1,4 @@
-//! Shared model, errors, limits and physical-plan types for Adaptive Compression Engine 0.2.
+//! Shared model, errors, limits and physical-plan types for Adaptive Compression Engine 0.2.1.
 
 mod block;
 mod codec;

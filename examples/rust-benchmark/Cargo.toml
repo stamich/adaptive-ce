@@ -1,5 +1,5 @@
 [package]
-name = "ace-benchmark-0-2"
+name = "ace-benchmark-0-2-1-buildfix1"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -15,3 +15,5 @@ serde_json.workspace = true
 flate2.workspace = true
 lz4_flex.workspace = true
 zstd.workspace = true
+
+num_cpus.workspace = true

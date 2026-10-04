@@ -13,11 +13,24 @@ pub struct DecodingPlan {
     pub entropy: EntropyCodecId,
 }
 
+/// Origin class assigned to a candidate by the ACE 0.2.1 candidate generator.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CandidateTier {
+    /// Baseline candidate that is always considered for correctness and calibration.
+    Mandatory,
+    /// Candidate strongly supported by observed block features.
+    Likely,
+    /// Candidate admitted when evidence is uncertain or a size-oriented profile asks for wider search.
+    Exploratory,
+}
+
 /// Deterministic multidimensional estimate used by the runtime planner.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlanCost {
     /// Predicted total encoded bytes including codec and entropy metadata.
     pub predicted_size_bytes: u64,
+    /// Portion of the predicted encoded size consumed by codec/entropy metadata.
+    pub metadata_bytes: u64,
     /// Deterministic relative encoder work units.
     pub encode_units: u64,
     /// Deterministic relative decoder work units.
@@ -43,27 +56,27 @@ impl CostWeights {
     /// Returns deterministic weights for a high-throughput encoder.
     pub fn fast() -> Self {
         Self {
-            size: 25,
-            encode_cpu: 45,
-            decode_cpu: 25,
+            size: 20,
+            encode_cpu: 55,
+            decode_cpu: 20,
             memory: 5,
         }
     }
-    /// Returns deterministic balanced weights.
+    /// Returns deterministic balanced weights that deliberately separate BALANCED from FAST.
     pub fn balanced() -> Self {
         Self {
-            size: 55,
-            encode_cpu: 20,
-            decode_cpu: 20,
+            size: 60,
+            encode_cpu: 18,
+            decode_cpu: 17,
             memory: 5,
         }
     }
     /// Returns deterministic weights favoring compressed size.
     pub fn dense() -> Self {
         Self {
-            size: 80,
-            encode_cpu: 8,
-            decode_cpu: 8,
+            size: 86,
+            encode_cpu: 5,
+            decode_cpu: 5,
             memory: 4,
         }
     }
@@ -84,6 +97,8 @@ pub struct PhysicalCompressionPlan {
     pub decoding: DecodingPlan,
     /// Optional LZ search strategy; it is not serialized because it does not change the wire format.
     pub lz_mode: Option<LzMode>,
+    /// Candidate-generation tier used by explain and benchmark diagnostics.
+    pub tier: CandidateTier,
     /// Deterministic predicted resource cost.
     pub cost: PlanCost,
     /// Final deterministic scalar score; lower is better.
@@ -103,9 +118,10 @@ impl PhysicalCompressionPlan {
                 entropy: EntropyCodecId::None,
             },
             lz_mode: None,
+            tier: CandidateTier::Mandatory,
             cost: PlanCost::default(),
             score: 0,
-            reason: "RAW fallback",
+            reason: "RAW mandatory fallback",
         }
     }
 }

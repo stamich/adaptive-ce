@@ -1,3 +1,3 @@
-# Scala demo
+# Scala CLI demonstration
 
-A thin process-based usage sample. It intentionally does not create an FFI dependency in milestone 0.1.
+This example is intentionally process-based. It documents the stable CLI boundary without introducing JVM-native bindings into ACE 0.2.1-buildfix1. The object and methods are documented with Scaladoc.

@@ -1,0 +1,29 @@
+[package]
+name = "ace-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+ace-core = { path = "../crates/ace-core" }
+ace-engine = { path = "../crates/ace-engine" }
+ace-entropy = { path = "../crates/ace-entropy" }
+ace-format = { path = "../crates/ace-format" }
+
+[[bin]]
+name = "ace_decoder"
+path = "fuzz_targets/ace_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rans_decoder"
+path = "fuzz_targets/rans_decoder.rs"
+test = false
+doc = false
+bench = false

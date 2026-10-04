@@ -1,0 +1,24 @@
+{
+  "project": "ace",
+  "milestone": "0.2.1-buildfix1",
+  "base": "0.2.1",
+  "format_writer": "1.1",
+  "format_reader": ["1.0", "1.1"],
+  "scope": [
+    "warning-cleanup",
+    "candidate-generator-profile-separation",
+    "cost-model-normalization-fix",
+    "random-access-benchmark-fix",
+    "regression-hardening"
+  ],
+  "release_gates": {
+    "candidate_recall_min": 0.95,
+    "regret_bytes_per_block_max": 8192,
+    "dense_ratio_relative_to_0_2_min": 0.99,
+    "fast_throughput_relative_to_0_2_min": 0.95,
+    "parallel_4t_efficiency_min": 0.80,
+    "random_access_64k_latency_relative_to_0_2_max": 1.10,
+    "thread_bitstream_determinism": true
+  },
+  "wire_format_changed": false
+}

@@ -31,7 +31,7 @@ pub struct AceConfig {
 }
 
 impl Default for AceConfig {
-    /// Returns the recommended ACE 0.2 defaults.
+    /// Returns the recommended ACE 0.2.1-buildfix1 defaults.
     fn default() -> Self {
         Self {
             block_size: 256 * 1024,

@@ -1,4 +1,3 @@
-# Java demo
+# Java CLI demonstration
 
-This is intentionally not an FFI binding. ACE 0.1 keeps Java outside the compression core; the example invokes the
-`ace` CLI as a child process. A Panama binding is planned for a later milestone.
+This example is intentionally process-based. It documents the stable CLI boundary without introducing JNI or Panama into ACE 0.2.1-buildfix1. The class is fully documented with Javadoc.

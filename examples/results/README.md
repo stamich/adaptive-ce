@@ -1,8 +1,14 @@
 # ACE benchmark results
 
-Official benchmark runs write JSON documents here using the canonical naming rule:
+Official buildfix1 benchmark outputs are written here by `./benchmark.sh`.
 
-`<milestone>-<family>.json`
+Expected files:
 
-ACE 0.2 defines five families: `compression`, `entropy`, `planner`, `parallel`, and `random-access`.
-Generated machine-specific result files are intentionally not committed in this source package; `.gitkeep` preserves the directory.
+- `0.2.1-buildfix1-compression.json`
+- `0.2.1-buildfix1-entropy.json`
+- `0.2.1-buildfix1-planner.json`
+- `0.2.1-buildfix1-parallel.json`
+- `0.2.1-buildfix1-random-access.json`
+- `0.2.1-buildfix1-regression.json`
+
+The regression report compares the candidate against the immutable ACE 0.2 baseline and also reports deltas relative to the observed failed ACE 0.2.1 release candidate.
