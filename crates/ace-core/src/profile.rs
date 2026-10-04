@@ -17,6 +17,12 @@ pub struct BlockProfile {
     pub repetition_score: f32,
     /// Approximate mean sampled LZ match length in bytes.
     pub sampled_match_length: f32,
+    /// Approximate p95 sampled LZ match length in bytes.
+    pub sampled_match_p95: f32,
+    /// Fraction of sampled source coverage that can plausibly be represented by LZ matches.
+    pub sampled_match_coverage: f32,
+    /// Fraction of sampled LZ hits whose match length is at least 32 bytes.
+    pub long_match_ratio: f32,
     /// Number of byte values present in the block.
     pub unique_byte_count: u16,
     /// Combined score estimating that further compression is unlikely to be useful.

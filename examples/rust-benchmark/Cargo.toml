@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 ace-core = { path = "../../crates/ace-core" }
+ace-cost = { path = "../../crates/ace-cost" }
 ace-analysis = { path = "../../crates/ace-analysis" }
 ace-engine = { path = "../../crates/ace-engine" }
 ace-entropy = { path = "../../crates/ace-entropy" }

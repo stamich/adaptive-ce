@@ -127,7 +127,7 @@ fn apply_entropy_selection_policy(
     }
 }
 
-/// Planner V3.3 telemetry used by engine statistics, `ace explain` and benchmarks.
+/// Planner V3.4 telemetry used by engine statistics, `ace explain` and benchmarks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlannerTelemetry {
     /// True when a deterministic fast path selected the plan without candidate sampling.
@@ -177,7 +177,7 @@ pub struct PlannerDecision {
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3-buildfix6 keeps `full_trial_encodes == 0`, keeps sampling ranking-only, and adds a profile-aware quality envelope before final scalar-cost selection.
+/// ACE 0.3-buildfix7 keeps zero full trials, ranking-only sampling and the quality envelope while using the calibrated LZ estimator V2 and guarded fast paths.
 /// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
 /// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
 /// blended compressed size, then the cost model selects the cheapest quality-safe plan.
@@ -267,7 +267,7 @@ pub fn evaluate_candidates_v3(
         .map(|c| c.plan.clone())
         .collect::<Vec<_>>();
 
-    // Planner V3.2 is ranking-only: stage two may refine a candidate's score, but it does not
+    // Planner V3.4 is ranking-only: stage two may refine a candidate's score, but it does not
     // remove candidates that survived stage one. This preserves Top-K quality while retaining
     // zero full-block trial encodes. Candidates outside the stage-two budget keep their stage-one
     // score and remain eligible for the final deterministic ranking.
@@ -488,7 +488,7 @@ fn verify_candidate_samples(
     Ok(candidate)
 }
 
-/// Returns deterministic sample/analytical blending weights for Planner V3.2.
+/// Returns deterministic sample/analytical blending weights for Planner V3.4.
 ///
 /// High-confidence analytical estimates retain most of the authority. LZ always receives a
 /// stronger analytical weight because short windows cannot faithfully reproduce long-range
@@ -504,12 +504,14 @@ fn verification_blend_weights(
     let medium = confidence >= 0.75;
     let sample: u64 = match codec {
         CodecId::Lz => {
+            // Reset-window samples systematically miss long-range matches. Buildfix7 gives the
+            // calibrated full-block LZ model substantially more authority.
             if high {
-                20
+                8
             } else if medium {
-                25
+                12
             } else {
-                30
+                18
             }
         }
         _ => {

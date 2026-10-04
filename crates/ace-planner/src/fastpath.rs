@@ -13,7 +13,7 @@ pub trait PlannerFastPath: Send + Sync {
     ) -> Option<PhysicalCompressionPlan>;
 }
 
-/// Default ACE 0.3 fast-path classifier.
+/// Default ACE 0.3-buildfix7 fast-path classifier with quality guards.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultPlannerFastPath;
 
@@ -27,13 +27,19 @@ impl PlannerFastPath for DefaultPlannerFastPath {
             return Some(PhysicalCompressionPlan::raw());
         }
         if p.zero_ratio > 0.985 || p.run_score > 0.92 {
-            return Some(simple_plan(
-                CodecId::Rle,
-                EntropyCodecId::None,
-                None,
-                Vec::new(),
-                "0.3 fast path: extreme run density",
-            ));
+            // FAST may intentionally prefer the extremely cheap RLE path. BALANCED and DENSE
+            // must compare RLE against entropy-coded RAW/RLE candidates because buildfix6 showed
+            // that all-zero blocks can be much smaller as RAW+rANS than as bare RLE packets.
+            if matches!(config.profile, ace_core::CompressionProfile::Fast) {
+                return Some(simple_plan(
+                    CodecId::Rle,
+                    EntropyCodecId::None,
+                    None,
+                    Vec::new(),
+                    "0.3-buildfix7 fast path: extreme run density under FAST quality policy",
+                ));
+            }
+            return None;
         }
         if matches!(config.profile, ace_core::CompressionProfile::Fast)
             && p.repetition_score > 0.55
@@ -83,5 +89,62 @@ fn simple_plan(
         cost: Default::default(),
         score: 0,
         reason,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ace_core::CompressionProfile;
+
+    /// Builds an extreme zero-heavy profile that triggered the buildfix6 fast-path regret.
+    fn zero_heavy_profile() -> BlockProfile {
+        BlockProfile {
+            size: 262_144,
+            entropy_h0: 0.0,
+            entropy_h1: 0.0,
+            zero_ratio: 1.0,
+            run_score: 1.0,
+            delta_score: 0.0,
+            repetition_score: 1.0,
+            sampled_match_length: 130.0,
+            sampled_match_p95: 130.0,
+            sampled_match_coverage: 1.0,
+            long_match_ratio: 1.0,
+            unique_byte_count: 1,
+            incompressibility_score: 0.0,
+        }
+    }
+
+    /// Ensures BALANCED does not bypass entropy alternatives on all-zero blocks.
+    #[test]
+    fn balanced_zero_heavy_block_uses_general_planner() {
+        let mut config = AceConfig::default();
+        config.profile = CompressionProfile::Balanced;
+        assert!(DefaultPlannerFastPath
+            .try_plan(&zero_heavy_profile(), &config)
+            .is_none());
+    }
+
+    /// Ensures DENSE also keeps the quality comparison for all-zero blocks.
+    #[test]
+    fn dense_zero_heavy_block_uses_general_planner() {
+        let mut config = AceConfig::default();
+        config.profile = CompressionProfile::Dense;
+        assert!(DefaultPlannerFastPath
+            .try_plan(&zero_heavy_profile(), &config)
+            .is_none());
+    }
+
+    /// Ensures FAST keeps the intended speed-first RLE shortcut.
+    #[test]
+    fn fast_zero_heavy_block_keeps_rle_shortcut() {
+        let mut config = AceConfig::default();
+        config.profile = CompressionProfile::Fast;
+        let plan = DefaultPlannerFastPath
+            .try_plan(&zero_heavy_profile(), &config)
+            .expect("FAST zero-heavy profile should use a shortcut");
+        assert_eq!(plan.decoding.codec, CodecId::Rle);
+        assert_eq!(plan.decoding.entropy, EntropyCodecId::None);
     }
 }

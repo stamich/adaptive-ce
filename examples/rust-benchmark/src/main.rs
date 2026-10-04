@@ -10,6 +10,7 @@ use ace_core::{
     AceConfig, CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId, LzMode,
     PhysicalCompressionPlan, TransformId,
 };
+use ace_cost::{CandidateEstimator, DefaultCandidateEstimator};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use ace_entropy::{huffman_encode, rans4x_encode, rans_encode};
 use ace_planner::{
@@ -50,6 +51,58 @@ struct SampleStats {
     max_ns: u64,
 }
 
+/// Aggregates analytical estimator error for one deterministic benchmark bucket.
+#[derive(Debug, Default, Clone)]
+struct EstimatorErrorStats {
+    /// Number of candidate observations in the bucket.
+    count: u64,
+    /// Sum of absolute prediction errors in bytes.
+    absolute_error_sum: u128,
+    /// Sum of signed prediction errors in bytes (`predicted - actual`).
+    signed_error_sum: i128,
+    /// Sum of absolute percentage errors.
+    absolute_percentage_error_sum: f64,
+    /// Individual absolute errors used to report a deterministic p95.
+    absolute_errors: Vec<u64>,
+}
+
+impl EstimatorErrorStats {
+    /// Records one analytical prediction and the corresponding diagnostic full encode size.
+    fn observe(&mut self, predicted: u64, actual: u64) {
+        let signed = predicted as i128 - actual as i128;
+        let absolute = if signed < 0 {
+            (-signed) as u128
+        } else {
+            signed as u128
+        };
+        let absolute = absolute.min(u64::MAX as u128) as u64;
+        self.count = self.count.saturating_add(1);
+        self.absolute_error_sum = self.absolute_error_sum.saturating_add(absolute as u128);
+        self.signed_error_sum = self.signed_error_sum.saturating_add(signed);
+        if actual != 0 {
+            self.absolute_percentage_error_sum += absolute as f64 / actual as f64;
+        }
+        self.absolute_errors.push(absolute);
+    }
+
+    /// Serializes MAE, MAPE, signed bias and p95 absolute error for JSON benchmark output.
+    fn json(&self) -> Value {
+        if self.count == 0 {
+            return json!({"count":0,"mae_bytes":0.0,"mape":0.0,"bias_bytes":0.0,"p95_absolute_error_bytes":0});
+        }
+        let mut errors = self.absolute_errors.clone();
+        errors.sort_unstable();
+        let p95_index = ((errors.len() - 1) * 95) / 100;
+        json!({
+            "count": self.count,
+            "mae_bytes": self.absolute_error_sum as f64 / self.count as f64,
+            "mape": self.absolute_percentage_error_sum / self.count as f64,
+            "bias_bytes": self.signed_error_sum as f64 / self.count as f64,
+            "p95_absolute_error_bytes": errors[p95_index]
+        })
+    }
+}
+
 /// Executes one benchmark family or the full ACE 0.3 contract.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let family = std::env::args().nth(1).unwrap_or_else(|| "all".to_string());
@@ -79,12 +132,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             other => return Err(format!("unknown benchmark family: {other}").into()),
         };
         let document = BenchmarkDocument {
-            schema_version: "1.6",
+            schema_version: "1.7",
             project: "ace",
-            milestone: "0.3-buildfix6",
-            base: "0.3-buildfix5",
+            milestone: "0.3-buildfix7",
+            base: "0.3-buildfix6",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3-buildfix6",
+            benchmark_contract_origin: "ace-0.3-buildfix7",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: json!({
@@ -138,7 +191,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3-buildfix6-{family}.json"))
+        .join(format!("0.3-buildfix7-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -346,11 +399,32 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut full_trial_total = 0u64;
     let mut generated_recall_by_class: BTreeMap<&str, (u64, u64)> = BTreeMap::new();
     let mut regret_by_class: BTreeMap<&str, (i64, u64)> = BTreeMap::new();
+    let mut estimator_by_family: BTreeMap<String, EstimatorErrorStats> = BTreeMap::new();
+    let mut estimator_by_class: BTreeMap<String, EstimatorErrorStats> = BTreeMap::new();
+    let estimator = DefaultCandidateEstimator;
     let mut details = Vec::new();
 
     for (idx, block) in blocks.iter().enumerate() {
         let profile = analyzer.analyze(block);
         let candidates = planner.candidates(&profile, &cfg);
+        let class = data_class(idx, blocks.len());
+
+        // Diagnostic-only calibration: these full encodes are outside the timed planner hot path
+        // and never contribute to the runtime `full_trial_encodes_per_block` metric.
+        for candidate in &candidates {
+            let estimate = estimator.estimate(candidate, &profile, cfg.profile);
+            let actual = encoded_plan_size(block, candidate)? as u64;
+            let family = estimator_family_id(candidate);
+            estimator_by_family
+                .entry(family.clone())
+                .or_default()
+                .observe(estimate.analytical_size_bytes, actual);
+            estimator_by_class
+                .entry(format!("{class}:{family}"))
+                .or_default()
+                .observe(estimate.analytical_size_bytes, actual);
+        }
+
         let decision = evaluate_candidates_v3(block, &profile, &candidates, &cfg)?;
         fast_paths += if decision.telemetry.fast_path_hit {
             1
@@ -485,7 +559,6 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let selected_size = encoded_plan_size(block, &selected)? as i64;
         let block_regret = selected_size - oracle.0 as i64;
         regret += block_regret;
-        let class = data_class(idx, blocks.len());
 
         let recall_entry = generated_recall_by_class.entry(class).or_insert((0, 0));
         recall_entry.1 += 1;
@@ -516,7 +589,14 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             "best_blended_size_bytes":decision.telemetry.best_blended_size_bytes,
             "quality_limit_bytes":decision.telemetry.quality_limit_bytes,
             "selected_blended_size_bytes":decision.telemetry.selected_blended_size_bytes,
+            "selected_prediction_error_bytes":decision.telemetry.selected_blended_size_bytes as i64 - selected_size,
+            "selected_prediction_error_percent":if selected_size==0 {0.0} else {(decision.telemetry.selected_blended_size_bytes as f64-selected_size as f64)/selected_size as f64},
             "predicted_size_regret_bytes":decision.telemetry.selected_blended_size_bytes.saturating_sub(decision.telemetry.best_blended_size_bytes),
+            "analysis_repetition_score":profile.repetition_score,
+            "analysis_match_length_mean":profile.sampled_match_length,
+            "analysis_match_length_p95":profile.sampled_match_p95,
+            "analysis_match_coverage":profile.sampled_match_coverage,
+            "analysis_long_match_ratio":profile.long_match_ratio,
             "selected_size_rank":decision.telemetry.selected_size_rank,
             "selected_cost_rank":decision.telemetry.selected_cost_rank,
             "selected_plan":plan_id(&selected),
@@ -580,10 +660,18 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         })
         .collect::<BTreeMap<_, _>>();
     let block_count = blocks.len().max(1) as f64;
+    let estimator_calibration = estimator_by_family
+        .into_iter()
+        .map(|(family, stats)| (family, stats.json()))
+        .collect::<BTreeMap<_, _>>();
+    let estimator_calibration_by_class = estimator_by_class
+        .into_iter()
+        .map(|(bucket, stats)| (bucket, stats.json()))
+        .collect::<BTreeMap<_, _>>();
 
     Ok(vec![json!({
         "workload_id":"mixed_8m",
-        "path":"planner_v3_3_quality_envelope",
+        "path":"planner_v3_4_lz_calibrated_quality_guard",
         "blocks":blocks.len(),
         "oracle_regret_bytes":regret,
         "normalized_regret_bytes_per_block":regret as f64/block_count,
@@ -614,6 +702,8 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         "sampled_candidates_per_block":sampled_total as f64/block_count,
         "second_stage_candidates_per_block":second_stage_total as f64/block_count,
         "full_trial_encodes_per_block":full_trial_total as f64/block_count,
+        "estimator_calibration":estimator_calibration,
+        "estimator_calibration_by_data_class":estimator_calibration_by_class,
         "timing":{
             "analysis_per_file":timing_json(&analysis_stats,data.len()),
             "candidate_generation_per_file":timing_json(&candidate_stats,data.len()),
@@ -786,6 +876,27 @@ fn encoded_plan_size(
 /// Returns true when two candidates have identical decoder semantics and LZ search policy.
 fn same_plan(a: &PhysicalCompressionPlan, b: &PhysicalCompressionPlan) -> bool {
     a.decoding == b.decoding && a.lz_mode == b.lz_mode
+}
+
+/// Returns a stable estimator-calibration bucket for one transform/codec family.
+fn estimator_family_id(plan: &PhysicalCompressionPlan) -> String {
+    let delta = plan
+        .decoding
+        .transforms
+        .iter()
+        .any(|t| matches!(t, TransformId::DeltaByte));
+    let base = match (plan.decoding.codec, plan.lz_mode) {
+        (CodecId::Raw, _) => "raw",
+        (CodecId::Rle, _) => "rle",
+        (CodecId::Lz, Some(LzMode::Fast)) => "lz_fast",
+        (CodecId::Lz, Some(LzMode::Balanced)) => "lz_balanced",
+        (CodecId::Lz, None) => "lz",
+    };
+    if delta {
+        format!("delta_{base}")
+    } else {
+        base.to_string()
+    }
 }
 
 /// Returns a stable textual physical-plan identifier for JSON diagnostics.
