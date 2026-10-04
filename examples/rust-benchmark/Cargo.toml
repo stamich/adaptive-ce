@@ -1,5 +1,5 @@
 [package]
-name = "ace-benchmark-0-2-1-buildfix1"
+name = "ace-benchmark-0-3"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,9 @@ ace-analysis = { path = "../../crates/ace-analysis" }
 ace-engine = { path = "../../crates/ace-engine" }
 ace-entropy = { path = "../../crates/ace-entropy" }
 ace-planner = { path = "../../crates/ace-planner" }
+ace-stream = { path = "../../crates/ace-stream" }
+ace-simd = { path = "../../crates/ace-simd" }
+ace-runtime = { path = "../../crates/ace-runtime" }
 serde.workspace = true
 serde_json.workspace = true
 flate2.workspace = true
