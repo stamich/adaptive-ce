@@ -20,3 +20,12 @@ Graph/temporal transforms, negotiated compression policies and optional GraphNet
 
 ## 0.7+
 Self-tuning costs, adaptive dictionaries, hot/warm/cold policies and replica-aware compression.
+
+## 0.3-buildfix6 — Planner V3.3 quality envelope
+
+- separate analytical/sample/blended size estimates;
+- quality-first candidate qualification before final scalar cost;
+- profile-specific quality slack;
+- oracle rank and quality-pool telemetry;
+- no wire-format changes;
+- zero full candidate trial encodes retained.

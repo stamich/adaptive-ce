@@ -1,0 +1,45 @@
+{
+  "project": "ACE",
+  "milestone": "0.3-buildfix6",
+  "workspace_version": "0.3.6",
+  "base": "0.3-buildfix5",
+  "date": "2026-09-12",
+  "format": {
+    "writer": "1.2",
+    "reader": [
+      "1.0",
+      "1.1",
+      "1.2"
+    ],
+    "wire_format_changed": false
+  },
+  "focus": "Planner V3.3 quality envelope and final-selection diagnostics",
+  "modules_changed": [
+    "ace-cost",
+    "ace-planner",
+    "examples/rust-benchmark",
+    "tools",
+    "demo",
+    "docs"
+  ],
+  "invariants": [
+    "same input + config => same output bytes",
+    "full trial encodes per block == 0",
+    "quality qualification precedes final scalar cost selection",
+    "sample verification remains deterministic and ranking-only"
+  ],
+  "release_gates": {
+    "generated_recall_min": 0.99,
+    "top_k_recall_min": 0.98,
+    "oracle_top2_after_sampling_min": 0.95,
+    "oracle_top3_after_sampling_min": 0.99,
+    "regret_bytes_per_block_max": 1024,
+    "full_trial_encodes_per_block_max": 0,
+    "balanced_ratio_min": 3.4,
+    "dense_ratio_fraction_of_baseline_min": 0.995,
+    "fast_throughput_multiplier_min": 2.0,
+    "balanced_throughput_multiplier_min": 4.0,
+    "dense_throughput_multiplier_min": 3.5,
+    "warm_64k_latency_fraction_of_baseline_max": 1.15
+  }
+}
