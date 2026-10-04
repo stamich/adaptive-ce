@@ -3,7 +3,7 @@ use ace_core::{
     PlanCost,
 };
 
-/// Deterministic ACE 0.2.1-buildfix1 cost model.
+/// Deterministic ACE 0.3 cost model.
 ///
 /// The original 0.2.1 score mixed raw byte counts with already-normalized CPU terms,
 /// which made the size component dominate even for `CompressionProfile::Fast`.
@@ -38,11 +38,13 @@ impl DeterministicCostModel {
             EntropyCodecId::None => 0,
             EntropyCodecId::Huffman => 5,
             EntropyCodecId::Rans => 9,
+            EntropyCodecId::Rans4x => 5,
         };
         let entropy_decode = match plan.decoding.entropy {
             EntropyCodecId::None => 0,
             EntropyCodecId::Huffman => 7,
             EntropyCodecId::Rans => 5,
+            EntropyCodecId::Rans4x => 3,
         };
         let transform_units = plan.decoding.transforms.len() as u64;
         PlanCost {

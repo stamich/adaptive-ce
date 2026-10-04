@@ -7,8 +7,8 @@ use ace_core::{
 pub const MAGIC: [u8; 4] = *b"ACE1";
 /// Current major format version.
 pub const FORMAT_MAJOR: u8 = 1;
-/// Current minor format version written by ACE 0.2.1.
-pub const FORMAT_MINOR: u8 = 1;
+/// Current minor format version written by ACE 0.3.
+pub const FORMAT_MINOR: u8 = 2;
 /// Serialized file-header size in bytes.
 pub const FILE_HEADER_SIZE: usize = 32;
 /// Fixed serialized block-header size before variable descriptors and metadata.
@@ -17,12 +17,12 @@ pub const BLOCK_HEADER_SIZE: usize = 32;
 pub const FILE_FLAG_HAS_INDEX: u16 = 0x0001;
 /// File flag indicating that one or more block dictionary references may be present.
 pub const FILE_FLAG_HAS_DICTIONARIES: u16 = 0x0002;
-/// Set of format-1.1 flags understood by ACE 0.2.1.
+/// Set of format-1.1/1.2 flags understood by ACE 0.3.
 pub const SUPPORTED_FILE_FLAGS: u16 = FILE_FLAG_HAS_INDEX | FILE_FLAG_HAS_DICTIONARIES;
 /// Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors.
 pub const BLOCK_FLAG_HAS_DICTIONARY: u8 = 0x01;
 
-/// Fixed ACE file header shared by format 1.0 and 1.1.
+/// Fixed ACE file header shared by format 1.0, 1.1 and 1.2.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileHeader {
     /// Minor format version read from disk; writers emit [`FORMAT_MINOR`].
@@ -54,7 +54,7 @@ pub struct BlockHeader {
     pub entropy: EntropyCodecId,
     /// Ordered forward transforms.
     pub transforms: Vec<TransformId>,
-    /// Optional dictionary reference introduced by format 1.1.
+    /// Optional dictionary reference introduced by format 1.2.
     pub dictionary: Option<DictionaryRef>,
     /// Raw block feature flags.
     pub flags: u8,
@@ -77,7 +77,7 @@ pub fn encode_file_header(header: &FileHeader) -> [u8; FILE_HEADER_SIZE] {
     bytes
 }
 
-/// Parses and validates a format-1.0 or format-1.1 file header.
+/// Parses and validates a format-1.0, format-1.1 or format-1.2 file header.
 pub fn decode_file_header(bytes: &[u8]) -> AceResult<FileHeader> {
     if bytes.len() != FILE_HEADER_SIZE {
         return Err(AceError::Malformed("truncated file header"));
@@ -207,6 +207,13 @@ pub fn decode_block_header(
     } else {
         None
     };
+    let entropy = EntropyCodecId::try_from(fixed[21])?;
+    if minor_version < 2 && matches!(entropy, EntropyCodecId::Rans4x) {
+        return Err(AceError::UnsupportedVersion {
+            major: FORMAT_MAJOR,
+            minor: minor_version,
+        });
+    }
     Ok(BlockHeader {
         block_id: u64::from_le_bytes(
             fixed[0..8]
@@ -229,7 +236,7 @@ pub fn decode_block_header(
                 .map_err(|_| AceError::Malformed("invalid block metadata size"))?,
         ),
         codec: CodecId::try_from(fixed[20])?,
-        entropy: EntropyCodecId::try_from(fixed[21])?,
+        entropy,
         transforms,
         dictionary,
         flags: fixed[23],

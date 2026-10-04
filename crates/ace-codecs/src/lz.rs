@@ -1,4 +1,5 @@
 use ace_core::{AceError, AceResult, LzMode};
+use ace_simd::common_prefix_len;
 
 const MIN_MATCH: usize = 4;
 const MAX_MATCH: usize = 130;
@@ -127,10 +128,7 @@ fn find_best(
             continue;
         }
         let max = MAX_MATCH.min(input.len() - pos);
-        let mut len = 0usize;
-        while len < max && input[candidate + len] == input[pos + len] {
-            len += 1;
-        }
+        let len = common_prefix_len(&input[candidate..candidate + max], &input[pos..pos + max]);
         if len >= MIN_MATCH && len > best_len {
             best_len = len;
             best = Some((distance, len));

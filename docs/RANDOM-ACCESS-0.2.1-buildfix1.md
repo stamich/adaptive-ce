@@ -1,4 +1,4 @@
-# Random access hardening in ACE 0.2.1-buildfix1
+# Random access hardening in ACE 0.3
 
 The 0.2.1 regression benchmark included repeated decoder open/index-validation cost in the 64-KiB access latency. Buildfix1 separates `decoder_open` from already-open archive access, matching the intended storage-engine usage model.
 

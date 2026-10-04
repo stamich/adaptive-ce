@@ -29,7 +29,7 @@ def main(argv: list[str]) -> int:
             for workload in doc.get("workloads", []):
                 print(f"status={workload.get('status')}")
                 for check in workload.get("checks", []):
-                    print(f"  {check.get('status','').upper():4} {check.get('metric')}: baseline={check.get('baseline')} candidate={check.get('candidate')} rule={check.get('rule')}")
+                    print(f"  {check.get('status','').upper():4} {check.get('metric')}: baseline={check.get('baseline', check.get('baseline_0_2_1_buildfix1'))} candidate={check.get('candidate')} rule={check.get('rule')}")
             continue
         print(f"{'workload':20} {'path':28} {'ratio':>10} {'bytes':>12} {'median MB/s':>14}")
         print("-" * 90)

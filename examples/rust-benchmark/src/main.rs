@@ -11,10 +11,11 @@ use ace_core::{
     PhysicalCompressionPlan, TransformId,
 };
 use ace_engine::{AceEngine, AceIndexedDecoder};
-use ace_entropy::{huffman_encode, rans_encode};
+use ace_entropy::{huffman_encode, rans4x_encode, rans_encode};
 use ace_planner::{
-    encode_plan_payload, evaluate_candidates, CompressionPlanner, DefaultCompressionPlanner,
+    encode_plan_payload, evaluate_candidates_v3, CompressionPlanner, DefaultCompressionPlanner,
 };
+use ace_stream::{compress_reader_known_size, StreamLimits};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -22,7 +23,7 @@ use serde_json::{json, Value};
 const RUNS: usize = 7;
 const WARMUPS: usize = 3;
 
-/// Top-level JSON document shared by every official ACE 0.2.1-buildfix1 benchmark family.
+/// Top-level JSON document shared by every official ACE 0.3 benchmark family.
 #[derive(Debug, Serialize)]
 struct BenchmarkDocument {
     schema_version: &'static str,
@@ -49,7 +50,7 @@ struct SampleStats {
     max_ns: u64,
 }
 
-/// Executes one benchmark family or the full ACE 0.2.1-buildfix1 contract.
+/// Executes one benchmark family or the full ACE 0.3 contract.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let family = std::env::args().nth(1).unwrap_or_else(|| "all".to_string());
     let families: Vec<&str> = if family == "all" {
@@ -59,6 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "planner",
             "parallel",
             "random-access",
+            "streaming",
+            "memory",
         ]
     } else {
         vec![family.as_str()]
@@ -71,22 +74,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "planner" => planner_family()?,
             "parallel" => parallel_family()?,
             "random-access" => random_access_family()?,
+            "streaming" => streaming_family()?,
+            "memory" => memory_family()?,
             other => return Err(format!("unknown benchmark family: {other}").into()),
         };
         let document = BenchmarkDocument {
-            schema_version: "1.1",
+            schema_version: "1.2",
             project: "ace",
-            milestone: "0.2.1-buildfix1",
-            base: "0.2.1",
+            milestone: "0.3",
+            base: "0.2.1-buildfix1",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.2.1-buildfix1",
+            benchmark_contract_origin: "ace-0.3",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: json!({
                 "warmup_iterations": WARMUPS,
                 "runs": RUNS,
                 "default_block_size_bytes": 262144,
-                "format_version": "1.1"
+                "format_version": "1.2",
+                "simd_backend": format!("{:?}", ace_simd::selected_backend())
             }),
             workloads,
         };
@@ -126,13 +132,13 @@ fn environment_json() -> Value {
     })
 }
 
-/// Resolves the canonical `examples/results/0.2.1-buildfix1-<family>.json` path.
+/// Resolves the canonical `examples/results/0.3-<family>.json` path.
 fn result_path(family: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.2.1-buildfix1-{family}.json"))
+        .join(format!("0.3-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -291,11 +297,12 @@ fn entropy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         ("mixed", mixed_data(4)),
     ];
     for (id, data) in datasets {
-        for path in ["huffman", "rans"] {
-            let (stats, (metadata, payload)) = if path == "huffman" {
-                measure(|| Ok(huffman_encode(&data)?))?
-            } else {
-                measure(|| Ok(rans_encode(&data)?))?
+        for path in ["huffman", "rans", "rans4x"] {
+            let (stats, (metadata, payload)) = match path {
+                "huffman" => measure(|| Ok(huffman_encode(&data)?))?,
+                "rans" => measure(|| Ok(rans_encode(&data)?))?,
+                "rans4x" => measure(|| Ok(rans4x_encode(&data)?))?,
+                _ => unreachable!(),
             };
             workloads.push(json!({"workload_id":id,"path":path,"input_bytes":data.len(),"metadata_bytes":metadata.len(),"payload_bytes":payload.len(),"encoded_bytes":metadata.len()+payload.len(),"compression_ratio":data.len() as f64/(metadata.len()+payload.len()).max(1) as f64,"encode":timing_json(&stats,data.len())}));
         }
@@ -312,13 +319,26 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let blocks = data.chunks(cfg.block_size).collect::<Vec<_>>();
     let mut regret = 0i64;
     let mut recall = 0u64;
+    let mut fast_paths = 0u64;
+    let mut estimated_total = 0u64;
+    let mut sampled_total = 0u64;
+    let mut full_trial_total = 0u64;
     let mut recall_by_class: BTreeMap<&str, (u64, u64)> = BTreeMap::new();
     let mut details = Vec::new();
 
     for (idx, block) in blocks.iter().enumerate() {
         let profile = analyzer.analyze(block);
         let candidates = planner.candidates(&profile, &cfg);
-        let selected = evaluate_candidates(block, &candidates, &cfg)?;
+        let decision = evaluate_candidates_v3(block, &profile, &candidates, &cfg)?;
+        fast_paths += if decision.telemetry.fast_path_hit {
+            1
+        } else {
+            0
+        };
+        estimated_total += decision.telemetry.estimated_candidates as u64;
+        sampled_total += decision.telemetry.sampled_candidates as u64;
+        full_trial_total += decision.telemetry.full_trial_encodes as u64;
+        let selected = decision.plan;
         let selected_size = encoded_plan_size(block, &selected)? as i64;
         let oracle = oracle_plans()
             .into_iter()
@@ -365,7 +385,7 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         for block in &blocks {
             let p = analyzer.analyze(block);
             let c = planner.candidates(&p, &cfg);
-            black_box(evaluate_candidates(block, &c, &cfg)?);
+            black_box(evaluate_candidates_v3(block, &p, &c, &cfg)?);
         }
         Ok(())
     })?
@@ -385,9 +405,13 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         .collect::<BTreeMap<_, _>>();
 
     Ok(vec![json!({
-        "workload_id":"mixed_8m", "path":"deterministic_cost_model_v2_1", "blocks":blocks.len(),
+        "workload_id":"mixed_8m", "path":"planner_v3_topk_sampled", "blocks":blocks.len(),
         "oracle_regret_bytes":regret, "normalized_regret_bytes_per_block":regret as f64/blocks.len().max(1) as f64,
         "candidate_recall":recall as f64/blocks.len().max(1) as f64, "candidate_recall_by_class":by_class,
+        "fast_path_rate":fast_paths as f64/blocks.len().max(1) as f64,
+        "estimated_candidates_per_block":estimated_total as f64/blocks.len().max(1) as f64,
+        "sampled_candidates_per_block":sampled_total as f64/blocks.len().max(1) as f64,
+        "full_trial_encodes_per_block":full_trial_total as f64/blocks.len().max(1) as f64,
         "timing":{
             "analysis_per_file":timing_json(&analysis_stats,data.len()),
             "candidate_generation_per_file":timing_json(&candidate_stats,data.len()),
@@ -456,11 +480,21 @@ fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let mut decoder =
             AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
         let (stats, block) = measure(|| Ok(decoder.decode_block(block_id)?))?;
-        out.push(json!({"workload_id":"mixed_16m","path":"decode_block","block_id":block_id,"data_class":data_class(block_id as usize,64),"bytes_returned":block.len(),"physical_bytes_read":metrics.physical_bytes_read,"blocks_touched":metrics.blocks_touched,"overread_ratio":metrics.overread_ratio(),"timing":timing_json(&stats,block.len())}));
+        out.push(json!({"workload_id":"mixed_16m","path":"decode_block","block_id":block_id,"data_class":data_class(block_id as usize,64),"bytes_returned":block.len(),"physical_bytes_read":metrics.physical_bytes_read,"blocks_touched":metrics.blocks_touched,"physical_to_logical_ratio":metrics.overread_ratio(),"timing":timing_json(&stats,block.len())}));
     }
 
+    let cold_start = 3_000_000u64;
+    let cold_end = cold_start + 65_536u64;
+    let (cold_stats, cold_range) = measure(|| {
+        let mut decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+        Ok(decoder.read_range(cold_start..cold_end)?)
+    })?;
+    assert_eq!(cold_range, data[cold_start as usize..cold_end as usize]);
+    out.push(json!({"workload_id":"mixed_16m","path":"range_64k_cold","logical_bytes_requested":65_536,"bytes_returned":cold_range.len(),"timing":timing_json(&cold_stats,cold_range.len())}));
+
     for (name, start, len) in [
-        ("range_64k_inside", 3_000_000u64, 65_536u64),
+        ("range_64k_warm", 3_000_000u64, 65_536u64),
         ("range_cross_2", 262_144 - 32_768, 131_072),
         ("range_cross_4", 262_144 * 3 - 65_536, 786_432),
     ] {
@@ -470,9 +504,67 @@ fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let (stats, (range, metrics)) =
             measure(|| Ok(decoder.read_range_with_metrics(start..end)?))?;
         assert_eq!(range, data[start as usize..end as usize]);
-        out.push(json!({"workload_id":"mixed_16m","path":name,"offset":start,"logical_bytes_requested":end-start,"bytes_returned":range.len(),"physical_bytes_read":metrics.physical_bytes_read,"blocks_touched":metrics.blocks_touched,"blocks_decoded":metrics.blocks_decoded,"overread_ratio":metrics.overread_ratio(),"timing":timing_json(&stats,range.len())}));
+        out.push(json!({"workload_id":"mixed_16m","path":name,"offset":start,"logical_bytes_requested":end-start,"bytes_returned":range.len(),"physical_bytes_read":metrics.physical_bytes_read,"blocks_touched":metrics.blocks_touched,"blocks_decoded":metrics.blocks_decoded,"physical_to_logical_ratio":metrics.overread_ratio(),"timing":timing_json(&stats,range.len())}));
     }
     Ok(out)
+}
+
+/// Benchmarks bounded-memory reader-to-writer compression for representative stream sizes.
+fn streaming_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let mut rows = Vec::new();
+    for mib in [16usize, 64usize] {
+        let data = mixed_data(mib);
+        let cfg = AceConfig::default();
+        let limits = StreamLimits::default();
+        let (stats, (encoded, stream_stats)) = measure(|| {
+            let mut out = Vec::new();
+            let telemetry = compress_reader_known_size(
+                Cursor::new(&data),
+                &mut out,
+                data.len() as u64,
+                cfg.clone(),
+                limits,
+            )?;
+            Ok((out, telemetry))
+        })?;
+        let restored = AceEngine::default_engine().decompress(&encoded)?;
+        assert_eq!(restored, data);
+        rows.push(json!({
+            "workload_id":format!("mixed_{mib}m"), "path":"bounded_stream",
+            "input_bytes":data.len(), "output_bytes":encoded.len(),
+            "compression_ratio":data.len() as f64/encoded.len().max(1) as f64,
+            "peak_source_buffer_bytes":stream_stats.peak_source_buffer_bytes,
+            "blocks":stream_stats.blocks, "timing":timing_json(&stats,data.len())
+        }));
+    }
+    Ok(rows)
+}
+
+/// Reports reusable scratch capacity and planner trial-encode elimination introduced in ACE 0.3.
+fn memory_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let data = mixed_data(16);
+    let mut cfg = AceConfig::default();
+    cfg.threads = 1;
+    let engine = AceEngine::new(cfg.clone())?;
+    let (_, telemetry) = engine.compress_with_stats(&data)?;
+    let mut scratch = ace_runtime::WorkerScratch::for_block_size(cfg.block_size);
+    let reserved_before = scratch.reserved_bytes();
+    scratch
+        .transform_buffer
+        .extend_from_slice(&data[..cfg.block_size.min(data.len())]);
+    scratch.reset();
+    let reserved_after_reset = scratch.reserved_bytes();
+    Ok(vec![json!({
+        "workload_id":"mixed_16m", "path":"worker_scratch_and_planner",
+        "block_size_bytes":cfg.block_size,
+        "scratch_reserved_bytes":reserved_before,
+        "scratch_reserved_after_reset_bytes":reserved_after_reset,
+        "scratch_capacity_preserved":reserved_before==reserved_after_reset,
+        "planner_fast_path_blocks":telemetry.planner_fast_path_blocks,
+        "planner_estimated_candidates":telemetry.planner_estimated_candidates,
+        "planner_sampled_candidates":telemetry.planner_sampled_candidates,
+        "planner_full_trial_encodes":telemetry.planner_full_trial_encodes
+    })])
 }
 
 /// Returns serialized bytes produced by one internal physical plan.
@@ -515,6 +607,7 @@ fn plan_id(p: &PhysicalCompressionPlan) -> String {
         EntropyCodecId::None => "none",
         EntropyCodecId::Huffman => "huffman",
         EntropyCodecId::Rans => "rans",
+        EntropyCodecId::Rans4x => "rans4x",
     });
     parts.join("+")
 }
@@ -551,7 +644,11 @@ fn oracle_plans() -> Vec<PhysicalCompressionPlan> {
     };
     add(vec![], CodecId::Raw, EntropyCodecId::None, None);
     add(vec![], CodecId::Rle, EntropyCodecId::None, None);
-    for e in [EntropyCodecId::Huffman, EntropyCodecId::Rans] {
+    for e in [
+        EntropyCodecId::Huffman,
+        EntropyCodecId::Rans,
+        EntropyCodecId::Rans4x,
+    ] {
         add(vec![], CodecId::Raw, e, None);
         add(vec![], CodecId::Rle, e, None);
         add(vec![TransformId::DeltaByte], CodecId::Raw, e, None);

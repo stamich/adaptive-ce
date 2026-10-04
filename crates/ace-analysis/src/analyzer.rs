@@ -1,5 +1,6 @@
 use crate::{analyze_repetition, analyze_runs, entropy_h0, sampled_entropy_h1};
 use ace_core::BlockProfile;
+use ace_simd::count_zeroes;
 
 /// Interface implemented by a component that extracts deterministic compression features from one block.
 pub trait BlockAnalyzer {
@@ -7,7 +8,7 @@ pub trait BlockAnalyzer {
     fn analyze(&self, input: &[u8]) -> BlockProfile;
 }
 
-/// Default deterministic ACE 0.2.1 analyzer.
+/// Default deterministic ACE 0.3 analyzer with SIMD-assisted primitives where available.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultBlockAnalyzer;
 
@@ -30,13 +31,10 @@ impl BlockAnalyzer for DefaultBlockAnalyzer {
         }
         let mut histogram = [0u32; 256];
         let mut delta_histogram = [0u32; 256];
-        let mut zero_count = 0usize;
+        let zero_count = count_zeroes(input);
         let mut previous = input[0];
         for (i, &byte) in input.iter().enumerate() {
             histogram[byte as usize] = histogram[byte as usize].saturating_add(1);
-            if byte == 0 {
-                zero_count += 1;
-            }
             if i == 0 {
                 delta_histogram[byte as usize] = delta_histogram[byte as usize].saturating_add(1);
             } else {

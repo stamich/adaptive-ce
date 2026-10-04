@@ -1,0 +1,10 @@
+[package]
+name = "ace-stream"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ace-core = { path = "../ace-core" }
+ace-engine = { path = "../ace-engine" }
+ace-format = { path = "../ace-format" }

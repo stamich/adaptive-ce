@@ -8,4 +8,4 @@
 - `blocks_decoded`;
 - `overread_ratio = physical_bytes_read / logical_bytes_requested`.
 
-These metrics intentionally expose the storage-engine trade-off between compression block size and random-access amplification without changing Format 1.1.
+These metrics intentionally expose the storage-engine trade-off between compression block size and random-access amplification without changing Format 1.2.

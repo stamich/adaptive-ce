@@ -1,4 +1,5 @@
 use ace_core::{BlockProfile, PhysicalCompressionPlan};
+use ace_planner::PlannerTelemetry;
 
 /// Planner explanation for one input block.
 #[derive(Debug, Clone)]
@@ -11,4 +12,6 @@ pub struct BlockExplanation {
     pub candidates: Vec<PhysicalCompressionPlan>,
     /// Candidate selected by deterministic cost evaluation.
     pub selected: PhysicalCompressionPlan,
+    /// ACE 0.3 hot-path planning work performed for this block.
+    pub telemetry: PlannerTelemetry,
 }

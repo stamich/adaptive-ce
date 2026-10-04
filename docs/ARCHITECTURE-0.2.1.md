@@ -1,6 +1,6 @@
 # ACE 0.2.1 architecture
 
-ACE 0.2.1 deliberately preserves the 0.2 data path and Format 1.1 while hardening planner quality and observability.
+ACE 0.2.1 deliberately preserves the 0.2 data path and Format 1.2 while hardening planner quality and observability.
 
 ```text
 source block
@@ -21,4 +21,4 @@ source block
    -> AIDX + ACET
 ```
 
-The decoder remains planner-free. Random-access APIs use the Format 1.1 index to locate only intersecting blocks. Parallel workers may finish in arbitrary order, but file assembly remains ordered by block id so thread count cannot change serialized bytes.
+The decoder remains planner-free. Random-access APIs use the Format 1.2 index to locate only intersecting blocks. Parallel workers may finish in arbitrary order, but file assembly remains ordered by block id so thread count cannot change serialized bytes.

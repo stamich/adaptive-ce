@@ -1,18 +1,15 @@
 use ace_core::{AceConfig, CompressionProfile};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use ace_format::AceReader;
+use ace_stream::{compress_reader_known_size, StreamLimits};
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::fs;
-use std::io::Cursor;
+use std::io::{BufReader, BufWriter, Cursor};
 
-/// Command-line interface for Adaptive Compression Engine milestone 0.2.1-buildfix1.
+/// Command-line interface for Adaptive Compression Engine milestone 0.3.
 #[derive(Debug, Parser)]
-#[command(
-    name = "ace",
-    version,
-    about = "Adaptive Compression Engine 0.2.1-buildfix1"
-)]
+#[command(name = "ace", version, about = "Adaptive Compression Engine 0.3")]
 struct Cli {
     /// ACE operation to execute.
     #[command(subcommand)]
@@ -22,7 +19,7 @@ struct Cli {
 /// Supported ACE command-line operations.
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Compresses one file into ACE format 1.1.
+    /// Compresses one file into ACE format 1.2 using the in-memory engine.
     Compress {
         input: String,
         output: String,
@@ -31,7 +28,14 @@ enum Command {
         #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
         profile: ProfileArg,
     },
-    /// Decompresses one ACE 1.0/1.1 file.
+    /// Compresses a file through the bounded-memory ACE 0.3 streaming path.
+    CompressStream {
+        input: String,
+        output: String,
+        #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
+        profile: ProfileArg,
+    },
+    /// Decompresses one ACE 1.0/1.1/1.2 file.
     Decompress { input: String, output: String },
     /// Prints file and per-block physical metadata without decoding payloads.
     Inspect {
@@ -91,6 +95,11 @@ fn main() -> Result<()> {
             threads,
             profile,
         } => compress_command(&input, &output, threads, profile.into()),
+        Command::CompressStream {
+            input,
+            output,
+            profile,
+        } => compress_stream_command(&input, &output, profile.into()),
         Command::Decompress { input, output } => decompress_command(&input, &output),
         Command::Inspect { input, blocks } => inspect_command(&input, blocks),
         Command::Explain { input, profile } => explain_command(&input, profile.into()),
@@ -123,14 +132,30 @@ fn compress_command(
     let engine = AceEngine::new(config)?;
     let (encoded, stats) = engine.compress_with_stats(&data)?;
     fs::write(output, encoded).with_context(|| format!("writing {output}"))?;
+    println!("ACE 0.3 compressed {} -> {} bytes ratio={:.3} blocks={} rANS={} rANS4x={} Huffman={} fast-path={} sampled={}", stats.input_bytes, stats.output_bytes, stats.compression_ratio(), stats.block_count, stats.rans_blocks, stats.rans4x_blocks, stats.huffman_blocks, stats.planner_fast_path_blocks, stats.planner_sampled_candidates);
+    Ok(())
+}
+
+/// Compresses a file with bounded source-block memory and a deterministic format-1.2 index.
+fn compress_stream_command(input: &str, output: &str, profile: CompressionProfile) -> Result<()> {
+    let source = fs::File::open(input).with_context(|| format!("opening {input}"))?;
+    let size = source
+        .metadata()
+        .with_context(|| format!("stat {input}"))?
+        .len();
+    let sink = fs::File::create(output).with_context(|| format!("creating {output}"))?;
+    let mut config = AceConfig::default();
+    config.profile = profile;
+    let stats = compress_reader_known_size(
+        BufReader::new(source),
+        BufWriter::new(sink),
+        size,
+        config,
+        StreamLimits::default(),
+    )?;
     println!(
-        "ACE 0.2.1-buildfix1 compressed {} -> {} bytes ratio={:.3} blocks={} rANS={} Huffman={}",
-        stats.input_bytes,
-        stats.output_bytes,
-        stats.compression_ratio(),
-        stats.block_count,
-        stats.rans_blocks,
-        stats.huffman_blocks
+        "ACE 0.3 streamed {} -> {} bytes blocks={} peak_source_buffer={}",
+        stats.input_bytes, stats.output_bytes, stats.blocks, stats.peak_source_buffer_bytes
     );
     Ok(())
 }
@@ -185,16 +210,25 @@ fn explain_command(input: &str, profile: CompressionProfile) -> Result<()> {
             explanation.profile.repetition_score
         );
         for candidate in &explanation.candidates {
-            println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, candidate.score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason);
+            let score = display_score(candidate.score);
+            println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason);
         }
-        println!(
-            "  selected {:?}/{:?} transforms={:?}\n",
-            explanation.selected.decoding.codec,
-            explanation.selected.decoding.entropy,
-            explanation.selected.decoding.transforms
-        );
+        println!("  selected {:?}/{:?} transforms={:?} fast_path={} estimated={} sampled={} full_trials={}\n", explanation.selected.decoding.codec, explanation.selected.decoding.entropy, explanation.selected.decoding.transforms, explanation.telemetry.fast_path_hit, explanation.telemetry.estimated_candidates, explanation.telemetry.sampled_candidates, explanation.telemetry.full_trial_encodes);
     }
     Ok(())
+}
+
+/// Formats a planner score for human-facing diagnostics.
+///
+/// Entropy-selection policy uses a very large saturating penalty internally.  Presenting that
+/// sentinel as a decimal number makes `ace explain` look like an arithmetic overflow, so the CLI
+/// renders such values as `penalized` while preserving the exact numeric score inside the planner.
+fn display_score(score: u128) -> String {
+    if score >= u128::MAX / 8 {
+        "penalized".to_string()
+    } else {
+        score.to_string()
+    }
 }
 
 /// Verifies full logical reconstruction and every block CRC32C without persisting output.
@@ -230,12 +264,6 @@ fn read_range_command(input: &str, offset: u64, length: u64, output: &str) -> Re
     let metrics = decoder.range_metrics(offset..end)?;
     let bytes = decoder.read_range(offset..end)?;
     fs::write(output, &bytes).with_context(|| format!("writing {output}"))?;
-    println!(
-        "decoded logical range [{offset}, {end}): {} bytes physical={} blocks={} overread={:.3}",
-        bytes.len(),
-        metrics.physical_bytes_read,
-        metrics.blocks_touched,
-        metrics.overread_ratio()
-    );
+    println!("decoded logical range [{offset}, {end}): {} bytes physical={} blocks={} physical/logical={:.3}", bytes.len(), metrics.physical_bytes_read, metrics.blocks_touched, metrics.overread_ratio());
     Ok(())
 }

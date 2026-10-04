@@ -1,4 +1,4 @@
-//! Seekable block-index loading and indexed raw-block access for ACE format 1.1.
+//! Seekable block-index loading and indexed raw-block access for ACE format 1.2.
 
 use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_format::{
@@ -19,7 +19,7 @@ pub struct AceIndexReader<R: Read + Seek> {
 }
 
 impl<R: Read + Seek> AceIndexReader<R> {
-    /// Opens a seekable ACE file, loads its format-1.1 trailer and validates the block index.
+    /// Opens a seekable ACE file, loads its format-1.1/1.2 trailer and validates the block index.
     pub fn open(mut reader: R, limits: DecodeLimits) -> AceResult<Self> {
         reader.seek(SeekFrom::Start(0))?;
         let mut header_bytes = [0u8; FILE_HEADER_SIZE];

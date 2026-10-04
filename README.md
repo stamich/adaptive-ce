@@ -1,49 +1,61 @@
-# Adaptive Compression Engine — Milestone 0.2.1-buildfix1
+# Adaptive Compression Engine — Milestone 0.3
 
-ACE 0.2.1-buildfix1 is a targeted hardening release built from 0.2.1. It does not change ACE Format 1.1. It fixes the failed 0.2.1 release gates: planner candidate recall, FAST throughput/profile separation and random-access benchmark semantics, while removing the reported compiler warnings.
+ACE 0.3 is the first performance-architecture milestone after the hardened 0.2.1-buildfix1 baseline.  It keeps the adaptive block model, deterministic output and indexed random access, but removes full-block trial compression from the runtime planner.  Candidate plans are estimated analytically, only a small deterministic Top-K set is sample-verified, and the winning plan is fully encoded exactly once.
 
-## What changed
+## Main changes
 
-- profile-specific candidate generators: narrow FAST, recall-oriented BALANCED/DENSE;
-- corrected deterministic Cost Model V2.1 normalization;
-- no `LzMode::Balanced` or mandatory rANS in FAST;
-- full offline-oracle family coverage in BALANCED/DENSE;
-- `read_range_with_metrics()` reuses one block-index intersection;
-- random-access benchmark separates `decoder_open` from already-open range latency;
-- regression output compares against both ACE 0.2 absolute gates and observed ACE 0.2.1 values;
-- no Format 1.1 wire change.
+- Planner V3: analytical `CandidateEstimator`, deterministic Top-K and `SampleVerifier`.
+- Planner fast paths for highly incompressible, run-dominated, strongly repetitive and strong-delta blocks.
+- New `ace-cost` crate for cost/size estimation, separated from candidate search.
+- New `ace-simd` crate isolating runtime AVX2 dispatch behind safe APIs.
+- SIMD-assisted zero counting and LZ match comparison with scalar fallback.
+- `rANS4x` entropy mode and ACE Format 1.2 (`EntropyCodecId::Rans4x`).
+- Reader compatibility with ACE Format 1.0, 1.1 and 1.2.
+- New `ace-stream` crate for bounded-memory compression when source size is known.
+- Reusable `WorkerScratch` allocation boundary in `ace-runtime`.
+- Cold/warm random-access benchmark split.
+- New streaming and memory benchmark families.
+- Regression baseline is the successful ACE 0.2.1-buildfix1 release.
 
-## Workspace
+## Repository layout
 
 ```text
-crates/
-  ace-core/        stable model/config/errors/plan types
-  ace-analysis/    block statistics
-  ace-transforms/  reversible DeltaByte preprocessing
-  ace-codecs/      RAW/RLE/LZ
-  ace-entropy/     canonical Huffman + scalar rANS
-  ace-dictionary/  dictionary abstractions
-  ace-planner/     Candidate Generator + deterministic Cost Model
-  ace-format/      ACE 1.0/1.1 framing
-  ace-index/       AIDX/ACET index reader/writer
-  ace-runtime/     bounded deterministic parallel runtime
-  ace-engine/      high-level compression/decompression/random access
-  ace-cli/         CLI
-examples/
-  rust-demo/
-  rust-benchmark/
-  random-access-demo/
-  parallel-demo/
-  baselines/0.2/
-  baselines/0.2.1/
-  results/
-demo/
-tools/
-docs/
-fuzz/
+ace-milestone0.3/
+├── crates/
+│   ├── ace-core/         stable IDs, configuration, plans, statistics, errors
+│   ├── ace-analysis/     block statistics and incompressibility analysis
+│   ├── ace-transforms/   reversible transforms
+│   ├── ace-codecs/       RAW, RLE and LZ
+│   ├── ace-entropy/      Huffman, scalar rANS and rANS4x
+│   ├── ace-dictionary/   dictionary abstractions
+│   ├── ace-cost/         NEW: deterministic candidate estimation and CostModel V3
+│   ├── ace-planner/      candidate generation, fast paths and sampled Top-K verification
+│   ├── ace-format/       ACE 1.0/1.1/1.2 framing
+│   ├── ace-index/        serialized random-access index
+│   ├── ace-runtime/      Rayon runtime and reusable worker scratch
+│   ├── ace-simd/         NEW: safe SIMD runtime dispatch
+│   ├── ace-stream/       NEW: bounded-memory stream adapter
+│   ├── ace-engine/       end-to-end compressor/decompressor
+│   └── ace-cli/          CLI
+├── examples/
+│   ├── rust-demo/
+│   ├── rust-benchmark/
+│   ├── random-access-demo/
+│   ├── parallel-demo/
+│   ├── baselines/0.2.1-buildfix1/
+│   ├── data/
+│   └── results/
+├── demo/
+├── docs/
+├── fuzz/
+├── integrations/
+├── tools/
+├── TASKS-0.3.md
+├── MILESTONE-0.3.json
+└── CHANGELOG.md
 ```
 
-## Build and test
+## Build and tests
 
 ```bash
 cargo build --workspace --release
@@ -53,44 +65,71 @@ cargo test --workspace
 ## Demo
 
 ```bash
-./demo/run-demo-0.2.1-buildfix1.sh
+./demo/run-demo-0.3.sh
 ```
 
-The demo explains FAST/BALANCED/DENSE planning, performs deterministic parallel compression, verifies Format 1.1, reads an indexed 64-KiB range and runs planner/random-access benchmarks.
+The demo generates a deterministic mixed corpus, shows Planner V3 decisions, performs ordinary and bounded-stream compression, verifies Format 1.2, demonstrates random access and runs the planner/streaming benchmark families.
 
 ## Benchmarks
+
+Run all benchmark families and regression gates:
 
 ```bash
 ./benchmark.sh all
 ```
 
-Generated files:
+Or one family:
 
-```text
-examples/results/0.2.1-buildfix1-compression.json
-examples/results/0.2.1-buildfix1-entropy.json
-examples/results/0.2.1-buildfix1-planner.json
-examples/results/0.2.1-buildfix1-parallel.json
-examples/results/0.2.1-buildfix1-random-access.json
-examples/results/0.2.1-buildfix1-regression.json
+```bash
+./benchmark.sh planner
+./benchmark.sh streaming
+./benchmark.sh memory
 ```
 
-The regression report keeps the original ACE 0.2 gates as the absolute release contract and additionally reports improvement relative to the observed failed ACE 0.2.1 candidate.
+Official result files are written to `examples/results/`:
 
-## Release gates
+```text
+0.3-compression.json
+0.3-entropy.json
+0.3-planner.json
+0.3-parallel.json
+0.3-random-access.json
+0.3-streaming.json
+0.3-memory.json
+0.3-regression.json
+```
 
-- planner candidate recall >= 0.95;
-- planner regret <= 8192 bytes/block;
-- DENSE ratio >= 99% of ACE 0.2;
-- FAST throughput >= 95% of ACE 0.2;
-- four-thread efficiency >= 0.80;
-- already-open 64-KiB range median latency <= 110% of ACE 0.2;
-- bit-identical output across the worker-count matrix.
+## Planner V3 invariant
 
-## Compatibility
+The runtime planner does **not** fully encode multiple complete candidates.  It performs:
 
-Engine release: `0.2.1-buildfix1`  
-Writer format: `1.1`  
-Reader formats: `1.0`, `1.1`
+```text
+BlockProfile
+    ↓
+CandidateGenerator
+    ↓
+CandidateEstimator (cheap)
+    ↓
+Top-K
+    ↓
+Deterministic sample verification
+    ↓
+Selected plan
+    ↓
+ONE full-block encode
+```
 
-See `TASKS-0.2.1-buildfix1.md` for implementation order and `CHANGELOG.md` for the exact buildfix delta.
+`planner_full_trial_encodes` is therefore expected to remain zero in the compression hot path.
+
+## Format compatibility
+
+- writer: ACE Format 1.2;
+- reader: ACE Format 1.0, 1.1 and 1.2;
+- 1.2 adds the new rANS4x entropy identifier without restructuring the index/trailer;
+- block independence and deterministic parallel output remain mandatory.
+
+## Scope intentionally deferred
+
+ACE 0.3 does not yet implement CDC, trained global dictionaries, cross-block LZ dependencies, ML-based planning, GPU compression, AdaptiveDB semantic hints, GraphNet semantic transforms or JVM-native FFM/Panama bindings.
+
+See `TASKS-0.3.md`, `docs/ARCHITECTURE-0.3.md` and `CHANGELOG.md` for details.

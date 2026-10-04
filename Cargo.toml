@@ -7,10 +7,13 @@ members = [
   "crates/ace-codecs",
   "crates/ace-entropy",
   "crates/ace-dictionary",
+  "crates/ace-cost",
   "crates/ace-planner",
   "crates/ace-format",
   "crates/ace-index",
   "crates/ace-runtime",
+  "crates/ace-simd",
+  "crates/ace-stream",
   "crates/ace-engine",
   "crates/ace-cli",
   "examples/rust-demo",
@@ -21,7 +24,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://example.invalid/ace"

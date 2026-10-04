@@ -1,14 +1,14 @@
-# ACE benchmark results
+# ACE 0.3 benchmark results
 
-Official buildfix1 benchmark outputs are written here by `./benchmark.sh`.
+`./benchmark.sh all` writes:
 
-Expected files:
+- `0.3-compression.json`
+- `0.3-entropy.json`
+- `0.3-planner.json`
+- `0.3-parallel.json`
+- `0.3-random-access.json`
+- `0.3-streaming.json`
+- `0.3-memory.json`
+- `0.3-regression.json`
 
-- `0.2.1-buildfix1-compression.json`
-- `0.2.1-buildfix1-entropy.json`
-- `0.2.1-buildfix1-planner.json`
-- `0.2.1-buildfix1-parallel.json`
-- `0.2.1-buildfix1-random-access.json`
-- `0.2.1-buildfix1-regression.json`
-
-The regression report compares the candidate against the immutable ACE 0.2 baseline and also reports deltas relative to the observed failed ACE 0.2.1 release candidate.
+Generated benchmark result files are intentionally not committed as synthetic placeholders. The directory keeps only this contract description until real measurements are produced.

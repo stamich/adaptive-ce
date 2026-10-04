@@ -96,10 +96,12 @@ fn apply_entropy_selection_policy(
 ) {
     let policy = EntropySelectionPolicy::for_profile(profile);
     let snapshot = plans.to_vec();
-    for plan in plans
-        .iter_mut()
-        .filter(|p| matches!(p.decoding.entropy, EntropyCodecId::Rans))
-    {
+    for plan in plans.iter_mut().filter(|p| {
+        matches!(
+            p.decoding.entropy,
+            EntropyCodecId::Rans | EntropyCodecId::Rans4x
+        )
+    }) {
         let peer = snapshot.iter().find(|other| {
             matches!(other.decoding.entropy, EntropyCodecId::Huffman)
                 && other.decoding.transforms == plan.decoding.transforms
@@ -115,4 +117,134 @@ fn apply_entropy_selection_policy(
             }
         }
     }
+}
+
+/// Planner V3 telemetry used by engine statistics, `ace explain` and benchmarks.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PlannerTelemetry {
+    /// True when a deterministic fast path selected the plan without candidate sampling.
+    pub fast_path_hit: bool,
+    /// Number of candidates ranked by the analytical estimator.
+    pub estimated_candidates: usize,
+    /// Number of top-K candidates encoded only on deterministic samples.
+    pub sampled_candidates: usize,
+    /// Number of full candidate trial encodes performed by the hot-path planner.
+    pub full_trial_encodes: usize,
+}
+
+/// Result returned by the ACE 0.3 planner hot path.
+#[derive(Debug, Clone)]
+pub struct PlannerDecision {
+    /// Selected physical compression plan.
+    pub plan: PhysicalCompressionPlan,
+    /// Work performed while reaching the decision.
+    pub telemetry: PlannerTelemetry,
+}
+
+/// Estimates all candidates, verifies only a tiny deterministic top-K sample and selects a plan.
+///
+/// Unlike ACE 0.2.x this function never trial-encodes a complete block.  The final full-block
+/// encode is performed exactly once by the engine after the decision is returned.
+pub fn evaluate_candidates_v3(
+    input: &[u8],
+    profile: &ace_core::BlockProfile,
+    candidates: &[PhysicalCompressionPlan],
+    config: &AceConfig,
+) -> AceResult<PlannerDecision> {
+    use crate::{DefaultPlannerFastPath, PlannerFastPath};
+    use ace_cost::{
+        deterministic_sample_ranges, CandidateEstimator, CostModelV3, DefaultCandidateEstimator,
+        SamplePolicy,
+    };
+
+    if let Some(plan) = DefaultPlannerFastPath.try_plan(profile, config) {
+        return Ok(PlannerDecision {
+            plan,
+            telemetry: PlannerTelemetry {
+                fast_path_hit: true,
+                estimated_candidates: 0,
+                sampled_candidates: 0,
+                full_trial_encodes: 0,
+            },
+        });
+    }
+    if candidates.is_empty() {
+        return Err(AceError::Malformed("planner generated no candidates"));
+    }
+
+    let estimator = DefaultCandidateEstimator;
+    let mut estimated = candidates
+        .iter()
+        .map(|candidate| estimator.estimate(candidate, profile, config.profile))
+        .collect::<Vec<_>>();
+    estimated.sort_by(|a, b| {
+        a.score
+            .cmp(&b.score)
+            .then_with(|| stable_plan_key(&a.plan).cmp(&stable_plan_key(&b.plan)))
+    });
+
+    let policy = SamplePolicy::for_profile(config.profile);
+    let confidence = estimated.first().map(|c| c.confidence).unwrap_or(0.0);
+    let adaptive_k = if confidence >= 0.96 {
+        1
+    } else if confidence >= 0.82 {
+        policy.top_k.min(2)
+    } else {
+        policy.top_k
+    };
+    let top_k = adaptive_k.max(1).min(estimated.len());
+    let ranges = deterministic_sample_ranges(input.len(), policy);
+    let model = CostModelV3;
+
+    let mut verified = Vec::with_capacity(top_k);
+    for mut candidate in estimated.into_iter().take(top_k) {
+        let mut sample_input = 0usize;
+        let mut sample_encoded = 0usize;
+        let mut sample_metadata = 0usize;
+        for range in &ranges {
+            let sample = &input[range.clone()];
+            let (metadata, payload, _) = encode_plan_payload(sample, &candidate.plan)?;
+            sample_input = sample_input.saturating_add(sample.len());
+            sample_metadata = sample_metadata.saturating_add(metadata.len());
+            sample_encoded = sample_encoded
+                .saturating_add(metadata.len())
+                .saturating_add(payload.len());
+        }
+        if sample_input != 0 {
+            let projected = ((sample_encoded as u128).saturating_mul(input.len() as u128)
+                / sample_input as u128)
+                .min(u64::MAX as u128) as u64;
+            candidate.cost.predicted_size_bytes = projected;
+            candidate.cost.metadata_bytes = ((sample_metadata as u128)
+                .saturating_mul(input.len() as u128)
+                / sample_input as u128)
+                .min(u64::MAX as u128) as u64;
+            candidate.score = model.score(config.profile, candidate.cost, input.len());
+        }
+        let mut plan = candidate.plan;
+        plan.cost = candidate.cost;
+        plan.score = candidate.score;
+        verified.push(plan);
+    }
+    apply_entropy_selection_policy(&mut verified, config.profile);
+    let selected = verified
+        .into_iter()
+        .min_by(|a, b| {
+            a.score
+                .cmp(&b.score)
+                .then_with(|| stable_plan_key(a).cmp(&stable_plan_key(b)))
+        })
+        .ok_or(AceError::Malformed(
+            "sample verifier produced no candidates",
+        ))?;
+
+    Ok(PlannerDecision {
+        plan: selected,
+        telemetry: PlannerTelemetry {
+            fast_path_hit: false,
+            estimated_candidates: candidates.len(),
+            sampled_candidates: top_k,
+            full_trial_encodes: 0,
+        },
+    })
 }

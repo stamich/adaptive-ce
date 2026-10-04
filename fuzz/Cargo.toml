@@ -13,6 +13,8 @@ ace-core = { path = "../crates/ace-core" }
 ace-engine = { path = "../crates/ace-engine" }
 ace-entropy = { path = "../crates/ace-entropy" }
 ace-format = { path = "../crates/ace-format" }
+ace-cost = { path = "../crates/ace-cost" }
+ace-codecs = { path = "../crates/ace-codecs" }
 
 [[bin]]
 name = "ace_decoder"
@@ -24,6 +26,27 @@ bench = false
 [[bin]]
 name = "rans_decoder"
 path = "fuzz_targets/rans_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rans4x_decoder"
+path = "fuzz_targets/rans4x_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "planner_sample_offsets"
+path = "fuzz_targets/planner_sample_offsets.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rle_roundtrip"
+path = "fuzz_targets/rle_roundtrip.rs"
 test = false
 doc = false
 bench = false

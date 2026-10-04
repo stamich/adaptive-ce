@@ -14,7 +14,7 @@ pub trait CompressionPlanner {
     ) -> Vec<PhysicalCompressionPlan>;
 }
 
-/// ACE 0.2.1-buildfix1 candidate generator with profile-specific search breadth.
+/// ACE 0.3 candidate generator with profile-specific search breadth.
 ///
 /// The buildfix deliberately separates the FAST search space from BALANCED/DENSE.
 /// FAST stays narrow to protect throughput, while BALANCED and DENSE retain enough
@@ -175,6 +175,16 @@ fn full_oracle_family(
             CandidateTier::Mandatory,
             "mandatory rANS baseline",
         ));
+        if p.size >= 16 * 1024 {
+            out.push(plan(
+                Vec::new(),
+                CodecId::Raw,
+                EntropyCodecId::Rans4x,
+                None,
+                CandidateTier::Exploratory,
+                "ACE 0.3 rANS4x baseline",
+            ));
+        }
     }
 
     let run_tier = if p.run_score >= 0.08 || p.zero_ratio >= 0.15 {
@@ -207,6 +217,16 @@ fn full_oracle_family(
             run_tier,
             "RLE plus rANS oracle coverage",
         ));
+        if p.size >= 16 * 1024 {
+            out.push(plan(
+                Vec::new(),
+                CodecId::Rle,
+                EntropyCodecId::Rans4x,
+                None,
+                run_tier,
+                "RLE plus rANS4x ACE 0.3 candidate",
+            ));
+        }
     }
 
     let delta_tier = if p.delta_score >= 0.05 {
@@ -231,6 +251,16 @@ fn full_oracle_family(
             delta_tier,
             "delta plus rANS oracle coverage",
         ));
+        if p.size >= 16 * 1024 {
+            out.push(plan(
+                vec![TransformId::DeltaByte],
+                CodecId::Raw,
+                EntropyCodecId::Rans4x,
+                None,
+                delta_tier,
+                "delta plus rANS4x ACE 0.3 candidate",
+            ));
+        }
     }
 
     let lz_fast_tier = if lz_strength >= 0.04 || p.sampled_match_length >= 6.0 {
@@ -255,6 +285,16 @@ fn full_oracle_family(
             lz_fast_tier,
             "LZ fast plus rANS oracle coverage",
         ));
+        if p.size >= 16 * 1024 {
+            out.push(plan(
+                Vec::new(),
+                CodecId::Lz,
+                EntropyCodecId::Rans4x,
+                Some(LzMode::Fast),
+                lz_fast_tier,
+                "LZ fast plus rANS4x ACE 0.3 candidate",
+            ));
+        }
     }
 
     let lz_balanced_tier = if dense || lz_strength >= 0.10 {
@@ -279,6 +319,16 @@ fn full_oracle_family(
             lz_balanced_tier,
             "LZ balanced plus rANS oracle coverage",
         ));
+        if p.size >= 16 * 1024 {
+            out.push(plan(
+                Vec::new(),
+                CodecId::Lz,
+                EntropyCodecId::Rans4x,
+                Some(LzMode::Balanced),
+                lz_balanced_tier,
+                "LZ balanced plus rANS4x ACE 0.3 candidate",
+            ));
+        }
     }
 
     let delta_lz_tier = if dense && (p.delta_score >= 0.04 || lz_strength >= 0.05) {

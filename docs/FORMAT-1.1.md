@@ -1,6 +1,6 @@
-# ACE Format 1.1
+# ACE Format 1.2
 
-Format 1.1 keeps the 32-byte `ACE1` file header used by Format 1.0. Minor version changes from `0` to `1`. ACE 0.2 readers accept both minor versions; writers emit 1.1.
+Format 1.2 keeps the 32-byte `ACE1` file header used by Format 1.0. Minor version changes from `0` to `1`. ACE 0.2 readers accept both minor versions; writers emit 1.1.
 
 ## Physical order
 

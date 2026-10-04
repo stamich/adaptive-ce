@@ -20,8 +20,18 @@ pub struct CompressionStats {
     pub delta_blocks: u64,
     /// Number of blocks finalized by Huffman.
     pub huffman_blocks: u64,
-    /// Number of blocks finalized by rANS.
+    /// Number of blocks finalized by scalar rANS.
     pub rans_blocks: u64,
+    /// Number of blocks finalized by four-lane rANS.
+    pub rans4x_blocks: u64,
+    /// Number of blocks resolved by a planner fast path without sampled verification.
+    pub planner_fast_path_blocks: u64,
+    /// Number of candidates analytically estimated by Planner V3.
+    pub planner_estimated_candidates: u64,
+    /// Number of candidates actually sample-encoded by Planner V3.
+    pub planner_sampled_candidates: u64,
+    /// Number of complete candidate trial encodes performed by the hot-path planner.
+    pub planner_full_trial_encodes: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
     /// Time spent collecting block statistics, summed across workers.

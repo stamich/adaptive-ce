@@ -12,8 +12,8 @@ use ace_format::{
     FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
 };
 use ace_planner::{
-    encode_plan_payload, evaluate_all_candidates, evaluate_candidates, CompressionPlanner,
-    DefaultCompressionPlanner,
+    encode_plan_payload, evaluate_all_candidates, evaluate_candidates_v3, CompressionPlanner,
+    DefaultCompressionPlanner, PlannerTelemetry,
 };
 use ace_runtime::RuntimeConfig;
 use ace_transforms::invert_transform;
@@ -21,7 +21,7 @@ use rayon::prelude::*;
 use std::io::{Cursor, Read, Write};
 use std::time::{Duration, Instant};
 
-/// Public façade of the ACE 0.2.1-buildfix1 compression engine.
+/// Public façade of the ACE 0.3 compression engine.
 #[derive(Debug, Clone)]
 pub struct AceEngine {
     config: AceConfig,
@@ -40,6 +40,7 @@ struct EncodedBlock {
     analysis_time: Duration,
     planning_time: Duration,
     encoding_time: Duration,
+    planner_telemetry: PlannerTelemetry,
 }
 
 impl AceEngine {
@@ -73,7 +74,7 @@ impl AceEngine {
         &self.config
     }
 
-    /// Compresses an in-memory byte slice into a complete ACE format-1.1 file.
+    /// Compresses an in-memory byte slice into a complete ACE format-1.2 file.
     pub fn compress(&self, input: &[u8]) -> AceResult<Vec<u8>> {
         self.compress_with_stats(input).map(|(bytes, _)| bytes)
     }
@@ -107,7 +108,7 @@ impl AceEngine {
             flags |= FILE_FLAG_HAS_INDEX;
         }
         let file_header = FileHeader {
-            minor_version: 1,
+            minor_version: 2,
             flags,
             default_block_size: self.config.block_size as u32,
             original_size: input.len() as u64,
@@ -174,8 +175,18 @@ impl AceEngine {
             match header.entropy {
                 EntropyCodecId::Huffman => stats.huffman_blocks += 1,
                 EntropyCodecId::Rans => stats.rans_blocks += 1,
+                EntropyCodecId::Rans4x => stats.rans4x_blocks += 1,
                 EntropyCodecId::None => {}
             }
+            stats.planner_fast_path_blocks += if block.planner_telemetry.fast_path_hit {
+                1
+            } else {
+                0
+            };
+            stats.planner_estimated_candidates +=
+                block.planner_telemetry.estimated_candidates as u64;
+            stats.planner_sampled_candidates += block.planner_telemetry.sampled_candidates as u64;
+            stats.planner_full_trial_encodes += block.planner_telemetry.full_trial_encodes as u64;
             stats.record_plan(plan_label(&block.plan));
         }
         stats.serialization_time = serialization_started.elapsed();
@@ -208,14 +219,14 @@ impl AceEngine {
         Ok(stats)
     }
 
-    /// Decompresses an in-memory ACE 1.0 or 1.1 file into reconstructed bytes.
+    /// Decompresses an in-memory ACE 1.0, 1.1 or 1.2 file into reconstructed bytes.
     pub fn decompress(&self, input: &[u8]) -> AceResult<Vec<u8>> {
         let mut out = Vec::new();
         self.decompress_from(Cursor::new(input), &mut out)?;
         Ok(out)
     }
 
-    /// Reads, validates and sequentially decompresses ACE 1.0 or 1.1 blocks to an arbitrary writer.
+    /// Reads, validates and sequentially decompresses ACE 1.0, 1.1 or 1.2 blocks to an arbitrary writer.
     pub fn decompress_from<R: Read, W: Write>(&self, reader: R, mut writer: W) -> AceResult<()> {
         let mut ace = AceReader::new(reader, self.limits.clone());
         let file = ace.read_file_header()?;
@@ -253,12 +264,13 @@ impl AceEngine {
             let profile = analyzer.analyze(block);
             let candidates = planner.candidates(&profile, &self.config);
             let evaluated = evaluate_all_candidates(block, &candidates, &self.config)?;
-            let selected = evaluate_candidates(block, &candidates, &self.config)?;
+            let decision = evaluate_candidates_v3(block, &profile, &candidates, &self.config)?;
             out.push(BlockExplanation {
                 block_id: id as u64,
                 profile,
                 candidates: evaluated,
-                selected,
+                selected: decision.plan,
+                telemetry: decision.telemetry,
             });
         }
         Ok(out)
@@ -273,7 +285,9 @@ impl AceEngine {
         let analysis_time = started.elapsed();
         let started = Instant::now();
         let candidates = planner.candidates(&profile, &self.config);
-        let mut selected = evaluate_candidates(input, &candidates, &self.config)?;
+        let decision = evaluate_candidates_v3(input, &profile, &candidates, &self.config)?;
+        let mut selected = decision.plan;
+        let planner_telemetry = decision.telemetry;
         let planning_time = started.elapsed();
         let started = Instant::now();
         let (mut entropy_metadata, mut payload, primary_len) =
@@ -311,6 +325,7 @@ impl AceEngine {
             analysis_time,
             planning_time,
             encoding_time,
+            planner_telemetry,
         })
     }
 }
@@ -336,6 +351,7 @@ fn plan_label(plan: &PhysicalCompressionPlan) -> String {
         EntropyCodecId::None => "none",
         EntropyCodecId::Huffman => "huffman",
         EntropyCodecId::Rans => "rans",
+        EntropyCodecId::Rans4x => "rans4x",
     });
     parts.join("+")
 }

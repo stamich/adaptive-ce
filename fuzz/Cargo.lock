@@ -4,35 +4,44 @@ version = 4
 
 [[package]]
 name = "ace-analysis"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
+ "ace-simd",
 ]
 
 [[package]]
 name = "ace-codecs"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
+ "ace-simd",
 ]
 
 [[package]]
 name = "ace-core"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
+name = "ace-cost"
+version = "0.3.0"
+dependencies = [
+ "ace-core",
+]
+
+[[package]]
 name = "ace-dictionary"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-engine"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-analysis",
  "ace-codecs",
@@ -49,14 +58,14 @@ dependencies = [
 
 [[package]]
 name = "ace-entropy"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-format"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
  "crc32c",
@@ -66,7 +75,9 @@ dependencies = [
 name = "ace-fuzz"
 version = "0.0.0"
 dependencies = [
+ "ace-codecs",
  "ace-core",
+ "ace-cost",
  "ace-engine",
  "ace-entropy",
  "ace-format",
@@ -75,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "ace-index"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
  "ace-format",
@@ -83,17 +94,18 @@ dependencies = [
 
 [[package]]
 name = "ace-planner"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-codecs",
  "ace-core",
+ "ace-cost",
  "ace-entropy",
  "ace-transforms",
 ]
 
 [[package]]
 name = "ace-runtime"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
  "num_cpus",
@@ -101,8 +113,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ace-simd"
+version = "0.3.0"
+
+[[package]]
 name = "ace-transforms"
-version = "0.2.1-buildfix1"
+version = "0.3.0"
 dependencies = [
  "ace-core",
 ]

@@ -18,17 +18,22 @@ pub struct RangeAccessMetrics {
 }
 
 impl RangeAccessMetrics {
-    /// Returns physical bytes read divided by logical bytes requested.
-    pub fn overread_ratio(&self) -> f64 {
+    /// Returns physical serialized bytes read divided by logical reconstructed bytes requested.
+    pub fn physical_to_logical_ratio(&self) -> f64 {
         if self.logical_bytes_requested == 0 {
             0.0
         } else {
             self.physical_bytes_read as f64 / self.logical_bytes_requested as f64
         }
     }
+
+    /// Backward-compatible alias for the pre-0.3 metric name.
+    pub fn overread_ratio(&self) -> f64 {
+        self.physical_to_logical_ratio()
+    }
 }
 
-/// High-level random-access decoder backed by the serialized ACE 1.1 block index.
+/// High-level random-access decoder backed by the serialized ACE 1.1/1.2 block index.
 pub struct AceIndexedDecoder<R: Read + Seek> {
     indexed: AceIndexReader<R>,
     limits: DecodeLimits,
@@ -74,7 +79,7 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
 
     /// Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup.
     ///
-    /// ACE 0.2.1-buildfix1 uses this method to avoid performing one index intersection for
+    /// ACE 0.3 uses this method to avoid performing one index intersection for
     /// metrics and a second identical lookup for the actual range read. The method does not
     /// reopen or revalidate the container; callers that need open latency should measure
     /// [`AceIndexedDecoder::open`] separately.
