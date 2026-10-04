@@ -1,6 +1,9 @@
 use crate::{DeterministicCostModel, EntropySelectionPolicy};
 use ace_codecs::encode_codec;
-use ace_core::{AceConfig, AceError, AceResult, EntropyCodecId, PhysicalCompressionPlan};
+use ace_core::{
+    AceConfig, AceError, AceResult, CodecId, CompressionProfile, EntropyCodecId, LzMode,
+    PhysicalCompressionPlan,
+};
 use ace_entropy::encode_entropy;
 use ace_transforms::apply_transform;
 
@@ -69,7 +72,7 @@ pub fn encode_plan_payload(
 }
 
 /// Produces a stable tie-break key that does not depend on address, thread scheduling or hash iteration order.
-fn stable_plan_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8, u8) {
+pub fn stable_plan_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8, u8) {
     let transforms = plan
         .decoding
         .transforms
@@ -78,8 +81,8 @@ fn stable_plan_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8, u8) {
         .collect::<Vec<_>>();
     let lz = match plan.lz_mode {
         None => 0,
-        Some(ace_core::LzMode::Fast) => 1,
-        Some(ace_core::LzMode::Balanced) => 2,
+        Some(LzMode::Fast) => 1,
+        Some(LzMode::Balanced) => 2,
     };
     (
         transforms,
@@ -89,10 +92,15 @@ fn stable_plan_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8, u8) {
     )
 }
 
-/// Penalizes scalar-rANS plans that do not beat an equivalent Huffman pipeline by the profile-specific minimum gain.
+/// Returns true when two physical plans have identical decoder semantics.
+pub fn same_plan_semantics(a: &PhysicalCompressionPlan, b: &PhysicalCompressionPlan) -> bool {
+    a.decoding == b.decoding && a.lz_mode == b.lz_mode
+}
+
+/// Penalizes rANS plans that do not beat an equivalent Huffman pipeline by the profile-specific minimum gain.
 fn apply_entropy_selection_policy(
     plans: &mut [PhysicalCompressionPlan],
-    profile: ace_core::CompressionProfile,
+    profile: CompressionProfile,
 ) {
     let policy = EntropySelectionPolicy::for_profile(profile);
     let snapshot = plans.to_vec();
@@ -119,32 +127,40 @@ fn apply_entropy_selection_policy(
     }
 }
 
-/// Planner V3 telemetry used by engine statistics, `ace explain` and benchmarks.
+/// Planner V3.1 telemetry used by engine statistics, `ace explain` and benchmarks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlannerTelemetry {
     /// True when a deterministic fast path selected the plan without candidate sampling.
     pub fast_path_hit: bool,
     /// Number of candidates ranked by the analytical estimator.
     pub estimated_candidates: usize,
-    /// Number of top-K candidates encoded only on deterministic samples.
+    /// Number of candidates entering stage-one sample verification.
     pub sampled_candidates: usize,
+    /// Number of candidates entering the larger second-stage verifier.
+    pub second_stage_candidates: usize,
     /// Number of full candidate trial encodes performed by the hot-path planner.
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the ACE 0.3 planner hot path.
+/// Result returned by the ACE 0.3-buildfix3 planner hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
     pub plan: PhysicalCompressionPlan,
     /// Work performed while reaching the decision.
     pub telemetry: PlannerTelemetry,
+    /// Plans that survived analytical pruning and entered stage-one verification.
+    pub top_k_plans: Vec<PhysicalCompressionPlan>,
+    /// Plans that survived stage one and entered the larger second-stage verifier.
+    pub second_stage_plans: Vec<PhysicalCompressionPlan>,
 }
 
-/// Estimates all candidates, verifies only a tiny deterministic top-K sample and selects a plan.
+/// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// Unlike ACE 0.2.x this function never trial-encodes a complete block.  The final full-block
-/// encode is performed exactly once by the engine after the decision is returned.
+/// ACE 0.3-buildfix3 keeps `full_trial_encodes == 0`. It fixes the quality regression from
+/// 0.3 by using adaptive Top-K, semantic-family anchors, codec-specific stratified samples,
+/// and a larger second verifier stage. Sample metadata is counted once per projected block;
+/// only payload bytes are scaled to full-block size.
 pub fn evaluate_candidates_v3(
     input: &[u8],
     profile: &ace_core::BlockProfile,
@@ -153,8 +169,7 @@ pub fn evaluate_candidates_v3(
 ) -> AceResult<PlannerDecision> {
     use crate::{DefaultPlannerFastPath, PlannerFastPath};
     use ace_cost::{
-        deterministic_sample_ranges, CandidateEstimator, CostModelV3, DefaultCandidateEstimator,
-        SamplePolicy,
+        adaptive_top_k, CandidateEstimator, CostModelV3, DefaultCandidateEstimator, SamplePolicy,
     };
 
     if let Some(plan) = DefaultPlannerFastPath.try_plan(profile, config) {
@@ -164,8 +179,11 @@ pub fn evaluate_candidates_v3(
                 fast_path_hit: true,
                 estimated_candidates: 0,
                 sampled_candidates: 0,
+                second_stage_candidates: 0,
                 full_trial_encodes: 0,
             },
+            top_k_plans: Vec::new(),
+            second_stage_plans: Vec::new(),
         });
     }
     if candidates.is_empty() {
@@ -177,74 +195,247 @@ pub fn evaluate_candidates_v3(
         .iter()
         .map(|candidate| estimator.estimate(candidate, profile, config.profile))
         .collect::<Vec<_>>();
-    estimated.sort_by(|a, b| {
-        a.score
-            .cmp(&b.score)
-            .then_with(|| stable_plan_key(&a.plan).cmp(&stable_plan_key(&b.plan)))
-    });
+    estimated.sort_by(estimated_order);
 
     let policy = SamplePolicy::for_profile(config.profile);
     let confidence = estimated.first().map(|c| c.confidence).unwrap_or(0.0);
-    let adaptive_k = if confidence >= 0.96 {
-        1
-    } else if confidence >= 0.82 {
-        policy.top_k.min(2)
-    } else {
-        policy.top_k
-    };
-    let top_k = adaptive_k.max(1).min(estimated.len());
-    let ranges = deterministic_sample_ranges(input.len(), policy);
+    let adaptive_k = adaptive_top_k(config.profile, confidence, policy.top_k, estimated.len());
+    let stage_one_pool = quality_preserving_pool(&estimated, adaptive_k, config.profile);
+    let top_k_plans = stage_one_pool
+        .iter()
+        .map(|c| c.plan.clone())
+        .collect::<Vec<_>>();
     let model = CostModelV3;
 
-    let mut verified = Vec::with_capacity(top_k);
-    for mut candidate in estimated.into_iter().take(top_k) {
-        let mut sample_input = 0usize;
-        let mut sample_encoded = 0usize;
-        let mut sample_metadata = 0usize;
-        for range in &ranges {
-            let sample = &input[range.clone()];
-            let (metadata, payload, _) = encode_plan_payload(sample, &candidate.plan)?;
-            sample_input = sample_input.saturating_add(sample.len());
-            sample_metadata = sample_metadata.saturating_add(metadata.len());
-            sample_encoded = sample_encoded
-                .saturating_add(metadata.len())
-                .saturating_add(payload.len());
-        }
-        if sample_input != 0 {
-            let projected = ((sample_encoded as u128).saturating_mul(input.len() as u128)
-                / sample_input as u128)
-                .min(u64::MAX as u128) as u64;
-            candidate.cost.predicted_size_bytes = projected;
-            candidate.cost.metadata_bytes = ((sample_metadata as u128)
-                .saturating_mul(input.len() as u128)
-                / sample_input as u128)
-                .min(u64::MAX as u128) as u64;
-            candidate.score = model.score(config.profile, candidate.cost, input.len());
-        }
-        let mut plan = candidate.plan;
-        plan.cost = candidate.cost;
-        plan.score = candidate.score;
-        verified.push(plan);
+    let mut stage_one = Vec::with_capacity(stage_one_pool.len());
+    for candidate in stage_one_pool {
+        stage_one.push(verify_candidate_samples(
+            input,
+            candidate,
+            config.profile,
+            policy,
+            1,
+            &model,
+        )?);
     }
-    apply_entropy_selection_policy(&mut verified, config.profile);
-    let selected = verified
-        .into_iter()
-        .min_by(|a, b| {
-            a.score
-                .cmp(&b.score)
-                .then_with(|| stable_plan_key(a).cmp(&stable_plan_key(b)))
-        })
-        .ok_or(AceError::Malformed(
-            "sample verifier produced no candidates",
-        ))?;
+    apply_entropy_policy_estimates(&mut stage_one, config.profile);
+    stage_one.sort_by(estimated_order);
+
+    let stage_two_k =
+        adaptive_second_stage_k(&stage_one, config.profile, policy.second_stage_top_k);
+    let stage_two_input = stage_one.into_iter().take(stage_two_k).collect::<Vec<_>>();
+    let second_stage_plans = stage_two_input
+        .iter()
+        .map(|c| c.plan.clone())
+        .collect::<Vec<_>>();
+    let mut stage_two = Vec::with_capacity(stage_two_input.len());
+    for candidate in stage_two_input {
+        stage_two.push(verify_candidate_samples(
+            input,
+            candidate,
+            config.profile,
+            policy,
+            2,
+            &model,
+        )?);
+    }
+    apply_entropy_policy_estimates(&mut stage_two, config.profile);
+    stage_two.sort_by(estimated_order);
+
+    let selected_candidate = stage_two.into_iter().next().ok_or(AceError::Malformed(
+        "sample verifier produced no candidates",
+    ))?;
+    let mut selected = selected_candidate.plan;
+    selected.cost = selected_candidate.cost;
+    selected.score = selected_candidate.score;
 
     Ok(PlannerDecision {
         plan: selected,
         telemetry: PlannerTelemetry {
             fast_path_hit: false,
             estimated_candidates: candidates.len(),
-            sampled_candidates: top_k,
+            sampled_candidates: top_k_plans.len(),
+            second_stage_candidates: second_stage_plans.len(),
             full_trial_encodes: 0,
         },
+        top_k_plans,
+        second_stage_plans,
     })
+}
+
+/// Deterministically orders analytical/sample estimates.
+fn estimated_order(
+    a: &ace_cost::EstimatedCandidate,
+    b: &ace_cost::EstimatedCandidate,
+) -> std::cmp::Ordering {
+    a.score
+        .cmp(&b.score)
+        .then_with(|| stable_plan_key(&a.plan).cmp(&stable_plan_key(&b.plan)))
+}
+
+/// Builds stage-one verification input from Top-K plus semantic-family quality anchors.
+///
+/// The quality anchors prevent a bad scalar estimate from eliminating every member of an
+/// otherwise promising codec/transform family before sampling. FAST remains narrow; BALANCED
+/// and DENSE add one best analytical representative per semantic family.
+fn quality_preserving_pool(
+    estimated: &[ace_cost::EstimatedCandidate],
+    adaptive_k: usize,
+    profile: CompressionProfile,
+) -> Vec<ace_cost::EstimatedCandidate> {
+    let mut pool = estimated
+        .iter()
+        .take(adaptive_k)
+        .cloned()
+        .collect::<Vec<_>>();
+    if matches!(profile, CompressionProfile::Fast) {
+        return pool;
+    }
+
+    let cap = match profile {
+        CompressionProfile::Fast => adaptive_k.max(2),
+        CompressionProfile::Balanced => 8,
+        CompressionProfile::Dense => 10,
+    }
+    .min(estimated.len());
+
+    for candidate in estimated {
+        if pool.len() >= cap {
+            break;
+        }
+        if pool
+            .iter()
+            .any(|p| same_plan_semantics(&p.plan, &candidate.plan))
+        {
+            continue;
+        }
+        let family = semantic_family_key(&candidate.plan);
+        if pool.iter().any(|p| semantic_family_key(&p.plan) == family) {
+            continue;
+        }
+        pool.push(candidate.clone());
+    }
+
+    pool.sort_by(estimated_order);
+    pool
+}
+
+/// Groups entropy variants of the same physical transform/primary-codec family.
+fn semantic_family_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8) {
+    let transforms = plan
+        .decoding
+        .transforms
+        .iter()
+        .map(|t| *t as u8)
+        .collect::<Vec<_>>();
+    let lz = match plan.lz_mode {
+        None => 0,
+        Some(LzMode::Fast) => 1,
+        Some(LzMode::Balanced) => 2,
+    };
+    (transforms, plan.decoding.codec as u8, lz)
+}
+
+/// Applies codec-specific sample verification and projects sample payload to the complete block.
+fn verify_candidate_samples(
+    input: &[u8],
+    mut candidate: ace_cost::EstimatedCandidate,
+    profile: CompressionProfile,
+    policy: ace_cost::SamplePolicy,
+    stage: u8,
+    model: &ace_cost::CostModelV3,
+) -> AceResult<ace_cost::EstimatedCandidate> {
+    let ranges =
+        ace_cost::codec_sample_ranges(input.len(), policy, candidate.plan.decoding.codec, stage);
+    if ranges.is_empty() {
+        return Ok(candidate);
+    }
+
+    let analytical_size = candidate.cost.predicted_size_bytes;
+    let mut sample_input = 0usize;
+    let mut sample_payload = 0usize;
+    let mut metadata_once = 0usize;
+    for range in ranges {
+        let sample = &input[range];
+        let (metadata, payload, _) = encode_plan_payload(sample, &candidate.plan)?;
+        sample_input = sample_input.saturating_add(sample.len());
+        sample_payload = sample_payload.saturating_add(payload.len());
+        metadata_once = metadata_once.max(metadata.len());
+    }
+
+    if sample_input != 0 {
+        let projected_payload = ((sample_payload as u128).saturating_mul(input.len() as u128)
+            / sample_input as u128)
+            .min(u64::MAX as u128) as u64;
+        let sample_projected = projected_payload.saturating_add(metadata_once as u64);
+        let (sample_weight, analytical_weight) = match (candidate.plan.decoding.codec, stage) {
+            (CodecId::Lz, 1) => (55u64, 45u64),
+            (CodecId::Lz, _) => (72u64, 28u64),
+            (_, 1) => (88u64, 12u64),
+            (_, _) => (96u64, 4u64),
+        };
+        let blended = ((sample_projected as u128)
+            .saturating_mul(sample_weight as u128)
+            .saturating_add((analytical_size as u128).saturating_mul(analytical_weight as u128))
+            / 100u128)
+            .min(u64::MAX as u128) as u64;
+        candidate.cost.predicted_size_bytes = blended;
+        candidate.cost.metadata_bytes = metadata_once as u64;
+        candidate.score = model.score(profile, candidate.cost, input.len());
+    }
+    Ok(candidate)
+}
+
+/// Chooses the stage-two width and widens it when the leading estimates remain ambiguous.
+fn adaptive_second_stage_k(
+    candidates: &[ace_cost::EstimatedCandidate],
+    profile: CompressionProfile,
+    nominal: usize,
+) -> usize {
+    if candidates.is_empty() {
+        return 0;
+    }
+    let mut k = nominal.max(1).min(candidates.len());
+    if candidates.len() >= 2 {
+        let best = candidates[0].cost.predicted_size_bytes.max(1) as f64;
+        let second = candidates[1].cost.predicted_size_bytes as f64;
+        let margin = ((second - best).max(0.0) / best) as f32;
+        if margin < 0.03 || candidates[0].confidence < 0.80 {
+            k = (k + 1).min(candidates.len());
+        }
+    }
+    if matches!(profile, CompressionProfile::Dense) {
+        k = k.max(3).min(candidates.len());
+    }
+    k
+}
+
+/// Applies the entropy-gain policy to estimated candidates without requiring full-block encoding.
+fn apply_entropy_policy_estimates(
+    plans: &mut [ace_cost::EstimatedCandidate],
+    profile: CompressionProfile,
+) {
+    let policy = EntropySelectionPolicy::for_profile(profile);
+    let snapshot = plans.to_vec();
+    for plan in plans.iter_mut().filter(|p| {
+        matches!(
+            p.plan.decoding.entropy,
+            EntropyCodecId::Rans | EntropyCodecId::Rans4x
+        )
+    }) {
+        let peer = snapshot.iter().find(|other| {
+            matches!(other.plan.decoding.entropy, EntropyCodecId::Huffman)
+                && other.plan.decoding.transforms == plan.plan.decoding.transforms
+                && other.plan.decoding.codec == plan.plan.decoding.codec
+                && other.plan.lz_mode == plan.plan.lz_mode
+        });
+        if let Some(huffman) = peer {
+            let h = huffman.cost.predicted_size_bytes.max(1) as f64;
+            let r = plan.cost.predicted_size_bytes as f64;
+            let gain = ((h - r) / h).max(0.0) as f32;
+            if gain < policy.min_rans_gain_fraction {
+                plan.score = plan.score.saturating_add(u128::MAX / 4);
+            }
+        }
+    }
 }
