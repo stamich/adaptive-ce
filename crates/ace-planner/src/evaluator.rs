@@ -127,7 +127,7 @@ fn apply_entropy_selection_policy(
     }
 }
 
-/// Planner V3.1 telemetry used by engine statistics, `ace explain` and benchmarks.
+/// Planner V3.3 telemetry used by engine statistics, `ace explain` and benchmarks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlannerTelemetry {
     /// True when a deterministic fast path selected the plan without candidate sampling.
@@ -138,31 +138,49 @@ pub struct PlannerTelemetry {
     pub sampled_candidates: usize,
     /// Number of candidates entering the larger second-stage verifier.
     pub second_stage_candidates: usize,
+    /// Number of candidates that passed the profile-specific quality envelope.
+    pub quality_qualified_candidates: usize,
+    /// Smallest blended size observed in the final candidate pool.
+    pub best_blended_size_bytes: u64,
+    /// Inclusive maximum blended size admitted by the active quality envelope.
+    pub quality_limit_bytes: u64,
+    /// Blended size of the plan finally selected by the scalar cost model.
+    pub selected_blended_size_bytes: u64,
+    /// One-based size rank of the selected plan in the full post-sampling pool.
+    pub selected_size_rank: usize,
+    /// One-based scalar-cost rank of the selected plan in the full post-sampling pool.
+    pub selected_cost_rank: usize,
     /// Number of full candidate trial encodes performed by the hot-path planner.
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the ACE 0.3-buildfix5 Planner V3.2 hot path.
+/// Result returned by the ACE 0.3-buildfix6 Planner V3.3 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
     pub plan: PhysicalCompressionPlan,
     /// Work performed while reaching the decision.
     pub telemetry: PlannerTelemetry,
+    /// Complete analytical ranking before sample verification.
+    pub analytical_ranked_plans: Vec<PhysicalCompressionPlan>,
     /// Plans that survived analytical pruning and entered stage-one verification.
     pub top_k_plans: Vec<PhysicalCompressionPlan>,
+    /// Complete ranking after stage-one sample verification.
+    pub stage_one_ranked_plans: Vec<PhysicalCompressionPlan>,
     /// Plans selected for the larger second-stage verifier.
     pub second_stage_plans: Vec<PhysicalCompressionPlan>,
-    /// Complete final ranking after rank-only sample verification.
+    /// Complete post-sampling ranking before quality-envelope filtering.
     pub final_ranked_plans: Vec<PhysicalCompressionPlan>,
+    /// Plans admitted by the profile-specific quality envelope.
+    pub quality_qualified_plans: Vec<PhysicalCompressionPlan>,
 }
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3-buildfix5 keeps `full_trial_encodes == 0` while making sampling ranking-only.
-/// Adaptive Top-K and semantic-family anchors define the quality-preserving pool; sampling
-/// refines scores but never removes a stage-one survivor. Confidence-weighted blending gives
-/// full-block analytical statistics more authority, especially for LZ and DENSE.
+/// ACE 0.3-buildfix6 keeps `full_trial_encodes == 0`, keeps sampling ranking-only, and adds a profile-aware quality envelope before final scalar-cost selection.
+/// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
+/// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
+/// blended compressed size, then the cost model selects the cheapest quality-safe plan.
 pub fn evaluate_candidates_v3(
     input: &[u8],
     profile: &ace_core::BlockProfile,
@@ -182,11 +200,20 @@ pub fn evaluate_candidates_v3(
                 estimated_candidates: 0,
                 sampled_candidates: 0,
                 second_stage_candidates: 0,
+                quality_qualified_candidates: 1,
+                best_blended_size_bytes: 0,
+                quality_limit_bytes: 0,
+                selected_blended_size_bytes: 0,
+                selected_size_rank: 1,
+                selected_cost_rank: 1,
                 full_trial_encodes: 0,
             },
+            analytical_ranked_plans: vec![plan.clone()],
             top_k_plans: Vec::new(),
+            stage_one_ranked_plans: vec![plan.clone()],
             second_stage_plans: Vec::new(),
             final_ranked_plans: vec![plan.clone()],
+            quality_qualified_plans: vec![plan.clone()],
         });
     }
     if candidates.is_empty() {
@@ -199,6 +226,10 @@ pub fn evaluate_candidates_v3(
         .map(|candidate| estimator.estimate(candidate, profile, config.profile))
         .collect::<Vec<_>>();
     estimated.sort_by(estimated_order);
+    let analytical_ranked_plans = estimated
+        .iter()
+        .map(|candidate| candidate.plan.clone())
+        .collect::<Vec<_>>();
 
     let policy = SamplePolicy::for_profile(config.profile);
     let confidence = estimated.first().map(|c| c.confidence).unwrap_or(0.0);
@@ -223,6 +254,10 @@ pub fn evaluate_candidates_v3(
     }
     apply_entropy_policy_estimates(&mut stage_one, config.profile);
     stage_one.sort_by(estimated_order);
+    let stage_one_ranked_plans = stage_one
+        .iter()
+        .map(|candidate| candidate.plan.clone())
+        .collect::<Vec<_>>();
 
     let stage_two_k =
         adaptive_second_stage_k(&stage_one, config.profile, policy.second_stage_top_k);
@@ -256,11 +291,50 @@ pub fn evaluate_candidates_v3(
 
     let final_ranked_plans = final_pool
         .iter()
-        .map(|c| c.plan.clone())
+        .map(|candidate| candidate.plan.clone())
         .collect::<Vec<_>>();
-    let selected_candidate = final_pool.into_iter().next().ok_or(AceError::Malformed(
-        "sample verifier produced no candidates",
+    let envelope = ace_cost::QualityEnvelope::for_profile(config.profile);
+    let best_blended_size_bytes = final_pool
+        .iter()
+        .map(|candidate| candidate.blended_size_bytes)
+        .min()
+        .ok_or(AceError::Malformed(
+            "sample verifier produced no candidates",
+        ))?;
+    let quality_limit_bytes = envelope.limit_bytes(best_blended_size_bytes);
+    let mut qualified = envelope.qualify(&final_pool);
+    if qualified.is_empty() {
+        return Err(AceError::Malformed(
+            "quality envelope produced no candidates",
+        ));
+    }
+    qualified.sort_by(estimated_order);
+    let quality_qualified_plans = qualified
+        .iter()
+        .map(|candidate| candidate.plan.clone())
+        .collect::<Vec<_>>();
+    let selected_candidate = qualified.first().cloned().ok_or(AceError::Malformed(
+        "quality envelope produced no selected candidate",
     ))?;
+
+    let selected_cost_rank = final_pool
+        .iter()
+        .position(|candidate| same_plan_semantics(&candidate.plan, &selected_candidate.plan))
+        .map(|idx| idx + 1)
+        .unwrap_or(1);
+    let mut size_ranked = final_pool.clone();
+    size_ranked.sort_by(|a, b| {
+        a.blended_size_bytes
+            .cmp(&b.blended_size_bytes)
+            .then_with(|| stable_plan_key(&a.plan).cmp(&stable_plan_key(&b.plan)))
+    });
+    let selected_size_rank = size_ranked
+        .iter()
+        .position(|candidate| same_plan_semantics(&candidate.plan, &selected_candidate.plan))
+        .map(|idx| idx + 1)
+        .unwrap_or(1);
+
+    let selected_blended_size_bytes = selected_candidate.blended_size_bytes;
     let mut selected = selected_candidate.plan;
     selected.cost = selected_candidate.cost;
     selected.score = selected_candidate.score;
@@ -272,11 +346,20 @@ pub fn evaluate_candidates_v3(
             estimated_candidates: candidates.len(),
             sampled_candidates: top_k_plans.len(),
             second_stage_candidates: second_stage_plans.len(),
+            quality_qualified_candidates: quality_qualified_plans.len(),
+            best_blended_size_bytes,
+            quality_limit_bytes,
+            selected_blended_size_bytes,
+            selected_size_rank,
+            selected_cost_rank,
             full_trial_encodes: 0,
         },
+        analytical_ranked_plans,
         top_k_plans,
+        stage_one_ranked_plans,
         second_stage_plans,
         final_ranked_plans,
+        quality_qualified_plans,
     })
 }
 
@@ -353,7 +436,7 @@ fn semantic_family_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8) {
     (transforms, plan.decoding.codec as u8, lz)
 }
 
-/// Applies codec-specific sample verification and projects sample payload to the complete block.
+/// Applies codec-specific sample verification while retaining analytical, sampled and blended size diagnostics.
 fn verify_candidate_samples(
     input: &[u8],
     mut candidate: ace_cost::EstimatedCandidate,
@@ -368,7 +451,7 @@ fn verify_candidate_samples(
         return Ok(candidate);
     }
 
-    let analytical_size = candidate.cost.predicted_size_bytes;
+    let analytical_size = candidate.analytical_size_bytes;
     let mut sample_input = 0usize;
     let mut sample_payload = 0usize;
     let mut metadata_once = 0usize;
@@ -396,6 +479,8 @@ fn verify_candidate_samples(
             .saturating_add((analytical_size as u128).saturating_mul(analytical_weight as u128))
             / 100u128)
             .min(u64::MAX as u128) as u64;
+        candidate.sampled_size_bytes = Some(sample_projected);
+        candidate.blended_size_bytes = blended;
         candidate.cost.predicted_size_bytes = blended;
         candidate.cost.metadata_bytes = metadata_once as u64;
         candidate.score = model.score(profile, candidate.cost, input.len());

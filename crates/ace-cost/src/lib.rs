@@ -1,9 +1,9 @@
 //! Deterministic candidate-size and resource estimators used by the ACE 0.3 planner.
 //!
-//! ACE 0.3-buildfix5 keeps the cheap analytical estimator introduced in 0.3, but
-//! adds profile-aware adaptive Top-K sizing and codec-specific deterministic sample
-//! windows.  LZ candidates are verified with larger stratified windows because tiny
-//! samples systematically under-represent long-range matchability.
+//! ACE 0.3-buildfix6 keeps the cheap analytical estimator introduced in 0.3 and adds
+//! an explicit quality envelope before final scalar-cost selection. Candidate estimates retain
+//! analytical, sampled and blended size components so planner diagnostics can distinguish
+//! estimation error from an intentional CPU/ratio trade-off.
 
 use ace_core::{
     BlockProfile, CodecId, CompressionProfile, CostWeights, EntropyCodecId, LzMode,
@@ -11,12 +11,22 @@ use ace_core::{
 };
 use std::ops::Range;
 
+pub mod quality;
+pub use quality::QualityEnvelope;
+
 /// Cheap deterministic estimate of one candidate compression plan.
 #[derive(Debug, Clone)]
 pub struct EstimatedCandidate {
     /// Candidate plan to which the estimate belongs.
     pub plan: PhysicalCompressionPlan,
-    /// Estimated multidimensional resource cost.
+    /// Full-block analytical size predicted before any sample encoding.
+    pub analytical_size_bytes: u64,
+    /// Most recent full-block size projection derived from deterministic sample encoding.
+    pub sampled_size_bytes: Option<u64>,
+    /// Size estimate used for quality qualification after analytical/sample blending.
+    pub blended_size_bytes: u64,
+    /// Estimated multidimensional resource cost. Its `predicted_size_bytes` mirrors
+    /// `blended_size_bytes` so existing cost-model code remains compatible.
     pub cost: PlanCost,
     /// Scalar cost used only for deterministic ranking; lower is better.
     pub score: u128,
@@ -35,7 +45,7 @@ pub trait CandidateEstimator: Send + Sync {
     ) -> EstimatedCandidate;
 }
 
-/// Default analytical estimator used by ACE 0.3-buildfix5.
+/// Default analytical estimator used by ACE 0.3-buildfix6.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultCandidateEstimator;
 
@@ -144,6 +154,9 @@ impl CandidateEstimator for DefaultCandidateEstimator {
         let score = CostModelV3.score(compression_profile, cost, p.size);
         EstimatedCandidate {
             plan: candidate.clone(),
+            analytical_size_bytes: predicted_size,
+            sampled_size_bytes: None,
+            blended_size_bytes: predicted_size,
             cost,
             score,
             confidence,

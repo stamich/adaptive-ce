@@ -213,7 +213,23 @@ fn explain_command(input: &str, profile: CompressionProfile) -> Result<()> {
             let score = display_score(candidate.score);
             println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason);
         }
-        println!("  selected {:?}/{:?} transforms={:?} fast_path={} estimated={} sampled={} stage2={} full_trials={}\n", explanation.selected.decoding.codec, explanation.selected.decoding.entropy, explanation.selected.decoding.transforms, explanation.telemetry.fast_path_hit, explanation.telemetry.estimated_candidates, explanation.telemetry.sampled_candidates, explanation.telemetry.second_stage_candidates, explanation.telemetry.full_trial_encodes);
+        println!(
+            "  selected {:?}/{:?} transforms={:?} fast_path={} estimated={} sampled={} stage2={} quality={} best_blended={} quality_limit={} selected_blended={} size_rank={} cost_rank={} full_trials={}\n",
+            explanation.selected.decoding.codec,
+            explanation.selected.decoding.entropy,
+            explanation.selected.decoding.transforms,
+            explanation.telemetry.fast_path_hit,
+            explanation.telemetry.estimated_candidates,
+            explanation.telemetry.sampled_candidates,
+            explanation.telemetry.second_stage_candidates,
+            explanation.telemetry.quality_qualified_candidates,
+            explanation.telemetry.best_blended_size_bytes,
+            explanation.telemetry.quality_limit_bytes,
+            explanation.telemetry.selected_blended_size_bytes,
+            explanation.telemetry.selected_size_rank,
+            explanation.telemetry.selected_cost_rank,
+            explanation.telemetry.full_trial_encodes,
+        );
     }
     Ok(())
 }
