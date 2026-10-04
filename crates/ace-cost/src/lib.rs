@@ -49,12 +49,7 @@ impl CandidateEstimator for DefaultCandidateEstimator {
         let mut primary_ratio = 1.0f64;
         let mut confidence = 0.78f32;
 
-        if candidate
-            .decoding
-            .transforms
-            .iter()
-            .any(|t| matches!(t, TransformId::DeltaByte))
-        {
+        if candidate.decoding.transforms.iter().any(|t| matches!(t, TransformId::DeltaByte)) {
             let gain = (p.delta_score as f64).clamp(0.0, 0.85);
             primary_ratio *= 1.0 - gain * 0.55;
             confidence = confidence.max((0.60 + p.delta_score * 0.35).clamp(0.0, 0.98));
@@ -65,8 +60,7 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             CodecId::Rle => {
                 let structural = p.run_score.max(p.zero_ratio).clamp(0.0, 1.0) as f64;
                 primary_ratio *= (1.0 - structural * 0.90).clamp(0.015, 1.05);
-                confidence =
-                    confidence.max((0.62 + p.run_score.max(p.zero_ratio) * 0.36).clamp(0.0, 0.99));
+                confidence = confidence.max((0.62 + p.run_score.max(p.zero_ratio) * 0.36).clamp(0.0, 0.99));
             }
             CodecId::Lz => {
                 let repetition = p.repetition_score.clamp(0.0, 1.0) as f64;
@@ -98,8 +92,7 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             EntropyCodecId::Rans => 516u64,
             EntropyCodecId::Rans4x => 2064u64,
         };
-        let predicted_size =
-            (input * primary_ratio * entropy_factor).round().max(1.0) as u64 + metadata;
+        let predicted_size = (input * primary_ratio * entropy_factor).round().max(1.0) as u64 + metadata;
 
         let codec_encode = match (candidate.decoding.codec, candidate.lz_mode) {
             (CodecId::Raw, _) => 1u64,
@@ -131,19 +124,10 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             metadata_bytes: metadata,
             encode_units: n.saturating_mul(codec_encode + entropy_encode + transform),
             decode_units: n.saturating_mul(codec_decode + entropy_decode + transform),
-            memory_bytes: n.saturating_mul(if matches!(candidate.decoding.codec, CodecId::Lz) {
-                3
-            } else {
-                2
-            }),
+            memory_bytes: n.saturating_mul(if matches!(candidate.decoding.codec, CodecId::Lz) { 3 } else { 2 }),
         };
         let score = CostModelV3.score(compression_profile, cost, p.size);
-        EstimatedCandidate {
-            plan: candidate.clone(),
-            cost,
-            score,
-            confidence,
-        }
+        EstimatedCandidate { plan: candidate.clone(), cost, score, confidence }
     }
 }
 
@@ -165,23 +149,10 @@ impl CostModelV3 {
             CompressionProfile::Balanced => (3_500u128, 1_300u128),
             CompressionProfile::Dense => (550u128, 300u128),
         };
-        size_ppm
-            .saturating_mul(weights.size as u128)
-            .saturating_add(
-                encode_per_byte
-                    .saturating_mul(encode_scale)
-                    .saturating_mul(weights.encode_cpu as u128),
-            )
-            .saturating_add(
-                decode_per_byte
-                    .saturating_mul(decode_scale)
-                    .saturating_mul(weights.decode_cpu as u128),
-            )
-            .saturating_add(
-                memory_per_byte
-                    .saturating_mul(1_000)
-                    .saturating_mul(weights.memory as u128),
-            )
+        size_ppm.saturating_mul(weights.size as u128)
+            .saturating_add(encode_per_byte.saturating_mul(encode_scale).saturating_mul(weights.encode_cpu as u128))
+            .saturating_add(decode_per_byte.saturating_mul(decode_scale).saturating_mul(weights.decode_cpu as u128))
+            .saturating_add(memory_per_byte.saturating_mul(1_000).saturating_mul(weights.memory as u128))
     }
 }
 
@@ -200,48 +171,25 @@ impl SamplePolicy {
     /// Returns the default sampling budget for a public compression profile.
     pub fn for_profile(profile: CompressionProfile) -> Self {
         match profile {
-            CompressionProfile::Fast => Self {
-                sample_bytes: 4 * 1024,
-                sample_count: 1,
-                top_k: 1,
-            },
-            CompressionProfile::Balanced => Self {
-                sample_bytes: 4 * 1024,
-                sample_count: 2,
-                top_k: 2,
-            },
-            CompressionProfile::Dense => Self {
-                sample_bytes: 8 * 1024,
-                sample_count: 3,
-                top_k: 3,
-            },
+            CompressionProfile::Fast => Self { sample_bytes: 4 * 1024, sample_count: 1, top_k: 1 },
+            CompressionProfile::Balanced => Self { sample_bytes: 4 * 1024, sample_count: 2, top_k: 2 },
+            CompressionProfile::Dense => Self { sample_bytes: 8 * 1024, sample_count: 3, top_k: 3 },
         }
     }
 }
 
 /// Returns stable, non-random sample ranges for a block.
-pub fn deterministic_sample_ranges(
-    len: usize,
-    policy: SamplePolicy,
-) -> Vec<std::ops::Range<usize>> {
-    if len == 0 || policy.sample_count == 0 {
-        return Vec::new();
-    }
+pub fn deterministic_sample_ranges(len: usize, policy: SamplePolicy) -> Vec<std::ops::Range<usize>> {
+    if len == 0 || policy.sample_count == 0 { return Vec::new(); }
     let width = policy.sample_bytes.min(len);
-    if width == len {
-        return vec![0..len];
-    }
+    if width == len { return vec![0..len]; }
     let max_start = len - width;
     let starts = match policy.sample_count {
         1 => vec![max_start / 2],
         2 => vec![0, max_start],
         _ => vec![0, max_start / 2, max_start],
     };
-    starts
-        .into_iter()
-        .take(policy.sample_count)
-        .map(|s| s..s + width)
-        .collect()
+    starts.into_iter().take(policy.sample_count).map(|s| s..s + width).collect()
 }
 
 #[cfg(test)]
@@ -251,14 +199,7 @@ mod tests {
     /// Ensures sampling never depends on randomness or process state.
     #[test]
     fn sample_ranges_are_stable() {
-        let p = SamplePolicy {
-            sample_bytes: 16,
-            sample_count: 3,
-            top_k: 2,
-        };
-        assert_eq!(
-            deterministic_sample_ranges(100, p),
-            vec![0..16, 42..58, 84..100]
-        );
+        let p = SamplePolicy { sample_bytes: 16, sample_count: 3, top_k: 2 };
+        assert_eq!(deterministic_sample_ranges(100, p), vec![0..16, 42..58, 84..100]);
     }
 }

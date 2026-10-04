@@ -17,9 +17,7 @@ pub enum SimdBackend {
 pub fn selected_backend() -> SimdBackend {
     #[cfg(target_arch = "x86_64")]
     {
-        if std::arch::is_x86_feature_detected!("avx2") {
-            return SimdBackend::Avx2;
-        }
+        if std::arch::is_x86_feature_detected!("avx2") { return SimdBackend::Avx2; }
     }
     SimdBackend::Scalar
 }
@@ -84,12 +82,7 @@ unsafe fn common_prefix_len_avx2(left: &[u8], right: &[u8], limit: usize) -> usi
         }
         offset += 32;
     }
-    offset
-        + left[offset..limit]
-            .iter()
-            .zip(&right[offset..limit])
-            .take_while(|(a, b)| a == b)
-            .count()
+    offset + left[offset..limit].iter().zip(&right[offset..limit]).take_while(|(a, b)| a == b).count()
 }
 
 #[cfg(test)]

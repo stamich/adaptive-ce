@@ -49,11 +49,7 @@ pub struct CompressionStats {
 impl CompressionStats {
     /// Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced.
     pub fn compression_ratio(&self) -> f64 {
-        if self.output_bytes == 0 {
-            1.0
-        } else {
-            self.input_bytes as f64 / self.output_bytes as f64
-        }
+        if self.output_bytes == 0 { 1.0 } else { self.input_bytes as f64 / self.output_bytes as f64 }
     }
 
     /// Increments the stable counter associated with one selected physical plan.

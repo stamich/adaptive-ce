@@ -13,23 +13,12 @@ impl EntropySelectionPolicy {
     /// Returns the calibrated policy for one public compression profile.
     pub fn for_profile(profile: CompressionProfile) -> Self {
         match profile {
-            CompressionProfile::Fast => Self {
-                min_rans_input_size: 16 * 1024,
-                min_rans_gain_fraction: 0.05,
-            },
-            CompressionProfile::Balanced => Self {
-                min_rans_input_size: 4 * 1024,
-                min_rans_gain_fraction: 0.02,
-            },
-            CompressionProfile::Dense => Self {
-                min_rans_input_size: 1024,
-                min_rans_gain_fraction: 0.0,
-            },
+            CompressionProfile::Fast => Self { min_rans_input_size: 16 * 1024, min_rans_gain_fraction: 0.05 },
+            CompressionProfile::Balanced => Self { min_rans_input_size: 4 * 1024, min_rans_gain_fraction: 0.02 },
+            CompressionProfile::Dense => Self { min_rans_input_size: 1024, min_rans_gain_fraction: 0.0 },
         }
     }
 
     /// Returns true when the input is large enough to amortize scalar rANS metadata/setup costs.
-    pub fn input_allows_rans(&self, input_size: usize) -> bool {
-        input_size >= self.min_rans_input_size
-    }
+    pub fn input_allows_rans(&self, input_size: usize) -> bool { input_size >= self.min_rans_input_size }
 }
