@@ -6,9 +6,9 @@ use ace_core::{AceConfig, CompressionProfile};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use ace_format::AceReader;
 
-/// Command-line interface for Adaptive Compression Engine milestone 0.2.
+/// Command-line interface for Adaptive Compression Engine milestone 0.2.1-buildfix1.
 #[derive(Debug, Parser)]
-#[command(name = "ace", version, about = "Adaptive Compression Engine 0.2")]
+#[command(name = "ace", version, about = "Adaptive Compression Engine 0.2.1-buildfix1")]
 struct Cli {
     /// ACE operation to execute.
     #[command(subcommand)]
@@ -66,7 +66,7 @@ fn compress_command(input: &str, output: &str, threads: usize, profile: Compress
     let engine = AceEngine::new(config)?;
     let (encoded, stats) = engine.compress_with_stats(&data)?;
     fs::write(output, encoded).with_context(|| format!("writing {output}"))?;
-    println!("ACE 0.2 compressed {} -> {} bytes ratio={:.3} blocks={} rANS={} Huffman={}", stats.input_bytes, stats.output_bytes, stats.compression_ratio(), stats.block_count, stats.rans_blocks, stats.huffman_blocks);
+    println!("ACE 0.2.1-buildfix1 compressed {} -> {} bytes ratio={:.3} blocks={} rANS={} Huffman={}", stats.input_bytes, stats.output_bytes, stats.compression_ratio(), stats.block_count, stats.rans_blocks, stats.huffman_blocks);
     Ok(())
 }
 
@@ -101,7 +101,7 @@ fn explain_command(input: &str, profile: CompressionProfile) -> Result<()> {
     let engine = AceEngine::new(config)?;
     for explanation in engine.explain(&data)? {
         println!("block {} size={} H0={:.3} H1={:.3} run={:.3} delta={:.3} repeat={:.3}", explanation.block_id, explanation.profile.size, explanation.profile.entropy_h0, explanation.profile.entropy_h1, explanation.profile.run_score, explanation.profile.delta_score, explanation.profile.repetition_score);
-        for candidate in &explanation.candidates { println!("  candidate {:?}/{:?} transforms={:?} score={} predicted={} reason={}", candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, candidate.score, candidate.cost.predicted_size_bytes, candidate.reason); }
+        for candidate in &explanation.candidates { println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, candidate.score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason); }
         println!("  selected {:?}/{:?} transforms={:?}\n", explanation.selected.decoding.codec, explanation.selected.decoding.entropy, explanation.selected.decoding.transforms);
     }
     Ok(())
@@ -136,8 +136,9 @@ fn read_range_command(input: &str, offset: u64, length: u64, output: &str) -> Re
     let end = offset.checked_add(length).context("range overflow")?;
     let file = fs::File::open(input).with_context(|| format!("opening {input}"))?;
     let mut decoder = AceIndexedDecoder::open(file, ace_core::DecodeLimits::default())?;
+    let metrics = decoder.range_metrics(offset..end)?;
     let bytes = decoder.read_range(offset..end)?;
     fs::write(output, &bytes).with_context(|| format!("writing {output}"))?;
-    println!("decoded logical range [{offset}, {end}): {} bytes", bytes.len());
+    println!("decoded logical range [{offset}, {end}): {} bytes physical={} blocks={} overread={:.3}", bytes.len(), metrics.physical_bytes_read, metrics.blocks_touched, metrics.overread_ratio());
     Ok(())
 }
