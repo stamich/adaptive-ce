@@ -1,4 +1,4 @@
-# Planner hardening in ACE 0.2.1-buildfix1
+# Planner hardening in ACE 0.3
 
 The failed 0.2.1 benchmark exposed two separate problems: candidate recall remained below the 0.95 release target while FAST throughput regressed because the score's raw byte-size term dominated already-normalized CPU terms.
 
