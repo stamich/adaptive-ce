@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3-buildfix4 - 2026-09-12
+
+### Fixed
+- Changed Planner V3.2 stage-two sample verification from elimination to ranking-only refinement.
+- Kept all stage-one survivors eligible for final selection, fixing the 0.50 sample-verifier recall observed in buildfix3.
+- Rebalanced sample/full-block analytical evidence with deterministic confidence-weighted blending.
+- Increased analytical authority for LZ and DENSE to avoid short-window bias.
+
+### Added
+- Complete final planner ranking in diagnostics.
+- Oracle rank before and after sampling.
+- Oracle Top-1/Top-2/Top-3 rates after sampling.
+- Sample-survival recall release metric.
+- Planner V3.2 tests for blend-weight invariants.
+
+### Regression policy
+- Dense ratio remains >= 99.5% of the 0.2.1-buildfix1 quality baseline.
+- DENSE throughput target is >= 3.5x baseline; FAST remains >= 2x and BALANCED >= 4x.
+- Full trial encodes remain exactly zero.
+
 ## 0.3-buildfix3 - 2026-09-12
 
 ### Fixed

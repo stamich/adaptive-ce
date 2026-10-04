@@ -81,10 +81,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let document = BenchmarkDocument {
             schema_version: "1.2",
             project: "ace",
-            milestone: "0.3-buildfix3",
-            base: "0.2.1-buildfix1",
+            milestone: "0.3-buildfix4",
+            base: "0.3-buildfix3",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3-buildfix3",
+            benchmark_contract_origin: "ace-0.3-buildfix4",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: json!({
@@ -138,7 +138,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3-buildfix3-{family}.json"))
+        .join(format!("0.3-buildfix4-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -325,6 +325,12 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut sampled_recall = 0u64;
     let mut sampled_eligible = 0u64;
     let mut final_selection_recall = 0u64;
+    let mut oracle_top1_after = 0u64;
+    let mut oracle_top2_after = 0u64;
+    let mut oracle_top3_after = 0u64;
+    let mut oracle_rank_before_sum = 0u64;
+    let mut oracle_rank_after_sum = 0u64;
+    let mut oracle_rank_eligible = 0u64;
     let mut fast_paths = 0u64;
     let mut estimated_total = 0u64;
     let mut sampled_total = 0u64;
@@ -367,11 +373,45 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             same_plan(&decision.plan, &oracle.1)
         } else {
             decision
-                .second_stage_plans
+                .final_ranked_plans
                 .iter()
                 .any(|p| same_plan(p, &oracle.1))
         };
         let final_hit = same_plan(&decision.plan, &oracle.1);
+        let oracle_rank_before = if decision.telemetry.fast_path_hit {
+            if final_hit {
+                Some(1usize)
+            } else {
+                None
+            }
+        } else {
+            decision
+                .top_k_plans
+                .iter()
+                .position(|p| same_plan(p, &oracle.1))
+                .map(|i| i + 1)
+        };
+        let oracle_rank_after = if decision.telemetry.fast_path_hit {
+            if final_hit {
+                Some(1usize)
+            } else {
+                None
+            }
+        } else {
+            decision
+                .final_ranked_plans
+                .iter()
+                .position(|p| same_plan(p, &oracle.1))
+                .map(|i| i + 1)
+        };
+        if let (Some(before), Some(after)) = (oracle_rank_before, oracle_rank_after) {
+            oracle_rank_eligible += 1;
+            oracle_rank_before_sum += before as u64;
+            oracle_rank_after_sum += after as u64;
+            oracle_top1_after += (after <= 1) as u64;
+            oracle_top2_after += (after <= 2) as u64;
+            oracle_top3_after += (after <= 3) as u64;
+        }
 
         generated_recall += generated_hit as u64;
         if !decision.telemetry.fast_path_hit {
@@ -405,6 +445,8 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             "top_k_applied":!decision.telemetry.fast_path_hit,
             "top_k_oracle":top_k_hit,
             "sampled_oracle":sampled_hit,
+            "oracle_rank_before_sampling":oracle_rank_before,
+            "oracle_rank_after_sampling":oracle_rank_after,
             "selected_is_oracle":final_hit,
             "top_k_count":decision.telemetry.sampled_candidates,
             "second_stage_count":decision.telemetry.second_stage_candidates,
@@ -472,7 +514,7 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 
     Ok(vec![json!({
         "workload_id":"mixed_8m",
-        "path":"planner_v3_1_adaptive_topk_two_stage",
+        "path":"planner_v3_2_rank_only_confidence_blend",
         "blocks":blocks.len(),
         "oracle_regret_bytes":regret,
         "normalized_regret_bytes_per_block":regret as f64/block_count,
@@ -482,8 +524,14 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         "top_k_recall":if top_k_eligible==0 {1.0} else {top_k_recall as f64/top_k_eligible as f64},
         "top_k_recall_denominator_blocks":top_k_eligible,
         "sample_verifier_recall":if sampled_eligible==0 {1.0} else {sampled_recall as f64/sampled_eligible as f64},
+        "sample_survival_recall":if sampled_eligible==0 {1.0} else {sampled_recall as f64/sampled_eligible as f64},
         "sample_verifier_recall_denominator_blocks":sampled_eligible,
         "final_selection_recall":final_selection_recall as f64/block_count,
+        "oracle_mean_rank_before_sampling":if oracle_rank_eligible==0 {0.0} else {oracle_rank_before_sum as f64/oracle_rank_eligible as f64},
+        "oracle_mean_rank_after_sampling":if oracle_rank_eligible==0 {0.0} else {oracle_rank_after_sum as f64/oracle_rank_eligible as f64},
+        "oracle_top1_rate_after_sampling":if oracle_rank_eligible==0 {1.0} else {oracle_top1_after as f64/oracle_rank_eligible as f64},
+        "oracle_top2_rate_after_sampling":if oracle_rank_eligible==0 {1.0} else {oracle_top2_after as f64/oracle_rank_eligible as f64},
+        "oracle_top3_rate_after_sampling":if oracle_rank_eligible==0 {1.0} else {oracle_top3_after as f64/oracle_rank_eligible as f64},
         "candidate_recall_by_class":by_class,
         "fast_path_rate":fast_paths as f64/block_count,
         "estimated_candidates_per_block":estimated_total as f64/block_count,

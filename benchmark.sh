@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 family="${1:-all}"
-version="0.3-buildfix3"
+version="0.3-buildfix4"
 mkdir -p examples/results
 cargo run --release -p ace-benchmark-0-3 -- "$family"
 if [[ "$family" == "all" ]]; then

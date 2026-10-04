@@ -142,7 +142,7 @@ pub struct PlannerTelemetry {
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the ACE 0.3-buildfix3 planner hot path.
+/// Result returned by the ACE 0.3-buildfix4 Planner V3.2 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
@@ -151,16 +151,18 @@ pub struct PlannerDecision {
     pub telemetry: PlannerTelemetry,
     /// Plans that survived analytical pruning and entered stage-one verification.
     pub top_k_plans: Vec<PhysicalCompressionPlan>,
-    /// Plans that survived stage one and entered the larger second-stage verifier.
+    /// Plans selected for the larger second-stage verifier.
     pub second_stage_plans: Vec<PhysicalCompressionPlan>,
+    /// Complete final ranking after rank-only sample verification.
+    pub final_ranked_plans: Vec<PhysicalCompressionPlan>,
 }
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3-buildfix3 keeps `full_trial_encodes == 0`. It fixes the quality regression from
-/// 0.3 by using adaptive Top-K, semantic-family anchors, codec-specific stratified samples,
-/// and a larger second verifier stage. Sample metadata is counted once per projected block;
-/// only payload bytes are scaled to full-block size.
+/// ACE 0.3-buildfix4 keeps `full_trial_encodes == 0` while making sampling ranking-only.
+/// Adaptive Top-K and semantic-family anchors define the quality-preserving pool; sampling
+/// refines scores but never removes a stage-one survivor. Confidence-weighted blending gives
+/// full-block analytical statistics more authority, especially for LZ and DENSE.
 pub fn evaluate_candidates_v3(
     input: &[u8],
     profile: &ace_core::BlockProfile,
@@ -174,7 +176,7 @@ pub fn evaluate_candidates_v3(
 
     if let Some(plan) = DefaultPlannerFastPath.try_plan(profile, config) {
         return Ok(PlannerDecision {
-            plan,
+            plan: plan.clone(),
             telemetry: PlannerTelemetry {
                 fast_path_hit: true,
                 estimated_candidates: 0,
@@ -184,6 +186,7 @@ pub fn evaluate_candidates_v3(
             },
             top_k_plans: Vec::new(),
             second_stage_plans: Vec::new(),
+            final_ranked_plans: vec![plan.clone()],
         });
     }
     if candidates.is_empty() {
@@ -223,26 +226,39 @@ pub fn evaluate_candidates_v3(
 
     let stage_two_k =
         adaptive_second_stage_k(&stage_one, config.profile, policy.second_stage_top_k);
-    let stage_two_input = stage_one.into_iter().take(stage_two_k).collect::<Vec<_>>();
-    let second_stage_plans = stage_two_input
+    let second_stage_plans = stage_one
+        .iter()
+        .take(stage_two_k)
+        .map(|c| c.plan.clone())
+        .collect::<Vec<_>>();
+
+    // Planner V3.2 is ranking-only: stage two may refine a candidate's score, but it does not
+    // remove candidates that survived stage one. This preserves Top-K quality while retaining
+    // zero full-block trial encodes. Candidates outside the stage-two budget keep their stage-one
+    // score and remain eligible for the final deterministic ranking.
+    let mut final_pool = Vec::with_capacity(stage_one.len());
+    for (idx, candidate) in stage_one.into_iter().enumerate() {
+        if idx < stage_two_k {
+            final_pool.push(verify_candidate_samples(
+                input,
+                candidate,
+                config.profile,
+                policy,
+                2,
+                &model,
+            )?);
+        } else {
+            final_pool.push(candidate);
+        }
+    }
+    apply_entropy_policy_estimates(&mut final_pool, config.profile);
+    final_pool.sort_by(estimated_order);
+
+    let final_ranked_plans = final_pool
         .iter()
         .map(|c| c.plan.clone())
         .collect::<Vec<_>>();
-    let mut stage_two = Vec::with_capacity(stage_two_input.len());
-    for candidate in stage_two_input {
-        stage_two.push(verify_candidate_samples(
-            input,
-            candidate,
-            config.profile,
-            policy,
-            2,
-            &model,
-        )?);
-    }
-    apply_entropy_policy_estimates(&mut stage_two, config.profile);
-    stage_two.sort_by(estimated_order);
-
-    let selected_candidate = stage_two.into_iter().next().ok_or(AceError::Malformed(
+    let selected_candidate = final_pool.into_iter().next().ok_or(AceError::Malformed(
         "sample verifier produced no candidates",
     ))?;
     let mut selected = selected_candidate.plan;
@@ -260,6 +276,7 @@ pub fn evaluate_candidates_v3(
         },
         top_k_plans,
         second_stage_plans,
+        final_ranked_plans,
     })
 }
 
@@ -368,12 +385,12 @@ fn verify_candidate_samples(
             / sample_input as u128)
             .min(u64::MAX as u128) as u64;
         let sample_projected = projected_payload.saturating_add(metadata_once as u64);
-        let (sample_weight, analytical_weight) = match (candidate.plan.decoding.codec, stage) {
-            (CodecId::Lz, 1) => (55u64, 45u64),
-            (CodecId::Lz, _) => (72u64, 28u64),
-            (_, 1) => (88u64, 12u64),
-            (_, _) => (96u64, 4u64),
-        };
+        let (sample_weight, analytical_weight) = verification_blend_weights(
+            candidate.plan.decoding.codec,
+            candidate.confidence,
+            stage,
+            profile,
+        );
         let blended = ((sample_projected as u128)
             .saturating_mul(sample_weight as u128)
             .saturating_add((analytical_size as u128).saturating_mul(analytical_weight as u128))
@@ -384,6 +401,53 @@ fn verify_candidate_samples(
         candidate.score = model.score(profile, candidate.cost, input.len());
     }
     Ok(candidate)
+}
+
+/// Returns deterministic sample/analytical blending weights for Planner V3.2.
+///
+/// High-confidence analytical estimates retain most of the authority. LZ always receives a
+/// stronger analytical weight because short windows cannot faithfully reproduce long-range
+/// match opportunities. DENSE is intentionally conservative: sampling refines ranking rather
+/// than replacing full-block statistics.
+fn verification_blend_weights(
+    codec: CodecId,
+    confidence: f32,
+    stage: u8,
+    profile: CompressionProfile,
+) -> (u64, u64) {
+    let high = confidence >= 0.90;
+    let medium = confidence >= 0.75;
+    let sample = match codec {
+        CodecId::Lz => {
+            if high {
+                20
+            } else if medium {
+                25
+            } else {
+                30
+            }
+        }
+        _ => {
+            if high {
+                25
+            } else if medium {
+                40
+            } else {
+                55
+            }
+        }
+    };
+    let stage_adjusted = if stage >= 2 {
+        sample.saturating_add(5).min(60)
+    } else {
+        sample
+    };
+    let profile_adjusted = match profile {
+        CompressionProfile::Dense => stage_adjusted.saturating_sub(5),
+        CompressionProfile::Balanced => stage_adjusted,
+        CompressionProfile::Fast => stage_adjusted.saturating_add(5).min(65),
+    };
+    (profile_adjusted, 100 - profile_adjusted)
 }
 
 /// Chooses the stage-two width and widens it when the leading estimates remain ambiguous.
@@ -437,5 +501,29 @@ fn apply_entropy_policy_estimates(
                 plan.score = plan.score.saturating_add(u128::MAX / 4);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod buildfix4_tests {
+    use super::*;
+
+    /// Ensures high-confidence LZ verification trusts full-block statistics more than samples.
+    #[test]
+    fn high_confidence_lz_prefers_analytical_weight() {
+        let (sample, analytical) =
+            verification_blend_weights(CodecId::Lz, 0.95, 2, CompressionProfile::Dense);
+        assert!(analytical > sample);
+        assert_eq!(sample + analytical, 100);
+    }
+
+    /// Ensures low-confidence non-LZ verification still keeps analytical evidence in the blend.
+    #[test]
+    fn low_confidence_sampling_never_fully_replaces_estimate() {
+        let (sample, analytical) =
+            verification_blend_weights(CodecId::Raw, 0.40, 2, CompressionProfile::Balanced);
+        assert!(sample < 100);
+        assert!(analytical > 0);
+        assert_eq!(sample + analytical, 100);
     }
 }

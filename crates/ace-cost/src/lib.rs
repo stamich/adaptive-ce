@@ -1,6 +1,6 @@
 //! Deterministic candidate-size and resource estimators used by the ACE 0.3 planner.
 //!
-//! ACE 0.3-buildfix3 keeps the cheap analytical estimator introduced in 0.3, but
+//! ACE 0.3-buildfix4 keeps the cheap analytical estimator introduced in 0.3, but
 //! adds profile-aware adaptive Top-K sizing and codec-specific deterministic sample
 //! windows.  LZ candidates are verified with larger stratified windows because tiny
 //! samples systematically under-represent long-range matchability.
@@ -35,7 +35,7 @@ pub trait CandidateEstimator: Send + Sync {
     ) -> EstimatedCandidate;
 }
 
-/// Default analytical estimator used by ACE 0.3-buildfix3.
+/// Default analytical estimator used by ACE 0.3-buildfix4.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultCandidateEstimator;
 
