@@ -1,128 +1,64 @@
-# Adaptive Compression Engine — ACE 0.3-buildfix6
+# Adaptive Compression Engine — ACE 0.3-buildfix7
 
-ACE 0.3-buildfix6 is a focused Planner V3.3 quality-selection buildfix on top of 0.3-buildfix5.
+ACE 0.3-buildfix7 is an estimator-calibration buildfix on top of 0.3-buildfix6.
 
-The previous build preserved oracle candidates through generation, Top-K and sample verification,
-but final scalar cost ranking could still trade away too much compression ratio for CPU cost.
-Buildfix6 introduces an explicit **QualityEnvelope** before final scalar-cost selection.
+## Why this buildfix exists
+Buildfix6 proved that candidate generation, Top-K and QualityEnvelope were no longer the dominant problem. On numeric blocks the analytical/sample size model still predicted LZ output far too large, and BALANCED/DENSE zero-heavy blocks could bypass better entropy plans through an unconditional RLE fast path.
 
-## Core planner flow
-
-```text
-Analyzer
-  ↓
-CandidateGenerator
-  ↓
-analytical estimate
-  ↓
-adaptive Top-K + semantic anchors
-  ↓
-stage-1 sample refinement
-  ↓
-stage-2 rank-only refinement
-  ↓
-QualityEnvelope (size constraint)
-  ↓
-CostModelV3 chooses cheapest quality-safe plan
-  ↓
-one full encode
-```
-
-## What changed
-
-- new `ace-cost::quality` module with `QualityEnvelope`;
-- `EstimatedCandidate` keeps:
-  - `analytical_size_bytes`,
-  - `sampled_size_bytes`,
-  - `blended_size_bytes`;
-- sample stages no longer overwrite the original analytical prediction;
-- profile quality envelopes:
-  - FAST: +25.0% over best blended size,
-  - BALANCED: +1.5%,
-  - DENSE: +0.3%;
-- final CostModel selection operates only on quality-qualified candidates;
-- deterministic tie-breaking is unchanged;
-- planner telemetry now includes:
-  - quality-qualified candidate count,
-  - best blended size,
-  - quality limit,
-  - selected blended size,
-  - selected size rank,
-  - selected cost rank;
-- planner benchmark now reports oracle rank at analytical, stage-1, post-sampling and final quality-pool stages;
-- `sample_survival_recall` is no longer a release gate because ranking-only sampling preserves candidates by construction;
-- new release gates use oracle Top-2/Top-3 after sampling and explicit BALANCED ratio quality.
+## Main changes
+- LZ Analytical Estimator V2 aligned with the production token format;
+- new analysis features: p95 match length, match coverage and long-match ratio;
+- overlap-aware sampled match extension up to the codec's 130-byte match limit;
+- token-cost model for LZ literals and three-byte match tokens;
+- LZ-specific entropy factor based on token-stream structure instead of original H0 alone;
+- lower reset-window sample authority for LZ;
+- zero-heavy RLE fast path restricted to FAST;
+- BALANCED/DENSE zero-heavy blocks go through the general planner;
+- benchmark schema 1.7 with estimator MAE/MAPE/bias/p95 by plan family and data class;
+- new LZ estimator MAPE release gates.
 
 ## Compatibility
+- milestone: `0.3-buildfix7`
+- workspace: `0.3.7`
+- writer: Format 1.2
+- reader: Format 1.0 / 1.1 / 1.2
+- no wire-format change
 
-- Engine milestone: `0.3-buildfix6`
-- Workspace version: `0.3.6`
-- Writer format: ACE 1.2
-- Reader formats: ACE 1.0, 1.1 and 1.2
-- No wire-format change from 0.3-buildfix5
-
-## Build and test
-
+## Build
 ```bash
 cargo build --workspace --release
 cargo test --workspace
 ```
 
 ## Demo
-
 ```bash
-./demo/run-demo-0.3-buildfix6.sh
+./demo/run-demo-0.3-buildfix7.sh
 ```
 
 ## Benchmarks
-
 ```bash
 ./benchmark.sh all
 ```
 
-Official result files:
+Official files use the `0.3-buildfix7-*.json` prefix.
 
+## Release targets
 ```text
-examples/results/0.3-buildfix6-compression.json
-examples/results/0.3-buildfix6-entropy.json
-examples/results/0.3-buildfix6-planner.json
-examples/results/0.3-buildfix6-parallel.json
-examples/results/0.3-buildfix6-random-access.json
-examples/results/0.3-buildfix6-streaming.json
-examples/results/0.3-buildfix6-memory.json
-examples/results/0.3-buildfix6-regression.json
+generated recall             >= 0.99
+Top-K recall                 >= 0.98
+oracle Top-2 after sample    >= 0.95
+oracle Top-3 after sample    >= 0.99
+quality-pool recall          >= 0.95
+regret                       <= 1024 B/block
+runtime full trials          == 0
+LZ FAST estimator MAPE       <= 0.35
+LZ BALANCED estimator MAPE   <= 0.35
+BALANCED ratio               >= 3.40x
+DENSE ratio                  >= 99.5% hardened baseline
+FAST throughput              >= 2.0x baseline
+BALANCED throughput          >= 4.0x baseline
+DENSE throughput             >= 3.5x baseline
+warm 64 KiB latency          <= 115% baseline
 ```
 
-## Release goals
-
-Planner:
-
-```text
-generated recall           >= 0.99
-Top-K recall               >= 0.98
-oracle Top-2 after sample  >= 0.95
-oracle Top-3 after sample  >= 0.99
-quality-pool recall        >= 0.95
-regret                     <= 1024 B/block
-full trial encodes         == 0
-```
-
-Compression:
-
-```text
-BALANCED ratio             >= 3.40x
-DENSE ratio                >= 99.5% of 0.2.1-buildfix1
-Dense >= Balanced >= Fast
-FAST throughput            >= 2.0x baseline
-BALANCED throughput        >= 4.0x baseline
-DENSE throughput           >= 3.5x baseline
-```
-
-Random access:
-
-```text
-warm 64 KiB latency        <= 115% baseline
-```
-
-See `TASKS-0.3-buildfix6.md`, `MILESTONE-0.3-buildfix6.json`,
-`docs/PLANNER-0.3-BUILDFIX6.md`, and `docs/BENCHMARK-CONTRACT-0.3-BUILDFIX6.md`.
+See `TASKS-0.3-buildfix7.md`, `MILESTONE-0.3-buildfix7.json`, `docs/ESTIMATOR-0.3-BUILDFIX7.md`, `docs/FASTPATH-QUALITY-0.3-BUILDFIX7.md` and `docs/BENCHMARK-CONTRACT-0.3-BUILDFIX7.md`.

@@ -1,0 +1,159 @@
+{
+  "schema_version": "1.6",
+  "project": "ace",
+  "milestone": "0.3-buildfix6",
+  "base": "0.3-buildfix5",
+  "scope": "regression",
+  "benchmark_contract_origin": "ace-0.3-buildfix6",
+  "generated_at_utc_epoch_seconds": 1789245131,
+  "environment": {},
+  "configuration": {
+    "quality_baseline": "0.2.1-buildfix1",
+    "previous_observation": "0.3-buildfix5",
+    "final_selection_recall_observed": 0.34375
+  },
+  "workloads": [
+    {
+      "workload_id": "release_gates",
+      "path": "0.2.1-buildfix1-vs-0.3-buildfix6",
+      "status": "fail",
+      "checks": [
+        {
+          "metric": "planner.generated_recall",
+          "baseline_0_2_1_buildfix1": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0,
+          "delta_percent": 0.0,
+          "rule": ">= 0.99",
+          "status": "pass"
+        },
+        {
+          "metric": "planner.top_k_recall",
+          "baseline_0_2_1_buildfix1": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0,
+          "delta_percent": 0.0,
+          "rule": ">= 0.98",
+          "status": "pass"
+        },
+        {
+          "metric": "planner.oracle_top2_after_sampling",
+          "baseline_0_2_1_buildfix1": 1.0,
+          "candidate": 0.4583333333333333,
+          "delta": -0.5416666666666667,
+          "delta_percent": -54.16666666666667,
+          "rule": ">= 0.95",
+          "status": "fail"
+        },
+        {
+          "metric": "planner.oracle_top3_after_sampling",
+          "baseline_0_2_1_buildfix1": 1.0,
+          "candidate": 0.6666666666666666,
+          "delta": -0.33333333333333337,
+          "delta_percent": -33.333333333333336,
+          "rule": ">= 0.99",
+          "status": "fail"
+        },
+        {
+          "metric": "planner.quality_pool_recall",
+          "baseline_0_2_1_buildfix1": 1.0,
+          "candidate": 0.3125,
+          "delta": -0.6875,
+          "delta_percent": -68.75,
+          "rule": ">= 0.95",
+          "status": "fail"
+        },
+        {
+          "metric": "planner.regret_bytes_per_block",
+          "baseline_0_2_1_buildfix1": 196.9375,
+          "candidate": 8711.1875,
+          "delta": 8514.25,
+          "delta_percent": 4323.325928276738,
+          "rule": "<= 1024",
+          "status": "fail"
+        },
+        {
+          "metric": "planner.full_trial_encodes_per_block",
+          "baseline_0_2_1_buildfix1": 0.0,
+          "candidate": 0.0,
+          "delta": 0.0,
+          "delta_percent": null,
+          "rule": "== 0",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.balanced_ratio",
+          "baseline_0_2_1_buildfix1": 3.4,
+          "candidate": 3.1190190600341623,
+          "delta": -0.2809809399658376,
+          "delta_percent": -8.264145293112872,
+          "rule": ">= 3.40x",
+          "status": "fail"
+        },
+        {
+          "metric": "compression.dense_ratio",
+          "baseline_0_2_1_buildfix1": 3.479518659992957,
+          "candidate": 3.438826489179017,
+          "delta": -0.04069217081393983,
+          "delta_percent": -1.1694770107662593,
+          "rule": ">= 99.5% baseline",
+          "status": "fail"
+        },
+        {
+          "metric": "compression.profile_order_dense_balanced",
+          "baseline_0_2_1_buildfix1": 3.1190190600341623,
+          "candidate": 3.438826489179017,
+          "delta": 0.3198074291448547,
+          "delta_percent": 10.253461841344178,
+          "rule": "dense ratio >= balanced ratio",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.profile_order_balanced_fast",
+          "baseline_0_2_1_buildfix1": 1.976601076919742,
+          "candidate": 3.1190190600341623,
+          "delta": 1.1424179831144203,
+          "delta_percent": 57.79709403450898,
+          "rule": "balanced ratio >= fast ratio",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.fast_mb_s",
+          "baseline_0_2_1_buildfix1": 68.9680048459679,
+          "candidate": 153.59709615473895,
+          "delta": 84.62909130877105,
+          "delta_percent": 122.70775629624258,
+          "rule": ">= 2.0x baseline",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.balanced_mb_s",
+          "baseline_0_2_1_buildfix1": 11.029947175880228,
+          "candidate": 46.902808510273054,
+          "delta": 35.87286133439282,
+          "delta_percent": 325.23148807854596,
+          "rule": ">= 4.0x baseline",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.dense_mb_s",
+          "baseline_0_2_1_buildfix1": 10.654331160181172,
+          "candidate": 31.988367174370104,
+          "delta": 21.334036014188932,
+          "delta_percent": 200.23815379346775,
+          "rule": ">= 3.5x baseline",
+          "status": "fail"
+        },
+        {
+          "metric": "random_access.warm_64k_median_ns",
+          "baseline_0_2_1_buildfix1": 66082.0,
+          "candidate": 48208.0,
+          "delta": -17874.0,
+          "delta_percent": -27.048212826488303,
+          "rule": "<= 115% baseline",
+          "status": "pass"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.3-buildfix7 - 2026-09-13
+
+### Fixed
+- Replaced the under-calibrated one-dimensional LZ size heuristic with LZ Analytical Estimator V2.
+- Added p95 match length, match coverage and long-match ratio to `BlockProfile`.
+- Aligned repetition analysis with the production 130-byte LZ match limit and overlap-capable references.
+- Prevented BALANCED/DENSE zero-heavy blocks from bypassing entropy alternatives through unconditional RLE/None fast path.
+- Reduced reset-window sample authority for LZ candidates.
+- Added LZ token-stream entropy estimation based on match structure instead of original byte H0 alone.
+
+### Added
+- Estimator calibration benchmark with MAE, MAPE, signed bias and p95 absolute error per codec family and data class.
+- Per-block selected prediction error and LZ-analysis telemetry.
+- LZ FAST/BALANCED estimator MAPE regression gates.
+- Focused buildfix7 demo, milestone definition and architecture docs.
+- Preserved complete 0.3-buildfix6 benchmark set as the diagnostic baseline.
+
+### Compatibility
+- No Format change; writer remains 1.2 and reader remains 1.0/1.1/1.2 compatible.
+- Runtime full candidate trial encodes remain zero.
+
+## 0.3-buildfix6 - 2026-09-12
+
+### Fixed
+- Fixed final Planner V3 selection allowing CPU savings to trade away excessive compression ratio even when quality-optimal candidates remained available.
+- Added a profile-aware `QualityEnvelope` before final scalar-cost selection.
+- Preserved analytical, sampled and blended size estimates separately instead of overwriting one `predicted_size_bytes` value across verifier stages.
+- Final CostModelV3 ranking now runs only inside the quality-qualified candidate pool.
+
+### Added
+- New `ace-cost::quality` module.
+- `QualityEnvelope` with overflow-safe deterministic integer arithmetic.
+- Planner telemetry for best blended size, quality limit, selected blended size, quality-qualified count, selected size rank and selected cost rank.
+- Oracle rank metrics for analytical, stage-one, post-sampling and final quality-pool stages.
+- Predicted size regret telemetry.
+- New buildfix6 planner and benchmark documentation.
+- Focused buildfix6 demo.
+- Preserved buildfix5 failure report as a diagnostic baseline.
+
+### Regression policy
+- Replaced the tautological ranking-only `sample_survival_recall` release gate with oracle Top-2/Top-3 after-sampling rank gates.
+- Added BALANCED ratio >= 3.40x.
+- Retained actual regret <= 1024 B/block.
+- Retained zero full candidate trial encodes.
+- Retained FAST >=2x, BALANCED >=4x and DENSE >=3.5x baseline throughput targets.
+- Retained DENSE >=99.5% hardened-baseline ratio and profile ratio ordering.
+
+### Compatibility
+- No ACE Format change.
+- Writer remains Format 1.2.
+- Reader remains compatible with Formats 1.0, 1.1 and 1.2.
+- CandidateGenerator, adaptive Top-K, SIMD, streaming, index, rANS4x and RLE wire semantics are unchanged.
+
+## 0.3-buildfix5 - 2026-09-12
+
+### Fixed
+- Fixed Rust E0689 in `ace-planner/src/evaluator.rs` by explicitly typing the Planner V3.2 sample blending weight as `u64`.
+- Added exhaustive blend-weight invariant coverage across profiles, codec families, confidence buckets, and verifier stages.
+- Audited Planner V3.2 saturating arithmetic for additional ambiguous inferred-integer sites; no other affected binding was found.
+
+### Compatibility
+- No ACE Format 1.2 change.
+- No change to CandidateGenerator, Top-K widths, SampleVerifier V3.2 semantics, SIMD, streaming, index, rANS4x, RLE, or regression thresholds.
+
 ## 0.3-buildfix4 - 2026-09-12
 
 ### Fixed

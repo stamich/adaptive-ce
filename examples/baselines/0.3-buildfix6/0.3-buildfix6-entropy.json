@@ -1,0 +1,202 @@
+{
+  "schema_version": "1.6",
+  "project": "ace",
+  "milestone": "0.3-buildfix6",
+  "base": "0.3-buildfix5",
+  "scope": "entropy",
+  "benchmark_contract_origin": "ace-0.3-buildfix6",
+  "generated_at_utc_epoch_seconds": 1789245097,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33424424960,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.2",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "compression_ratio": 3.635235611737449,
+      "encode": {
+        "max_ns": 13067841,
+        "mean_ns": 12833013.285714285,
+        "median_mb_s": 223.9901947116621,
+        "median_ns": 12772983.0,
+        "min_ns": 12574631,
+        "p95_ns": 13067841.0,
+        "p99_ns": 13067841.0,
+        "runs": 7,
+        "samples_ns": [
+          12574631,
+          12909668,
+          12753387,
+          13067841,
+          12756557,
+          12772983,
+          12996026
+        ],
+        "warmup_iterations": 3
+      },
+      "encoded_bytes": 825256,
+      "input_bytes": 3000000,
+      "metadata_bytes": 256,
+      "path": "huffman",
+      "payload_bytes": 825000,
+      "workload_id": "skewed"
+    },
+    {
+      "compression_ratio": 3.7198413859633024,
+      "encode": {
+        "max_ns": 24285266,
+        "mean_ns": 23676836.714285713,
+        "median_mb_s": 120.92203428278066,
+        "median_ns": 23660063.0,
+        "min_ns": 23318759,
+        "p95_ns": 24285266.0,
+        "p99_ns": 24285266.0,
+        "runs": 7,
+        "samples_ns": [
+          24285266,
+          23770294,
+          23660063,
+          23765687,
+          23318759,
+          23618747,
+          23319041
+        ],
+        "warmup_iterations": 3
+      },
+      "encoded_bytes": 806486,
+      "input_bytes": 3000000,
+      "metadata_bytes": 512,
+      "path": "rans",
+      "payload_bytes": 805974,
+      "workload_id": "skewed"
+    },
+    {
+      "compression_ratio": 3.712650733619785,
+      "encode": {
+        "max_ns": 29194747,
+        "mean_ns": 27782614.57142857,
+        "median_mb_s": 104.07508905492247,
+        "median_ns": 27489988.0,
+        "min_ns": 27289796,
+        "p95_ns": 29194747.0,
+        "p99_ns": 29194747.0,
+        "runs": 7,
+        "samples_ns": [
+          27569410,
+          28277770,
+          29194747,
+          27346281,
+          27310310,
+          27489988,
+          27289796
+        ],
+        "warmup_iterations": 3
+      },
+      "encoded_bytes": 808048,
+      "input_bytes": 3000000,
+      "metadata_bytes": 2064,
+      "path": "rans4x",
+      "payload_bytes": 805984,
+      "workload_id": "skewed"
+    },
+    {
+      "compression_ratio": 1.3951663683497815,
+      "encode": {
+        "max_ns": 42313494,
+        "mean_ns": 41420120.428571425,
+        "median_mb_s": 97.15046985367488,
+        "median_ns": 41173244.0,
+        "min_ns": 40672122,
+        "p95_ns": 42313494.0,
+        "p99_ns": 42313494.0,
+        "runs": 7,
+        "samples_ns": [
+          41086874,
+          40805835,
+          41918727,
+          41173244,
+          42313494,
+          41970547,
+          40672122
+        ],
+        "warmup_iterations": 3
+      },
+      "encoded_bytes": 3006311,
+      "input_bytes": 4194304,
+      "metadata_bytes": 256,
+      "path": "huffman",
+      "payload_bytes": 3006055,
+      "workload_id": "mixed"
+    },
+    {
+      "compression_ratio": 1.4062731868219558,
+      "encode": {
+        "max_ns": 36282281,
+        "mean_ns": 35853443.571428575,
+        "median_mb_s": 111.70518722306015,
+        "median_ns": 35808543.0,
+        "min_ns": 35351302,
+        "p95_ns": 36282281.0,
+        "p99_ns": 36282281.0,
+        "runs": 7,
+        "samples_ns": [
+          35808543,
+          35600894,
+          36045903,
+          36088472,
+          35796710,
+          35351302,
+          36282281
+        ],
+        "warmup_iterations": 3
+      },
+      "encoded_bytes": 2982567,
+      "input_bytes": 4194304,
+      "metadata_bytes": 512,
+      "path": "rans",
+      "payload_bytes": 2982055,
+      "workload_id": "mixed"
+    },
+    {
+      "compression_ratio": 1.4486130207540047,
+      "encode": {
+        "max_ns": 42129854,
+        "mean_ns": 41866539.85714286,
+        "median_mb_s": 95.55469524478269,
+        "median_ns": 41860842.0,
+        "min_ns": 41573017,
+        "p95_ns": 42129854.0,
+        "p99_ns": 42129854.0,
+        "runs": 7,
+        "samples_ns": [
+          42091324,
+          42129854,
+          41821769,
+          41860842,
+          42001476,
+          41587497,
+          41573017
+        ],
+        "warmup_iterations": 3
+      },
+      "encoded_bytes": 2895393,
+      "input_bytes": 4194304,
+      "metadata_bytes": 2064,
+      "path": "rans4x",
+      "payload_bytes": 2893329,
+      "workload_id": "mixed"
+    }
+  ]
+}
