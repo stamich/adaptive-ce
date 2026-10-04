@@ -19,9 +19,7 @@ pub fn rle_encode(input: &[u8]) -> Vec<u8> {
         i += run.max(1);
         while i < input.len() && i - start < MAX_PACKET {
             let next = run_length(input, i);
-            if next >= MIN_RUN {
-                break;
-            }
+            if next >= MIN_RUN { break; }
             i += next.max(1);
         }
         let len = i - start;
@@ -36,50 +34,30 @@ pub fn rle_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let mut out = Vec::with_capacity(expected_size.min(1024 * 1024));
     let mut i = 0usize;
     while i < input.len() {
-        let control = input[i];
-        i += 1;
+        let control = input[i]; i += 1;
         let len = ((control & 0x7f) as usize) + 1;
-        if out
-            .len()
-            .checked_add(len)
-            .ok_or(AceError::Malformed("RLE output overflow"))?
-            > expected_size
-        {
+        if out.len().checked_add(len).ok_or(AceError::Malformed("RLE output overflow"))? > expected_size {
             return Err(AceError::Malformed("RLE expands beyond expected size"));
         }
         if control & 0x80 != 0 {
-            let &value = input
-                .get(i)
-                .ok_or(AceError::Malformed("truncated RLE run"))?;
-            i += 1;
+            let &value = input.get(i).ok_or(AceError::Malformed("truncated RLE run"))?; i += 1;
             out.extend(std::iter::repeat(value).take(len));
         } else {
-            let end = i
-                .checked_add(len)
-                .ok_or(AceError::Malformed("RLE literal overflow"))?;
-            let literal = input
-                .get(i..end)
-                .ok_or(AceError::Malformed("truncated RLE literal"))?;
-            out.extend_from_slice(literal);
-            i = end;
+            let end = i.checked_add(len).ok_or(AceError::Malformed("RLE literal overflow"))?;
+            let literal = input.get(i..end).ok_or(AceError::Malformed("truncated RLE literal"))?;
+            out.extend_from_slice(literal); i = end;
         }
     }
-    if out.len() != expected_size {
-        return Err(AceError::Malformed("RLE decoded size mismatch"));
-    }
+    if out.len() != expected_size { return Err(AceError::Malformed("RLE decoded size mismatch")); }
     Ok(out)
 }
 
 /// Returns the repeated-byte run length starting at `start`.
 fn run_length(input: &[u8], start: usize) -> usize {
-    if start >= input.len() {
-        return 0;
-    }
+    if start >= input.len() { return 0; }
     let value = input[start];
     let mut i = start + 1;
-    while i < input.len() && input[i] == value && i - start < MAX_PACKET {
-        i += 1;
-    }
+    while i < input.len() && input[i] == value && i - start < MAX_PACKET { i += 1; }
     i - start
 }
 
@@ -90,9 +68,7 @@ mod tests {
     /// Verifies literals, short runs and long runs in the same stream.
     #[test]
     fn mixed_roundtrip() {
-        let mut d = b"abc".to_vec();
-        d.extend(vec![7u8; 500]);
-        d.extend_from_slice(b"xyzxyz");
+        let mut d = b"abc".to_vec(); d.extend(vec![7u8; 500]); d.extend_from_slice(b"xyzxyz");
         assert_eq!(rle_decode(&rle_encode(&d), d.len()).unwrap(), d);
     }
 }
