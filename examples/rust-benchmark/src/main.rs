@@ -81,10 +81,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let document = BenchmarkDocument {
             schema_version: "1.2",
             project: "ace",
-            milestone: "0.3",
+            milestone: "0.3-buildfix3",
             base: "0.2.1-buildfix1",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3",
+            benchmark_contract_origin: "ace-0.3-buildfix3",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: json!({
@@ -138,7 +138,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3-{family}.json"))
+        .join(format!("0.3-buildfix3-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -310,20 +310,28 @@ fn entropy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     Ok(workloads)
 }
 
-/// Measures planner recall, regret and isolated analyzer/candidate/evaluation timings.
+/// Measures Planner V3.1 quality at every pruning stage plus isolated timing components.
 fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let data = mixed_data(8);
     let cfg = AceConfig::default();
     let analyzer = DefaultBlockAnalyzer;
     let planner = DefaultCompressionPlanner;
     let blocks = data.chunks(cfg.block_size).collect::<Vec<_>>();
+
     let mut regret = 0i64;
-    let mut recall = 0u64;
+    let mut generated_recall = 0u64;
+    let mut top_k_recall = 0u64;
+    let mut top_k_eligible = 0u64;
+    let mut sampled_recall = 0u64;
+    let mut sampled_eligible = 0u64;
+    let mut final_selection_recall = 0u64;
     let mut fast_paths = 0u64;
     let mut estimated_total = 0u64;
     let mut sampled_total = 0u64;
+    let mut second_stage_total = 0u64;
     let mut full_trial_total = 0u64;
-    let mut recall_by_class: BTreeMap<&str, (u64, u64)> = BTreeMap::new();
+    let mut generated_recall_by_class: BTreeMap<&str, (u64, u64)> = BTreeMap::new();
+    let mut regret_by_class: BTreeMap<&str, (i64, u64)> = BTreeMap::new();
     let mut details = Vec::new();
 
     for (idx, block) in blocks.iter().enumerate() {
@@ -337,9 +345,9 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         };
         estimated_total += decision.telemetry.estimated_candidates as u64;
         sampled_total += decision.telemetry.sampled_candidates as u64;
+        second_stage_total += decision.telemetry.second_stage_candidates as u64;
         full_trial_total += decision.telemetry.full_trial_encodes as u64;
-        let selected = decision.plan;
-        let selected_size = encoded_plan_size(block, &selected)? as i64;
+
         let oracle = oracle_plans()
             .into_iter()
             .map(|plan| {
@@ -348,20 +356,63 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             })
             .min_by_key(|(size, _)| *size)
             .expect("oracle plans are non-empty");
-        let hit = candidates.iter().any(|p| same_plan(p, &oracle.1));
-        let class = data_class(idx, blocks.len());
-        let entry = recall_by_class.entry(class).or_insert((0, 0));
-        entry.1 += 1;
-        if hit {
-            entry.0 += 1;
-            recall += 1;
+
+        let generated_hit = candidates.iter().any(|p| same_plan(p, &oracle.1));
+        let top_k_hit = if decision.telemetry.fast_path_hit {
+            same_plan(&decision.plan, &oracle.1)
+        } else {
+            decision.top_k_plans.iter().any(|p| same_plan(p, &oracle.1))
+        };
+        let sampled_hit = if decision.telemetry.fast_path_hit {
+            same_plan(&decision.plan, &oracle.1)
+        } else {
+            decision
+                .second_stage_plans
+                .iter()
+                .any(|p| same_plan(p, &oracle.1))
+        };
+        let final_hit = same_plan(&decision.plan, &oracle.1);
+
+        generated_recall += generated_hit as u64;
+        if !decision.telemetry.fast_path_hit {
+            top_k_eligible += 1;
+            sampled_eligible += 1;
+            top_k_recall += top_k_hit as u64;
+            sampled_recall += sampled_hit as u64;
         }
+        final_selection_recall += final_hit as u64;
+
+        let selected = decision.plan;
+        let selected_size = encoded_plan_size(block, &selected)? as i64;
         let block_regret = selected_size - oracle.0 as i64;
         regret += block_regret;
+        let class = data_class(idx, blocks.len());
+
+        let recall_entry = generated_recall_by_class.entry(class).or_insert((0, 0));
+        recall_entry.1 += 1;
+        if generated_hit {
+            recall_entry.0 += 1;
+        }
+        let regret_entry = regret_by_class.entry(class).or_insert((0, 0));
+        regret_entry.0 += block_regret;
+        regret_entry.1 += 1;
+
         details.push(json!({
-            "block_id":idx, "data_class":class, "candidate_count":candidates.len(), "oracle_was_candidate":hit,
-            "selected_plan":plan_id(&selected), "oracle_plan":plan_id(&oracle.1),
-            "selected_tier":tier_name(selected.tier), "selected_bytes":selected_size, "oracle_bytes":oracle.0,
+            "block_id":idx,
+            "data_class":class,
+            "candidate_count":candidates.len(),
+            "generated_oracle":generated_hit,
+            "top_k_applied":!decision.telemetry.fast_path_hit,
+            "top_k_oracle":top_k_hit,
+            "sampled_oracle":sampled_hit,
+            "selected_is_oracle":final_hit,
+            "top_k_count":decision.telemetry.sampled_candidates,
+            "second_stage_count":decision.telemetry.second_stage_candidates,
+            "selected_plan":plan_id(&selected),
+            "oracle_plan":plan_id(&oracle.1),
+            "selected_tier":tier_name(selected.tier),
+            "selected_bytes":selected_size,
+            "oracle_bytes":oracle.0,
             "regret_bytes":block_regret
         }));
     }
@@ -390,7 +441,8 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         Ok(())
     })?
     .0;
-    let by_class = recall_by_class
+
+    let by_class = generated_recall_by_class
         .into_iter()
         .map(|(k, (hits, total))| {
             (
@@ -403,15 +455,41 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             )
         })
         .collect::<BTreeMap<_, _>>();
+    let regret_classes = regret_by_class
+        .into_iter()
+        .map(|(k, (bytes, total))| {
+            (
+                k,
+                if total == 0 {
+                    0.0
+                } else {
+                    bytes as f64 / total as f64
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    let block_count = blocks.len().max(1) as f64;
 
     Ok(vec![json!({
-        "workload_id":"mixed_8m", "path":"planner_v3_topk_sampled", "blocks":blocks.len(),
-        "oracle_regret_bytes":regret, "normalized_regret_bytes_per_block":regret as f64/blocks.len().max(1) as f64,
-        "candidate_recall":recall as f64/blocks.len().max(1) as f64, "candidate_recall_by_class":by_class,
-        "fast_path_rate":fast_paths as f64/blocks.len().max(1) as f64,
-        "estimated_candidates_per_block":estimated_total as f64/blocks.len().max(1) as f64,
-        "sampled_candidates_per_block":sampled_total as f64/blocks.len().max(1) as f64,
-        "full_trial_encodes_per_block":full_trial_total as f64/blocks.len().max(1) as f64,
+        "workload_id":"mixed_8m",
+        "path":"planner_v3_1_adaptive_topk_two_stage",
+        "blocks":blocks.len(),
+        "oracle_regret_bytes":regret,
+        "normalized_regret_bytes_per_block":regret as f64/block_count,
+        "regret_bytes_per_block_by_class":regret_classes,
+        "candidate_recall":generated_recall as f64/block_count,
+        "candidate_generation_recall":generated_recall as f64/block_count,
+        "top_k_recall":if top_k_eligible==0 {1.0} else {top_k_recall as f64/top_k_eligible as f64},
+        "top_k_recall_denominator_blocks":top_k_eligible,
+        "sample_verifier_recall":if sampled_eligible==0 {1.0} else {sampled_recall as f64/sampled_eligible as f64},
+        "sample_verifier_recall_denominator_blocks":sampled_eligible,
+        "final_selection_recall":final_selection_recall as f64/block_count,
+        "candidate_recall_by_class":by_class,
+        "fast_path_rate":fast_paths as f64/block_count,
+        "estimated_candidates_per_block":estimated_total as f64/block_count,
+        "sampled_candidates_per_block":sampled_total as f64/block_count,
+        "second_stage_candidates_per_block":second_stage_total as f64/block_count,
+        "full_trial_encodes_per_block":full_trial_total as f64/block_count,
         "timing":{
             "analysis_per_file":timing_json(&analysis_stats,data.len()),
             "candidate_generation_per_file":timing_json(&candidate_stats,data.len()),

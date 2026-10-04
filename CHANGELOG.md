@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.3-buildfix3 - 2026-09-12
+
+### Fixed
+
+- Fixed Planner V3 sample projection incorrectly scaling entropy metadata with sample-to-block ratio. Metadata is now charged once per projected block.
+- Fixed severe quality regression where candidate generation recall was 1.0 but Top-K/sample verification produced ~35.3 KiB regret per block.
+- Added adaptive Top-K and DENSE quality floor.
+- Added semantic-family anchors so analytical ranking cannot remove every representative of a promising physical family before sampling.
+- Added codec-specific, stratified LZ sample windows and a larger second verifier stage.
+- Kept disjoint LZ samples independent to avoid artificial matches between unrelated block regions.
+
+### Benchmarks
+
+- Added generation, Top-K, sample-verifier and final-selection recall.
+- Added regret per data class and per-block stage survival flags.
+- Added profile ratio-ordering gates.
+- Official result filenames now include `0.3-buildfix3`.
+- Preserved the observed 0.3-buildfix2 regression report as a diagnostic baseline.
+
+### Compatibility
+
+- No ACE wire-format change. Writer remains Format 1.2; reader supports 1.0, 1.1 and 1.2.
+- SIMD, rANS4x, streaming and random-access wire semantics are unchanged.
+
+## 0.3-buildfix2 - 2026-09-12
+
+### Fixed
+
+- Fixed an RLE literal-packet boundary bug where a sequence of short 1-3 byte runs could grow a literal packet past the 128-byte wire-format limit.
+- Prevented literal control bytes from accidentally setting the RLE run flag at lengths 129-130.
+- Added boundary roundtrip tests for 126/127/128/129/130/255/256/257-byte literals.
+- Added the exact repeated-short-run regression case that caused `ace verify` to fail with `RLE decoded size mismatch`.
+- Added a deterministic fuzz-style RLE roundtrip test and a `cargo-fuzz` RLE roundtrip target.
+- Changed `ace explain` to render entropy-policy sentinel scores as `penalized` rather than an overflow-looking decimal value.
+
+### Compatibility
+
+- No ACE Format 1.2 changes.
+- No Planner V3, rANS4x, SIMD, streaming, index, or random-access semantic changes.
+- Reader compatibility remains ACE 1.0/1.1/1.2; writer remains ACE 1.2.
+
+## 0.3-buildfix1 - 2026-09-12
+
+### Fixed
+- Replaced `#[derive(Default)]` on `ace_runtime::WorkerScratch` with an explicit `Default` implementation so `[u32; 256]` works on Rust toolchains that do not provide blanket `Default` for large arrays.
+- Added a regression test verifying default scratch buffers are empty and the 256-entry histogram is zero-initialized.
+
+### Compatibility
+- No ACE Format 1.2 changes.
+- No planner, codec, entropy, streaming, or random-access semantic changes.
+
+
 ## 0.3 — 2026-09-12
 
 ### Planner V3
