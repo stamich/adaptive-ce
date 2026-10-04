@@ -12,7 +12,7 @@ fn mixed_demo_data() -> Vec<u8> {
     data
 }
 
-/// Runs the end-to-end ACE 0.2 demo and prints adaptive plan distribution plus round-trip status.
+/// Runs the end-to-end ACE 0.2.1-buildfix1 demo and prints adaptive plan distribution plus round-trip status.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data = mixed_demo_data();
     let mut config = AceConfig::default(); config.threads = 4;
@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (encoded, stats) = engine.compress_with_stats(&data)?;
     let decoded = engine.decompress(&encoded)?;
     assert_eq!(decoded, data);
-    println!("ACE 0.2 demo");
+    println!("ACE 0.2.1-buildfix1 demo");
     println!("input={} output={} ratio={:.3} blocks={}", stats.input_bytes, stats.output_bytes, stats.compression_ratio(), stats.block_count);
     println!("plans raw={} rle={} lz={} delta={} huffman={} rans={}", stats.raw_blocks, stats.rle_blocks, stats.lz_blocks, stats.delta_blocks, stats.huffman_blocks, stats.rans_blocks);
     println!("round-trip: OK");
