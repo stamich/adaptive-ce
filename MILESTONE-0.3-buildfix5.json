@@ -1,0 +1,14 @@
+{
+  "project": "ACE",
+  "milestone": "0.3-buildfix5",
+  "workspace_version": "0.3.5",
+  "base": "0.3-buildfix4",
+  "format_version": "1.2",
+  "scope": "compiler compatibility hardening for Planner V3.2",
+  "changes": [
+    "explicit u64 type for sample blending weight",
+    "blend-weight invariant regression test",
+    "audit saturating arithmetic for ambiguous inferred integer types",
+    "no planner algorithm, format, SIMD, streaming, index, or gate semantics changed"
+  ]
+}
