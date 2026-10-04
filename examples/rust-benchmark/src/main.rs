@@ -81,10 +81,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let document = BenchmarkDocument {
             schema_version: "1.2",
             project: "ace",
-            milestone: "0.3-buildfix4",
+            milestone: "0.3-buildfix5",
             base: "0.3-buildfix3",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3-buildfix4",
+            benchmark_contract_origin: "ace-0.3-buildfix5",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: json!({
@@ -138,7 +138,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3-buildfix4-{family}.json"))
+        .join(format!("0.3-buildfix5-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.

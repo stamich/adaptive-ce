@@ -142,7 +142,7 @@ pub struct PlannerTelemetry {
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the ACE 0.3-buildfix4 Planner V3.2 hot path.
+/// Result returned by the ACE 0.3-buildfix5 Planner V3.2 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
@@ -159,7 +159,7 @@ pub struct PlannerDecision {
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3-buildfix4 keeps `full_trial_encodes == 0` while making sampling ranking-only.
+/// ACE 0.3-buildfix5 keeps `full_trial_encodes == 0` while making sampling ranking-only.
 /// Adaptive Top-K and semantic-family anchors define the quality-preserving pool; sampling
 /// refines scores but never removes a stage-one survivor. Confidence-weighted blending gives
 /// full-block analytical statistics more authority, especially for LZ and DENSE.
@@ -417,7 +417,7 @@ fn verification_blend_weights(
 ) -> (u64, u64) {
     let high = confidence >= 0.90;
     let medium = confidence >= 0.75;
-    let sample = match codec {
+    let sample: u64 = match codec {
         CodecId::Lz => {
             if high {
                 20
@@ -505,7 +505,7 @@ fn apply_entropy_policy_estimates(
 }
 
 #[cfg(test)]
-mod buildfix4_tests {
+mod buildfix5_tests {
     use super::*;
 
     /// Ensures high-confidence LZ verification trusts full-block statistics more than samples.
@@ -525,5 +525,27 @@ mod buildfix4_tests {
         assert!(sample < 100);
         assert!(analytical > 0);
         assert_eq!(sample + analytical, 100);
+    }
+
+    /// Verifies all supported profile, codec, confidence, and stage combinations produce valid percentages.
+    #[test]
+    fn verification_blend_weights_are_valid_percentages() {
+        for profile in [
+            CompressionProfile::Fast,
+            CompressionProfile::Balanced,
+            CompressionProfile::Dense,
+        ] {
+            for codec in [CodecId::Raw, CodecId::Rle, CodecId::Lz] {
+                for confidence in [0.40_f32, 0.80_f32, 0.95_f32] {
+                    for stage in [1_u8, 2_u8] {
+                        let (sample, analytical) =
+                            verification_blend_weights(codec, confidence, stage, profile);
+                        assert!(sample <= 100);
+                        assert!(analytical <= 100);
+                        assert_eq!(sample + analytical, 100);
+                    }
+                }
+            }
+        }
     }
 }

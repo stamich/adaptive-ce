@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate ACE 0.3-buildfix4 release gates against the hardened quality baseline."""
+"""Evaluate ACE 0.3-buildfix5 release gates against the hardened quality baseline."""
 from __future__ import annotations
 import json, pathlib, sys, time
 from typing import Any
@@ -33,7 +33,7 @@ def gate(metric: str, baseline: float, candidate: float, passed: bool, rule: str
 
 
 def main(argv: list[str]) -> int:
-    """Evaluate buildfix4 quality/performance gates and write the regression document."""
+    """Evaluate buildfix5 quality/performance gates and write the regression document."""
     if len(argv) != 4:
         print("usage: check_regressions.py BASELINE_DIR RESULT_DIR OUTPUT", file=sys.stderr)
         return 2
@@ -41,9 +41,9 @@ def main(argv: list[str]) -> int:
     b_comp = load(base / "0.2.1-buildfix1-compression.json")
     b_plan = load(base / "0.2.1-buildfix1-planner.json")
     b_ra = load(base / "0.2.1-buildfix1-random-access.json")
-    c_comp = load(result / "0.3-buildfix4-compression.json")
-    c_plan = load(result / "0.3-buildfix4-planner.json")
-    c_ra = load(result / "0.3-buildfix4-random-access.json")
+    c_comp = load(result / "0.3-buildfix5-compression.json")
+    c_plan = load(result / "0.3-buildfix5-planner.json")
+    c_ra = load(result / "0.3-buildfix5-random-access.json")
 
     plan = c_plan["workloads"][0]
     b_recall = float(b_plan["workloads"][0]["candidate_recall"])
@@ -87,19 +87,19 @@ def main(argv: list[str]) -> int:
     ]
     status = "pass" if all(row["status"] == "pass" for row in checks) else "fail"
     doc = {
-        "schema_version": "1.5", "project": "ace", "milestone": "0.3-buildfix4",
-        "base": "0.3-buildfix3", "scope": "regression", "benchmark_contract_origin": "ace-0.3-buildfix4",
+        "schema_version": "1.5", "project": "ace", "milestone": "0.3-buildfix5",
+        "base": "0.3-buildfix4", "scope": "regression", "benchmark_contract_origin": "ace-0.3-buildfix5",
         "generated_at_utc_epoch_seconds": int(time.time()), "environment": {},
         "configuration": {
             "quality_baseline": "0.2.1-buildfix1",
-            "previous_observation": "0.3-buildfix2",
+            "previous_observation": "0.3-buildfix4",
             "final_selection_recall_observed": final_recall,
         },
-        "workloads": [{"workload_id": "release_gates", "path": "0.2.1-buildfix1-vs-0.3-buildfix4", "status": status, "checks": checks}],
+        "workloads": [{"workload_id": "release_gates", "path": "0.2.1-buildfix1-vs-0.3-buildfix5", "status": status, "checks": checks}],
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(doc, indent=2) + "\n")
-    print(f"ACE 0.3-buildfix4 regression gates: {status}; results written to {output}")
+    print(f"ACE 0.3-buildfix5 regression gates: {status}; results written to {output}")
     for row in checks:
         print(f"  {row['status'].upper():4} {row['metric']}: {row['candidate']} ({row['rule']})")
     return 0 if status == "pass" else 1
