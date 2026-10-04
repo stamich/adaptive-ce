@@ -79,25 +79,63 @@ pub fn encode_file_header(header: &FileHeader) -> [u8; FILE_HEADER_SIZE] {
 
 /// Parses and validates a format-1.0, format-1.1 or format-1.2 file header.
 pub fn decode_file_header(bytes: &[u8]) -> AceResult<FileHeader> {
-    if bytes.len() != FILE_HEADER_SIZE { return Err(AceError::Malformed("truncated file header")); }
-    if bytes[0..4] != MAGIC { return Err(AceError::InvalidMagic); }
-    if bytes[4] != FORMAT_MAJOR || bytes[5] > FORMAT_MINOR { return Err(AceError::UnsupportedVersion { major: bytes[4], minor: bytes[5] }); }
-    let stored = u32::from_le_bytes(bytes[28..32].try_into().map_err(|_| AceError::Malformed("invalid file header CRC"))?);
-    if crate::checksum(&bytes[..28]) != stored { return Err(AceError::Malformed("file header checksum mismatch")); }
-    let flags = u16::from_le_bytes(bytes[6..8].try_into().map_err(|_| AceError::Malformed("invalid file flags"))?);
-    if bytes[5] >= 1 && flags & !SUPPORTED_FILE_FLAGS != 0 { return Err(AceError::UnsupportedFeature(flags & !SUPPORTED_FILE_FLAGS)); }
+    if bytes.len() != FILE_HEADER_SIZE {
+        return Err(AceError::Malformed("truncated file header"));
+    }
+    if bytes[0..4] != MAGIC {
+        return Err(AceError::InvalidMagic);
+    }
+    if bytes[4] != FORMAT_MAJOR || bytes[5] > FORMAT_MINOR {
+        return Err(AceError::UnsupportedVersion {
+            major: bytes[4],
+            minor: bytes[5],
+        });
+    }
+    let stored = u32::from_le_bytes(
+        bytes[28..32]
+            .try_into()
+            .map_err(|_| AceError::Malformed("invalid file header CRC"))?,
+    );
+    if crate::checksum(&bytes[..28]) != stored {
+        return Err(AceError::Malformed("file header checksum mismatch"));
+    }
+    let flags = u16::from_le_bytes(
+        bytes[6..8]
+            .try_into()
+            .map_err(|_| AceError::Malformed("invalid file flags"))?,
+    );
+    if bytes[5] >= 1 && flags & !SUPPORTED_FILE_FLAGS != 0 {
+        return Err(AceError::UnsupportedFeature(flags & !SUPPORTED_FILE_FLAGS));
+    }
     Ok(FileHeader {
-        minor_version: bytes[5], flags,
-        default_block_size: u32::from_le_bytes(bytes[8..12].try_into().map_err(|_| AceError::Malformed("invalid block size"))?),
-        original_size: u64::from_le_bytes(bytes[12..20].try_into().map_err(|_| AceError::Malformed("invalid original size"))?),
-        block_count: u64::from_le_bytes(bytes[20..28].try_into().map_err(|_| AceError::Malformed("invalid block count"))?),
+        minor_version: bytes[5],
+        flags,
+        default_block_size: u32::from_le_bytes(
+            bytes[8..12]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid block size"))?,
+        ),
+        original_size: u64::from_le_bytes(
+            bytes[12..20]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid original size"))?,
+        ),
+        block_count: u64::from_le_bytes(
+            bytes[20..28]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid block count"))?,
+        ),
     })
 }
 
 /// Returns the variable descriptor byte count implied by a fixed block header.
 pub fn block_descriptor_size(fixed: &[u8; BLOCK_HEADER_SIZE], minor_version: u8) -> usize {
     let transforms = fixed[22] as usize;
-    let dictionary = if minor_version >= 1 && fixed[23] & BLOCK_FLAG_HAS_DICTIONARY != 0 { 9 } else { 0 };
+    let dictionary = if minor_version >= 1 && fixed[23] & BLOCK_FLAG_HAS_DICTIONARY != 0 {
+        9
+    } else {
+        0
+    };
     transforms + dictionary
 }
 
@@ -112,9 +150,15 @@ pub fn encode_block_header(header: &BlockHeader) -> Vec<u8> {
     bytes[20] = header.codec as u8;
     bytes[21] = header.entropy as u8;
     bytes[22] = header.transforms.len() as u8;
-    bytes[23] = if header.dictionary.is_some() { header.flags | BLOCK_FLAG_HAS_DICTIONARY } else { header.flags & !BLOCK_FLAG_HAS_DICTIONARY };
+    bytes[23] = if header.dictionary.is_some() {
+        header.flags | BLOCK_FLAG_HAS_DICTIONARY
+    } else {
+        header.flags & !BLOCK_FLAG_HAS_DICTIONARY
+    };
     bytes[24..28].copy_from_slice(&header.payload_crc32c.to_le_bytes());
-    for (i, transform) in header.transforms.iter().enumerate() { bytes[BLOCK_HEADER_SIZE + i] = *transform as u8; }
+    for (i, transform) in header.transforms.iter().enumerate() {
+        bytes[BLOCK_HEADER_SIZE + i] = *transform as u8;
+    }
     if let Some(dictionary) = header.dictionary {
         let offset = BLOCK_HEADER_SIZE + header.transforms.len();
         bytes[offset..offset + 8].copy_from_slice(&dictionary.id.0.to_le_bytes());
@@ -126,50 +170,113 @@ pub fn encode_block_header(header: &BlockHeader) -> Vec<u8> {
 }
 
 /// Parses one fixed block header and its caller-supplied variable descriptors.
-pub fn decode_block_header(fixed: &[u8], descriptors: &[u8], minor_version: u8) -> AceResult<BlockHeader> {
-    if fixed.len() != BLOCK_HEADER_SIZE { return Err(AceError::Malformed("truncated block header")); }
-    let stored = u32::from_le_bytes(fixed[28..32].try_into().map_err(|_| AceError::Malformed("invalid block header CRC"))?);
-    if crate::checksum(&fixed[..28]) != stored { return Err(AceError::Malformed("block header checksum mismatch")); }
+pub fn decode_block_header(
+    fixed: &[u8],
+    descriptors: &[u8],
+    minor_version: u8,
+) -> AceResult<BlockHeader> {
+    if fixed.len() != BLOCK_HEADER_SIZE {
+        return Err(AceError::Malformed("truncated block header"));
+    }
+    let stored = u32::from_le_bytes(
+        fixed[28..32]
+            .try_into()
+            .map_err(|_| AceError::Malformed("invalid block header CRC"))?,
+    );
+    if crate::checksum(&fixed[..28]) != stored {
+        return Err(AceError::Malformed("block header checksum mismatch"));
+    }
     let transform_count = fixed[22] as usize;
     let dictionary_present = minor_version >= 1 && fixed[23] & BLOCK_FLAG_HAS_DICTIONARY != 0;
     let expected = transform_count + if dictionary_present { 9 } else { 0 };
-    if descriptors.len() != expected { return Err(AceError::Malformed("block descriptor count mismatch")); }
-    let transforms = descriptors[..transform_count].iter().map(|&v| TransformId::try_from(v)).collect::<AceResult<Vec<_>>>()?;
+    if descriptors.len() != expected {
+        return Err(AceError::Malformed("block descriptor count mismatch"));
+    }
+    let transforms = descriptors[..transform_count]
+        .iter()
+        .map(|&v| TransformId::try_from(v))
+        .collect::<AceResult<Vec<_>>>()?;
     let dictionary = if dictionary_present {
-        let id = DictionaryId(u64::from_le_bytes(descriptors[transform_count..transform_count + 8].try_into().map_err(|_| AceError::Malformed("invalid dictionary id"))?));
+        let id = DictionaryId(u64::from_le_bytes(
+            descriptors[transform_count..transform_count + 8]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid dictionary id"))?,
+        ));
         let scope = scope_from_u8(descriptors[transform_count + 8])?;
         Some(DictionaryRef { id, scope })
-    } else { None };
+    } else {
+        None
+    };
     let entropy = EntropyCodecId::try_from(fixed[21])?;
     if minor_version < 2 && matches!(entropy, EntropyCodecId::Rans4x) {
-        return Err(AceError::UnsupportedVersion { major: FORMAT_MAJOR, minor: minor_version });
+        return Err(AceError::UnsupportedVersion {
+            major: FORMAT_MAJOR,
+            minor: minor_version,
+        });
     }
     Ok(BlockHeader {
-        block_id: u64::from_le_bytes(fixed[0..8].try_into().map_err(|_| AceError::Malformed("invalid block id"))?),
-        original_size: u32::from_le_bytes(fixed[8..12].try_into().map_err(|_| AceError::Malformed("invalid block original size"))?),
-        encoded_size: u32::from_le_bytes(fixed[12..16].try_into().map_err(|_| AceError::Malformed("invalid block encoded size"))?),
-        metadata_size: u32::from_le_bytes(fixed[16..20].try_into().map_err(|_| AceError::Malformed("invalid block metadata size"))?),
-        codec: CodecId::try_from(fixed[20])?, entropy, transforms, dictionary,
-        flags: fixed[23], payload_crc32c: u32::from_le_bytes(fixed[24..28].try_into().map_err(|_| AceError::Malformed("invalid payload CRC"))?),
+        block_id: u64::from_le_bytes(
+            fixed[0..8]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid block id"))?,
+        ),
+        original_size: u32::from_le_bytes(
+            fixed[8..12]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid block original size"))?,
+        ),
+        encoded_size: u32::from_le_bytes(
+            fixed[12..16]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid block encoded size"))?,
+        ),
+        metadata_size: u32::from_le_bytes(
+            fixed[16..20]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid block metadata size"))?,
+        ),
+        codec: CodecId::try_from(fixed[20])?,
+        entropy,
+        transforms,
+        dictionary,
+        flags: fixed[23],
+        payload_crc32c: u32::from_le_bytes(
+            fixed[24..28]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid payload CRC"))?,
+        ),
     })
 }
 
 impl BlockHeader {
     /// Returns the decoder-relevant physical plan represented by this block header.
     pub fn decoding_plan(&self) -> DecodingPlan {
-        DecodingPlan { transforms: self.transforms.clone(), codec: self.codec, dictionary: self.dictionary, entropy: self.entropy }
+        DecodingPlan {
+            transforms: self.transforms.clone(),
+            codec: self.codec,
+            dictionary: self.dictionary,
+            entropy: self.entropy,
+        }
     }
 }
 
 /// Converts a dictionary scope into its stable format-1.1 byte representation.
 fn scope_to_u8(scope: DictionaryScope) -> u8 {
-    match scope { DictionaryScope::Block => 0, DictionaryScope::Segment => 1, DictionaryScope::File => 2, DictionaryScope::External => 3 }
+    match scope {
+        DictionaryScope::Block => 0,
+        DictionaryScope::Segment => 1,
+        DictionaryScope::File => 2,
+        DictionaryScope::External => 3,
+    }
 }
 
 /// Parses a dictionary scope byte from format-1.1 metadata.
 fn scope_from_u8(value: u8) -> AceResult<DictionaryScope> {
     match value {
-        0 => Ok(DictionaryScope::Block), 1 => Ok(DictionaryScope::Segment), 2 => Ok(DictionaryScope::File), 3 => Ok(DictionaryScope::External),
+        0 => Ok(DictionaryScope::Block),
+        1 => Ok(DictionaryScope::Segment),
+        2 => Ok(DictionaryScope::File),
+        3 => Ok(DictionaryScope::External),
         _ => Err(AceError::Malformed("unknown dictionary scope")),
     }
 }

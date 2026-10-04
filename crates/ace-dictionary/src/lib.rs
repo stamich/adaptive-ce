@@ -3,9 +3,9 @@
 //! Milestone 0.2 intentionally provides registry, identity and validation infrastructure only.
 //! Training, adaptive reuse and GraphNet/AdaptiveDB semantic dictionaries are deferred.
 
+use ace_core::{AceResult, DictionaryId, DictionaryScope};
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use ace_core::{AceResult, DictionaryId, DictionaryScope};
 
 /// Immutable dictionary bytes identified by a stable ACE dictionary identifier.
 #[derive(Debug, Clone)]
@@ -21,14 +21,22 @@ pub struct Dictionary {
 impl Dictionary {
     /// Creates an immutable dictionary from owned bytes.
     pub fn new(id: DictionaryId, scope: DictionaryScope, bytes: Vec<u8>) -> Self {
-        Self { id, scope, bytes: Arc::<[u8]>::from(bytes) }
+        Self {
+            id,
+            scope,
+            bytes: Arc::<[u8]>::from(bytes),
+        }
     }
 
     /// Returns the dictionary size in bytes.
-    pub fn len(&self) -> usize { self.bytes.len() }
+    pub fn len(&self) -> usize {
+        self.bytes.len()
+    }
 
     /// Returns true when the dictionary contains no bytes.
-    pub fn is_empty(&self) -> bool { self.bytes.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.bytes.is_empty()
+    }
 }
 
 /// Resolves dictionaries for encoders and decoders without coupling ACE to a storage backend.
@@ -45,11 +53,14 @@ pub struct DictionaryRegistry {
 
 impl DictionaryRegistry {
     /// Creates an empty registry.
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// Registers or replaces a dictionary with the same stable identifier.
     pub fn insert(&mut self, dictionary: Dictionary) -> Option<Arc<Dictionary>> {
-        self.dictionaries.insert(dictionary.id, Arc::new(dictionary))
+        self.dictionaries
+            .insert(dictionary.id, Arc::new(dictionary))
     }
 
     /// Removes a dictionary and returns its immutable handle when present.
@@ -58,10 +69,14 @@ impl DictionaryRegistry {
     }
 
     /// Returns the number of registered dictionaries.
-    pub fn len(&self) -> usize { self.dictionaries.len() }
+    pub fn len(&self) -> usize {
+        self.dictionaries.len()
+    }
 
     /// Returns true when no dictionaries are registered.
-    pub fn is_empty(&self) -> bool { self.dictionaries.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.dictionaries.is_empty()
+    }
 }
 
 impl DictionaryProvider for DictionaryRegistry {

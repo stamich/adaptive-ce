@@ -5,13 +5,13 @@
 //! format deterministic while allowing the payload to be processed one independent block at a
 //! time without holding the complete input in memory.
 
-use std::io::{Cursor, Read, Write};
 use ace_core::{AceConfig, AceError, AceResult, DecodeLimits};
 use ace_engine::AceEngine;
 use ace_format::{
     checksum, encode_block_header, encode_file_header, encode_index, encode_trailer, AceReader,
     BlockIndex, BlockIndexEntry, FileHeader, FileTrailer, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
 };
+use std::io::{Cursor, Read, Write};
 
 /// Resource limits applied to a bounded streaming operation.
 #[derive(Debug, Clone, Copy)]
@@ -27,7 +27,11 @@ pub struct StreamLimits {
 impl Default for StreamLimits {
     /// Returns conservative limits suitable for normal CLI and benchmark use.
     fn default() -> Self {
-        Self { max_input_bytes: 1 << 40, max_blocks: 16_777_216, max_in_flight_bytes: 64 * 1024 * 1024 }
+        Self {
+            max_input_bytes: 1 << 40,
+            max_blocks: 16_777_216,
+            max_in_flight_bytes: 64 * 1024 * 1024,
+        }
     }
 }
 
@@ -55,18 +59,32 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
     config: AceConfig,
     limits: StreamLimits,
 ) -> AceResult<StreamingStats> {
-    if original_size > limits.max_input_bytes { return Err(AceError::ResourceLimitExceeded("stream input size")); }
-    if config.block_size == 0 || config.block_size > u32::MAX as usize { return Err(AceError::InvalidConfig("stream block size must fit u32 and be non-zero")); }
+    if original_size > limits.max_input_bytes {
+        return Err(AceError::ResourceLimitExceeded("stream input size"));
+    }
+    if config.block_size == 0 || config.block_size > u32::MAX as usize {
+        return Err(AceError::InvalidConfig(
+            "stream block size must fit u32 and be non-zero",
+        ));
+    }
     let block_count = if original_size == 0 {
         0
     } else {
         original_size
             .checked_add(config.block_size as u64 - 1)
-            .ok_or(AceError::Malformed("stream block-count calculation overflow"))?
+            .ok_or(AceError::Malformed(
+                "stream block-count calculation overflow",
+            ))?
             / config.block_size as u64
     };
-    if block_count > limits.max_blocks { return Err(AceError::ResourceLimitExceeded("stream block count")); }
-    if config.block_size.saturating_mul(3) > limits.max_in_flight_bytes { return Err(AceError::ResourceLimitExceeded("stream in-flight memory budget")); }
+    if block_count > limits.max_blocks {
+        return Err(AceError::ResourceLimitExceeded("stream block count"));
+    }
+    if config.block_size.saturating_mul(3) > limits.max_in_flight_bytes {
+        return Err(AceError::ResourceLimitExceeded(
+            "stream in-flight memory budget",
+        ));
+    }
 
     let header = FileHeader {
         minor_version: 2,
@@ -92,7 +110,11 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
         let mut filled = 0usize;
         while filled < remaining {
             let n = reader.read(&mut buffer[filled..remaining])?;
-            if n == 0 { return Err(AceError::Malformed("stream ended before declared original size")); }
+            if n == 0 {
+                return Err(AceError::Malformed(
+                    "stream ended before declared original size",
+                ));
+            }
             filled += n;
         }
         let source = &buffer[..remaining];
@@ -103,7 +125,11 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
         let encoded = engine.compress(source)?;
         let mut parser = AceReader::new(Cursor::new(encoded), DecodeLimits::default());
         let one = parser.read_file_header()?;
-        if one.block_count != 1 { return Err(AceError::Malformed("internal streaming block container has unexpected block count")); }
+        if one.block_count != 1 {
+            return Err(AceError::Malformed(
+                "internal streaming block container has unexpected block count",
+            ));
+        }
         let (mut block_header, metadata, payload) = parser.read_block()?;
         block_header.block_id = block_id;
 
@@ -112,8 +138,12 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
         writer.write_all(&header_bytes)?;
         writer.write_all(&metadata)?;
         writer.write_all(&payload)?;
-        let span = header_bytes.len().saturating_add(metadata.len()).saturating_add(payload.len());
-        let span_u32 = u32::try_from(span).map_err(|_| AceError::ResourceLimitExceeded("stream encoded block span"))?;
+        let span = header_bytes
+            .len()
+            .saturating_add(metadata.len())
+            .saturating_add(payload.len());
+        let span_u32 = u32::try_from(span)
+            .map_err(|_| AceError::ResourceLimitExceeded("stream encoded block span"))?;
         index.entries.push(BlockIndexEntry {
             block_id,
             original_offset,
@@ -122,19 +152,29 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
             encoded_span: span_u32,
             flags: 0,
         });
-        bytes_written = bytes_written.checked_add(span as u64).ok_or(AceError::Malformed("stream output size overflow"))?;
+        bytes_written = bytes_written
+            .checked_add(span as u64)
+            .ok_or(AceError::Malformed("stream output size overflow"))?;
         original_offset += remaining as u64;
         stats.input_bytes += remaining as u64;
         stats.blocks += 1;
     }
 
     let mut extra = [0u8; 1];
-    if reader.read(&mut extra)? != 0 { return Err(AceError::Malformed("stream contains bytes beyond declared original size")); }
+    if reader.read(&mut extra)? != 0 {
+        return Err(AceError::Malformed(
+            "stream contains bytes beyond declared original size",
+        ));
+    }
     let index_bytes = encode_index(&index);
     let index_offset = bytes_written;
     writer.write_all(&index_bytes)?;
     bytes_written += index_bytes.len() as u64;
-    let trailer = FileTrailer { index_offset, index_size: index_bytes.len() as u64, index_crc32c: checksum(&index_bytes) };
+    let trailer = FileTrailer {
+        index_offset,
+        index_size: index_bytes.len() as u64,
+        index_crc32c: checksum(&index_bytes),
+    };
     let trailer_bytes = encode_trailer(trailer);
     writer.write_all(&trailer_bytes)?;
     bytes_written += trailer_bytes.len() as u64;
@@ -144,6 +184,12 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
 }
 
 /// Sequentially decompresses an ACE 1.0/1.1/1.2 stream into a writer with explicit limits.
-pub fn decompress_stream<R: Read, W: Write>(reader: R, writer: W, limits: DecodeLimits) -> AceResult<()> {
-    AceEngine::default_engine().with_decode_limits(limits).decompress_from(reader, writer)
+pub fn decompress_stream<R: Read, W: Write>(
+    reader: R,
+    writer: W,
+    limits: DecodeLimits,
+) -> AceResult<()> {
+    AceEngine::default_engine()
+        .with_decode_limits(limits)
+        .decompress_from(reader, writer)
 }
