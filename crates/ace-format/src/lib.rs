@@ -11,4 +11,6 @@ pub use reader::*;
 pub use writer::*;
 
 /// Computes CRC32C for ACE headers, indexes and reconstructed block payloads.
-pub fn checksum(bytes: &[u8]) -> u32 { crc32c::crc32c(bytes) }
+pub fn checksum(bytes: &[u8]) -> u32 {
+    crc32c::crc32c(bytes)
+}

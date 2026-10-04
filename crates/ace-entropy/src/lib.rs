@@ -21,10 +21,19 @@ pub fn encode_entropy(id: EntropyCodecId, input: &[u8]) -> AceResult<(Vec<u8>, V
 }
 
 /// Decodes an entropy-coded stream into exactly `expected_size` primary-codec bytes.
-pub fn decode_entropy(id: EntropyCodecId, metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
+pub fn decode_entropy(
+    id: EntropyCodecId,
+    metadata: &[u8],
+    input: &[u8],
+    expected_size: usize,
+) -> AceResult<Vec<u8>> {
     match id {
         EntropyCodecId::None => {
-            if input.len() != expected_size { return Err(ace_core::AceError::Malformed("raw entropy stream length mismatch")); }
+            if input.len() != expected_size {
+                return Err(ace_core::AceError::Malformed(
+                    "raw entropy stream length mismatch",
+                ));
+            }
             Ok(input.to_vec())
         }
         EntropyCodecId::Huffman => huffman_decode(metadata, input, expected_size),
