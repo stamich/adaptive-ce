@@ -1,25 +1,29 @@
 # Changelog
 
-## 0.3-buildfix7 - 2026-09-13
+## 0.3-buildfix8 - 2026-09-13
 
-### Fixed
-- Replaced the under-calibrated one-dimensional LZ size heuristic with LZ Analytical Estimator V2.
-- Added p95 match length, match coverage and long-match ratio to `BlockProfile`.
-- Aligned repetition analysis with the production 130-byte LZ match limit and overlap-capable references.
-- Prevented BALANCED/DENSE zero-heavy blocks from bypassing entropy alternatives through unconditional RLE/None fast path.
-- Reduced reset-window sample authority for LZ candidates.
-- Added LZ token-stream entropy estimation based on match structure instead of original byte H0 alone.
+### Strategy
+- Rebased implementation on 0.3-buildfix6 instead of continuing from buildfix7.
+- Selectively retained buildfix7 diagnostics and zero-heavy quality guard.
+- Removed buildfix7 LZ Estimator V2 and expanded LZ match-analysis model.
 
 ### Added
-- Estimator calibration benchmark with MAE, MAPE, signed bias and p95 absolute error per codec family and data class.
-- Per-block selected prediction error and LZ-analysis telemetry.
-- LZ FAST/BALANCED estimator MAPE regression gates.
-- Focused buildfix7 demo, milestone definition and architecture docs.
-- Preserved complete 0.3-buildfix6 benchmark set as the diagnostic baseline.
+- `ace-planner::HybridLzEstimator` using bounded deterministic production-codec micro-trials.
+- `HybridLzPolicy` with profile/stage bounded sample budgets.
+- `HybridLzObservation` with sampled bytes and disagreement PPM.
+- Planner telemetry for hybrid candidate count, sampled bytes and max disagreement.
+- Benchmark schema 1.8.
+- Analytical estimator MAE/MAPE/bias/p95 diagnostics by codec family and data class.
+- Preserved buildfix7 benchmark JSONs as a regression baseline.
+
+### Changed
+- LZ refinement now runs only after buildfix6 analytical Top-K, preserving search recall.
+- BALANCED/DENSE zero-heavy blocks no longer force bare RLE fast path.
+- Analytical MAPE is diagnostic-only, not a release gate.
 
 ### Compatibility
-- No Format change; writer remains 1.2 and reader remains 1.0/1.1/1.2 compatible.
-- Runtime full candidate trial encodes remain zero.
+- No wire-format changes; writer remains 1.2 and readers remain 1.0/1.1/1.2 compatible.
+- JVM-facing examples/APIs are unchanged.
 
 ## 0.3-buildfix6 - 2026-09-12
 

@@ -30,3 +30,7 @@ Planner V3.2 additionally records oracle rank before/after sampling and Top-1/To
 
 The planner family records analytical/sample/final oracle rank, quality-pool recall,
 selected size/cost rank and predicted-size regret.
+
+## 0.3-buildfix8
+
+Schema 1.8 results use `0.3-buildfix8-*.json`. Planner output includes hybrid LZ budgets/disagreement and analytical calibration diagnostics.

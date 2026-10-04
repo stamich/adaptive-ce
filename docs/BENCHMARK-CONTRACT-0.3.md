@@ -1,6 +1,6 @@
 # ACE 0.3 benchmark contract
 
-Official results live under `examples/results/0.3-buildfix6-<family>.json`.
+Official results live under `examples/results/0.3-buildfix8-<family>.json`.
 
 Families:
 

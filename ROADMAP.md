@@ -29,3 +29,10 @@ Self-tuning costs, adaptive dictionaries, hot/warm/cold policies and replica-awa
 - oracle rank and quality-pool telemetry;
 - no wire-format changes;
 - zero full candidate trial encodes retained.
+
+## 0.3-buildfix8 — selective rollback / hybrid LZ
+
+- restore buildfix6 analyzer and analytical estimator;
+- keep buildfix7 calibration telemetry and zero-heavy guard;
+- replace formula-heavy LZ V2 with bounded real-codec micro-trials after Top-K;
+- evaluate quality outcomes before considering any optional selective full-trial fallback.
