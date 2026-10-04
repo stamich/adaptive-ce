@@ -13,5 +13,6 @@ ace-core = { path = "../ace-core" }
 ace-engine = { path = "../ace-engine" }
 ace-format = { path = "../ace-format" }
 ace-index = { path = "../ace-index" }
+ace-stream = { path = "../ace-stream" }
 clap.workspace = true
 anyhow.workspace = true
