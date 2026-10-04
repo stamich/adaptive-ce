@@ -34,6 +34,8 @@ pub enum EntropyCodecId {
     Huffman = 1,
     /// Scalar 32-bit range Asymmetric Numeral System introduced in ACE 0.2.
     Rans = 2,
+    /// Four-lane rANS container introduced in ACE 0.3 to reduce serial dependency chains.
+    Rans4x = 3,
 }
 
 impl TryFrom<u8> for EntropyCodecId {
@@ -45,6 +47,7 @@ impl TryFrom<u8> for EntropyCodecId {
             0 => Ok(Self::None),
             1 => Ok(Self::Huffman),
             2 => Ok(Self::Rans),
+            3 => Ok(Self::Rans4x),
             other => Err(crate::AceError::UnsupportedEntropyCodec(other)),
         }
     }

@@ -28,10 +28,12 @@ pub struct AceConfig {
     pub memory_budget_bytes: usize,
     /// Emits a serialized block index and trailer when true.
     pub write_index: bool,
+    /// Enables ACE 0.3 deterministic planner fast paths.
+    pub enable_planner_fast_paths: bool,
 }
 
 impl Default for AceConfig {
-    /// Returns the recommended ACE 0.2.1-buildfix1 defaults.
+    /// Returns the recommended ACE 0.3 defaults.
     fn default() -> Self {
         Self {
             block_size: 256 * 1024,
@@ -42,6 +44,7 @@ impl Default for AceConfig {
             max_in_flight_blocks: 32,
             memory_budget_bytes: 256 * 1024 * 1024,
             write_index: true,
+            enable_planner_fast_paths: true,
         }
     }
 }

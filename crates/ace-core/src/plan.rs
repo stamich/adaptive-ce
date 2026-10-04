@@ -54,39 +54,14 @@ pub struct CostWeights {
 
 impl CostWeights {
     /// Returns deterministic weights for a high-throughput encoder.
-    pub fn fast() -> Self {
-        Self {
-            size: 20,
-            encode_cpu: 55,
-            decode_cpu: 20,
-            memory: 5,
-        }
-    }
+    pub fn fast() -> Self { Self { size: 20, encode_cpu: 55, decode_cpu: 20, memory: 5 } }
     /// Returns deterministic balanced weights that deliberately separate BALANCED from FAST.
-    pub fn balanced() -> Self {
-        Self {
-            size: 60,
-            encode_cpu: 18,
-            decode_cpu: 17,
-            memory: 5,
-        }
-    }
+    pub fn balanced() -> Self { Self { size: 60, encode_cpu: 18, decode_cpu: 17, memory: 5 } }
     /// Returns deterministic weights favoring compressed size.
-    pub fn dense() -> Self {
-        Self {
-            size: 86,
-            encode_cpu: 5,
-            decode_cpu: 5,
-            memory: 4,
-        }
-    }
+    pub fn dense() -> Self { Self { size: 86, encode_cpu: 5, decode_cpu: 5, memory: 4 } }
     /// Maps a public compression profile to its deterministic cost weights.
     pub fn for_profile(profile: CompressionProfile) -> Self {
-        match profile {
-            CompressionProfile::Fast => Self::fast(),
-            CompressionProfile::Balanced => Self::balanced(),
-            CompressionProfile::Dense => Self::dense(),
-        }
+        match profile { CompressionProfile::Fast => Self::fast(), CompressionProfile::Balanced => Self::balanced(), CompressionProfile::Dense => Self::dense() }
     }
 }
 
@@ -111,12 +86,7 @@ impl PhysicalCompressionPlan {
     /// Creates the universal RAW fallback plan.
     pub fn raw() -> Self {
         Self {
-            decoding: DecodingPlan {
-                transforms: Vec::new(),
-                codec: CodecId::Raw,
-                dictionary: None,
-                entropy: EntropyCodecId::None,
-            },
+            decoding: DecodingPlan { transforms: Vec::new(), codec: CodecId::Raw, dictionary: None, entropy: EntropyCodecId::None },
             lz_mode: None,
             tier: CandidateTier::Mandatory,
             cost: PlanCost::default(),
