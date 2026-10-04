@@ -4,6 +4,26 @@ use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_index::AceIndexReader;
 use crate::decode_encoded_block;
 
+/// Physical work implied by one logical random-access range request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RangeAccessMetrics {
+    /// Logical bytes requested by the caller.
+    pub logical_bytes_requested: u64,
+    /// Sum of indexed serialized block spans that must be read.
+    pub physical_bytes_read: u64,
+    /// Number of independent ACE blocks intersecting the request.
+    pub blocks_touched: usize,
+    /// Number of independent blocks that must be decoded.
+    pub blocks_decoded: usize,
+}
+
+impl RangeAccessMetrics {
+    /// Returns physical bytes read divided by logical bytes requested.
+    pub fn overread_ratio(&self) -> f64 {
+        if self.logical_bytes_requested == 0 { 0.0 } else { self.physical_bytes_read as f64 / self.logical_bytes_requested as f64 }
+    }
+}
+
 /// High-level random-access decoder backed by the serialized ACE 1.1 block index.
 pub struct AceIndexedDecoder<R: Read + Seek> {
     indexed: AceIndexReader<R>,
@@ -23,13 +43,76 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
         decode_encoded_block(&header, &metadata, &payload, &self.limits)
     }
 
+    /// Returns physical-read diagnostics for a logical range without decoding it.
+    pub fn range_metrics(&self, range: Range<u64>) -> AceResult<RangeAccessMetrics> {
+        if range.start > range.end || range.end > self.indexed.file_header.original_size {
+            return Err(AceError::Malformed("requested range lies outside reconstructed file"));
+        }
+        let entries = self.indexed.index.intersecting(range.start, range.end);
+        let physical_bytes_read = entries.iter().try_fold(0u64, |acc, entry| {
+            acc.checked_add(entry.encoded_span as u64).ok_or(AceError::Malformed("physical range byte count overflow"))
+        })?;
+        Ok(RangeAccessMetrics {
+            logical_bytes_requested: range.end.saturating_sub(range.start),
+            physical_bytes_read,
+            blocks_touched: entries.len(),
+            blocks_decoded: entries.len(),
+        })
+    }
+
     /// Decodes only blocks intersecting the requested logical byte range and trims boundary blocks.
     pub fn read_range(&mut self, range: Range<u64>) -> AceResult<Vec<u8>> {
-        if range.start > range.end || range.end > self.indexed.file_header.original_size { return Err(AceError::Malformed("requested range lies outside reconstructed file")); }
-        if range.start == range.end { return Ok(Vec::new()); }
-        let entries = self.indexed.index.intersecting(range.start, range.end).into_iter().cloned().collect::<Vec<_>>();
+        self.read_range_with_metrics(range).map(|(bytes, _)| bytes)
+    }
+
+    /// Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup.
+    ///
+    /// ACE 0.2.1-buildfix1 uses this method to avoid performing one index intersection for
+    /// metrics and a second identical lookup for the actual range read. The method does not
+    /// reopen or revalidate the container; callers that need open latency should measure
+    /// [`AceIndexedDecoder::open`] separately.
+    pub fn read_range_with_metrics(
+        &mut self,
+        range: Range<u64>,
+    ) -> AceResult<(Vec<u8>, RangeAccessMetrics)> {
+        if range.start > range.end || range.end > self.indexed.file_header.original_size {
+            return Err(AceError::Malformed("requested range lies outside reconstructed file"));
+        }
+        if range.start == range.end {
+            return Ok((
+                Vec::new(),
+                RangeAccessMetrics {
+                    logical_bytes_requested: 0,
+                    physical_bytes_read: 0,
+                    blocks_touched: 0,
+                    blocks_decoded: 0,
+                },
+            ));
+        }
+
+        let entries = self
+            .indexed
+            .index
+            .intersecting(range.start, range.end)
+            .into_iter()
+            .cloned()
+            .collect::<Vec<_>>();
         let requested = range.end - range.start;
-        if requested > usize::MAX as u64 { return Err(AceError::ResourceLimitExceeded("range output size")); }
+        if requested > usize::MAX as u64 {
+            return Err(AceError::ResourceLimitExceeded("range output size"));
+        }
+
+        let physical_bytes_read = entries.iter().try_fold(0u64, |acc, entry| {
+            acc.checked_add(entry.encoded_span as u64)
+                .ok_or(AceError::Malformed("physical range byte count overflow"))
+        })?;
+        let metrics = RangeAccessMetrics {
+            logical_bytes_requested: requested,
+            physical_bytes_read,
+            blocks_touched: entries.len(),
+            blocks_decoded: entries.len(),
+        };
+
         let mut out = Vec::with_capacity(requested as usize);
         for entry in entries {
             let block = self.decode_block(entry.block_id)?;
@@ -39,7 +122,7 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
             let copy_end = range.end.min(block_end) - block_start;
             out.extend_from_slice(&block[copy_start as usize..copy_end as usize]);
         }
-        Ok(out)
+        Ok((out, metrics))
     }
 
     /// Returns the number of indexed independent blocks.

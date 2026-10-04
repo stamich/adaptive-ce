@@ -1,4 +1,4 @@
-/// Deterministic fixed-size block splitter retained by ACE 0.2.
+/// Deterministic fixed-size block splitter retained by ACE 0.2.1.
 #[derive(Debug, Clone, Copy)]
 pub struct FixedBlockChunker { block_size: usize }
 

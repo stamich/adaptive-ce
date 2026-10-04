@@ -18,7 +18,7 @@ use ace_transforms::invert_transform;
 use rayon::prelude::*;
 use crate::{BlockExplanation, FixedBlockChunker};
 
-/// Public façade of the ACE 0.2 compression engine.
+/// Public façade of the ACE 0.2.1-buildfix1 compression engine.
 #[derive(Debug, Clone)]
 pub struct AceEngine {
     config: AceConfig,
@@ -47,7 +47,7 @@ impl AceEngine {
         Ok(Self { config, limits: DecodeLimits::default() })
     }
 
-    /// Creates an engine using ACE 0.2 default settings.
+    /// Creates an engine using ACE 0.2.1 default settings.
     pub fn default_engine() -> Self { Self::new(AceConfig::default()).expect("default ACE configuration is valid") }
 
     /// Replaces decoder resource limits.
@@ -82,6 +82,7 @@ impl AceEngine {
         let mut index = BlockIndex::default();
         let mut original_offset = 0u64;
         let mut stats = CompressionStats { input_bytes: input.len() as u64, block_count: encoded.len() as u64, ..Default::default() };
+        let serialization_started = Instant::now();
         for block in encoded {
             let file_offset = output.len() as u64;
             let header = BlockHeader {
@@ -102,14 +103,18 @@ impl AceEngine {
             match header.codec { CodecId::Raw => stats.raw_blocks += 1, CodecId::Rle => stats.rle_blocks += 1, CodecId::Lz => stats.lz_blocks += 1 }
             if header.transforms.iter().any(|t| matches!(t, ace_core::TransformId::DeltaByte)) { stats.delta_blocks += 1; }
             match header.entropy { EntropyCodecId::Huffman => stats.huffman_blocks += 1, EntropyCodecId::Rans => stats.rans_blocks += 1, EntropyCodecId::None => {} }
+            stats.record_plan(plan_label(&block.plan));
         }
+        stats.serialization_time = serialization_started.elapsed();
         if self.config.write_index {
+            let index_started = Instant::now();
             let index_bytes = encode_index(&index);
             let index_offset = output.len() as u64;
             let index_crc32c = checksum(&index_bytes);
             output.extend_from_slice(&index_bytes);
             let trailer = FileTrailer { index_offset, index_size: index_bytes.len() as u64, index_crc32c };
             output.extend_from_slice(&encode_trailer(trailer));
+            stats.index_time = index_started.elapsed();
         }
         stats.output_bytes = output.len() as u64;
         Ok((output, stats))
@@ -185,6 +190,19 @@ impl AceEngine {
         let encoding_time = started.elapsed();
         Ok(EncodedBlock { id, original_size: input.len(), metadata, payload, plan: selected, crc32c: checksum(input), analysis_time, planning_time, encoding_time })
     }
+}
+
+/// Returns a stable human-readable label for benchmark plan-distribution telemetry.
+fn plan_label(plan: &PhysicalCompressionPlan) -> String {
+    let mut parts = plan.decoding.transforms.iter().map(|t| match t { ace_core::TransformId::None => "none", ace_core::TransformId::DeltaByte => "delta" }).collect::<Vec<_>>();
+    parts.push(match (plan.decoding.codec, plan.lz_mode) {
+        (CodecId::Raw, _) => "raw",
+        (CodecId::Rle, _) => "rle",
+        (CodecId::Lz, Some(ace_core::LzMode::Balanced)) => "lz_balanced",
+        (CodecId::Lz, _) => "lz_fast",
+    });
+    parts.push(match plan.decoding.entropy { EntropyCodecId::None => "none", EntropyCodecId::Huffman => "huffman", EntropyCodecId::Rans => "rans" });
+    parts.join("+")
 }
 
 /// Adds the uncompressed primary-codec byte length in front of entropy model metadata when required.

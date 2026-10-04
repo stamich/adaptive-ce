@@ -10,6 +10,6 @@ fn format_1_0_raw_fixture(data:&[u8])->Vec<u8>{
     let mut out=file.to_vec(); out.append(&mut block); out.extend_from_slice(data); out
 }
 
-/// Ensures the ACE 0.2 sequential decoder remains compatible with format 1.0 RAW files.
+/// Ensures the ACE 0.2.1 sequential decoder remains compatible with format 1.0 RAW files.
 #[test]
 fn reads_format_1_0_fixture(){let data=b"ACE 0.1 compatibility fixture".repeat(1000);let fixture=format_1_0_raw_fixture(&data);assert_eq!(AceEngine::default_engine().decompress(&fixture).unwrap(),data);}

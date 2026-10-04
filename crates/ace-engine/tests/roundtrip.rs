@@ -2,7 +2,7 @@ use std::io::Cursor;
 use ace_core::{AceConfig, DecodeLimits};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 
-/// Ensures heterogeneous input survives a complete ACE 0.2 encode/decode cycle.
+/// Ensures heterogeneous input survives a complete ACE 0.2.1-buildfix1 encode/decode cycle.
 #[test]
 fn heterogeneous_roundtrip() {
     let mut data=vec![0u8;200_000]; data.extend((0u8..=255).cycle().take(300_000));
