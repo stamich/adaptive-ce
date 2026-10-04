@@ -4,7 +4,7 @@ import scala.sys.process.*
  * Minimal Scala demonstration of the stable ACE CLI boundary.
  *
  * This is deliberately not a native JVM binding. Production FFM/Panama integration remains a
- * later roadmap item so ACE 0.2.1-buildfix1 can keep Format 1.1 and the Rust execution core independent.
+ * later roadmap item so ACE 0.3 can keep Format 1.2 and the Rust execution core independent.
  */
 object AceCliDemo:
   /**

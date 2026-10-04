@@ -5,7 +5,7 @@ import java.util.List;
  * Minimal Java demonstration of the stable ACE CLI boundary.
  *
  * <p>This is intentionally not a production binding. Native JVM integration is deferred to the
- * planned FFM/Panama milestone; ACE 0.2.1-buildfix1 keeps its core and wire format Rust-first.</p>
+ * planned FFM/Panama milestone; ACE 0.3 keeps its core and wire format Rust-first.</p>
  */
 public final class AceCliDemo {
     /** Prevents instantiation of this utility-only demonstration class. */
