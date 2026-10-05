@@ -127,7 +127,7 @@ fn apply_entropy_selection_policy(
     }
 }
 
-/// Planner V3.5 telemetry used by engine statistics, `ace explain` and benchmarks.
+/// Planner V3.6 telemetry used by engine statistics, `ace explain` and benchmarks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlannerTelemetry {
     /// True when a deterministic fast path selected the plan without candidate sampling.
@@ -140,6 +140,14 @@ pub struct PlannerTelemetry {
     pub second_stage_candidates: usize,
     /// Number of LZ candidates refined by bounded production-codec micro-trials.
     pub hybrid_lz_candidates: usize,
+    /// Number of LZ candidates refined during stage one.
+    pub hybrid_lz_stage1_candidates: usize,
+    /// Number of LZ candidates refined during stage two.
+    pub hybrid_lz_stage2_candidates: usize,
+    /// Number of LZ candidates skipped because the profile/data-class budget did not justify work.
+    pub hybrid_lz_skipped_candidates: usize,
+    /// Number of stage-two LZ trials skipped because stage-one analytical/sample agreement was high.
+    pub hybrid_lz_high_confidence_skips: usize,
     /// Total source bytes processed by bounded LZ micro-trials for this block.
     pub hybrid_lz_sample_bytes: usize,
     /// Largest analytical-vs-micro-trial LZ disagreement observed, in parts per million.
@@ -160,7 +168,7 @@ pub struct PlannerTelemetry {
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the ACE 0.3-buildfix8 Planner V3.5 hot path.
+/// Result returned by the ACE 0.3-buildfix9 Planner V3.6 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
@@ -183,7 +191,7 @@ pub struct PlannerDecision {
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3-buildfix8 starts from buildfix6, retains zero full trials and the quality envelope, and replaces LZ reset-window verification with a bounded hybrid production-codec micro-trial.
+/// ACE 0.3-buildfix9 hardens buildfix8: quality remains unchanged while profile/data-class budgets and confidence bands avoid unnecessary Hybrid LZ work.
 /// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
 /// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
 /// blended compressed size, then the cost model selects the cheapest quality-safe plan.
@@ -193,7 +201,10 @@ pub fn evaluate_candidates_v3(
     candidates: &[PhysicalCompressionPlan],
     config: &AceConfig,
 ) -> AceResult<PlannerDecision> {
-    use crate::{DefaultPlannerFastPath, PlannerFastPath};
+    use crate::{
+        DefaultPlannerFastPath, EstimateConfidence, PlannerDataClass, PlannerFastPath,
+        PlanningBudget,
+    };
     use ace_cost::{
         adaptive_top_k, CandidateEstimator, CostModelV3, DefaultCandidateEstimator, SamplePolicy,
     };
@@ -207,6 +218,10 @@ pub fn evaluate_candidates_v3(
                 sampled_candidates: 0,
                 second_stage_candidates: 0,
                 hybrid_lz_candidates: 0,
+                hybrid_lz_stage1_candidates: 0,
+                hybrid_lz_stage2_candidates: 0,
+                hybrid_lz_skipped_candidates: 0,
+                hybrid_lz_high_confidence_skips: 0,
                 hybrid_lz_sample_bytes: 0,
                 hybrid_lz_max_disagreement_ppm: 0,
                 quality_qualified_candidates: 1,
@@ -250,21 +265,35 @@ pub fn evaluate_candidates_v3(
         .collect::<Vec<_>>();
     let model = CostModelV3;
     let hybrid = crate::HybridLzEstimator;
+    let data_class = PlannerDataClass::classify(profile);
+    let planning_budget = PlanningBudget::for_block(config.profile, data_class);
     let mut hybrid_lz_candidates = 0usize;
+    let mut hybrid_lz_stage1_candidates = 0usize;
+    let mut hybrid_lz_stage2_candidates = 0usize;
+    let mut hybrid_lz_skipped_candidates = 0usize;
+    let mut hybrid_lz_high_confidence_skips = 0usize;
     let mut hybrid_lz_sample_bytes = 0usize;
     let mut hybrid_lz_max_disagreement_ppm = 0u64;
 
     let mut stage_one = Vec::with_capacity(stage_one_pool.len());
+    let mut stage1_lz_used = 0usize;
     for candidate in stage_one_pool {
         if matches!(candidate.plan.decoding.codec, CodecId::Lz) {
-            let (refined, observation) =
-                hybrid.refine(input, candidate, config.profile, 1, &model)?;
-            hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
-            hybrid_lz_sample_bytes =
-                hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
-            hybrid_lz_max_disagreement_ppm =
-                hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
-            stage_one.push(refined);
+            if stage1_lz_used < planning_budget.hybrid_stage1_candidates {
+                let (refined, observation) =
+                    hybrid.refine(input, candidate, config.profile, 1, &model)?;
+                stage1_lz_used = stage1_lz_used.saturating_add(1);
+                hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
+                hybrid_lz_stage1_candidates = hybrid_lz_stage1_candidates.saturating_add(1);
+                hybrid_lz_sample_bytes =
+                    hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
+                hybrid_lz_max_disagreement_ppm =
+                    hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
+                stage_one.push(refined);
+            } else {
+                hybrid_lz_skipped_candidates = hybrid_lz_skipped_candidates.saturating_add(1);
+                stage_one.push(candidate);
+            }
         } else {
             stage_one.push(verify_candidate_samples(
                 input,
@@ -291,22 +320,35 @@ pub fn evaluate_candidates_v3(
         .map(|c| c.plan.clone())
         .collect::<Vec<_>>();
 
-    // Planner V3.5 is ranking-only: stage two may refine a candidate's score, but it does not
+    // Planner V3.6 remains ranking-only: stage two may refine a candidate's score, but it does not
     // remove candidates that survived stage one. This preserves Top-K quality while retaining
     // zero full-block trial encodes. Candidates outside the stage-two budget keep their stage-one
     // score and remain eligible for the final deterministic ranking.
     let mut final_pool = Vec::with_capacity(stage_one.len());
+    let mut stage2_lz_used = 0usize;
     for (idx, candidate) in stage_one.into_iter().enumerate() {
         if idx < stage_two_k {
             if matches!(candidate.plan.decoding.codec, CodecId::Lz) {
-                let (refined, observation) =
-                    hybrid.refine(input, candidate, config.profile, 2, &model)?;
-                hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
-                hybrid_lz_sample_bytes =
-                    hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
-                hybrid_lz_max_disagreement_ppm =
-                    hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
-                final_pool.push(refined);
+                let confidence = EstimateConfidence::from_candidate(&candidate);
+                if !confidence.needs_second_stage() {
+                    hybrid_lz_high_confidence_skips =
+                        hybrid_lz_high_confidence_skips.saturating_add(1);
+                    final_pool.push(candidate);
+                } else if stage2_lz_used < planning_budget.hybrid_stage2_candidates {
+                    let (refined, observation) =
+                        hybrid.refine(input, candidate, config.profile, 2, &model)?;
+                    stage2_lz_used = stage2_lz_used.saturating_add(1);
+                    hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
+                    hybrid_lz_stage2_candidates = hybrid_lz_stage2_candidates.saturating_add(1);
+                    hybrid_lz_sample_bytes =
+                        hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
+                    hybrid_lz_max_disagreement_ppm =
+                        hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
+                    final_pool.push(refined);
+                } else {
+                    hybrid_lz_skipped_candidates = hybrid_lz_skipped_candidates.saturating_add(1);
+                    final_pool.push(candidate);
+                }
             } else {
                 final_pool.push(verify_candidate_samples(
                     input,
@@ -382,6 +424,10 @@ pub fn evaluate_candidates_v3(
             sampled_candidates: top_k_plans.len(),
             second_stage_candidates: second_stage_plans.len(),
             hybrid_lz_candidates,
+            hybrid_lz_stage1_candidates,
+            hybrid_lz_stage2_candidates,
+            hybrid_lz_skipped_candidates,
+            hybrid_lz_high_confidence_skips,
             hybrid_lz_sample_bytes,
             hybrid_lz_max_disagreement_ppm,
             quality_qualified_candidates: quality_qualified_plans.len(),
@@ -529,7 +575,7 @@ fn verify_candidate_samples(
     Ok(candidate)
 }
 
-/// Returns deterministic sample/analytical blending weights for non-LZ candidates in Planner V3.5.
+/// Returns deterministic sample/analytical blending weights for non-LZ candidates in Planner V3.6.
 ///
 /// High-confidence analytical estimates retain most of the authority. LZ always receives a
 /// stronger analytical weight because short windows cannot faithfully reproduce long-range

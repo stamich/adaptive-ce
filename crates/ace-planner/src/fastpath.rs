@@ -13,7 +13,7 @@ pub trait PlannerFastPath: Send + Sync {
     ) -> Option<PhysicalCompressionPlan>;
 }
 
-/// Default ACE 0.3-buildfix8 fast-path classifier with a zero-heavy quality guard.
+/// Default ACE 0.3-buildfix9 fast-path classifier with a zero-heavy quality guard.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultPlannerFastPath;
 
@@ -36,7 +36,7 @@ impl PlannerFastPath for DefaultPlannerFastPath {
                     EntropyCodecId::None,
                     None,
                     Vec::new(),
-                    "0.3-buildfix8 fast path: extreme run density under FAST quality policy",
+                    "0.3-buildfix9 fast path: extreme run density under FAST quality policy",
                 ));
             }
             return None;

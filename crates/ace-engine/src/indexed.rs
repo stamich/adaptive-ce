@@ -59,16 +59,20 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
                 "requested range lies outside reconstructed file",
             ));
         }
-        let entries = self.indexed.index.intersecting(range.start, range.end);
-        let physical_bytes_read = entries.iter().try_fold(0u64, |acc, entry| {
-            acc.checked_add(entry.encoded_span as u64)
+        let indices = self
+            .indexed
+            .index
+            .intersecting_indices(range.start, range.end);
+        let physical_bytes_read = indices.clone().try_fold(0u64, |acc, index| {
+            acc.checked_add(self.indexed.index.entries[index].encoded_span as u64)
                 .ok_or(AceError::Malformed("physical range byte count overflow"))
         })?;
+        let blocks = indices.len();
         Ok(RangeAccessMetrics {
             logical_bytes_requested: range.end.saturating_sub(range.start),
             physical_bytes_read,
-            blocks_touched: entries.len(),
-            blocks_decoded: entries.len(),
+            blocks_touched: blocks,
+            blocks_decoded: blocks,
         })
     }
 
@@ -104,34 +108,37 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
             ));
         }
 
-        let entries = self
+        let indices = self
             .indexed
             .index
-            .intersecting(range.start, range.end)
-            .into_iter()
-            .cloned()
-            .collect::<Vec<_>>();
+            .intersecting_indices(range.start, range.end);
         let requested = range.end - range.start;
         if requested > usize::MAX as u64 {
             return Err(AceError::ResourceLimitExceeded("range output size"));
         }
 
-        let physical_bytes_read = entries.iter().try_fold(0u64, |acc, entry| {
-            acc.checked_add(entry.encoded_span as u64)
+        let physical_bytes_read = indices.clone().try_fold(0u64, |acc, index| {
+            acc.checked_add(self.indexed.index.entries[index].encoded_span as u64)
                 .ok_or(AceError::Malformed("physical range byte count overflow"))
         })?;
+        let blocks = indices.len();
         let metrics = RangeAccessMetrics {
             logical_bytes_requested: requested,
             physical_bytes_read,
-            blocks_touched: entries.len(),
-            blocks_decoded: entries.len(),
+            blocks_touched: blocks,
+            blocks_decoded: blocks,
         };
 
         let mut out = Vec::with_capacity(requested as usize);
-        for entry in entries {
-            let block = self.decode_block(entry.block_id)?;
-            let block_start = entry.original_offset;
-            let block_end = block_start + entry.original_size as u64;
+        for index in indices {
+            // Copy only the small fields needed after mutable decoder access; avoid allocating or
+            // cloning a temporary vector of complete index entries for every range request.
+            let (block_id, block_start, original_size) = {
+                let entry = &self.indexed.index.entries[index];
+                (entry.block_id, entry.original_offset, entry.original_size)
+            };
+            let block = self.decode_block(block_id)?;
+            let block_end = block_start + original_size as u64;
             let copy_start = range.start.max(block_start) - block_start;
             let copy_end = range.end.min(block_end) - block_start;
             out.extend_from_slice(&block[copy_start as usize..copy_end as usize]);

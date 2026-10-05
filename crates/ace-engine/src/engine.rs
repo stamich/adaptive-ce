@@ -1,5 +1,5 @@
 use crate::{BlockExplanation, FixedBlockChunker};
-use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
+use ace_analysis::{AnalysisLevel, DefaultBlockAnalyzer};
 use ace_codecs::decode_codec;
 use ace_core::{
     AceConfig, AceError, AceResult, CodecId, CompressionStats, DecodeLimits, EntropyCodecId,
@@ -261,7 +261,8 @@ impl AceEngine {
         let planner = DefaultCompressionPlanner;
         let mut out = Vec::new();
         for (id, block) in chunker.chunks(input).enumerate() {
-            let profile = analyzer.analyze(block);
+            let profile =
+                analyzer.analyze_with_level(block, AnalysisLevel::for_profile(self.config.profile));
             let candidates = planner.candidates(&profile, &self.config);
             let evaluated = evaluate_all_candidates(block, &candidates, &self.config)?;
             let decision = evaluate_candidates_v3(block, &profile, &candidates, &self.config)?;
@@ -281,7 +282,8 @@ impl AceEngine {
         let analyzer = DefaultBlockAnalyzer;
         let planner = DefaultCompressionPlanner;
         let started = Instant::now();
-        let profile = analyzer.analyze(input);
+        let profile =
+            analyzer.analyze_with_level(input, AnalysisLevel::for_profile(self.config.profile));
         let analysis_time = started.elapsed();
         let started = Instant::now();
         let candidates = planner.candidates(&profile, &self.config);

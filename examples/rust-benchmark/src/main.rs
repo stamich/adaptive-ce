@@ -5,7 +5,7 @@ use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
+use ace_analysis::{AnalysisLevel, BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{
     AceConfig, CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId, LzMode,
     PhysicalCompressionPlan, TransformId,
@@ -132,12 +132,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             other => return Err(format!("unknown benchmark family: {other}").into()),
         };
         let document = BenchmarkDocument {
-            schema_version: "1.8",
+            schema_version: "1.9",
             project: "ace",
-            milestone: "0.3-buildfix8",
-            base: "0.3-buildfix6",
+            milestone: "0.3-buildfix9",
+            base: "0.3-buildfix8",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3-buildfix8",
+            benchmark_contract_origin: "ace-0.3-buildfix9",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: json!({
@@ -191,7 +191,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3-buildfix8-{family}.json"))
+        .join(format!("0.3-buildfix9-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -363,7 +363,7 @@ fn entropy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     Ok(workloads)
 }
 
-/// Measures Planner V3.1 quality at every pruning stage plus isolated timing components.
+/// Measures Planner V3.6 quality, work budgets and isolated timing components.
 fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let data = mixed_data(8);
     let cfg = AceConfig::default();
@@ -398,8 +398,13 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut second_stage_total = 0u64;
     let mut full_trial_total = 0u64;
     let mut hybrid_lz_candidates_total = 0u64;
+    let mut hybrid_lz_stage1_total = 0u64;
+    let mut hybrid_lz_stage2_total = 0u64;
+    let mut hybrid_lz_skipped_total = 0u64;
+    let mut hybrid_lz_high_confidence_skips_total = 0u64;
     let mut hybrid_lz_sample_bytes_total = 0u64;
     let mut hybrid_lz_max_disagreement_ppm = 0u64;
+    let mut regret_samples = Vec::<u64>::new();
     let mut generated_recall_by_class: BTreeMap<&str, (u64, u64)> = BTreeMap::new();
     let mut regret_by_class: BTreeMap<&str, (i64, u64)> = BTreeMap::new();
     let mut estimator_by_family: BTreeMap<String, EstimatorErrorStats> = BTreeMap::new();
@@ -439,6 +444,11 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         second_stage_total += decision.telemetry.second_stage_candidates as u64;
         full_trial_total += decision.telemetry.full_trial_encodes as u64;
         hybrid_lz_candidates_total += decision.telemetry.hybrid_lz_candidates as u64;
+        hybrid_lz_stage1_total += decision.telemetry.hybrid_lz_stage1_candidates as u64;
+        hybrid_lz_stage2_total += decision.telemetry.hybrid_lz_stage2_candidates as u64;
+        hybrid_lz_skipped_total += decision.telemetry.hybrid_lz_skipped_candidates as u64;
+        hybrid_lz_high_confidence_skips_total +=
+            decision.telemetry.hybrid_lz_high_confidence_skips as u64;
         hybrid_lz_sample_bytes_total += decision.telemetry.hybrid_lz_sample_bytes as u64;
         hybrid_lz_max_disagreement_ppm =
             hybrid_lz_max_disagreement_ppm.max(decision.telemetry.hybrid_lz_max_disagreement_ppm);
@@ -566,6 +576,7 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         let selected_size = encoded_plan_size(block, &selected)? as i64;
         let block_regret = selected_size - oracle.0 as i64;
         regret += block_regret;
+        regret_samples.push(block_regret.max(0) as u64);
         let recall_entry = generated_recall_by_class.entry(class).or_insert((0, 0));
         recall_entry.1 += 1;
         if generated_hit {
@@ -598,6 +609,10 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             "selected_prediction_error_bytes":decision.telemetry.selected_blended_size_bytes as i64 - selected_size,
             "selected_prediction_error_percent":if selected_size==0 {0.0} else {(decision.telemetry.selected_blended_size_bytes as f64-selected_size as f64)/selected_size as f64},
             "hybrid_lz_candidates":decision.telemetry.hybrid_lz_candidates,
+            "hybrid_lz_stage1_candidates":decision.telemetry.hybrid_lz_stage1_candidates,
+            "hybrid_lz_stage2_candidates":decision.telemetry.hybrid_lz_stage2_candidates,
+            "hybrid_lz_skipped_candidates":decision.telemetry.hybrid_lz_skipped_candidates,
+            "hybrid_lz_high_confidence_skips":decision.telemetry.hybrid_lz_high_confidence_skips,
             "hybrid_lz_sample_bytes":decision.telemetry.hybrid_lz_sample_bytes,
             "hybrid_lz_max_disagreement_ppm":decision.telemetry.hybrid_lz_max_disagreement_ppm,
             "predicted_size_regret_bytes":decision.telemetry.selected_blended_size_bytes.saturating_sub(decision.telemetry.best_blended_size_bytes),
@@ -615,6 +630,13 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let analysis_stats = measure(|| {
         for block in &blocks {
             black_box(analyzer.analyze(block));
+        }
+        Ok(())
+    })?
+    .0;
+    let fast_analysis_stats = measure(|| {
+        for block in &blocks {
+            black_box(analyzer.analyze_with_level(block, AnalysisLevel::Fast));
         }
         Ok(())
     })?
@@ -672,13 +694,20 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         .into_iter()
         .map(|(bucket, stats)| (bucket, stats.json()))
         .collect::<BTreeMap<_, _>>();
+    regret_samples.sort_unstable();
+    let p95_regret_bytes_per_block = if regret_samples.is_empty() {
+        0u64
+    } else {
+        regret_samples[((regret_samples.len() - 1) * 95) / 100]
+    };
 
     Ok(vec![json!({
         "workload_id":"mixed_8m",
-        "path":"planner_v3_5_hybrid_lz_selective_rollback",
+        "path":"planner_v3_6_hardened_adaptive_budget",
         "blocks":blocks.len(),
         "oracle_regret_bytes":regret,
         "normalized_regret_bytes_per_block":regret as f64/block_count,
+        "p95_regret_bytes_per_block":p95_regret_bytes_per_block,
         "regret_bytes_per_block_by_class":regret_classes,
         "candidate_recall":generated_recall as f64/block_count,
         "candidate_generation_recall":generated_recall as f64/block_count,
@@ -707,12 +736,18 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         "second_stage_candidates_per_block":second_stage_total as f64/block_count,
         "full_trial_encodes_per_block":full_trial_total as f64/block_count,
         "hybrid_lz_candidates_per_block":hybrid_lz_candidates_total as f64/block_count,
+        "hybrid_lz_stage1_candidates_per_block":hybrid_lz_stage1_total as f64/block_count,
+        "hybrid_lz_stage2_candidates_per_block":hybrid_lz_stage2_total as f64/block_count,
+        "hybrid_lz_skipped_candidates_per_block":hybrid_lz_skipped_total as f64/block_count,
+        "hybrid_lz_high_confidence_skips_per_block":hybrid_lz_high_confidence_skips_total as f64/block_count,
         "hybrid_lz_sample_bytes_per_block":hybrid_lz_sample_bytes_total as f64/block_count,
+        "hybrid_lz_sample_fraction":hybrid_lz_sample_bytes_total as f64/(data.len().max(1) as f64),
         "hybrid_lz_max_disagreement_ppm":hybrid_lz_max_disagreement_ppm,
         "estimator_calibration":estimator_calibration,
         "estimator_calibration_by_data_class":estimator_calibration_by_class,
         "timing":{
             "analysis_per_file":timing_json(&analysis_stats,data.len()),
+            "fast_analysis_per_file":timing_json(&fast_analysis_stats,data.len()),
             "candidate_generation_per_file":timing_json(&candidate_stats,data.len()),
             "evaluation_per_file":timing_json(&evaluation_stats,data.len())
         },
@@ -725,6 +760,7 @@ fn parallel_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let data = mixed_data(16);
     let mut results = Vec::new();
     let mut reference: Option<Vec<u8>> = None;
+    let mut one_thread_mb_s = 0.0f64;
     let max_threads = num_cpus::get().max(1);
     let requested = [1usize, 2, 4, 6, 8, 12];
     for threads in requested
@@ -740,7 +776,31 @@ fn parallel_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         } else {
             reference = Some(encoded.clone());
         }
-        results.push(json!({"workload_id":"mixed_16m","path":format!("threads-{threads}"),"threads":threads,"encoded_bytes":encoded.len(),"deterministic_vs_1t":true,"compression":timing_json(&stats,data.len())}));
+        let seconds = stats.median_ns / 1_000_000_000.0;
+        let mb_s = if seconds == 0.0 {
+            0.0
+        } else {
+            data.len() as f64 / 1_048_576.0 / seconds
+        };
+        if threads == 1 {
+            one_thread_mb_s = mb_s;
+        }
+        let speedup = if one_thread_mb_s == 0.0 {
+            1.0
+        } else {
+            mb_s / one_thread_mb_s
+        };
+        let efficiency = speedup / threads as f64;
+        results.push(json!({
+            "workload_id":"mixed_16m",
+            "path":format!("threads-{threads}"),
+            "threads":threads,
+            "encoded_bytes":encoded.len(),
+            "deterministic_vs_1t":true,
+            "speedup_vs_1t":speedup,
+            "parallel_efficiency":efficiency,
+            "compression":timing_json(&stats,data.len())
+        }));
     }
     Ok(results)
 }
