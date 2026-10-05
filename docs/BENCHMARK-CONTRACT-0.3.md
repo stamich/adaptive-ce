@@ -1,20 +1,7 @@
-# ACE 0.3 benchmark contract
+# ACE 0.3 benchmark contract — current milestone 0.3-buildfix9
 
-Official results live under `examples/results/0.3-buildfix8-<family>.json`.
+Official result files live under `examples/results/0.3-buildfix9-<family>.json` and use schema 1.9.
 
-Families:
+The hard release contract is product-quality-first: generated recall, Top-K recall, actual mean/p95 regret, compression ratio, tolerant profile ordering, zero full trials, absolute throughput targets and warm random-access latency. Exact oracle-rank and quality-pool metrics are retained as diagnostics.
 
-- `compression` — FAST/BALANCED/DENSE plus LZ4/Zstd/gzip baselines;
-- `entropy` — Huffman/scalar rANS/rANS4x;
-- `planner` — recall, regret, stage timing, fast-path and Top-K work;
-- `parallel` — 1/2/4/6/8/12 worker determinism and scaling;
-- `random-access` — full decode, decoder open, block reads, cold/warm ranges;
-- `streaming` — bounded reader/writer compression;
-- `memory` — reusable scratch and planner full-trial elimination;
-- `regression` — gates against 0.2.1-buildfix1.
-
-The benchmark format remains version-independent: `milestone`, `base`, `scope` and `benchmark_contract_origin` must be mutually consistent.
-
-## Planner V3.2 quality fields
-
-Buildfix4 keeps `candidate_generation_recall`, `top_k_recall`, `final_selection_recall` and `regret_bytes_per_block_by_class`, and adds `sample_survival_recall`, oracle mean rank before/after sampling, plus Top-1/Top-2/Top-3 oracle rates after sampling. Top-K/sample metrics exclude blocks handled directly by `PlannerFastPath`, because those blocks never enter the corresponding stage. Stage-two sampling is ranking-only and therefore cannot discard a stage-one survivor.
+See `BENCHMARK-CONTRACT-0.3-BUILDFIX9.md` for the complete buildfix9 contract.

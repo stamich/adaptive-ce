@@ -1,101 +1,113 @@
-# Adaptive Compression Engine — ACE 0.3-buildfix8
+# Adaptive Compression Engine — ACE 0.3-buildfix9
 
-ACE 0.3-buildfix8 is a **selective rollback** release. Its source baseline is 0.3-buildfix6, not
-0.3-buildfix7. Buildfix7 was useful diagnostically, but its LZ Estimator V2 and expanded full-block
-match analysis reduced Top-K recall, ratio and throughput.
+ACE 0.3-buildfix9 is the hardening/performance milestone after the successful quality recovery in buildfix8. It deliberately **does not redesign Planner V3**. The milestone preserves Hybrid LZ, analytical Top-K, QualityEnvelope and Format 1.2, while removing work that buildfix8 showed was no longer necessary.
 
-## Design rule
+## Goals
 
-```text
-buildfix6 core
-   + buildfix7 calibration telemetry
-   + buildfix7 zero-heavy quality guard
-   + bounded hybrid LZ micro-trials
-   - LZ Estimator V2
-   - expensive match-analysis V2
-```
+- preserve buildfix8 quality: ~3.47x BALANCED/DENSE ratio and very low regret;
+- improve FAST throughput with a profile-aware analyzer budget;
+- reduce unnecessary Hybrid-LZ micro-trials without losing numeric/structured quality;
+- normalize release gates around product quality rather than exact oracle ranking;
+- shave random-access overhead without changing the wire format or public semantics.
 
-## Planner V3.5
+## Planner V3.6
 
 ```text
-BlockAnalyzer (buildfix6)
-      ↓
+AnalysisLevel::for_profile
+        ↓
 CandidateGenerator
-      ↓
-DefaultCandidateEstimator (buildfix6)
-      ↓
-adaptive Top-K + semantic anchors
-      ↓
-LZ: bounded production-codec micro-trial
-RAW/RLE: existing deterministic sample verifier
-      ↓
-rank-only stage 2
-      ↓
+        ↓
+analytical Top-K + semantic anchors
+        ↓
+PlannerDataClass + PlanningBudget
+        ↓
+Hybrid LZ stage 1 only where useful
+        ↓
+EstimateConfidence
+        ↓
+adaptive stage 2
+        ↓
 QualityEnvelope
-      ↓
-CostModelV3 inside quality-safe pool
-      ↓
-one final full encode
+        ↓
+CostModelV3
+        ↓
+one production encode
 ```
 
-The hybrid LZ estimator never changes candidate generation or analytical Top-K. This intentionally
-preserves the buildfix6 search behavior that achieved `top_k_recall = 1.0`.
+## FAST Analyzer Lite
 
-## Hybrid LZ budgets
+FAST computes every feature consumed by candidate generation and CostModel, but skips sampled first-order entropy (`entropy_h1`). `entropy_h1` was diagnostic-only and required a 65,536-entry transition table per block. BALANCED and DENSE retain the full analyzer.
 
-Stage 1:
+## Adaptive Hybrid LZ budget
+
+Planner V3.6 classifies the already-computed profile into `ZeroHeavy`, `Incompressible`, `Numeric` or `Structured`. This classification changes only **work budget**, never decoder semantics or candidate availability.
+
+- zero-heavy / incompressible: no Hybrid-LZ micro-trial;
+- numeric: wide LZ budget retained;
+- structured: moderate LZ budget;
+- FAST: at most one stage-1 LZ micro-trial;
+- high analytical/sample agreement skips stage 2.
+
+## Random access
+
+`BlockIndex::intersecting_indices()` returns a contiguous index range without allocating. `AceIndexedDecoder` uses it to avoid allocating/cloning a temporary vector of block index entries for each range read.
+
+## Benchmark schema 1.9
+
+New metrics include:
+
+- `p95_regret_bytes_per_block`;
+- `hybrid_lz_stage1_candidates_per_block`;
+- `hybrid_lz_stage2_candidates_per_block`;
+- `hybrid_lz_skipped_candidates_per_block`;
+- `hybrid_lz_high_confidence_skips_per_block`;
+- `hybrid_lz_sample_fraction`;
+- `fast_analysis_per_file`;
+- `speedup_vs_1t`;
+- `parallel_efficiency`.
+
+Oracle Top-2/Top-3, quality-pool recall and final-selection recall remain in JSON as **diagnostics**, not hard release gates.
+
+## Release gates
 
 ```text
-FAST       1 ×  8 KiB
-BALANCED   3 ×  8 KiB
-DENSE      3 × 12 KiB
+QUALITY
+  generated recall            >= 0.99
+  Top-K recall                >= 0.98
+  regret                      <= 1024 B/block
+  p95 regret                  <= 4096 B/block
+  BALANCED ratio              >= 3.40x
+  DENSE ratio                 >= 99.5% hardened baseline
+  DENSE                       >= BALANCED * 0.995
+
+CORRECTNESS
+  full trial encodes/block    == 0
+  deterministic output        true
+
+PERFORMANCE
+  FAST                        >= 135 MB/s
+  BALANCED                    >= 65 MB/s
+  DENSE                       >= 42 MB/s
+  warm 64 KiB                 <= 76 us
 ```
 
-Stage 2:
-
-```text
-FAST       1 × 16 KiB
-BALANCED   2 × 16 KiB
-DENSE      2 × 24 KiB
-```
-
-Every window is encoded independently with the production transform/codec/entropy pipeline.
-Reset-window pessimism is bounded by blending the micro-trial with the original buildfix6
-analytical estimate instead of replacing it.
-
-## Fast-path policy
-
-- FAST keeps the zero-heavy `RLE/None` shortcut.
-- BALANCED and DENSE send zero-heavy blocks through the general planner so entropy-coded RAW/RLE
-  alternatives remain eligible.
-
-## Benchmark methodology
-
-Benchmark schema 1.8 retains buildfix7 calibration diagnostics:
-
-- analytical MAE;
-- analytical MAPE;
-- signed bias;
-- p95 absolute error;
-- per codec family;
-- per data class.
-
-These are **diagnostics, not release gates**. Release decisions remain outcome-based: recall, regret,
-compression ratio, throughput and random-access latency.
-
-## Compatibility
-
-- milestone: `0.3-buildfix8`
-- workspace: `0.3.8`
-- writer format: ACE 1.2
-- reader formats: ACE 1.0 / 1.1 / 1.2
-- no wire-format change
-
-## Validation
+## Build
 
 ```bash
 cargo build --workspace --release
 cargo test --workspace
-./demo/run-demo-0.3-buildfix8.sh
+```
+
+## Demo
+
+```bash
+./demo/run-demo-0.3-buildfix9.sh
+```
+
+## Benchmarks
+
+```bash
 ./benchmark.sh all
 ```
+
+Format compatibility is unchanged: writer 1.2, readers 1.0/1.1/1.2.

@@ -36,3 +36,10 @@ Self-tuning costs, adaptive dictionaries, hot/warm/cold policies and replica-awa
 - keep buildfix7 calibration telemetry and zero-heavy guard;
 - replace formula-heavy LZ V2 with bounded real-codec micro-trials after Top-K;
 - evaluate quality outcomes before considering any optional selective full-trial fallback.
+
+## 0.3-buildfix9 — harden and close 0.3 line
+- FAST Analyzer Lite;
+- adaptive Hybrid-LZ budget/confidence;
+- product-quality-first release gates;
+- random-access allocation trimming;
+- target: close the 0.3 line without another planner redesign.

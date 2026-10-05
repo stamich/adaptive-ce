@@ -1,0 +1,317 @@
+{
+  "schema_version": "1.8",
+  "project": "ace",
+  "milestone": "0.3-buildfix8",
+  "base": "0.3-buildfix6",
+  "scope": "random-access",
+  "benchmark_contract_origin": "ace-0.3-buildfix8",
+  "generated_at_utc_epoch_seconds": 1789272499,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33424424960,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.2",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "bytes_returned": 16777216,
+      "path": "full_decompress",
+      "timing": {
+        "max_ns": 102471464,
+        "mean_ns": 96124608.85714285,
+        "median_mb_s": 166.39893943971958,
+        "median_ns": 96154459.0,
+        "min_ns": 92471163,
+        "p95_ns": 102471464.0,
+        "p99_ns": 102471464.0,
+        "runs": 7,
+        "samples_ns": [
+          96413527,
+          102471464,
+          96154459,
+          92814417,
+          92471163,
+          97975981,
+          94571251
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "bytes_returned": 0,
+      "path": "decoder_open",
+      "timing": {
+        "max_ns": 1190,
+        "mean_ns": 1098.857142857143,
+        "median_mb_s": 4292938.24665582,
+        "median_ns": 1072.0,
+        "min_ns": 1057,
+        "p95_ns": 1190.0,
+        "p99_ns": 1190.0,
+        "runs": 7,
+        "samples_ns": [
+          1072,
+          1149,
+          1190,
+          1092,
+          1066,
+          1057,
+          1066
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "block_id": 0,
+      "blocks_touched": 1,
+      "bytes_returned": 262144,
+      "data_class": "zeros",
+      "path": "decode_block",
+      "physical_bytes_read": 804,
+      "physical_to_logical_ratio": 0.0030670166015625,
+      "timing": {
+        "max_ns": 61469,
+        "mean_ns": 60641.42857142857,
+        "median_mb_s": 4106.236552075292,
+        "median_ns": 60883.0,
+        "min_ns": 59878,
+        "p95_ns": 61469.0,
+        "p99_ns": 61469.0,
+        "runs": 7,
+        "samples_ns": [
+          60883,
+          60206,
+          61128,
+          59899,
+          61469,
+          59878,
+          61027
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "block_id": 20,
+      "blocks_touched": 1,
+      "bytes_returned": 262144,
+      "data_class": "numeric",
+      "path": "decode_block",
+      "physical_bytes_read": 36610,
+      "physical_to_logical_ratio": 0.13965606689453125,
+      "timing": {
+        "max_ns": 5565014,
+        "mean_ns": 5164229.0,
+        "median_mb_s": 47.46581891448331,
+        "median_ns": 5266948.0,
+        "min_ns": 4637134,
+        "p95_ns": 5565014.0,
+        "p99_ns": 5565014.0,
+        "runs": 7,
+        "samples_ns": [
+          5565014,
+          5465456,
+          5334080,
+          5066553,
+          5266948,
+          4814418,
+          4637134
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "block_id": 40,
+      "blocks_touched": 1,
+      "bytes_returned": 262144,
+      "data_class": "structured",
+      "path": "decode_block",
+      "physical_bytes_read": 1840,
+      "physical_to_logical_ratio": 0.00701904296875,
+      "timing": {
+        "max_ns": 552643,
+        "mean_ns": 526436.5714285715,
+        "median_mb_s": 487.36743605739235,
+        "median_ns": 512960.0,
+        "min_ns": 507859,
+        "p95_ns": 552643.0,
+        "p99_ns": 552643.0,
+        "runs": 7,
+        "samples_ns": [
+          510929,
+          512960,
+          510854,
+          552643,
+          544130,
+          545681,
+          507859
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "block_id": 60,
+      "blocks_touched": 1,
+      "bytes_returned": 262144,
+      "data_class": "random",
+      "path": "decode_block",
+      "physical_bytes_read": 262176,
+      "physical_to_logical_ratio": 1.0001220703125,
+      "timing": {
+        "max_ns": 69767,
+        "mean_ns": 65360.142857142855,
+        "median_mb_s": 3859.9308300395255,
+        "median_ns": 64768.0,
+        "min_ns": 64278,
+        "p95_ns": 69767.0,
+        "p99_ns": 69767.0,
+        "runs": 7,
+        "samples_ns": [
+          64783,
+          69767,
+          64768,
+          64278,
+          64925,
+          64339,
+          64661
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "bytes_returned": 65536,
+      "logical_bytes_requested": 65536,
+      "path": "range_64k_cold",
+      "timing": {
+        "max_ns": 110204,
+        "mean_ns": 72720.28571428571,
+        "median_mb_s": 966.9234815433646,
+        "median_ns": 64638.0,
+        "min_ns": 63653,
+        "p95_ns": 110204.0,
+        "p99_ns": 110204.0,
+        "runs": 7,
+        "samples_ns": [
+          63808,
+          110204,
+          77840,
+          63653,
+          64668,
+          64231,
+          64638
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "blocks_decoded": 1,
+      "blocks_touched": 1,
+      "bytes_returned": 65536,
+      "logical_bytes_requested": 65536,
+      "offset": 3000000,
+      "path": "range_64k_warm",
+      "physical_bytes_read": 804,
+      "physical_to_logical_ratio": 0.01226806640625,
+      "timing": {
+        "max_ns": 135358,
+        "mean_ns": 88544.57142857143,
+        "median_mb_s": 792.6643668831168,
+        "median_ns": 78848.0,
+        "min_ns": 62243,
+        "p95_ns": 135358.0,
+        "p99_ns": 135358.0,
+        "runs": 7,
+        "samples_ns": [
+          62243,
+          105945,
+          135358,
+          96401,
+          78848,
+          78610,
+          62407
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "blocks_decoded": 2,
+      "blocks_touched": 2,
+      "bytes_returned": 131072,
+      "logical_bytes_requested": 131072,
+      "offset": 229376,
+      "path": "range_cross_2",
+      "physical_bytes_read": 1608,
+      "physical_to_logical_ratio": 0.01226806640625,
+      "timing": {
+        "max_ns": 179992,
+        "mean_ns": 132038.57142857142,
+        "median_mb_s": 1008.0889053767429,
+        "median_ns": 123997.0,
+        "min_ns": 122490,
+        "p95_ns": 179992.0,
+        "p99_ns": 179992.0,
+        "runs": 7,
+        "samples_ns": [
+          127028,
+          123646,
+          122490,
+          179992,
+          124075,
+          123997,
+          123042
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "blocks_decoded": 4,
+      "blocks_touched": 4,
+      "bytes_returned": 786432,
+      "logical_bytes_requested": 786432,
+      "offset": 720896,
+      "path": "range_cross_4",
+      "physical_bytes_read": 3216,
+      "physical_to_logical_ratio": 0.00408935546875,
+      "timing": {
+        "max_ns": 342269,
+        "mean_ns": 289067.14285714284,
+        "median_mb_s": 2829.281173963069,
+        "median_ns": 265085.0,
+        "min_ns": 264011,
+        "p95_ns": 342269.0,
+        "p99_ns": 342269.0,
+        "runs": 7,
+        "samples_ns": [
+          265085,
+          286719,
+          342269,
+          264011,
+          264823,
+          335844,
+          264719
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    }
+  ]
+}

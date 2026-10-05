@@ -34,3 +34,6 @@ selected size/cost rank and predicted-size regret.
 ## 0.3-buildfix8
 
 Schema 1.8 results use `0.3-buildfix8-*.json`. Planner output includes hybrid LZ budgets/disagreement and analytical calibration diagnostics.
+
+## 0.3-buildfix9
+Schema 1.9 files use `0.3-buildfix9-*.json`. Hard gates are product-quality-first; exact oracle-rank metrics remain diagnostics.

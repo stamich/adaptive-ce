@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.8",
+  "project": "ace",
+  "milestone": "0.3-buildfix8",
+  "base": "0.3-buildfix6",
+  "scope": "streaming",
+  "benchmark_contract_origin": "ace-0.3-buildfix8",
+  "generated_at_utc_epoch_seconds": 1789272523,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33424424960,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.2",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "blocks": 64,
+      "compression_ratio": 3.4767267257932626,
+      "input_bytes": 16777216,
+      "output_bytes": 4825578,
+      "path": "bounded_stream",
+      "peak_source_buffer_bytes": 262144,
+      "timing": {
+        "max_ns": 738850886,
+        "mean_ns": 522197825.5714286,
+        "median_mb_s": 24.890582670914686,
+        "median_ns": 642813397.0,
+        "min_ns": 241377978,
+        "p95_ns": 738850886.0,
+        "p99_ns": 738850886.0,
+        "runs": 7,
+        "samples_ns": [
+          642813397,
+          653521510,
+          738850886,
+          276620742,
+          241377978,
+          436647546,
+          665552720
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "blocks": 256,
+      "compression_ratio": 3.4767658122084675,
+      "input_bytes": 67108864,
+      "output_bytes": 19302095,
+      "path": "bounded_stream",
+      "peak_source_buffer_bytes": 262144,
+      "timing": {
+        "max_ns": 2696274601,
+        "mean_ns": 1581320453.7142856,
+        "median_mb_s": 46.64083403343473,
+        "median_ns": 1372188155.0,
+        "min_ns": 991853356,
+        "p95_ns": 2696274601.0,
+        "p99_ns": 2696274601.0,
+        "runs": 7,
+        "samples_ns": [
+          1372188155,
+          1196410291,
+          1227462013,
+          1464969216,
+          991853356,
+          2120085544,
+          2696274601
+        ],
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_64m"
+    }
+  ]
+}

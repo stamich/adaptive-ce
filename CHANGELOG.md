@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3-buildfix9 - 2026-09-14
+
+### Added
+- Planner V3.6 work budgeting with `PlannerDataClass`, `PlanningBudget` and `EstimateConfidence`.
+- Profile-aware `AnalysisLevel` and FAST Analyzer Lite.
+- Allocation-free `BlockIndex::intersecting_indices` for random-access range lookup.
+- Benchmark schema 1.9 with p95 regret, Hybrid-LZ work metrics and parallel efficiency.
+- Buildfix9 demo, tasks, milestone definition and updated documentation.
+
+### Changed
+- Hybrid LZ is skipped on zero-heavy/incompressible blocks and stage two is skipped on high-confidence agreement.
+- Exact oracle Top-2/Top-3 and quality-pool recall are diagnostic rather than hard release gates.
+- Dense/Balanced ordering now allows 0.5% tolerance.
+- Throughput gates use absolute targets: FAST 135, BALANCED 65, DENSE 42 MB/s.
+- Warm 64 KiB target is <= 76 us.
+
+### Preserved
+- Buildfix8 Hybrid LZ estimator semantics and QualityEnvelope.
+- Generated/Top-K search quality architecture.
+- Zero full candidate trial encodes.
+- ACE Format 1.2 writer and 1.0/1.1/1.2 reader compatibility.
+
 ## 0.3-buildfix8 - 2026-09-13
 
 ### Strategy
