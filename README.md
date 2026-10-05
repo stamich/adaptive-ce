@@ -1,135 +1,165 @@
-# Adaptive Compression Engine — Milestone 0.3
+# Adaptive Compression Engine (ACE) 0.3.1
 
-ACE 0.3 is the first performance-architecture milestone after the hardened 0.2.1-buildfix1 baseline.  It keeps the adaptive block model, deterministic output and indexed random access, but removes full-block trial compression from the runtime planner.  Candidate plans are estimated analytically, only a small deterministic Top-K set is sample-verified, and the winning plan is fully encoded exactly once.
+ACE 0.3.1 is the hardened stabilization release of the ACE 0.3 line. It freezes the successful
+Planner V3.6 architecture from `0.3-buildfix9-compilefix` and strengthens correctness,
+determinism, malformed-input handling, fuzzability and benchmark reproducibility.
 
-## Main changes
-
-- Planner V3: analytical `CandidateEstimator`, deterministic Top-K and `SampleVerifier`.
-- Planner fast paths for highly incompressible, run-dominated, strongly repetitive and strong-delta blocks.
-- New `ace-cost` crate for cost/size estimation, separated from candidate search.
-- New `ace-simd` crate isolating runtime AVX2 dispatch behind safe APIs.
-- SIMD-assisted zero counting and LZ match comparison with scalar fallback.
-- `rANS4x` entropy mode and ACE Format 1.2 (`EntropyCodecId::Rans4x`).
-- Reader compatibility with ACE Format 1.0, 1.1 and 1.2.
-- New `ace-stream` crate for bounded-memory compression when source size is known.
-- Reusable `WorkerScratch` allocation boundary in `ace-runtime`.
-- Cold/warm random-access benchmark split.
-- New streaming and memory benchmark families.
-- Regression baseline is the successful ACE 0.2.1-buildfix1 release.
-
-## Repository layout
+## Frozen compression architecture
 
 ```text
-ace-milestone0.3/
-├── crates/
-│   ├── ace-core/         stable IDs, configuration, plans, statistics, errors
-│   ├── ace-analysis/     block statistics and incompressibility analysis
-│   ├── ace-transforms/   reversible transforms
-│   ├── ace-codecs/       RAW, RLE and LZ
-│   ├── ace-entropy/      Huffman, scalar rANS and rANS4x
-│   ├── ace-dictionary/   dictionary abstractions
-│   ├── ace-cost/         NEW: deterministic candidate estimation and CostModel V3
-│   ├── ace-planner/      candidate generation, fast paths and sampled Top-K verification
-│   ├── ace-format/       ACE 1.0/1.1/1.2 framing
-│   ├── ace-index/        serialized random-access index
-│   ├── ace-runtime/      Rayon runtime and reusable worker scratch
-│   ├── ace-simd/         NEW: safe SIMD runtime dispatch
-│   ├── ace-stream/       NEW: bounded-memory stream adapter
-│   ├── ace-engine/       end-to-end compressor/decompressor
-│   └── ace-cli/          CLI
-├── examples/
-│   ├── rust-demo/
-│   ├── rust-benchmark/
-│   ├── random-access-demo/
-│   ├── parallel-demo/
-│   ├── baselines/0.2.1-buildfix1/
-│   ├── data/
-│   └── results/
-├── demo/
-├── docs/
-├── fuzz/
-├── integrations/
-├── tools/
-├── TASKS-0.3.md
-├── MILESTONE-0.3.json
-└── CHANGELOG.md
+Block input
+  -> Block Analyzer / FAST Analyzer Lite
+  -> Candidate Generator
+  -> analytical estimator
+  -> adaptive Top-K
+  -> bounded Hybrid LZ micro-trials
+  -> deterministic sample verification
+  -> QualityEnvelope
+  -> deterministic CostModel V3
+  -> one production encode
+  -> Format 1.2 + AIDX + ACET
 ```
 
-## Build and tests
+ACE 0.3.1 does **not** redesign Planner V3.6, Hybrid LZ, QualityEnvelope, entropy codecs or the
+wire format.
+
+## Format compatibility
+
+- writer: Format 1.2
+- reader: Format 1.0 / 1.1 / 1.2
+- random access: AIDX index + ACET trailer
+- corruption detection: header/index/trailer checks and block CRC32C
+- decoder resource limits: `DecodeLimits`
+
+See `docs/FORMAT-COMPATIBILITY.md`.
+
+## 0.3.1 hardening
+
+The release adds:
+- property-based arbitrary-byte roundtrip tests;
+- property-based indexed-range equality tests;
+- byte-identical determinism matrix across profiles, block sizes and worker counts;
+- malformed index/trailer and resource-limit tests;
+- streaming premature-EOF/extra-data/resource-limit tests;
+- standalone `cargo-fuzz` project;
+- deterministic Corpus V2;
+- block-size benchmark matrix;
+- extended random-access benchmark matrix;
+- benchmark variance diagnostics;
+- p99 planner regret;
+- golden buildfix9 performance regression baseline.
+
+## Corpus V2
+
+Generate deterministic local corpora:
+
+```bash
+python3 tools/generate_hardening_corpus.py \
+  --output-dir examples/corpus/generated \
+  --sizes-mib 1,16,64
+```
+
+Classes:
+- zeros
+- low-cardinality
+- runs
+- numeric-u32
+- delta-series
+- structured-json
+- random
+- mixed
+
+No external downloads are required.
+
+## Build and test
 
 ```bash
 cargo build --workspace --release
 cargo test --workspace
 ```
 
+For fuzzing:
+
+```bash
+cargo install cargo-fuzz
+cargo fuzz run container_decode
+cargo fuzz run index_parse
+cargo fuzz run trailer_parse
+cargo fuzz run range_open
+```
+
 ## Demo
 
 ```bash
-./demo/run-demo-0.3.sh
+./demo/run-demo-0.3.1.sh
 ```
 
-The demo generates a deterministic mixed corpus, shows Planner V3 decisions, performs ordinary and bounded-stream compression, verifies Format 1.2, demonstrates random access and runs the planner/streaming benchmark families.
+The demo builds/tests the workspace, generates Corpus V2, demonstrates thread-count determinism,
+verifies a Format 1.2 archive, confirms corruption rejection and runs focused hardening benchmarks.
 
 ## Benchmarks
 
-Run all benchmark families and regression gates:
+Run the complete release contract:
 
 ```bash
 ./benchmark.sh all
 ```
 
-Or one family:
+Existing families:
+- compression
+- entropy
+- planner
+- parallel
+- random-access
+- streaming
+- memory
 
-```bash
-./benchmark.sh planner
-./benchmark.sh streaming
-./benchmark.sh memory
-```
+0.3.1 hardening families:
+- corpus
+- block-matrix
+- random-access-extended
+- stability
 
-Official result files are written to `examples/results/`:
+Results are written as `examples/results/0.3.1-<family>.json`.
 
-```text
-0.3-compression.json
-0.3-entropy.json
-0.3-planner.json
-0.3-parallel.json
-0.3-random-access.json
-0.3-streaming.json
-0.3-memory.json
-0.3-regression.json
-```
+Benchmark schema remains 1.9. Timing objects now also report `stddev_ns`, `cv_percent` and
+`unstable_measurement`.
 
-## Planner V3 invariant
+See `docs/BENCHMARKS-0.3.1.md`.
 
-The runtime planner does **not** fully encode multiple complete candidates.  It performs:
+## Release gates
 
-```text
-BlockProfile
-    ↓
-CandidateGenerator
-    ↓
-CandidateEstimator (cheap)
-    ↓
-Top-K
-    ↓
-Deterministic sample verification
-    ↓
-Selected plan
-    ↓
-ONE full-block encode
-```
+Quality:
+- generated recall >= 0.99
+- Top-K recall >= 0.98
+- mean regret <= 256 B/block
+- p95 regret <= 1024 B
+- p99 regret <= 4096 B
+- BALANCED ratio >= 3.45x
+- DENSE ratio >= 3.45x
+- full trial encodes/block == 0
 
-`planner_full_trial_encodes` is therefore expected to remain zero in the compression hot path.
+Performance/stability:
+- FAST/BALANCED/DENSE throughput >= 95% of the buildfix9 golden baseline
+- warm 64 KiB latency <= 107.5% of buildfix9 golden latency
+- repeated output must be byte-identical
 
-## Format compatibility
+Exact oracle Top-N rank remains diagnostic-only because earlier 0.3 experiments showed actual
+regret is the more meaningful product-quality metric.
 
-- writer: ACE Format 1.2;
-- reader: ACE Format 1.0, 1.1 and 1.2;
-- 1.2 adds the new rANS4x entropy identifier without restructuring the index/trailer;
-- block independence and deterministic parallel output remain mandatory.
+## Important documentation
 
-## Scope intentionally deferred
+- `TASKS-0.3.1.md`
+- `docs/BASELINE-0.3.1.md`
+- `docs/HARDENING-0.3.1.md`
+- `docs/BENCHMARKS-0.3.1.md`
+- `docs/FORMAT-COMPATIBILITY.md`
+- `docs/FUZZING-0.3.1.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`
 
-ACE 0.3 does not yet implement CDC, trained global dictionaries, cross-block LZ dependencies, ML-based planning, GPU compression, AdaptiveDB semantic hints, GraphNet semantic transforms or JVM-native FFM/Panama bindings.
+## Direction after 0.3.1
 
-See `TASKS-0.3.md`, `docs/ARCHITECTURE-0.3.md` and `CHANGELOG.md` for details.
+ACE 0.3.1 closes the 0.3 planner-hardening line. New compression capabilities, new codecs,
+dictionary learning, format changes or learned planning belong to ACE 0.4 rather than another
+0.3 buildfix.

@@ -1,12 +1,14 @@
-# ACE 0.3 fuzzing targets
+# ACE 0.3.1 fuzzing
 
-The release keeps the existing malformed-container targets and adds the following recommended targets:
+The workspace excludes `fuzz/` from normal Cargo builds. Run the targets with `cargo-fuzz`:
 
-- `format_1_2_parser`: arbitrary file/block headers including the new rANS4x ID;
-- `rans4x_decoder`: arbitrary metadata, lane sizes and payload truncation;
-- `planner_sample_offsets`: arbitrary block sizes and sample policies, asserting in-bounds deterministic ranges;
-- `stream_decoder`: arbitrary 1.0/1.1/1.2 streams under strict `DecodeLimits`;
-- `stream_encoder_roundtrip`: bounded generated input with exact round-trip and deterministic output;
-- `indexed_reader`: malformed AIDX/ACET offsets and spans.
+```bash
+cargo install cargo-fuzz
+cargo fuzz run container_decode
+cargo fuzz run index_parse
+cargo fuzz run trailer_parse
+cargo fuzz run range_open
+```
 
-Fuzzing must run with resource limits and must treat panics, unbounded allocation attempts and output beyond declared limits as failures.
+The 0.3.1 invariant is not that arbitrary bytes decode successfully; it is that malformed input is
+rejected without panic, runaway allocation, integer overflow, or infinite loops.

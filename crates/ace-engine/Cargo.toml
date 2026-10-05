@@ -16,3 +16,6 @@ ace-format = { path = "../ace-format" }
 ace-index = { path = "../ace-index" }
 ace-runtime = { path = "../ace-runtime" }
 rayon.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

@@ -1,0 +1,98 @@
+[
+  {
+    "corpus_id": "zeros",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/zeros-1m.bin"
+  },
+  {
+    "corpus_id": "low-cardinality",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/low-cardinality-1m.bin"
+  },
+  {
+    "corpus_id": "runs",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/runs-1m.bin"
+  },
+  {
+    "corpus_id": "numeric-u32",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/numeric-u32-1m.bin"
+  },
+  {
+    "corpus_id": "delta-series",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/delta-series-1m.bin"
+  },
+  {
+    "corpus_id": "structured-json",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/structured-json-1m.bin"
+  },
+  {
+    "corpus_id": "random",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/random-1m.bin"
+  },
+  {
+    "corpus_id": "mixed",
+    "mib": 1,
+    "bytes": 1048576,
+    "path": "examples/corpus/generated/mixed-1m.bin"
+  },
+  {
+    "corpus_id": "zeros",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/zeros-16m.bin"
+  },
+  {
+    "corpus_id": "low-cardinality",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/low-cardinality-16m.bin"
+  },
+  {
+    "corpus_id": "runs",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/runs-16m.bin"
+  },
+  {
+    "corpus_id": "numeric-u32",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/numeric-u32-16m.bin"
+  },
+  {
+    "corpus_id": "delta-series",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/delta-series-16m.bin"
+  },
+  {
+    "corpus_id": "structured-json",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/structured-json-16m.bin"
+  },
+  {
+    "corpus_id": "random",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/random-16m.bin"
+  },
+  {
+    "corpus_id": "mixed",
+    "mib": 16,
+    "bytes": 16777216,
+    "path": "examples/corpus/generated/mixed-16m.bin"
+  }
+]

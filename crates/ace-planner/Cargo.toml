@@ -12,4 +12,5 @@ ace-codecs = { path = "../ace-codecs" }
 ace-entropy = { path = "../ace-entropy" }
 
 [dev-dependencies]
+proptest.workspace = true
 ace-analysis = { path = "../ace-analysis" }

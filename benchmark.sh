@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 family="${1:-all}"
-version="0.3-buildfix3"
+version="0.3.1"
 mkdir -p examples/results
 cargo run --release -p ace-benchmark-0-3 -- "$family"
 if [[ "$family" == "all" ]]; then
@@ -13,7 +13,7 @@ if [[ "$family" == "all" ]]; then
   gate_status=$?
   set -e
   python3 tools/validate_benchmark_json.py examples/results/${version}-*.json
-  python3 tools/benchmark_report.py examples/results/${version}-{compression,entropy,planner,parallel,random-access,streaming,memory,regression}.json
+  python3 tools/benchmark_report.py examples/results/${version}-*.json
   exit "$gate_status"
 else
   python3 tools/validate_benchmark_json.py "examples/results/${version}-${family}.json"

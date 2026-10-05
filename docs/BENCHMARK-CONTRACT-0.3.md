@@ -1,20 +1,17 @@
-# ACE 0.3 benchmark contract
+# ACE 0.3 benchmark contract — current release 0.3.1
 
-Official results live under `examples/results/0.3-buildfix3-<family>.json`.
+The current ACE 0.3-line benchmark contract is implemented by ACE 0.3.1 and uses schema 1.9.
 
-Families:
+Official result files live under:
 
-- `compression` — FAST/BALANCED/DENSE plus LZ4/Zstd/gzip baselines;
-- `entropy` — Huffman/scalar rANS/rANS4x;
-- `planner` — recall, regret, stage timing, fast-path and Top-K work;
-- `parallel` — 1/2/4/6/8/12 worker determinism and scaling;
-- `random-access` — full decode, decoder open, block reads, cold/warm ranges;
-- `streaming` — bounded reader/writer compression;
-- `memory` — reusable scratch and planner full-trial elimination;
-- `regression` — gates against 0.2.1-buildfix1.
+```text
+examples/results/0.3.1-<family>.json
+```
 
-The benchmark format remains version-independent: `milestone`, `base`, `scope` and `benchmark_contract_origin` must be mutually consistent.
+Core families:
+compression, entropy, planner, parallel, random-access, streaming and memory.
 
-## Planner V3.1 quality fields
+0.3.1 hardening families:
+corpus, block-matrix, random-access-extended and stability.
 
-Buildfix3 adds `candidate_generation_recall`, `top_k_recall`, `sample_verifier_recall`, `final_selection_recall`, stage-specific denominators and `regret_bytes_per_block_by_class`. Top-K/sample recall excludes blocks handled directly by `PlannerFastPath`, because those blocks never enter the corresponding stage.
+See `BENCHMARKS-0.3.1.md` for metrics, Corpus V2 and release gates.
