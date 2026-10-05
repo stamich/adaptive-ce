@@ -1,4 +1,4 @@
-//! Bounded hybrid LZ estimator used by ACE 0.3-buildfix9.
+//! Bounded Hybrid LZ estimator frozen for the ACE 0.3.1 hardened release.
 //!
 //! Buildfix8 deliberately starts from the buildfix6 analytical model. LZ candidates that already
 //! survived analytical Top-K are refined with a few deterministic real codec micro-trials. This

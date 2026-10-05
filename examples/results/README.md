@@ -43,3 +43,16 @@ Schema 1.9 files use `0.3-buildfix9-*.json`. Hard gates are product-quality-firs
 Result files use the `0.3-buildfix9-compilefix-*.json` prefix. Schema version remains 1.9.
 The compilefix changes only how JSON is built in Rust source; result field names and meanings
 are identical to 0.3-buildfix9.
+
+## 0.3.1
+
+ACE 0.3.1 keeps benchmark schema 1.9 and writes `0.3.1-<family>.json`.
+
+New hardening families:
+- `corpus`
+- `block-matrix`
+- `random-access-extended`
+- `stability`
+
+Timing objects add `stddev_ns`, `cv_percent` and `unstable_measurement`.
+Planner output adds `p99_regret_bytes_per_block`.

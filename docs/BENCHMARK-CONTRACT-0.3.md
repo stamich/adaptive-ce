@@ -1,7 +1,17 @@
-# ACE 0.3 benchmark contract — current milestone 0.3-buildfix9
+# ACE 0.3 benchmark contract — current release 0.3.1
 
-Official result files live under `examples/results/0.3-buildfix9-<family>.json` and use schema 1.9.
+The current ACE 0.3-line benchmark contract is implemented by ACE 0.3.1 and uses schema 1.9.
 
-The hard release contract is product-quality-first: generated recall, Top-K recall, actual mean/p95 regret, compression ratio, tolerant profile ordering, zero full trials, absolute throughput targets and warm random-access latency. Exact oracle-rank and quality-pool metrics are retained as diagnostics.
+Official result files live under:
 
-See `BENCHMARK-CONTRACT-0.3-BUILDFIX9.md` for the complete buildfix9 contract.
+```text
+examples/results/0.3.1-<family>.json
+```
+
+Core families:
+compression, entropy, planner, parallel, random-access, streaming and memory.
+
+0.3.1 hardening families:
+corpus, block-matrix, random-access-extended and stability.
+
+See `BENCHMARKS-0.3.1.md` for metrics, Corpus V2 and release gates.

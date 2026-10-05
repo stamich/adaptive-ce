@@ -168,7 +168,7 @@ pub struct PlannerTelemetry {
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the ACE 0.3-buildfix9 Planner V3.6 hot path.
+/// Result returned by the frozen ACE 0.3.1 Planner V3.6 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
@@ -191,7 +191,7 @@ pub struct PlannerDecision {
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3-buildfix9 hardens buildfix8: quality remains unchanged while profile/data-class budgets and confidence bands avoid unnecessary Hybrid LZ work.
+/// ACE 0.3.1 preserves the hardened Planner V3.6 behavior: profile/data-class budgets and confidence bands avoid unnecessary Hybrid LZ work without changing decoder semantics.
 /// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
 /// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
 /// blended compressed size, then the cost model selects the cheapest quality-safe plan.

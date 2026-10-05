@@ -11,42 +11,32 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 ace-core = { path = "../crates/ace-core" }
 ace-engine = { path = "../crates/ace-engine" }
-ace-entropy = { path = "../crates/ace-entropy" }
 ace-format = { path = "../crates/ace-format" }
-ace-cost = { path = "../crates/ace-cost" }
-ace-codecs = { path = "../crates/ace-codecs" }
 
 [[bin]]
-name = "ace_decoder"
-path = "fuzz_targets/ace_decoder.rs"
+name = "container_decode"
+path = "fuzz_targets/container_decode.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "rans_decoder"
-path = "fuzz_targets/rans_decoder.rs"
+name = "index_parse"
+path = "fuzz_targets/index_parse.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "rans4x_decoder"
-path = "fuzz_targets/rans4x_decoder.rs"
+name = "trailer_parse"
+path = "fuzz_targets/trailer_parse.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "planner_sample_offsets"
-path = "fuzz_targets/planner_sample_offsets.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "rle_roundtrip"
-path = "fuzz_targets/rle_roundtrip.rs"
+name = "range_open"
+path = "fuzz_targets/range_open.rs"
 test = false
 doc = false
 bench = false

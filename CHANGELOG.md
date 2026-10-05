@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.3.1 - 2026-09-14
+
+### Release character
+- Hardened stabilization release based on `0.3-buildfix9-compilefix`.
+- Planner V3.6, Hybrid LZ, QualityEnvelope and Format 1.2 are frozen.
+
+### Added
+- Property-based arbitrary-byte encode/decode roundtrip tests.
+- Property-based indexed-range equality tests.
+- Determinism matrix across compression profiles, block sizes and worker counts.
+- Format/index/trailer hardening tests for limits, logical contiguity, block IDs and CRC.
+- Streaming tests for input limits, premature EOF and extra bytes.
+- Standalone `cargo-fuzz` project with container, index, trailer and indexed-open targets.
+- Deterministic Corpus V2 generator and manifest.
+- `corpus` benchmark family.
+- `block-matrix` benchmark family for 64K/128K/256K/512K/1M blocks.
+- `random-access-extended` benchmark family for 4K..1M aligned and unaligned reads.
+- `stability` benchmark family for byte-identical repeated output.
+- `stddev_ns`, `cv_percent` and `unstable_measurement` timing diagnostics.
+- p99 planner regret.
+- Golden `0.3-buildfix9-compilefix` performance baseline.
+- Hardened 0.3.1 release-gate policy with controlled benchmark variance.
+- 0.3.1 demo, task plan, baseline, format, hardening, fuzzing and benchmark documentation.
+
+### Changed
+- Workspace version is now `0.3.1`.
+- Benchmark output prefix is `0.3.1-`.
+- Performance regression gates compare against buildfix9 golden results with -5% throughput
+  and +7.5% latency tolerance.
+- Quality gates are stricter: mean regret <=256 B/block, p95 <=1024 B, p99 <=4096 B,
+  BALANCED/DENSE ratio >=3.45x.
+- Benchmark schema remains 1.9 because all additions are backward-compatible optional fields.
+
+### Unchanged
+- Planner V3.6 algorithm.
+- Hybrid LZ estimation algorithm and adaptive budget policy.
+- QualityEnvelope.
+- Cost Model V3.
+- codec and entropy bitstreams.
+- ACE Format 1.2 writer and 1.0/1.1/1.2 reader compatibility.
+
 ## 0.3-buildfix9-compilefix - 2026-09-14
 
 ### Fixed

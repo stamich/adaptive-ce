@@ -66,7 +66,7 @@ impl JsonObjectBuilder {
     }
 }
 
-/// Top-level JSON document shared by every official ACE 0.3 benchmark family.
+/// Top-level JSON document shared by every official ACE 0.3.1 benchmark family.
 #[derive(Debug, Serialize)]
 struct BenchmarkDocument {
     schema_version: &'static str,
@@ -89,6 +89,8 @@ struct SampleStats {
     p95_ns: f64,
     p99_ns: f64,
     mean_ns: f64,
+    stddev_ns: f64,
+    cv_percent: f64,
     min_ns: u64,
     max_ns: u64,
 }
@@ -160,7 +162,7 @@ impl EstimatorErrorStats {
     }
 }
 
-/// Executes one benchmark family or the full ACE 0.3 contract.
+/// Executes one benchmark family or the full ACE 0.3.1 contract.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let family = std::env::args().nth(1).unwrap_or_else(|| "all".to_string());
     let families: Vec<&str> = if family == "all" {
@@ -172,6 +174,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "random-access",
             "streaming",
             "memory",
+            "corpus",
+            "block-matrix",
+            "random-access-extended",
+            "stability",
         ]
     } else {
         vec![family.as_str()]
@@ -186,15 +192,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "random-access" => random_access_family()?,
             "streaming" => streaming_family()?,
             "memory" => memory_family()?,
+            "corpus" => corpus_family()?,
+            "block-matrix" => block_matrix_family()?,
+            "random-access-extended" => random_access_extended_family()?,
+            "stability" => stability_family()?,
             other => return Err(format!("unknown benchmark family: {other}").into()),
         };
         let document = BenchmarkDocument {
             schema_version: "1.9",
             project: "ace",
-            milestone: "0.3-buildfix9-compilefix",
-            base: "0.3-buildfix9",
+            milestone: "0.3.1",
+            base: "0.3-buildfix9-compilefix",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3-buildfix9-compilefix",
+            benchmark_contract_origin: "ace-0.3.1",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: benchmark_configuration_json(),
@@ -267,7 +277,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3-buildfix9-compilefix-{family}.json"))
+        .join(format!("0.3.1-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -298,12 +308,31 @@ fn summarize(mut samples: Vec<u64>) -> SampleStats {
         samples[idx.min(samples.len() - 1)] as f64
     };
     let mean = raw.iter().copied().map(|v| v as f64).sum::<f64>() / raw.len() as f64;
+    let variance = if raw.is_empty() {
+        0.0
+    } else {
+        raw.iter()
+            .map(|value| {
+                let delta = *value as f64 - mean;
+                delta * delta
+            })
+            .sum::<f64>()
+            / raw.len() as f64
+    };
+    let stddev = variance.sqrt();
+    let cv_percent = if mean == 0.0 {
+        0.0
+    } else {
+        stddev / mean * 100.0
+    };
     SampleStats {
         samples_ns: raw,
         median_ns: percentile(0.50),
         p95_ns: percentile(0.95),
         p99_ns: percentile(0.99),
         mean_ns: mean,
+        stddev_ns: stddev,
+        cv_percent,
         min_ns: *samples.first().unwrap_or(&0),
         max_ns: *samples.last().unwrap_or(&0),
     }
@@ -324,6 +353,9 @@ fn timing_json(stats: &SampleStats, bytes: usize) -> Value {
         .field("p95_ns", stats.p95_ns)
         .field("p99_ns", stats.p99_ns)
         .field("mean_ns", stats.mean_ns)
+        .field("stddev_ns", stats.stddev_ns)
+        .field("cv_percent", stats.cv_percent)
+        .field("unstable_measurement", stats.cv_percent > 10.0)
         .field("min_ns", stats.min_ns)
         .field("max_ns", stats.max_ns)
         .field("median_mb_s", mb_s)
@@ -923,6 +955,11 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     } else {
         regret_samples[((regret_samples.len() - 1) * 95) / 100]
     };
+    let p99_regret_bytes_per_block = if regret_samples.is_empty() {
+        0u64
+    } else {
+        regret_samples[((regret_samples.len() - 1) * 99) / 100]
+    };
 
     let top_k_rate = if top_k_eligible == 0 {
         1.0
@@ -955,6 +992,7 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             regret as f64 / block_count,
         )
         .field("p95_regret_bytes_per_block", p95_regret_bytes_per_block)
+        .field("p99_regret_bytes_per_block", p99_regret_bytes_per_block)
         .field("regret_bytes_per_block_by_class", &regret_classes)
         .field("candidate_recall", generated_recall as f64 / block_count)
         .field(
@@ -1377,6 +1415,217 @@ fn memory_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             "planner_full_trial_encodes",
             telemetry.planner_full_trial_encodes,
         );
+    Ok(vec![row.build()])
+}
+
+/// Returns one deterministic corpus by stable identifier.
+///
+/// Corpus V2 intentionally covers the broad structures that drive ACE planner decisions without
+/// relying on proprietary datasets or network access.
+fn corpus_bytes(kind: &str, bytes: usize) -> Vec<u8> {
+    match kind {
+        "zeros" => vec![0u8; bytes],
+        "low-cardinality" => (0..bytes).map(|i| [0u8, 1, 2, 3][i % 4]).collect(),
+        "runs" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 0u8;
+            while out.len() < bytes {
+                let remaining = bytes - out.len();
+                let run = remaining.min(4096);
+                out.extend(std::iter::repeat(value).take(run));
+                value = value.wrapping_add(17);
+            }
+            out
+        }
+        "numeric-u32" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 10_000u32;
+            while out.len() < bytes {
+                value = value.wrapping_add(3);
+                out.extend_from_slice(&value.to_le_bytes());
+            }
+            out.truncate(bytes);
+            out
+        }
+        "delta-series" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 1_000_000u64;
+            while out.len() < bytes {
+                value = value.wrapping_add((out.len() as u64 % 7) + 1);
+                out.extend_from_slice(&value.to_le_bytes());
+            }
+            out.truncate(bytes);
+            out
+        }
+        "structured-json" => {
+            let record = br#"{"service":"ace","status":"ACTIVE","region":"eu","value":123456}
+"#;
+            let mut out = Vec::with_capacity(bytes);
+            while out.len() < bytes {
+                out.extend_from_slice(record);
+            }
+            out.truncate(bytes);
+            out
+        }
+        "random" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut x = 0x9e37_79b9u32;
+            while out.len() < bytes {
+                x ^= x << 13;
+                x ^= x >> 17;
+                x ^= x << 5;
+                out.push((x & 0xff) as u8);
+            }
+            out
+        }
+        "mixed" => mixed_data((bytes + 1024 * 1024 - 1) / (1024 * 1024))[..bytes].to_vec(),
+        other => panic!("unknown hardening corpus: {other}"),
+    }
+}
+
+/// Benchmarks BALANCED compression over the deterministic 0.3.1 Corpus V2 suite.
+fn corpus_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let mut rows = Vec::new();
+    for corpus_id in [
+        "zeros",
+        "low-cardinality",
+        "runs",
+        "numeric-u32",
+        "delta-series",
+        "structured-json",
+        "random",
+        "mixed",
+    ] {
+        let data = corpus_bytes(corpus_id, 16 * 1024 * 1024);
+        let mut config = AceConfig::default();
+        config.profile = CompressionProfile::Balanced;
+        config.threads = 1;
+        let engine = AceEngine::new(config)?;
+        let (encode_stats, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+        let (decode_stats, decoded) = measure(|| Ok(engine.decompress(&encoded)?))?;
+        assert_eq!(decoded, data);
+
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", format!("{corpus_id}_16m"))
+            .field("path", "ace-balanced")
+            .field("corpus_id", corpus_id)
+            .field("input_bytes", data.len())
+            .field("compressed_bytes", encoded.len())
+            .field(
+                "compression_ratio",
+                data.len() as f64 / encoded.len().max(1) as f64,
+            )
+            .value("compression", timing_json(&encode_stats, data.len()))
+            .value("decompression", timing_json(&decode_stats, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Benchmarks the stable block-size matrix used by the 0.3.1 hardening contract.
+fn block_matrix_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let data = mixed_data(16);
+    let mut rows = Vec::new();
+    for block_size in [
+        64 * 1024usize,
+        128 * 1024usize,
+        256 * 1024usize,
+        512 * 1024usize,
+        1024 * 1024usize,
+    ] {
+        let mut config = AceConfig::default();
+        config.profile = CompressionProfile::Balanced;
+        config.threads = 1;
+        config.block_size = block_size;
+        let engine = AceEngine::new(config)?;
+        let (stats, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+        let restored = engine.decompress(&encoded)?;
+        assert_eq!(restored, data);
+
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", "mixed_16m")
+            .field("path", "ace-balanced")
+            .field("block_size_bytes", block_size)
+            .field("input_bytes", data.len())
+            .field("compressed_bytes", encoded.len())
+            .field(
+                "compression_ratio",
+                data.len() as f64 / encoded.len().max(1) as f64,
+            )
+            .value("compression", timing_json(&stats, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Benchmarks aligned and unaligned warm range reads over multiple logical request sizes.
+fn random_access_extended_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let data = mixed_data(16);
+    let engine = AceEngine::default_engine();
+    let encoded = engine.compress(&data)?;
+    let mut rows = Vec::new();
+
+    for requested in [
+        4 * 1024u64,
+        16 * 1024u64,
+        64 * 1024u64,
+        256 * 1024u64,
+        1024 * 1024u64,
+    ] {
+        for (alignment, start) in [
+            ("aligned", 2 * 262_144u64),
+            ("unaligned", 2 * 262_144u64 + 12_345),
+        ] {
+            let end = (start + requested).min(data.len() as u64);
+            let mut decoder =
+                AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+            let (stats, (range, metrics)) =
+                measure(|| Ok(decoder.read_range_with_metrics(start..end)?))?;
+            assert_eq!(range, data[start as usize..end as usize]);
+
+            let mut row = JsonObjectBuilder::new();
+            row.field("workload_id", format!("range_{}", end - start))
+                .field("path", "warm_range")
+                .field("alignment", alignment)
+                .field("logical_bytes_requested", end - start)
+                .field("bytes_returned", range.len())
+                .field("blocks_touched", metrics.blocks_touched)
+                .field("physical_bytes_read", metrics.physical_bytes_read)
+                .field(
+                    "physical_to_logical_ratio",
+                    metrics.physical_to_logical_ratio(),
+                )
+                .value("timing", timing_json(&stats, range.len()));
+            rows.push(row.build());
+        }
+    }
+    Ok(rows)
+}
+
+/// Measures repeatability of the hardened BALANCED baseline and records output identity.
+fn stability_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let data = mixed_data(16);
+    let mut config = AceConfig::default();
+    config.profile = CompressionProfile::Balanced;
+    config.threads = 1;
+    let engine = AceEngine::new(config)?;
+
+    let reference = engine.compress(&data)?;
+    let (stats, candidate) = measure(|| {
+        let candidate = engine.compress(&data)?;
+        if candidate != reference {
+            return Err("non-deterministic serialized output during stability benchmark".into());
+        }
+        Ok(candidate)
+    })?;
+    let deterministic = candidate == reference;
+
+    let mut row = JsonObjectBuilder::new();
+    row.field("workload_id", "mixed_16m")
+        .field("path", "repeatability")
+        .field("deterministic_output", deterministic)
+        .field("encoded_bytes", reference.len())
+        .value("compression", timing_json(&stats, data.len()));
     Ok(vec![row.build()])
 }
 

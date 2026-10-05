@@ -1,146 +1,165 @@
-# Adaptive Compression Engine — ACE 0.3-buildfix9-compilefix
+# Adaptive Compression Engine (ACE) 0.3.1
 
-This compilefix is based on ACE 0.3-buildfix9 and changes benchmark JSON construction only.
+ACE 0.3.1 is the hardened stabilization release of the ACE 0.3 line. It freezes the successful
+Planner V3.6 architecture from `0.3-buildfix9-compilefix` and strengthens correctness,
+determinism, malformed-input handling, fuzzability and benchmark reproducibility.
 
-The buildfix9 planner benchmark accumulated enough fields for one large `serde_json::json!({...})`
-literal to exceed Rust's macro recursion limit. The compilefix removes all object-shaped `json!`
-macros from the Rust benchmark crate and constructs JSON incrementally from small semantic
-sections with `JsonObjectBuilder`.
+## Frozen compression architecture
 
-## Compatibility
+```text
+Block input
+  -> Block Analyzer / FAST Analyzer Lite
+  -> Candidate Generator
+  -> analytical estimator
+  -> adaptive Top-K
+  -> bounded Hybrid LZ micro-trials
+  -> deterministic sample verification
+  -> QualityEnvelope
+  -> deterministic CostModel V3
+  -> one production encode
+  -> Format 1.2 + AIDX + ACET
+```
 
-- Planner V3.6 behavior: unchanged
-- Hybrid LZ budgets/confidence: unchanged
-- QualityEnvelope: unchanged
-- benchmark schema: 1.9 unchanged
-- workspace version: 0.3.9
-- ACE writer format: 1.2
-- ACE reader formats: 1.0 / 1.1 / 1.2
+ACE 0.3.1 does **not** redesign Planner V3.6, Hybrid LZ, QualityEnvelope, entropy codecs or the
+wire format.
 
-## Validation
+## Format compatibility
+
+- writer: Format 1.2
+- reader: Format 1.0 / 1.1 / 1.2
+- random access: AIDX index + ACET trailer
+- corruption detection: header/index/trailer checks and block CRC32C
+- decoder resource limits: `DecodeLimits`
+
+See `docs/FORMAT-COMPATIBILITY.md`.
+
+## 0.3.1 hardening
+
+The release adds:
+- property-based arbitrary-byte roundtrip tests;
+- property-based indexed-range equality tests;
+- byte-identical determinism matrix across profiles, block sizes and worker counts;
+- malformed index/trailer and resource-limit tests;
+- streaming premature-EOF/extra-data/resource-limit tests;
+- standalone `cargo-fuzz` project;
+- deterministic Corpus V2;
+- block-size benchmark matrix;
+- extended random-access benchmark matrix;
+- benchmark variance diagnostics;
+- p99 planner regret;
+- golden buildfix9 performance regression baseline.
+
+## Corpus V2
+
+Generate deterministic local corpora:
+
+```bash
+python3 tools/generate_hardening_corpus.py \
+  --output-dir examples/corpus/generated \
+  --sizes-mib 1,16,64
+```
+
+Classes:
+- zeros
+- low-cardinality
+- runs
+- numeric-u32
+- delta-series
+- structured-json
+- random
+- mixed
+
+No external downloads are required.
+
+## Build and test
 
 ```bash
 cargo build --workspace --release
 cargo test --workspace
-./demo/run-demo-0.3-buildfix9-compilefix.sh
-./benchmark.sh all
 ```
 
-See `docs/JSON-SERIALIZATION-0.3-BUILDFIX9-COMPILEFIX.md` and
-`TASKS-0.3-buildfix9-compilefix.md`.
-
----
-
-# Adaptive Compression Engine — ACE 0.3-buildfix9
-
-ACE 0.3-buildfix9 is the hardening/performance milestone after the successful quality recovery in buildfix8. It deliberately **does not redesign Planner V3**. The milestone preserves Hybrid LZ, analytical Top-K, QualityEnvelope and Format 1.2, while removing work that buildfix8 showed was no longer necessary.
-
-## Goals
-
-- preserve buildfix8 quality: ~3.47x BALANCED/DENSE ratio and very low regret;
-- improve FAST throughput with a profile-aware analyzer budget;
-- reduce unnecessary Hybrid-LZ micro-trials without losing numeric/structured quality;
-- normalize release gates around product quality rather than exact oracle ranking;
-- shave random-access overhead without changing the wire format or public semantics.
-
-## Planner V3.6
-
-```text
-AnalysisLevel::for_profile
-        ↓
-CandidateGenerator
-        ↓
-analytical Top-K + semantic anchors
-        ↓
-PlannerDataClass + PlanningBudget
-        ↓
-Hybrid LZ stage 1 only where useful
-        ↓
-EstimateConfidence
-        ↓
-adaptive stage 2
-        ↓
-QualityEnvelope
-        ↓
-CostModelV3
-        ↓
-one production encode
-```
-
-## FAST Analyzer Lite
-
-FAST computes every feature consumed by candidate generation and CostModel, but skips sampled first-order entropy (`entropy_h1`). `entropy_h1` was diagnostic-only and required a 65,536-entry transition table per block. BALANCED and DENSE retain the full analyzer.
-
-## Adaptive Hybrid LZ budget
-
-Planner V3.6 classifies the already-computed profile into `ZeroHeavy`, `Incompressible`, `Numeric` or `Structured`. This classification changes only **work budget**, never decoder semantics or candidate availability.
-
-- zero-heavy / incompressible: no Hybrid-LZ micro-trial;
-- numeric: wide LZ budget retained;
-- structured: moderate LZ budget;
-- FAST: at most one stage-1 LZ micro-trial;
-- high analytical/sample agreement skips stage 2.
-
-## Random access
-
-`BlockIndex::intersecting_indices()` returns a contiguous index range without allocating. `AceIndexedDecoder` uses it to avoid allocating/cloning a temporary vector of block index entries for each range read.
-
-## Benchmark schema 1.9
-
-New metrics include:
-
-- `p95_regret_bytes_per_block`;
-- `hybrid_lz_stage1_candidates_per_block`;
-- `hybrid_lz_stage2_candidates_per_block`;
-- `hybrid_lz_skipped_candidates_per_block`;
-- `hybrid_lz_high_confidence_skips_per_block`;
-- `hybrid_lz_sample_fraction`;
-- `fast_analysis_per_file`;
-- `speedup_vs_1t`;
-- `parallel_efficiency`.
-
-Oracle Top-2/Top-3, quality-pool recall and final-selection recall remain in JSON as **diagnostics**, not hard release gates.
-
-## Release gates
-
-```text
-QUALITY
-  generated recall            >= 0.99
-  Top-K recall                >= 0.98
-  regret                      <= 1024 B/block
-  p95 regret                  <= 4096 B/block
-  BALANCED ratio              >= 3.40x
-  DENSE ratio                 >= 99.5% hardened baseline
-  DENSE                       >= BALANCED * 0.995
-
-CORRECTNESS
-  full trial encodes/block    == 0
-  deterministic output        true
-
-PERFORMANCE
-  FAST                        >= 135 MB/s
-  BALANCED                    >= 65 MB/s
-  DENSE                       >= 42 MB/s
-  warm 64 KiB                 <= 76 us
-```
-
-## Build
+For fuzzing:
 
 ```bash
-cargo build --workspace --release
-cargo test --workspace
+cargo install cargo-fuzz
+cargo fuzz run container_decode
+cargo fuzz run index_parse
+cargo fuzz run trailer_parse
+cargo fuzz run range_open
 ```
 
 ## Demo
 
 ```bash
-./demo/run-demo-0.3-buildfix9.sh
+./demo/run-demo-0.3.1.sh
 ```
 
+The demo builds/tests the workspace, generates Corpus V2, demonstrates thread-count determinism,
+verifies a Format 1.2 archive, confirms corruption rejection and runs focused hardening benchmarks.
+
 ## Benchmarks
+
+Run the complete release contract:
 
 ```bash
 ./benchmark.sh all
 ```
 
-Format compatibility is unchanged: writer 1.2, readers 1.0/1.1/1.2.
+Existing families:
+- compression
+- entropy
+- planner
+- parallel
+- random-access
+- streaming
+- memory
+
+0.3.1 hardening families:
+- corpus
+- block-matrix
+- random-access-extended
+- stability
+
+Results are written as `examples/results/0.3.1-<family>.json`.
+
+Benchmark schema remains 1.9. Timing objects now also report `stddev_ns`, `cv_percent` and
+`unstable_measurement`.
+
+See `docs/BENCHMARKS-0.3.1.md`.
+
+## Release gates
+
+Quality:
+- generated recall >= 0.99
+- Top-K recall >= 0.98
+- mean regret <= 256 B/block
+- p95 regret <= 1024 B
+- p99 regret <= 4096 B
+- BALANCED ratio >= 3.45x
+- DENSE ratio >= 3.45x
+- full trial encodes/block == 0
+
+Performance/stability:
+- FAST/BALANCED/DENSE throughput >= 95% of the buildfix9 golden baseline
+- warm 64 KiB latency <= 107.5% of buildfix9 golden latency
+- repeated output must be byte-identical
+
+Exact oracle Top-N rank remains diagnostic-only because earlier 0.3 experiments showed actual
+regret is the more meaningful product-quality metric.
+
+## Important documentation
+
+- `TASKS-0.3.1.md`
+- `docs/BASELINE-0.3.1.md`
+- `docs/HARDENING-0.3.1.md`
+- `docs/BENCHMARKS-0.3.1.md`
+- `docs/FORMAT-COMPATIBILITY.md`
+- `docs/FUZZING-0.3.1.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`
+
+## Direction after 0.3.1
+
+ACE 0.3.1 closes the 0.3 planner-hardening line. New compression capabilities, new codecs,
+dictionary learning, format changes or learned planning belong to ACE 0.4 rather than another
+0.3 buildfix.

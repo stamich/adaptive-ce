@@ -1,4 +1,30 @@
-# ACE roadmap
+# ACE Roadmap
+
+## 0.3.1 — hardened stabilization
+
+Status: implementation complete; release validation requires Rust build/test/benchmark/fuzz execution.
+
+Focus:
+- freeze Planner V3.6 quality/performance behavior;
+- prove deterministic correctness over a broader matrix;
+- harden malformed-input and resource-limit handling;
+- add property tests and fuzzing;
+- broaden benchmark corpus/block sizes/random access;
+- establish golden release baseline and variance policy.
+
+No new compression algorithms or wire-format changes belong in 0.3.1.
+
+## 0.4 — capability development
+
+Candidate directions after 0.3.1:
+- new transform/codec research;
+- dictionary training and reuse;
+- richer data-class specialization;
+- ARM64/NEON performance work;
+- optional learned/feedback-assisted planner research;
+- Format 1.3 only when a feature actually requires a wire-format change.
+
+---
 
 ## 0.1 — adaptive vertical slice
 RAW/RLE/LZ, Delta, Huffman, analyzer, deterministic planner, independent blocks and corruption checks.
