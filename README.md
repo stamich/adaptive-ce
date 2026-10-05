@@ -1,3 +1,36 @@
+# Adaptive Compression Engine — ACE 0.3-buildfix9-compilefix
+
+This compilefix is based on ACE 0.3-buildfix9 and changes benchmark JSON construction only.
+
+The buildfix9 planner benchmark accumulated enough fields for one large `serde_json::json!({...})`
+literal to exceed Rust's macro recursion limit. The compilefix removes all object-shaped `json!`
+macros from the Rust benchmark crate and constructs JSON incrementally from small semantic
+sections with `JsonObjectBuilder`.
+
+## Compatibility
+
+- Planner V3.6 behavior: unchanged
+- Hybrid LZ budgets/confidence: unchanged
+- QualityEnvelope: unchanged
+- benchmark schema: 1.9 unchanged
+- workspace version: 0.3.9
+- ACE writer format: 1.2
+- ACE reader formats: 1.0 / 1.1 / 1.2
+
+## Validation
+
+```bash
+cargo build --workspace --release
+cargo test --workspace
+./demo/run-demo-0.3-buildfix9-compilefix.sh
+./benchmark.sh all
+```
+
+See `docs/JSON-SERIALIZATION-0.3-BUILDFIX9-COMPILEFIX.md` and
+`TASKS-0.3-buildfix9-compilefix.md`.
+
+---
+
 # Adaptive Compression Engine — ACE 0.3-buildfix9
 
 ACE 0.3-buildfix9 is the hardening/performance milestone after the successful quality recovery in buildfix8. It deliberately **does not redesign Planner V3**. The milestone preserves Hybrid LZ, analytical Top-K, QualityEnvelope and Format 1.2, while removing work that buildfix8 showed was no longer necessary.

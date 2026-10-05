@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3-buildfix9-compilefix - 2026-09-14
+
+### Fixed
+- Fixed `recursion limit reached while expanding $crate::json_internal!` in the Rust benchmark.
+- Replaced every object-shaped `serde_json::json!({...})` construction in the benchmark crate with incremental `JsonObjectBuilder` construction.
+- Split planner block-detail serialization into identity, ranking, quality, hybrid and outcome sections.
+- Split planner summary serialization into identity, quality, ranking, planner-work, hybrid, calibration and timing sections.
+- Refactored compression, entropy, parallel, random-access, streaming, memory, environment, configuration and timing JSON construction as well.
+- Removed compile-time dependence on increasing Rust's `#![recursion_limit]`.
+
+### Compatibility
+- Benchmark schema remains 1.9.
+- Existing field names and flat object layout remain unchanged.
+- Planner V3.6, Hybrid LZ, QualityEnvelope and release gates are unchanged.
+- ACE Format remains 1.2; reader compatibility remains 1.0/1.1/1.2.
+- Workspace version remains 0.3.9.
+
 ## 0.3-buildfix9 - 2026-09-14
 
 ### Added

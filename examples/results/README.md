@@ -37,3 +37,9 @@ Schema 1.8 results use `0.3-buildfix8-*.json`. Planner output includes hybrid LZ
 
 ## 0.3-buildfix9
 Schema 1.9 files use `0.3-buildfix9-*.json`. Hard gates are product-quality-first; exact oracle-rank metrics remain diagnostics.
+
+## 0.3-buildfix9-compilefix
+
+Result files use the `0.3-buildfix9-compilefix-*.json` prefix. Schema version remains 1.9.
+The compilefix changes only how JSON is built in Rust source; result field names and meanings
+are identical to 0.3-buildfix9.
