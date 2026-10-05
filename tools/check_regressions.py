@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate ACE 0.3-buildfix9 hardening gates against quality baselines and absolute targets."""
+"""Evaluate ACE 0.3-buildfix9-compilefix hardening gates against quality baselines and absolute targets."""
 from __future__ import annotations
 import json, pathlib, sys, time
 from typing import Any
@@ -38,16 +38,16 @@ def diagnostic(metric: str, candidate: float) -> dict[str, Any]:
 
 
 def main(argv: list[str]) -> int:
-    """Evaluate buildfix9 quality/correctness/performance gates and write schema 1.9 output."""
+    """Evaluate buildfix9-compilefix quality/correctness/performance gates and write schema 1.9 output."""
     if len(argv) != 4:
         print("usage: check_regressions.py BASELINE_DIR RESULT_DIR OUTPUT", file=sys.stderr)
         return 2
     base, result, output = map(pathlib.Path, argv[1:])
     b_comp = load(base / "0.2.1-buildfix1-compression.json")
     b_plan = load(base / "0.2.1-buildfix1-planner.json")
-    c_comp = load(result / "0.3-buildfix9-compression.json")
-    c_plan = load(result / "0.3-buildfix9-planner.json")
-    c_ra = load(result / "0.3-buildfix9-random-access.json")
+    c_comp = load(result / "0.3-buildfix9-compilefix-compression.json")
+    c_plan = load(result / "0.3-buildfix9-compilefix-planner.json")
+    c_ra = load(result / "0.3-buildfix9-compilefix-random-access.json")
 
     plan = c_plan["workloads"][0]
     generated = float(plan.get("candidate_generation_recall", plan.get("candidate_recall", 0.0)))
@@ -97,10 +97,10 @@ def main(argv: list[str]) -> int:
     doc = {
         "schema_version": "1.9",
         "project": "ace",
-        "milestone": "0.3-buildfix9",
-        "base": "0.3-buildfix8",
+        "milestone": "0.3-buildfix9-compilefix",
+        "base": "0.3-buildfix9",
         "scope": "regression",
-        "benchmark_contract_origin": "ace-0.3-buildfix9",
+        "benchmark_contract_origin": "ace-0.3-buildfix9-compilefix",
         "generated_at_utc_epoch_seconds": int(time.time()),
         "environment": {},
         "configuration": {
@@ -110,7 +110,7 @@ def main(argv: list[str]) -> int:
         },
         "workloads": [{
             "workload_id": "release_gates",
-            "path": "0.2.1-buildfix1-vs-0.3-buildfix9",
+            "path": "0.2.1-buildfix1-vs-0.3-buildfix9-compilefix",
             "status": status,
             "checks": checks,
             "diagnostics": diagnostics,
@@ -118,7 +118,7 @@ def main(argv: list[str]) -> int:
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(doc, indent=2) + "\n")
-    print(f"ACE 0.3-buildfix9 regression gates: {status}; results written to {output}")
+    print(f"ACE 0.3-buildfix9-compilefix regression gates: {status}; results written to {output}")
     for row in checks:
         print(f"  {row['status'].upper():4} {row['metric']}: {row['candidate']} ({row['rule']})")
     for row in diagnostics:

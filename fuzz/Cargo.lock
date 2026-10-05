@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "ace-analysis"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
  "ace-simd",
@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "ace-codecs"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
  "ace-simd",
@@ -20,28 +20,28 @@ dependencies = [
 
 [[package]]
 name = "ace-core"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "ace-cost"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-dictionary"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-engine"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-analysis",
  "ace-codecs",
@@ -58,14 +58,14 @@ dependencies = [
 
 [[package]]
 name = "ace-entropy"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-format"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
  "crc32c",
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "ace-index"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
  "ace-format",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "ace-planner"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-codecs",
  "ace-core",
@@ -105,7 +105,7 @@ dependencies = [
 
 [[package]]
 name = "ace-runtime"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
  "num_cpus",
@@ -114,11 +114,11 @@ dependencies = [
 
 [[package]]
 name = "ace-simd"
-version = "0.3.8"
+version = "0.3.9"
 
 [[package]]
 name = "ace-transforms"
-version = "0.3.8"
+version = "0.3.9"
 dependencies = [
  "ace-core",
 ]
@@ -131,9 +131,9 @@ checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 
 [[package]]
 name = "cc"
-version = "1.4.5"
+version = "1.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "005ec2760ca554fae18df7a11195552ec576cd665632a881bc011d5bb2fd4d80"
+checksum = "a3eb0f42d6c360dc3f8a821f6bf2fdea7f72bfd36b3076eb0e6d1e9e0752fff4"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
