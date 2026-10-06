@@ -16,6 +16,8 @@ pub struct CompressionStats {
     pub rle_blocks: u64,
     /// Number of blocks using LZ.
     pub lz_blocks: u64,
+    /// Number of blocks using ACE 0.4 numeric FOR/Delta/DoD+BitPack codec.
+    pub numeric_blocks: u64,
     /// Number of blocks using byte-delta transform.
     pub delta_blocks: u64,
     /// Number of blocks finalized by Huffman.
@@ -26,15 +28,19 @@ pub struct CompressionStats {
     pub rans4x_blocks: u64,
     /// Number of blocks resolved by a planner fast path without sampled verification.
     pub planner_fast_path_blocks: u64,
-    /// Number of candidates analytically estimated by Planner V3.
+    /// Number of candidates analytically estimated by Planner V4.
     pub planner_estimated_candidates: u64,
-    /// Number of candidates actually sample-encoded by Planner V3.
+    /// Number of candidates actually sample-encoded by Planner V4.
     pub planner_sampled_candidates: u64,
     /// Number of complete candidate trial encodes performed by the hot-path planner.
     pub planner_full_trial_encodes: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
-    /// Time spent collecting block statistics, summed across workers.
+    /// Time spent in route prefilter/classification/full NumericFast validation.
+    pub route_classify_time: Duration,
+    /// Time spent collecting generic block statistics after route classification.
+    pub generic_analysis_time: Duration,
+    /// Time spent collecting block statistics, including route classification.
     pub analysis_time: Duration,
     /// Time spent generating/evaluating candidates, summed across workers.
     pub planning_time: Duration,

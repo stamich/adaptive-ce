@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// Unified error type returned by ACE 0.3.1 components.
+/// Unified error type returned by ACE 0.4 components.
 #[derive(Debug, Error)]
 pub enum AceError {
     /// ACE file magic does not match the expected signature.
