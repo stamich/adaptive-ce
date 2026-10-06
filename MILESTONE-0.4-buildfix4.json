@@ -1,0 +1,30 @@
+{
+  "project": "ACE",
+  "milestone": "0.4-buildfix4",
+  "base": "0.4-buildfix3-buildfix1",
+  "workspace_version": "0.4.4",
+  "date": "2026-09-17",
+  "planner": "V4.3",
+  "release_type": "policy oracle closure and runtime regression fix",
+  "format": {
+    "writer": "1.3",
+    "reader": [
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.3"
+    ],
+    "wire_format_changed": false,
+    "numeric_payload": "NUM1 unchanged"
+  },
+  "policy_oracle": true,
+  "planning_context_single_classification": true,
+  "direct_numeric_fast_encode": true,
+  "benchmark_schema_version": "2.0",
+  "benchmark_filename_pattern": "benchmark-0.4-buildfix4-<family>.json",
+  "new_benchmark_families": [
+    "policy-oracle-v2",
+    "planner-hotpath",
+    "random-access-plan-diff"
+  ]
+}

@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
+ace-analysis = { path = "../ace-analysis" }
 ace-cost = { path = "../ace-cost" }
 ace-transforms = { path = "../ace-transforms" }
 ace-codecs = { path = "../ace-codecs" }
@@ -13,4 +14,3 @@ ace-entropy = { path = "../ace-entropy" }
 
 [dev-dependencies]
 proptest.workspace = true
-ace-analysis = { path = "../ace-analysis" }

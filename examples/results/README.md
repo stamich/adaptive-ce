@@ -56,3 +56,15 @@ New hardening families:
 
 Timing objects add `stddev_ns`, `cv_percent` and `unstable_measurement`.
 Planner output adds `p99_regret_bytes_per_block`.
+
+## 0.4
+
+ACE 0.4 uses benchmark schema 2.0 and writes `0.4-<family>.json`.
+
+New families:
+- `numeric`
+- `numeric-ablation`
+- `block-policy`
+
+The numeric family records schema-free NumericProfile telemetry and selected numeric block count.
+The ablation family compares the generic 0.3.1-compatible path, direct Numeric codec and Planner V4.

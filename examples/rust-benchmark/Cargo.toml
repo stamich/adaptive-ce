@@ -1,5 +1,5 @@
 [package]
-name = "ace-benchmark-0-3"
+name = "ace-benchmark-0-4"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,8 @@ license.workspace = true
 ace-core = { path = "../../crates/ace-core" }
 ace-cost = { path = "../../crates/ace-cost" }
 ace-analysis = { path = "../../crates/ace-analysis" }
+ace-codecs = { path = "../../crates/ace-codecs" }
+ace-format = { path = "../../crates/ace-format" }
 ace-engine = { path = "../../crates/ace-engine" }
 ace-entropy = { path = "../../crates/ace-entropy" }
 ace-planner = { path = "../../crates/ace-planner" }

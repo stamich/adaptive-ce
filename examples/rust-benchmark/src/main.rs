@@ -5,16 +5,21 @@ use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use ace_analysis::{AnalysisLevel, BlockAnalyzer, DefaultBlockAnalyzer};
+use ace_analysis::{
+    analyze_numeric, numeric_prefilter, AnalysisLevel, BlockAnalyzer, DefaultBlockAnalyzer,
+};
+use ace_codecs::{estimate_numeric, numeric_encode};
 use ace_core::{
-    AceConfig, CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId, LzMode,
-    PhysicalCompressionPlan, TransformId,
+    AccessHint, AceConfig, BlockSizePolicy, CandidateTier, CodecId, CompressionProfile,
+    DecodingPlan, EntropyCodecId, LzMode, PhysicalCompressionPlan, TransformId,
 };
 use ace_cost::{CandidateEstimator, DefaultCandidateEstimator};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use ace_entropy::{huffman_encode, rans4x_encode, rans_encode};
 use ace_planner::{
-    encode_plan_payload, evaluate_candidates_v3, CompressionPlanner, DefaultCompressionPlanner,
+    classify_planner_route, encode_plan_payload, evaluate_candidates_v4_with_route,
+    CandidateEligibility, CompressionPlanner, DefaultCompressionPlanner, PlannerRoute,
+    PlanningContext, PolicyOracle, PolicyOracleCandidate, RoutePolicy,
 };
 use ace_stream::{compress_reader_known_size, StreamLimits};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
@@ -66,7 +71,7 @@ impl JsonObjectBuilder {
     }
 }
 
-/// Top-level JSON document shared by every official ACE 0.3.1 benchmark family.
+/// Top-level JSON document shared by every official ACE 0.4 benchmark family.
 #[derive(Debug, Serialize)]
 struct BenchmarkDocument {
     schema_version: &'static str,
@@ -162,7 +167,7 @@ impl EstimatorErrorStats {
     }
 }
 
-/// Executes one benchmark family or the full ACE 0.3.1 contract.
+/// Executes one benchmark family or the full ACE 0.4 contract.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let family = std::env::args().nth(1).unwrap_or_else(|| "all".to_string());
     let families: Vec<&str> = if family == "all" {
@@ -178,6 +183,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "block-matrix",
             "random-access-extended",
             "stability",
+            "numeric",
+            "numeric-ablation",
+            "block-policy",
+            "planner-route",
+            "numeric-fastpath",
+            "policy-oracle-v2",
+            "numeric-general",
+            "planner-hotpath",
+            "random-access-plan-diff",
         ]
     } else {
         vec![family.as_str()]
@@ -196,15 +210,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "block-matrix" => block_matrix_family()?,
             "random-access-extended" => random_access_extended_family()?,
             "stability" => stability_family()?,
+            "numeric" => numeric_family()?,
+            "numeric-ablation" => numeric_ablation_family()?,
+            "block-policy" => block_policy_family()?,
+            "planner-route" => planner_route_family()?,
+            "numeric-fastpath" => numeric_fastpath_family()?,
+            "policy-oracle-v2" => policy_oracle_v2_family()?,
+            "numeric-general" => numeric_general_family()?,
+            "planner-hotpath" => planner_hotpath_family()?,
+            "random-access-plan-diff" => random_access_plan_diff_family()?,
             other => return Err(format!("unknown benchmark family: {other}").into()),
         };
         let document = BenchmarkDocument {
-            schema_version: "1.9",
+            schema_version: "2.0",
             project: "ace",
-            milestone: "0.3.1",
-            base: "0.3-buildfix9-compilefix",
+            milestone: "0.4-buildfix4",
+            base: "0.4-buildfix3-buildfix1",
             scope: family.to_string(),
-            benchmark_contract_origin: "ace-0.3.1",
+            benchmark_contract_origin: "ace-0.4-buildfix4",
             generated_at_utc_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
             environment: environment_json(),
             configuration: benchmark_configuration_json(),
@@ -263,7 +286,7 @@ fn benchmark_configuration_json() -> Value {
     row.field("warmup_iterations", WARMUPS)
         .field("runs", RUNS)
         .field("default_block_size_bytes", 262_144usize)
-        .field("format_version", "1.2")
+        .field("format_version", "1.3")
         .field(
             "simd_backend",
             format!("{:?}", ace_simd::selected_backend()),
@@ -277,7 +300,7 @@ fn result_path(family: &str) -> PathBuf {
         .parent()
         .expect("benchmark crate lives under examples")
         .join("results")
-        .join(format!("0.3.1-{family}.json"))
+        .join(format!("benchmark-0.4-buildfix4-{family}.json"))
 }
 
 /// Runs warmups and seven measured invocations while retaining the final operation result.
@@ -550,6 +573,8 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let blocks = data.chunks(cfg.block_size).collect::<Vec<_>>();
 
     let mut regret = 0i64;
+    let mut global_regret = 0i64;
+    let mut global_regret_samples = Vec::<u64>::new();
     let mut generated_recall = 0u64;
     let mut top_k_recall = 0u64;
     let mut top_k_eligible = 0u64;
@@ -611,7 +636,14 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
                 .observe(estimate.analytical_size_bytes, actual);
         }
 
-        let decision = evaluate_candidates_v3(block, &profile, &candidates, &cfg)?;
+        let planning_context = PlanningContext::classify(block, &cfg);
+        let decision = evaluate_candidates_v4_with_route(
+            block,
+            &profile,
+            &candidates,
+            &cfg,
+            &planning_context.route,
+        )?;
         fast_paths += if decision.telemetry.fast_path_hit {
             1
         } else {
@@ -638,7 +670,8 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             .selected_blended_size_bytes
             .saturating_sub(decision.telemetry.best_blended_size_bytes);
 
-        let oracle = oracle_plans()
+        let route = planning_context.route;
+        let global_oracle = oracle_plans()
             .into_iter()
             .map(|plan| {
                 let size = encoded_plan_size(block, &plan).unwrap_or(usize::MAX);
@@ -647,6 +680,52 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             .min_by_key(|(size, _)| *size)
             .expect("oracle plans are non-empty");
 
+        let route_oracle = oracle_plans()
+            .into_iter()
+            .filter(|plan| RoutePolicy::candidate_allowed(route.route, plan, &profile, &cfg))
+            .map(|plan| {
+                let size = encoded_plan_size(block, &plan).unwrap_or(usize::MAX);
+                (size, plan)
+            })
+            .min_by_key(|(size, _)| *size)
+            .unwrap_or_else(|| global_oracle.clone());
+
+        let measured_policy_candidates = oracle_plans()
+            .into_iter()
+            .map(|plan| {
+                let size = encoded_plan_size(block, &plan).unwrap_or(usize::MAX) as u64;
+                (plan, size)
+            })
+            .collect::<Vec<_>>();
+        let policy_inputs = measured_policy_candidates
+            .iter()
+            .map(|(plan, size)| PolicyOracleCandidate {
+                plan,
+                encoded_bytes: *size,
+            })
+            .collect::<Vec<_>>();
+        let policy_decision = PolicyOracle::choose(route.route, &policy_inputs, &profile, &cfg);
+        let policy_oracle = policy_decision
+            .map(|decision| {
+                (
+                    decision.candidate.encoded_bytes as usize,
+                    decision.candidate.plan.clone(),
+                    decision.preference,
+                    decision.reason,
+                    decision.accepted_size_loss_bytes,
+                )
+            })
+            .unwrap_or_else(|| {
+                (
+                    route_oracle.0,
+                    route_oracle.1.clone(),
+                    ace_planner::CandidatePreference::Neutral,
+                    ace_planner::DominanceReason::NoDominance,
+                    0,
+                )
+            });
+
+        let oracle = &(policy_oracle.0, policy_oracle.1.clone());
         let generated_hit = candidates.iter().any(|p| same_plan(p, &oracle.1));
         let top_k_hit = if decision.telemetry.fast_path_hit {
             same_plan(&decision.plan, &oracle.1)
@@ -752,9 +831,12 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 
         let selected = decision.plan;
         let selected_size = encoded_plan_size(block, &selected)? as i64;
-        let block_regret = selected_size - oracle.0 as i64;
+        let block_regret = selected_size - policy_oracle.0 as i64;
+        let block_global_regret = selected_size - global_oracle.0 as i64;
         regret += block_regret;
+        global_regret += block_global_regret;
         regret_samples.push(block_regret.max(0) as u64);
+        global_regret_samples.push(block_global_regret.max(0) as u64);
         let recall_entry = generated_recall_by_class.entry(class).or_insert((0, 0));
         recall_entry.1 += 1;
         if generated_hit {
@@ -771,6 +853,7 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             .field("block_id", idx)
             .field("data_class", class)
             .field("candidate_count", candidates.len())
+            .field("planner_route", format!("{:?}", route.route))
             .field("generated_oracle", generated_hit)
             .field("top_k_applied", !decision.telemetry.fast_path_hit)
             .field("top_k_oracle", top_k_hit)
@@ -866,11 +949,23 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
                 prediction_error_percent,
             )
             .field("selected_plan", plan_id(&selected))
-            .field("oracle_plan", plan_id(&oracle.1))
+            .field("oracle_plan", plan_id(&route_oracle.1))
+            .field("route_oracle_plan", plan_id(&route_oracle.1))
+            .field("policy_oracle_plan", plan_id(&policy_oracle.1))
+            .field("policy_preference", format!("{:?}", policy_oracle.2))
+            .field("policy_dominance_reason", format!("{:?}", policy_oracle.3))
+            .field("policy_accepted_size_loss_bytes", policy_oracle.4)
+            .field("global_oracle_plan", plan_id(&global_oracle.1))
             .field("selected_tier", tier_name(selected.tier))
             .field("selected_bytes", selected_size)
-            .field("oracle_bytes", oracle.0)
-            .field("regret_bytes", block_regret);
+            .field("oracle_bytes", route_oracle.0)
+            .field("route_oracle_bytes", route_oracle.0)
+            .field("policy_oracle_bytes", policy_oracle.0)
+            .field("global_oracle_bytes", global_oracle.0)
+            .field("regret_bytes", block_regret)
+            .field("route_regret_bytes", selected_size - route_oracle.0 as i64)
+            .field("policy_regret_bytes", block_regret)
+            .field("global_size_regret_bytes", block_global_regret);
 
         let mut block_detail = JsonObjectBuilder::new();
         block_detail
@@ -908,7 +1003,14 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         for block in &blocks {
             let p = analyzer.analyze(block);
             let c = planner.candidates(&p, &cfg);
-            black_box(evaluate_candidates_v3(block, &p, &c, &cfg)?);
+            let context = PlanningContext::classify(block, &cfg);
+            black_box(evaluate_candidates_v4_with_route(
+                block,
+                &p,
+                &c,
+                &cfg,
+                &context.route,
+            )?);
         }
         Ok(())
     })?
@@ -950,6 +1052,7 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         .map(|(bucket, stats)| (bucket, stats.json()))
         .collect::<BTreeMap<_, _>>();
     regret_samples.sort_unstable();
+    global_regret_samples.sort_unstable();
     let p95_regret_bytes_per_block = if regret_samples.is_empty() {
         0u64
     } else {
@@ -959,6 +1062,16 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         0u64
     } else {
         regret_samples[((regret_samples.len() - 1) * 99) / 100]
+    };
+    let global_p95_regret_bytes_per_block = if global_regret_samples.is_empty() {
+        0u64
+    } else {
+        global_regret_samples[((global_regret_samples.len() - 1) * 95) / 100]
+    };
+    let global_p99_regret_bytes_per_block = if global_regret_samples.is_empty() {
+        0u64
+    } else {
+        global_regret_samples[((global_regret_samples.len() - 1) * 99) / 100]
     };
 
     let top_k_rate = if top_k_eligible == 0 {
@@ -981,25 +1094,67 @@ fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut identity = JsonObjectBuilder::new();
     identity
         .field("workload_id", "mixed_8m")
-        .field("path", "planner_v3_6_hardened_adaptive_budget")
+        .field("path", "planner_v4_3_route_aware_oracle")
         .field("blocks", blocks.len());
 
     let mut quality = JsonObjectBuilder::new();
     quality
         .field("oracle_regret_bytes", regret)
+        .field("policy_oracle_regret_bytes", regret)
+        .field("policy_regret_bytes_per_block", regret as f64 / block_count)
+        .field("route_regret_bytes_per_block", regret as f64 / block_count)
         .field(
             "normalized_regret_bytes_per_block",
             regret as f64 / block_count,
         )
+        .field(
+            "policy_p95_regret_bytes_per_block",
+            p95_regret_bytes_per_block,
+        )
+        .field(
+            "policy_p99_regret_bytes_per_block",
+            p99_regret_bytes_per_block,
+        )
+        .field(
+            "route_p95_regret_bytes_per_block",
+            p95_regret_bytes_per_block,
+        )
+        .field(
+            "route_p99_regret_bytes_per_block",
+            p99_regret_bytes_per_block,
+        )
         .field("p95_regret_bytes_per_block", p95_regret_bytes_per_block)
         .field("p99_regret_bytes_per_block", p99_regret_bytes_per_block)
+        .field("global_size_regret_bytes", global_regret)
+        .field(
+            "global_size_regret_bytes_per_block",
+            global_regret as f64 / block_count,
+        )
+        .field(
+            "global_p95_regret_bytes_per_block",
+            global_p95_regret_bytes_per_block,
+        )
+        .field(
+            "global_p99_regret_bytes_per_block",
+            global_p99_regret_bytes_per_block,
+        )
         .field("regret_bytes_per_block_by_class", &regret_classes)
         .field("candidate_recall", generated_recall as f64 / block_count)
         .field(
             "candidate_generation_recall",
             generated_recall as f64 / block_count,
         )
+        .field(
+            "policy_candidate_generation_recall",
+            generated_recall as f64 / block_count,
+        )
+        .field(
+            "route_candidate_generation_recall",
+            generated_recall as f64 / block_count,
+        )
         .field("top_k_recall", top_k_rate)
+        .field("policy_top_k_recall", top_k_rate)
+        .field("route_top_k_recall", top_k_rate)
         .field("top_k_recall_denominator_blocks", top_k_eligible)
         .field("sample_verifier_recall", sample_rate)
         .field(
@@ -1629,6 +1784,676 @@ fn stability_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     Ok(vec![row.build()])
 }
 
+/// Generates one deterministic numeric/time-series workload for ACE 0.4 benchmarks.
+fn numeric_workload(kind: &str, bytes: usize) -> Vec<u8> {
+    match kind {
+        "u32-counter" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 10_000u32;
+            while out.len() < bytes {
+                value = value.wrapping_add(3);
+                out.extend_from_slice(&value.to_le_bytes());
+            }
+            out.truncate(bytes);
+            out
+        }
+        "u64-timestamps" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 1_780_000_000_000u64;
+            let mut i = 0u64;
+            while out.len() < bytes {
+                value = value.wrapping_add(1000 + (i % 3));
+                out.extend_from_slice(&value.to_le_bytes());
+                i += 1;
+            }
+            out.truncate(bytes);
+            out
+        }
+        "u64-fixed-step" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 1_780_000_000_000u64;
+            while out.len() < bytes {
+                value = value.wrapping_add(1000);
+                out.extend_from_slice(&value.to_le_bytes());
+            }
+            out.truncate(bytes);
+            out
+        }
+        "gauge-sawtooth" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut i = 0u32;
+            while out.len() < bytes {
+                let value = 100_000u32 + (i % 4096);
+                out.extend_from_slice(&value.to_le_bytes());
+                i = i.wrapping_add(1);
+            }
+            out.truncate(bytes);
+            out
+        }
+        "monotonic-outliers" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 1_000_000u32;
+            let mut i = 0u32;
+            while out.len() < bytes {
+                value = value.wrapping_add(if i % 1024 == 0 { 100_000 } else { 1 });
+                out.extend_from_slice(&value.to_le_bytes());
+                i = i.wrapping_add(1);
+            }
+            out.truncate(bytes);
+            out
+        }
+        "delta-variable" => {
+            let mut out = Vec::with_capacity(bytes);
+            let mut value = 100_000u32;
+            let mut i = 0u32;
+            while out.len() < bytes {
+                value = value.wrapping_add((i % 17) + 1);
+                out.extend_from_slice(&value.to_le_bytes());
+                i = i.wrapping_add(1);
+            }
+            out.truncate(bytes);
+            out
+        }
+        other => panic!("unknown numeric workload: {other}"),
+    }
+}
+
+/// Benchmarks Planner V4 over representative integer/time-series workloads.
+fn numeric_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let mut rows = Vec::new();
+    for kind in [
+        "u32-counter",
+        "u64-timestamps",
+        "gauge-sawtooth",
+        "monotonic-outliers",
+        "delta-variable",
+    ] {
+        let data = numeric_workload(kind, 16 * 1024 * 1024);
+        let profile = analyze_numeric(&data);
+        let estimate = estimate_numeric(&data);
+        let mut cfg = AceConfig::default();
+        cfg.profile = CompressionProfile::Balanced;
+        cfg.threads = 1;
+        let engine = AceEngine::new(cfg)?;
+        let (enc_stats, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+        let (_, telemetry) = engine.compress_with_stats(&data)?;
+        let (dec_stats, decoded) = measure(|| Ok(engine.decompress(&encoded)?))?;
+        assert_eq!(decoded, data);
+        let mut numeric = JsonObjectBuilder::new();
+        numeric
+            .field("detected", profile.detected)
+            .field("width", format!("{:?}", profile.width))
+            .field("confidence", profile.confidence)
+            .field("monotonic_ratio", profile.monotonic_ratio)
+            .field("delta_bit_width_p95", profile.delta_bit_width_p95)
+            .field("dod_zero_ratio", profile.dod_zero_ratio)
+            .field("dod_bit_width_p95", profile.dod_bit_width_p95)
+            .field("exception_ratio", profile.exception_ratio);
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", kind)
+            .field("path", "planner_v4_3")
+            .field("input_bytes", data.len())
+            .field("compressed_bytes", encoded.len())
+            .field(
+                "compression_ratio",
+                data.len() as f64 / encoded.len().max(1) as f64,
+            )
+            .field("numeric_blocks", telemetry.numeric_blocks)
+            .field("plan_distribution", &telemetry.plan_distribution)
+            .field(
+                "numeric_estimate",
+                estimate.map(|e| format!("{:?}/{:?}/{}b", e.width, e.mode, e.bit_width)),
+            )
+            .value("numeric_profile", numeric.build())
+            .value("compression", timing_json(&enc_stats, data.len()))
+            .value("decompression", timing_json(&dec_stats, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Compares generic 0.3.1 planning against direct numeric codec and Planner V4 selection.
+fn numeric_ablation_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let mut rows = Vec::new();
+    for kind in ["u32-counter", "u64-timestamps", "delta-variable"] {
+        let data = numeric_workload(kind, 8 * 1024 * 1024);
+        let mut generic_cfg = AceConfig::default();
+        generic_cfg.enable_numeric_specialization = false;
+        generic_cfg.threads = 1;
+        let generic = AceEngine::new(generic_cfg)?;
+        let (generic_stats, generic_bytes) = measure(|| Ok(generic.compress(&data)?))?;
+        let (numeric_stats, numeric_bytes) = measure(|| Ok(numeric_encode(&data)?))?;
+        let mut planner_cfg = AceConfig::default();
+        planner_cfg.threads = 1;
+        let planner = AceEngine::new(planner_cfg)?;
+        let (planner_stats, planner_bytes) = measure(|| Ok(planner.compress(&data)?))?;
+        for (path, bytes, stats) in [
+            ("generic-0.3.1-path", generic_bytes.len(), &generic_stats),
+            ("direct-numeric-codec", numeric_bytes.len(), &numeric_stats),
+            ("planner-v4", planner_bytes.len(), &planner_stats),
+        ] {
+            let mut row = JsonObjectBuilder::new();
+            row.field("workload_id", kind)
+                .field("path", path)
+                .field("input_bytes", data.len())
+                .field("compressed_bytes", bytes)
+                .field("compression_ratio", data.len() as f64 / bytes.max(1) as f64)
+                .value("compression", timing_json(stats, data.len()));
+            rows.push(row.build());
+        }
+    }
+    Ok(rows)
+}
+
+/// Compares fixed block sizes with ACE 0.4 file-level automatic block-size policy.
+fn block_policy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let workloads = [
+        ("mixed", mixed_data(16)),
+        ("numeric", numeric_workload("u32-counter", 16 * 1024 * 1024)),
+    ];
+    let mut rows = Vec::new();
+    for (kind, data) in workloads {
+        for (label, policy, block_size, access) in [
+            (
+                "fixed-256k",
+                BlockSizePolicy::Fixed,
+                256 * 1024usize,
+                AccessHint::Balanced,
+            ),
+            (
+                "fixed-512k",
+                BlockSizePolicy::Fixed,
+                512 * 1024usize,
+                AccessHint::Sequential,
+            ),
+            (
+                "fixed-1m",
+                BlockSizePolicy::Fixed,
+                1024 * 1024usize,
+                AccessHint::Sequential,
+            ),
+            (
+                "auto-balanced",
+                BlockSizePolicy::Auto,
+                256 * 1024usize,
+                AccessHint::Balanced,
+            ),
+            (
+                "auto-sequential",
+                BlockSizePolicy::Auto,
+                256 * 1024usize,
+                AccessHint::Sequential,
+            ),
+            (
+                "auto-random-access",
+                BlockSizePolicy::Auto,
+                256 * 1024usize,
+                AccessHint::RandomAccess,
+            ),
+        ] {
+            let mut cfg = AceConfig::default();
+            cfg.block_size_policy = policy;
+            cfg.block_size = block_size;
+            cfg.access_hint = access;
+            cfg.threads = 1;
+            let engine = AceEngine::new(cfg)?;
+            let (stats, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+            let mut reader = ace_format::AceReader::new(
+                Cursor::new(&encoded),
+                ace_core::DecodeLimits::default(),
+            );
+            let header = reader.read_file_header()?;
+            let mut row = JsonObjectBuilder::new();
+            row.field("workload_id", kind)
+                .field("path", label)
+                .field("selected_block_size_bytes", header.default_block_size)
+                .field("compressed_bytes", encoded.len())
+                .field(
+                    "compression_ratio",
+                    data.len() as f64 / encoded.len().max(1) as f64,
+                )
+                .value("compression", timing_json(&stats, data.len()));
+            rows.push(row.build());
+        }
+    }
+    Ok(rows)
+}
+
+/// Benchmarks the low-cost Planner V4.3 route classifier independently of generic analysis.
+fn planner_route_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let workloads = [
+        (
+            "u32-counter",
+            numeric_workload("u32-counter", 16 * 1024 * 1024),
+        ),
+        (
+            "u64-timestamps",
+            numeric_workload("u64-timestamps", 16 * 1024 * 1024),
+        ),
+        (
+            "delta-variable",
+            numeric_workload("delta-variable", 16 * 1024 * 1024),
+        ),
+        ("mixed", mixed_data(16)),
+        ("random", corpus_bytes("random", 16 * 1024 * 1024)),
+    ];
+    let mut rows = Vec::new();
+    for (kind, data) in workloads {
+        let mut cfg = AceConfig::default();
+        cfg.profile = CompressionProfile::Balanced;
+        cfg.threads = 1;
+        let prefilter = numeric_prefilter(&data);
+        let (stats, route) = measure(|| Ok(classify_planner_route(black_box(&data), &cfg)))?;
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", kind)
+            .field("path", "planner-v4.3-route")
+            .field(
+                "route",
+                match route.route {
+                    PlannerRoute::Generic => "generic",
+                    PlannerRoute::NumericGeneral => "numeric-general",
+                    PlannerRoute::NumericFast => "numeric-fast",
+                },
+            )
+            .field("reason", format!("{:?}", route.reason))
+            .field("prefilter_confidence", prefilter.confidence)
+            .field("prefilter_likely_numeric", prefilter.likely_numeric)
+            .field("prefilter_strong_numeric", prefilter.strong_numeric)
+            .field("prefilter_width", format!("{:?}", prefilter.width_hint))
+            .value("route_timing", timing_json(&stats, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Measures end-to-end Planner V4.3 strong-numeric fast-path cost and stage telemetry.
+fn numeric_fastpath_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let mut rows = Vec::new();
+    for kind in ["u32-counter", "u64-fixed-step"] {
+        let data = numeric_workload(kind, 16 * 1024 * 1024);
+        let mut cfg = AceConfig::default();
+        cfg.profile = CompressionProfile::Balanced;
+        cfg.threads = 1;
+        let engine = AceEngine::new(cfg)?;
+
+        let (compression, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+        let (_, telemetry) = engine.compress_with_stats(&data)?;
+        let (decompression, restored) = measure(|| Ok(engine.decompress(&encoded)?))?;
+        assert_eq!(restored, data);
+
+        let mut stage = JsonObjectBuilder::new();
+        stage
+            .field(
+                "route_classify_ns",
+                telemetry
+                    .route_classify_time
+                    .as_nanos()
+                    .min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "generic_analysis_ns",
+                telemetry
+                    .generic_analysis_time
+                    .as_nanos()
+                    .min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "analysis_ns",
+                telemetry.analysis_time.as_nanos().min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "planning_ns",
+                telemetry.planning_time.as_nanos().min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "encoding_ns",
+                telemetry.encoding_time.as_nanos().min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "planner_fast_path_blocks",
+                telemetry.planner_fast_path_blocks,
+            )
+            .field(
+                "planner_estimated_candidates",
+                telemetry.planner_estimated_candidates,
+            )
+            .field(
+                "planner_sampled_candidates",
+                telemetry.planner_sampled_candidates,
+            )
+            .field(
+                "planner_full_trial_encodes",
+                telemetry.planner_full_trial_encodes,
+            );
+
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", kind)
+            .field("path", "planner-v4.3-numeric-fast")
+            .field("input_bytes", data.len())
+            .field("compressed_bytes", encoded.len())
+            .field(
+                "compression_ratio",
+                data.len() as f64 / encoded.len().max(1) as f64,
+            )
+            .field("numeric_blocks", telemetry.numeric_blocks)
+            .field("plan_distribution", &telemetry.plan_distribution)
+            .value("stage_timing", stage.build())
+            .value("compression", timing_json(&compression, data.len()))
+            .value("decompression", timing_json(&decompression, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Compares the diagnostic global size oracle with the production route-aware oracle.
+///
+/// The benchmark deliberately full-encodes oracle candidates outside the planner hot path. It is
+/// therefore a measurement/validation tool, not a production planning algorithm.
+fn policy_oracle_v2_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let workloads = [
+        ("zeros", corpus_bytes("zeros", 4 * 1024 * 1024)),
+        ("runs", corpus_bytes("runs", 4 * 1024 * 1024)),
+        (
+            "u32-counter",
+            numeric_workload("u32-counter", 4 * 1024 * 1024),
+        ),
+        (
+            "u64-timestamps",
+            numeric_workload("u64-timestamps", 4 * 1024 * 1024),
+        ),
+        (
+            "delta-variable",
+            numeric_workload("delta-variable", 4 * 1024 * 1024),
+        ),
+        (
+            "structured",
+            corpus_bytes("structured-json", 4 * 1024 * 1024),
+        ),
+        ("random", corpus_bytes("random", 4 * 1024 * 1024)),
+        ("mixed", mixed_data(4)),
+    ];
+    let analyzer = DefaultBlockAnalyzer;
+    let planner = DefaultCompressionPlanner;
+    let cfg = AceConfig::default();
+    let mut rows = Vec::new();
+
+    for (workload_id, data) in workloads {
+        let block = &data[..data.len().min(cfg.block_size)];
+        let profile = analyzer.analyze(block);
+        let planning_context = PlanningContext::classify(block, &cfg);
+        let route = planning_context.route;
+        let candidates = planner.candidates(&profile, &cfg);
+        let decision =
+            evaluate_candidates_v4_with_route(block, &profile, &candidates, &cfg, &route)?;
+
+        let global = oracle_plans()
+            .into_iter()
+            .map(|plan| (encoded_plan_size(block, &plan).unwrap_or(usize::MAX), plan))
+            .min_by_key(|(size, _)| *size)
+            .expect("global oracle");
+        let route_oracle = oracle_plans()
+            .into_iter()
+            .filter(|plan| RoutePolicy::candidate_allowed(route.route, plan, &profile, &cfg))
+            .map(|plan| (encoded_plan_size(block, &plan).unwrap_or(usize::MAX), plan))
+            .min_by_key(|(size, _)| *size)
+            .expect("route oracle");
+        let measured_policy_candidates = oracle_plans()
+            .into_iter()
+            .map(|plan| {
+                let size = encoded_plan_size(block, &plan).unwrap_or(usize::MAX) as u64;
+                (plan, size)
+            })
+            .collect::<Vec<_>>();
+        let policy_inputs = measured_policy_candidates
+            .iter()
+            .map(|(plan, size)| PolicyOracleCandidate {
+                plan,
+                encoded_bytes: *size,
+            })
+            .collect::<Vec<_>>();
+        let policy = PolicyOracle::choose(route.route, &policy_inputs, &profile, &cfg)
+            .expect("policy oracle");
+        let selected_size = encoded_plan_size(block, &decision.plan)?;
+
+        let allowed = candidates
+            .iter()
+            .filter(|plan| {
+                matches!(
+                    RoutePolicy::candidate_eligibility(route.route, plan, &profile, &cfg),
+                    CandidateEligibility::Allowed
+                )
+            })
+            .count();
+        let diagnostic = candidates.len().saturating_sub(allowed);
+
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", workload_id)
+            .field("path", "policy-oracle-v2")
+            .field("planner_route", format!("{:?}", route.route))
+            .field("selected_plan", plan_id(&decision.plan))
+            .field("global_oracle_plan", plan_id(&global.1))
+            .field("route_oracle_plan", plan_id(&route_oracle.1))
+            .field("policy_oracle_plan", plan_id(policy.candidate.plan))
+            .field("policy_preference", format!("{:?}", policy.preference))
+            .field("policy_dominance_reason", format!("{:?}", policy.reason))
+            .field(
+                "policy_accepted_size_loss_bytes",
+                policy.accepted_size_loss_bytes,
+            )
+            .field("selected_bytes", selected_size)
+            .field("global_oracle_bytes", global.0)
+            .field("route_oracle_bytes", route_oracle.0)
+            .field("policy_oracle_bytes", policy.candidate.encoded_bytes)
+            .field(
+                "global_size_regret_bytes",
+                selected_size as i64 - global.0 as i64,
+            )
+            .field(
+                "route_regret_bytes",
+                selected_size as i64 - route_oracle.0 as i64,
+            )
+            .field(
+                "policy_regret_bytes",
+                selected_size as i64 - policy.candidate.encoded_bytes as i64,
+            )
+            .field("allowed_candidates", allowed)
+            .field("diagnostic_only_candidates", diagnostic);
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Benchmarks the reduced NumericGeneral search against direct Numeric and end-to-end Planner V4.3.
+fn numeric_general_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let mut rows = Vec::new();
+    for kind in [
+        "u64-timestamps",
+        "delta-variable",
+        "monotonic-outliers",
+        "gauge-sawtooth",
+    ] {
+        let data = numeric_workload(kind, 16 * 1024 * 1024);
+        let direct_estimate = estimate_numeric(&data)
+            .ok_or("numeric-general benchmark expected a direct numeric estimate")?;
+        let (direct_timing, direct) = measure(|| Ok(numeric_encode(black_box(&data))?))?;
+
+        let mut cfg = AceConfig::default();
+        cfg.profile = CompressionProfile::Balanced;
+        cfg.threads = 1;
+        let engine = AceEngine::new(cfg.clone())?;
+        let route = RoutePolicy::classify(&data, &cfg);
+        let (planner_timing, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+        let (_, telemetry) = engine.compress_with_stats(&data)?;
+        assert_eq!(engine.decompress(&encoded)?, data);
+
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", kind)
+            .field("path", "planner-v4.3-numeric-general")
+            .field("planner_route", format!("{:?}", route.route))
+            .field("input_bytes", data.len())
+            .field("direct_numeric_bytes", direct.len())
+            .field(
+                "direct_numeric_estimated_bytes",
+                direct_estimate.encoded_bytes,
+            )
+            .field("planner_encoded_bytes", encoded.len())
+            .field(
+                "planner_ratio",
+                data.len() as f64 / encoded.len().max(1) as f64,
+            )
+            .field(
+                "planner_estimated_candidates",
+                telemetry.planner_estimated_candidates,
+            )
+            .field(
+                "planner_sampled_candidates",
+                telemetry.planner_sampled_candidates,
+            )
+            .field(
+                "planner_full_trial_encodes",
+                telemetry.planner_full_trial_encodes,
+            )
+            .value("direct_numeric", timing_json(&direct_timing, data.len()))
+            .value("planner_v4_3", timing_json(&planner_timing, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Breaks end-to-end compression time into route, generic-analysis, planning and encode stages.
+///
+/// The benchmark is intentionally end-to-end so stage sums can be compared with observed wall
+/// clock throughput while still revealing accidental duplicate classification/analysis work.
+fn planner_hotpath_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let workloads = [
+        ("mixed-fast", CompressionProfile::Fast, mixed_data(16)),
+        (
+            "mixed-balanced",
+            CompressionProfile::Balanced,
+            mixed_data(16),
+        ),
+        (
+            "random",
+            CompressionProfile::Balanced,
+            corpus_bytes("random", 16 * 1024 * 1024),
+        ),
+        (
+            "structured",
+            CompressionProfile::Balanced,
+            corpus_bytes("structured-json", 16 * 1024 * 1024),
+        ),
+        (
+            "zeros",
+            CompressionProfile::Balanced,
+            corpus_bytes("zeros", 16 * 1024 * 1024),
+        ),
+        (
+            "u32-counter",
+            CompressionProfile::Balanced,
+            numeric_workload("u32-counter", 16 * 1024 * 1024),
+        ),
+        (
+            "u64-timestamps",
+            CompressionProfile::Balanced,
+            numeric_workload("u64-timestamps", 16 * 1024 * 1024),
+        ),
+    ];
+    let mut rows = Vec::new();
+
+    for (workload_id, profile, data) in workloads {
+        let mut cfg = AceConfig::default();
+        cfg.profile = profile;
+        cfg.threads = 1;
+        let engine = AceEngine::new(cfg.clone())?;
+        let route = RoutePolicy::classify(&data[..data.len().min(cfg.block_size)], &cfg);
+        let (wall, encoded) = measure(|| Ok(engine.compress(&data)?))?;
+        let (_, stats) = engine.compress_with_stats(&data)?;
+        assert_eq!(engine.decompress(&encoded)?, data);
+
+        let total_stage_ns = stats
+            .route_classify_time
+            .saturating_add(stats.generic_analysis_time)
+            .saturating_add(stats.planning_time)
+            .saturating_add(stats.encoding_time)
+            .as_nanos()
+            .min(u64::MAX as u128) as u64;
+
+        let mut stage = JsonObjectBuilder::new();
+        stage
+            .field(
+                "route_classify_ns",
+                stats.route_classify_time.as_nanos().min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "generic_analysis_ns",
+                stats.generic_analysis_time.as_nanos().min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "planning_ns",
+                stats.planning_time.as_nanos().min(u64::MAX as u128) as u64,
+            )
+            .field(
+                "encoding_ns",
+                stats.encoding_time.as_nanos().min(u64::MAX as u128) as u64,
+            )
+            .field("total_stage_ns", total_stage_ns)
+            .field("fast_path_blocks", stats.planner_fast_path_blocks)
+            .field("estimated_candidates", stats.planner_estimated_candidates)
+            .field("sampled_candidates", stats.planner_sampled_candidates);
+
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", workload_id)
+            .field("path", "planner-v4.3-hotpath")
+            .field("route_first_block", format!("{:?}", route.route))
+            .field("input_bytes", data.len())
+            .field("compressed_bytes", encoded.len())
+            .field(
+                "compression_ratio",
+                data.len() as f64 / encoded.len().max(1) as f64,
+            )
+            .value("stage_timing", stage.build())
+            .value("wall_clock", timing_json(&wall, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
+/// Captures the current random-access corpus plan distribution for direct buildfix2/buildfix4 diff.
+///
+/// Buildfix2 is bundled as JSON under `examples/baselines/0.4-buildfix2`; the comparison tool can
+/// compare this family with the archived distribution without contaminating the timed decoder path.
+fn random_access_plan_diff_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let data = mixed_data(16);
+    let mut cfg = AceConfig::default();
+    cfg.profile = CompressionProfile::Balanced;
+    cfg.threads = 1;
+    cfg.access_hint = AccessHint::RandomAccess;
+    let engine = AceEngine::new(cfg)?;
+    let (encoded, stats) = engine.compress_with_stats(&data)?;
+    let mut decoder =
+        AceIndexedDecoder::open(Cursor::new(encoded), ace_core::DecodeLimits::default())?;
+
+    let ranges = [
+        ("range-4k", 4 * 1024usize),
+        ("range-16k", 16 * 1024usize),
+        ("range-64k", 64 * 1024usize),
+    ];
+    let mut rows = Vec::new();
+    for (workload_id, len) in ranges {
+        let (timing, bytes) = measure(|| Ok(decoder.read_range(0_u64..len as u64)?))?;
+        assert_eq!(bytes, data[..len]);
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", workload_id)
+            .field("path", "random-access-plan-diff")
+            .field("logical_bytes_requested", len)
+            .field("plan_distribution", &stats.plan_distribution)
+            .field("baseline_version", "0.4-buildfix2")
+            .value("timing", timing_json(&timing, len));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
 /// Returns serialized bytes produced by one internal physical plan.
 fn encoded_plan_size(
     input: &[u8],
@@ -1661,6 +2486,7 @@ fn estimator_family_id(plan: &PhysicalCompressionPlan) -> String {
         (CodecId::Lz, Some(LzMode::Fast)) => "lz_fast",
         (CodecId::Lz, Some(LzMode::Balanced)) => "lz_balanced",
         (CodecId::Lz, None) => "lz",
+        (CodecId::Numeric, _) => "numeric",
     };
     if delta {
         format!("delta_{base}")
@@ -1685,6 +2511,7 @@ fn plan_id(p: &PhysicalCompressionPlan) -> String {
         (CodecId::Rle, _) => "rle",
         (CodecId::Lz, Some(LzMode::Balanced)) => "lz_balanced",
         (CodecId::Lz, _) => "lz_fast",
+        (CodecId::Numeric, _) => "numeric",
     });
     parts.push(match p.decoding.entropy {
         EntropyCodecId::None => "none",
@@ -1727,6 +2554,7 @@ fn oracle_plans() -> Vec<PhysicalCompressionPlan> {
     };
     add(vec![], CodecId::Raw, EntropyCodecId::None, None);
     add(vec![], CodecId::Rle, EntropyCodecId::None, None);
+    add(vec![], CodecId::Numeric, EntropyCodecId::None, None);
     for e in [
         EntropyCodecId::Huffman,
         EntropyCodecId::Rans,

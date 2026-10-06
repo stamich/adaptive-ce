@@ -1,5 +1,230 @@
 # Changelog
 
+## 0.4-buildfix4-buildfix3 - 2026-09-17
+
+### Script/dependency hardening
+- Rebuilt the build/demo/benchmark shell runners from canonical script names instead of applying
+  further mechanical prefix substitutions.
+- Removed all duplicated `ace-ace-` references.
+- Verified every shell/Python script starts with `ace-` and contains `0.4-buildfix4`.
+- Verified every direct script-to-script dependency exists.
+- Verified every benchmark family invoked by the demo exists in the Rust benchmark binary.
+- Updated benchmark JSON validator to require `benchmark-<milestone>-<family>.json`, matching the
+  writer and shell runner.
+- Updated Python tool usage messages to their real versioned `ace-` names.
+- Added `docs/SCRIPT-AUDIT-0.4-BUILDFIX4.md` with the canonical dependency graph.
+
+### Scope
+- No Planner V4.3 algorithm change.
+- No codec change.
+- No Format 1.3 change.
+- No benchmark schema change.
+- No release-gate semantic change.
+
+## 0.4-buildfix4-buildfix2 - 2026-09-17
+
+### Compile fix
+- Fixed Rust E0308 in `random_access_plan_diff_family`.
+- `AceIndexedDecoder::read_range` expects `Range<u64>`.
+- The benchmark now converts the `usize` range length explicitly:
+  `0_u64..len as u64`.
+- No planner, codec, format, benchmark-schema or release-gate semantics changed.
+
+## 0.4-buildfix4-buildfix1 - 2026-09-17
+
+### Compile fix
+- Fixed Rust E0689 in `DominanceEnvelope::for_config`.
+- Explicitly typed `(absolute, relative)` as `(u64, f64)`.
+- Suffixed absolute literals with `_u64` and floating literals with `_f64`.
+- `saturating_mul(2)` now resolves unambiguously to `u64::saturating_mul`.
+
+### Script naming
+- Every shell and Python script now starts with the `ace-` prefix.
+- Every shell and Python script continues to include `0.4-buildfix4` in its filename.
+- All documentation and script-to-script references were updated to the new names.
+
+### Compatibility
+- No planner-semantic change.
+- No Format 1.3 change.
+- No benchmark-schema change.
+- No release-gate change.
+
+## 0.4-buildfix4 - 2026-09-17
+
+### Planner V4.3 runtime closure
+- Added `PlanningContext` so production route classification/strong validation happens once per block.
+- Added reusable `NumericFastEvidence` with width, first value, fixed delta, value count and tail size.
+- Tightened NumericFast to strict complete-block fixed-step sequences; outliers/sawtooth fall back.
+- Added `evaluate_candidates_v4_with_route` to reuse an existing `RouteDecision`.
+- Added direct `numeric_encode_fixed_step` NUM1/DoD/bit-width=0 production encoder.
+- NumericFast no longer reruns full Numeric mode estimation/search.
+
+### Policy Oracle V2
+- Added `CandidatePreference`, `DominanceReason`, `DominanceEnvelope` and `DominancePolicy`.
+- Added offline `PolicyOracle` over real benchmark/test encoded sizes.
+- RLE is product-preferred for zero/run-heavy blocks within bounded size loss.
+- RAW is preferred for incompressible data.
+- Numeric is preferred for admitted numeric routes.
+- Random-access policy can prefer cheaper-decode RAW/RLE.
+- Release recall/regret now use policy oracle; route/global oracle remain diagnostics.
+
+### Telemetry and benchmarks
+- Added route-classify and generic-analysis timing to compression statistics.
+- Added `policy-oracle-v2`.
+- Added `planner-hotpath`.
+- Added `random-access-plan-diff`.
+- Preserved NumericGeneral benchmark and buildfix2 performance reference.
+
+### Naming and repository cleanup
+- Every shell/Python script now carries `0.4-buildfix4` in its filename.
+- Every benchmark baseline/result JSON filename now contains `benchmark`.
+- Current benchmark outputs use `benchmark-0.4-buildfix4-<family>.json`.
+- Removed obsolete buildfix3 release-specific docs/audits/tasks/milestone artifacts.
+- Removed transient Python bytecode caches.
+
+### Compatibility
+- Workspace version 0.4.4.
+- Format 1.3 unchanged.
+- Reader compatibility 1.0/1.1/1.2/1.3 unchanged.
+- NUM1/AIDX/ACET unchanged.
+- Benchmark schema remains 2.0.
+
+## 0.4-buildfix3-buildfix1 - 2026-09-17
+
+### Fixed
+- Renamed the route-level Hybrid-LZ budget enum to `RouteHybridLzPolicy` to avoid a public-name collision with the existing `hybrid::HybridLzPolicy` struct.
+- Updated Planner V4.2 evaluator references to use `RouteHybridLzPolicy::{Disabled, OneStage, Full}` explicitly.
+- Removed the `E0599`/`E0659` ambiguity reported during `ace-planner` compilation without changing Planner V4.2 behavior, Format 1.3 bytes, benchmark schema, or release gates.
+
+## 0.4-buildfix3 - 2026-09-17
+
+### Planner V4.2
+- Added shared `RoutePolicy` as the single production/benchmark candidate-eligibility contract.
+- Added `CandidateEligibility::{Allowed, DiagnosticOnly, Rejected}` and stable rejection reasons.
+- Added route-specific `RouteBudget` and `RouteRouteHybridLzPolicy`.
+- Added `NumericMargin` for exact-Numeric versus best-generic dominance decisions.
+- Reduced NumericGeneral to at most five semantic candidate families.
+- Limited NumericGeneral sample verification to at most two candidates.
+- Exact Numeric candidates are no longer sample-encoded.
+- Strong Numeric dominance disables Hybrid-LZ microtrials.
+- Moderate Numeric dominance permits at most one stage-one Hybrid-LZ refinement.
+- NumericGeneral disables the generic second-stage verifier.
+- Generic and NumericFast behavior remain compatible with buildfix2.
+
+### Route-aware quality model
+- Split benchmark oracle into global size oracle and route-aware oracle.
+- Release recall/regret metrics now use route-aware oracle semantics.
+- Global size regret is retained as a diagnostic.
+- Planner block diagnostics now report route/global oracle plan, bytes and regret.
+
+### Benchmarks
+- Added `oracle-policy`.
+- Added `numeric-general`.
+- Bundled the exact user-supplied 0.4-buildfix2 benchmark set as the performance baseline.
+- Performance gates are relative to buildfix2 for FAST/BALANCED/DENSE, warm random access and u32 NumericFast.
+- Added explicit NumericGeneral targets for u64 timestamps and variable-delta workloads.
+- Benchmark schema remains 2.0.
+
+### Scripts and cleanup
+- Added root `ace-build0.4.sh`.
+- Added `benchmark0.4-buildfix3.sh`.
+- Added `benchmark-compare0.4-buildfix3.sh`.
+- Added `demo/run-demo-0.4-buildfix3.sh`.
+- Removed obsolete unversioned benchmark runners and buildfix2 demo/release entry files.
+
+### Compatibility
+- Workspace version: 0.4.3.
+- Format 1.3 unchanged.
+- Reader compatibility remains 1.0/1.1/1.2/1.3.
+- NUM1, AIDX and ACET unchanged.
+
+## 0.4-buildfix2 - 2026-09-16
+
+### Performance hardening
+- Added allocation-free `NumericPrefilter` inspecting at most 1,024 sampled values per width.
+- Added Planner V4.1 route classifier: `Generic`, `NumericGeneral`, `NumericFast`.
+- Added full-block allocation-free validation before direct NumericFast selection.
+- Strong fixed-step numeric blocks now bypass the generic BlockAnalyzer, generic candidate generation,
+  Top-K verification, sample verification and Hybrid LZ.
+- NumericFast performs zero full candidate trial encodes and leaves only the final production Numeric encode.
+- Exact `estimate_numeric` is now evaluated lazily only for `NumericGeneral`.
+- Generic route filters speculative Numeric candidates before analytical/sample evaluation.
+- Constant/zero-heavy blocks are excluded from NumericFast so RLE/RAW remain eligible.
+
+### Analyzer/decoder optimization
+- Replaced delta/DoD/bit-width temporary vectors and width sorting with fixed 65-bin histograms.
+- Added direct zero-bit-width u32/u64 decode for FOR, Delta and Delta-of-Delta.
+- Zero-width numeric decode no longer invokes the bit reader or creates a temporary decoded-value vector.
+
+### Benchmarks
+- Added `planner-route` benchmark family.
+- Added `numeric-fastpath` benchmark family with engine stage telemetry.
+- Bundled 0.4-buildfix1 benchmark JSON as the direct regression baseline.
+- Tightened quality targets and introduced explicit recovery targets for FAST/BALANCED/DENSE,
+  warm random access and u32 NumericFast throughput.
+- Benchmark schema remains 2.0.
+
+### Repository cleanup
+- Removed obsolete demo scripts and demo documentation from previous milestones.
+- Removed obsolete root-level task, milestone and build-audit artifacts.
+- Preserved historical benchmark baselines because regression tooling depends on them.
+
+### Compatibility
+- Workspace version: 0.4.2.
+- Format 1.3 is unchanged.
+- Reader compatibility remains 1.0/1.1/1.2/1.3.
+- Numeric `NUM1` payload layout is unchanged.
+- AIDX/ACET are unchanged.
+
+## 0.4-buildfix1 - 2026-09-14
+
+### Fixed
+- Fixed four `ace-analysis::numeric` compile errors caused by comparing borrowed `&i64`/`&u8` values without dereferencing them.
+- Fixed Planner V4 numeric candidate pruning for monotonic numeric workloads.
+- Planner V4 now uses `ace_codecs::estimate_numeric(input)` as an exact deterministic size estimate for `CodecId::Numeric` before analytical ranking.
+- The exact Numeric estimate updates only the V4 Numeric candidate; the frozen Planner V3.6 generic estimator and ranking behavior remain unchanged.
+- Added a regression test proving a monotonic u32 counter keeps Numeric in stage-one verification and selects it without full trial encodes.
+
+### Compatibility
+- ACE Format 1.3 is unchanged.
+- Reader compatibility remains 1.0 / 1.1 / 1.2 / 1.3.
+- Workspace package version is 0.4.1.
+- Benchmark schema remains 2.0.
+
+## 0.4 - 2026-09-14
+
+### Added
+- New `ace-bitpack` crate with scalar u32/u64 bit packing, ZigZag, Delta, Delta-of-Delta and Frame-of-Reference primitives.
+- Schema-free `NumericProfile` analysis for u32/u64 integer structure.
+- `CodecId::Numeric` with deterministic FOR/Delta/DoD + ZigZag + BitPack selection.
+- Self-describing `NUM1` numeric payload in Format 1.3.
+- Planner V4 public entry point, preserving the hardened V3.6 ranking/sampling/QualityEnvelope stages.
+- Numeric candidate family and estimator/work-cost integration.
+- Numeric block telemetry and `ace explain` numeric diagnostics.
+- `BlockSizePolicy::Fixed/Auto` and `AccessHint`.
+- File-level deterministic block-size advisor.
+- CLI `--block-policy` and `--access-hint`.
+- u32/u64 property tests and numeric engine tests.
+- Numeric/bitpack fuzz targets.
+- Deterministic Corpus V3 numeric generator.
+- `numeric`, `numeric-ablation` and `block-policy` benchmark families.
+- Benchmark schema 2.0 and numeric release gates.
+
+### Changed
+- Workspace version is now 0.4.0.
+- Writer format is now 1.3.
+- Reader compatibility expands to 1.0/1.1/1.2/1.3.
+- Benchmark result prefix is `0.4-`.
+- Streaming writes Format 1.3 and requires Fixed block policy because Auto requires a pre-sample before the fixed header is written.
+
+### Preserved
+- RAW/RLE/LZ bitstreams.
+- Huffman/rANS/rANS4x bitstreams.
+- Hybrid LZ behavior.
+- QualityEnvelope.
+- AIDX/ACET layout.
+- Deterministic tie-breaking and zero hot-path full trial encodes.
+
 ## 0.3.1 - 2026-09-14
 
 ### Release character
@@ -89,7 +314,7 @@
 
 ### Added
 - `ace-planner::HybridLzEstimator` using bounded deterministic production-codec micro-trials.
-- `HybridLzPolicy` with profile/stage bounded sample budgets.
+- `RouteRouteHybridLzPolicy` with profile/stage bounded sample budgets.
 - `HybridLzObservation` with sampled bytes and disagreement PPM.
 - Planner telemetry for hybrid candidate count, sampled bytes and max disagreement.
 - Benchmark schema 1.8.

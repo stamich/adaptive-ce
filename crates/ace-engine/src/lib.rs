@@ -1,4 +1,4 @@
-//! High-level adaptive compression, decompression and random-access APIs for ACE 0.3.1.
+//! High-level adaptive compression, decompression and random-access APIs for ACE 0.4.
 
 mod chunker;
 mod engine;

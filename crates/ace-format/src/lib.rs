@@ -1,4 +1,4 @@
-//! ACE format 1.0/1.1/1.2 framing, block-index serialization and corruption checks.
+//! ACE format 1.0/1.1/1.2/1.3 framing, block-index serialization and corruption checks.
 
 mod header;
 mod index;

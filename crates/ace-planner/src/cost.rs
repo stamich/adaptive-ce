@@ -3,7 +3,7 @@ use ace_core::{
     PlanCost,
 };
 
-/// Deterministic ACE 0.3 cost model.
+/// Deterministic ACE 0.4 cost model.
 ///
 /// The original 0.2.1 score mixed raw byte counts with already-normalized CPU terms,
 /// which made the size component dominate even for `CompressionProfile::Fast`.
@@ -27,11 +27,13 @@ impl DeterministicCostModel {
             (CodecId::Rle, _) => 2,
             (CodecId::Lz, Some(LzMode::Balanced)) => 14,
             (CodecId::Lz, _) => 5,
+            (CodecId::Numeric, _) => 5,
         };
         let codec_decode = match plan.decoding.codec {
             CodecId::Raw => 1,
             CodecId::Rle => 2,
             CodecId::Lz => 3,
+            CodecId::Numeric => 2,
         };
         // ACE 0.2 measured scalar rANS as materially slower than Huffman at encode time.
         let entropy_encode = match plan.decoding.entropy {

@@ -8,6 +8,8 @@ pub enum CodecId {
     Rle = 1,
     /// LZ77-style literal/match token encoding.
     Lz = 2,
+    /// Self-describing integer codec introduced by ACE Format 1.3.
+    Numeric = 3,
 }
 
 impl TryFrom<u8> for CodecId {
@@ -19,6 +21,7 @@ impl TryFrom<u8> for CodecId {
             0 => Ok(Self::Raw),
             1 => Ok(Self::Rle),
             2 => Ok(Self::Lz),
+            3 => Ok(Self::Numeric),
             other => Err(crate::AceError::UnsupportedCodec(other)),
         }
     }

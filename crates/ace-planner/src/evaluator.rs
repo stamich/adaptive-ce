@@ -127,7 +127,7 @@ fn apply_entropy_selection_policy(
     }
 }
 
-/// Planner V3.6 telemetry used by engine statistics, `ace explain` and benchmarks.
+/// Planner V4 telemetry used by engine statistics, `ace explain` and benchmarks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlannerTelemetry {
     /// True when a deterministic fast path selected the plan without candidate sampling.
@@ -168,7 +168,7 @@ pub struct PlannerTelemetry {
     pub full_trial_encodes: usize,
 }
 
-/// Result returned by the frozen ACE 0.3.1 Planner V3.6 hot path.
+/// Result returned by the ACE 0.4 Planner V4 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
@@ -189,9 +189,53 @@ pub struct PlannerDecision {
     pub quality_qualified_plans: Vec<PhysicalCompressionPlan>,
 }
 
+/// ACE 0.4 Planner V4 compatibility entry point.
+///
+/// Callers that already own a `PlanningContext` should use
+/// `evaluate_candidates_v4_with_route` to avoid a duplicate route-classification pass.
+pub fn evaluate_candidates_v4(
+    input: &[u8],
+    profile: &ace_core::BlockProfile,
+    candidates: &[PhysicalCompressionPlan],
+    config: &AceConfig,
+) -> AceResult<PlannerDecision> {
+    let route = crate::RoutePolicy::classify(input, config);
+    evaluate_candidates_v4_with_route(input, profile, candidates, config, &route)
+}
+
+/// Evaluates Planner V4.3 candidates using an already-computed route decision.
+///
+/// NumericFast returns directly from reusable validation evidence. NumericGeneral performs one
+/// exact Numeric estimate; Generic never performs a full Numeric estimate.
+pub fn evaluate_candidates_v4_with_route(
+    input: &[u8],
+    profile: &ace_core::BlockProfile,
+    candidates: &[PhysicalCompressionPlan],
+    config: &AceConfig,
+    route: &crate::RouteDecision,
+) -> AceResult<PlannerDecision> {
+    if let Some(decision) = crate::numeric_fast_decision_from_route(input, route) {
+        return Ok(decision);
+    }
+
+    let numeric_estimate = if matches!(route.route, crate::PlannerRoute::NumericGeneral) {
+        ace_codecs::estimate_numeric(input).map(|estimate| estimate.encoded_bytes as u64)
+    } else {
+        None
+    };
+    evaluate_candidates_internal(
+        input,
+        profile,
+        candidates,
+        config,
+        numeric_estimate,
+        Some(route.route),
+    )
+}
+
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
 ///
-/// ACE 0.3.1 preserves the hardened Planner V3.6 behavior: profile/data-class budgets and confidence bands avoid unnecessary Hybrid LZ work without changing decoder semantics.
+/// ACE 0.4 Planner V4 preserves the hardened Planner V3.6 behavior: profile/data-class budgets and confidence bands avoid unnecessary Hybrid LZ work without changing decoder semantics.
 /// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
 /// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
 /// blended compressed size, then the cost model selects the cheapest quality-safe plan.
@@ -200,6 +244,22 @@ pub fn evaluate_candidates_v3(
     profile: &ace_core::BlockProfile,
     candidates: &[PhysicalCompressionPlan],
     config: &AceConfig,
+) -> AceResult<PlannerDecision> {
+    evaluate_candidates_internal(input, profile, candidates, config, None, None)
+}
+
+/// Shared hardened V3.6/V4 evaluator.
+///
+/// `numeric_exact_size` is `None` for the frozen V3.6 path. Planner V4 supplies the deterministic
+/// exact-size estimate produced by `ace_codecs::estimate_numeric`, allowing Numeric to compete on
+/// its actual bit-packed size without performing a full trial encode.
+fn evaluate_candidates_internal(
+    input: &[u8],
+    profile: &ace_core::BlockProfile,
+    candidates: &[PhysicalCompressionPlan],
+    config: &AceConfig,
+    numeric_exact_size: Option<u64>,
+    route: Option<crate::PlannerRoute>,
 ) -> AceResult<PlannerDecision> {
     use crate::{
         DefaultPlannerFastPath, EstimateConfidence, PlannerDataClass, PlannerFastPath,
@@ -245,11 +305,69 @@ pub fn evaluate_candidates_v3(
     }
 
     let estimator = DefaultCandidateEstimator;
+    let model = CostModelV3;
     let mut estimated = candidates
         .iter()
+        .filter(|candidate| {
+            if let Some(route) = route {
+                crate::RoutePolicy::candidate_allowed(route, candidate, profile, config)
+            } else {
+                // Frozen V3.6 path never receives the ACE 0.4 Numeric candidate.
+                !matches!(candidate.decoding.codec, CodecId::Numeric)
+                    || numeric_exact_size.is_some()
+            }
+        })
         .map(|candidate| estimator.estimate(candidate, profile, config.profile))
         .collect::<Vec<_>>();
+
+    // Planner V4 numeric specialization has an exact deterministic size estimator. Override only
+    // the Numeric candidate; every generic candidate retains the frozen V3.6 analytical model.
+    if let Some(exact_size) = numeric_exact_size {
+        for candidate in estimated
+            .iter_mut()
+            .filter(|candidate| matches!(candidate.plan.decoding.codec, CodecId::Numeric))
+        {
+            candidate.analytical_size_bytes = exact_size;
+            candidate.sampled_size_bytes = None;
+            candidate.blended_size_bytes = exact_size;
+            candidate.cost.predicted_size_bytes = exact_size;
+            candidate.cost.metadata_bytes = ace_codecs::NUMERIC_HEADER_SIZE as u64;
+            candidate.confidence = 0.99;
+            candidate.score = model.score(config.profile, candidate.cost, input.len());
+        }
+    }
+
     estimated.sort_by(estimated_order);
+
+    let mut _numeric_margin = None;
+    let mut hybrid_policy = crate::RouteHybridLzPolicy::Full;
+    let mut route_budget = route
+        .map(|r| crate::RoutePolicy::budget(r, config))
+        .unwrap_or_else(|| {
+            crate::RouteBudget::for_route(crate::PlannerRoute::Generic, config.profile)
+        });
+
+    if matches!(route, Some(crate::PlannerRoute::NumericGeneral)) {
+        if let Some(numeric_size) = numeric_exact_size {
+            let best_generic = estimated
+                .iter()
+                .filter(|candidate| !matches!(candidate.plan.decoding.codec, CodecId::Numeric))
+                .map(|candidate| candidate.blended_size_bytes)
+                .min()
+                .unwrap_or(u64::MAX);
+            if best_generic != u64::MAX {
+                let margin = crate::NumericMargin::new(numeric_size, best_generic);
+                hybrid_policy = margin.hybrid_lz_policy(config.profile);
+                _numeric_margin = Some(margin);
+            }
+        }
+        estimated =
+            reduce_numeric_general_candidates(estimated, route_budget.max_generated_candidates);
+        if matches!(hybrid_policy, crate::RouteHybridLzPolicy::Disabled) {
+            route_budget.max_sampled_candidates = route_budget.max_sampled_candidates.min(1);
+        }
+    }
+
     let analytical_ranked_plans = estimated
         .iter()
         .map(|candidate| candidate.plan.clone())
@@ -257,13 +375,19 @@ pub fn evaluate_candidates_v3(
 
     let policy = SamplePolicy::for_profile(config.profile);
     let confidence = estimated.first().map(|c| c.confidence).unwrap_or(0.0);
-    let adaptive_k = adaptive_top_k(config.profile, confidence, policy.top_k, estimated.len());
-    let stage_one_pool = quality_preserving_pool(&estimated, adaptive_k, config.profile);
+    let adaptive_k = adaptive_top_k(config.profile, confidence, policy.top_k, estimated.len())
+        .min(route_budget.max_sampled_candidates.max(1));
+    let mut stage_one_pool = quality_preserving_pool(&estimated, adaptive_k, config.profile);
+    if matches!(route, Some(crate::PlannerRoute::NumericGeneral)) {
+        stage_one_pool = cap_numeric_general_verification_pool(
+            stage_one_pool,
+            route_budget.max_sampled_candidates,
+        );
+    }
     let top_k_plans = stage_one_pool
         .iter()
         .map(|c| c.plan.clone())
         .collect::<Vec<_>>();
-    let model = CostModelV3;
     let hybrid = crate::HybridLzEstimator;
     let data_class = PlannerDataClass::classify(profile);
     let planning_budget = PlanningBudget::for_block(config.profile, data_class);
@@ -279,7 +403,12 @@ pub fn evaluate_candidates_v3(
     let mut stage1_lz_used = 0usize;
     for candidate in stage_one_pool {
         if matches!(candidate.plan.decoding.codec, CodecId::Lz) {
-            if stage1_lz_used < planning_budget.hybrid_stage1_candidates {
+            let stage1_limit = match hybrid_policy {
+                crate::RouteHybridLzPolicy::Disabled => 0,
+                crate::RouteHybridLzPolicy::OneStage => 1,
+                crate::RouteHybridLzPolicy::Full => planning_budget.hybrid_stage1_candidates,
+            };
+            if stage1_lz_used < stage1_limit {
                 let (refined, observation) =
                     hybrid.refine(input, candidate, config.profile, 1, &model)?;
                 stage1_lz_used = stage1_lz_used.saturating_add(1);
@@ -294,6 +423,12 @@ pub fn evaluate_candidates_v3(
                 hybrid_lz_skipped_candidates = hybrid_lz_skipped_candidates.saturating_add(1);
                 stage_one.push(candidate);
             }
+        } else if matches!(candidate.plan.decoding.codec, CodecId::Numeric)
+            && numeric_exact_size.is_some()
+        {
+            // Exact Numeric estimates are already full-block deterministic; re-encoding samples
+            // only adds planner cost and cannot improve the size projection.
+            stage_one.push(candidate);
         } else {
             stage_one.push(verify_candidate_samples(
                 input,
@@ -312,8 +447,15 @@ pub fn evaluate_candidates_v3(
         .map(|candidate| candidate.plan.clone())
         .collect::<Vec<_>>();
 
-    let stage_two_k =
-        adaptive_second_stage_k(&stage_one, config.profile, policy.second_stage_top_k);
+    let stage_two_k = if route_budget.allow_second_stage
+        && !matches!(
+            hybrid_policy,
+            crate::RouteHybridLzPolicy::Disabled | crate::RouteHybridLzPolicy::OneStage
+        ) {
+        adaptive_second_stage_k(&stage_one, config.profile, policy.second_stage_top_k)
+    } else {
+        0
+    };
     let second_stage_plans = stage_one
         .iter()
         .take(stage_two_k)
@@ -420,7 +562,7 @@ pub fn evaluate_candidates_v3(
         plan: selected,
         telemetry: PlannerTelemetry {
             fast_path_hit: false,
-            estimated_candidates: candidates.len(),
+            estimated_candidates: analytical_ranked_plans.len(),
             sampled_candidates: top_k_plans.len(),
             second_stage_candidates: second_stage_plans.len(),
             hybrid_lz_candidates,
@@ -445,6 +587,102 @@ pub fn evaluate_candidates_v3(
         final_ranked_plans,
         quality_qualified_plans,
     })
+}
+
+/// Reduces NumericGeneral analytical candidates to a bounded semantic family set.
+///
+/// Numeric is retained first when present. The remaining slots are filled in analytical order
+/// while admitting at most one RAW, one RLE, one LZ-Fast and one LZ-Balanced candidate. This
+/// prevents entropy variants from consuming the entire NumericGeneral budget.
+fn reduce_numeric_general_candidates(
+    estimated: Vec<ace_cost::EstimatedCandidate>,
+    max_candidates: usize,
+) -> Vec<ace_cost::EstimatedCandidate> {
+    let mut reduced = Vec::with_capacity(max_candidates.min(estimated.len()));
+    let mut have_numeric = false;
+    let mut have_raw = false;
+    let mut have_rle = false;
+    let mut have_lz_fast = false;
+    let mut have_lz_balanced = false;
+
+    for candidate in estimated {
+        if reduced.len() >= max_candidates {
+            break;
+        }
+
+        let admit = match candidate.plan.decoding.codec {
+            CodecId::Numeric if !have_numeric => {
+                have_numeric = true;
+                true
+            }
+            CodecId::Raw if !have_raw => {
+                have_raw = true;
+                true
+            }
+            CodecId::Rle if !have_rle => {
+                have_rle = true;
+                true
+            }
+            CodecId::Lz
+                if matches!(candidate.plan.lz_mode, Some(LzMode::Fast)) && !have_lz_fast =>
+            {
+                have_lz_fast = true;
+                true
+            }
+            CodecId::Lz
+                if matches!(candidate.plan.lz_mode, Some(LzMode::Balanced))
+                    && !have_lz_balanced =>
+            {
+                have_lz_balanced = true;
+                true
+            }
+            _ => false,
+        };
+        if admit {
+            reduced.push(candidate);
+        }
+    }
+
+    reduced.sort_by(estimated_order);
+    reduced
+}
+
+/// Caps NumericGeneral verification after quality anchors have been added.
+///
+/// The exact Numeric candidate is retained when present; the remaining slots are filled in stable
+/// estimated order. This makes the route's sample budget a real invariant rather than only an
+/// adaptive-Top-K hint.
+fn cap_numeric_general_verification_pool(
+    pool: Vec<ace_cost::EstimatedCandidate>,
+    max_candidates: usize,
+) -> Vec<ace_cost::EstimatedCandidate> {
+    if pool.len() <= max_candidates {
+        return pool;
+    }
+
+    let mut capped = Vec::with_capacity(max_candidates);
+    if let Some(numeric) = pool
+        .iter()
+        .find(|candidate| matches!(candidate.plan.decoding.codec, CodecId::Numeric))
+        .cloned()
+    {
+        capped.push(numeric);
+    }
+
+    for candidate in pool {
+        if capped.len() >= max_candidates {
+            break;
+        }
+        if capped
+            .iter()
+            .any(|existing| same_plan_semantics(&existing.plan, &candidate.plan))
+        {
+            continue;
+        }
+        capped.push(candidate);
+    }
+    capped.sort_by(estimated_order);
+    capped
 }
 
 /// Deterministically orders analytical/sample estimates.
@@ -546,8 +784,19 @@ fn verify_candidate_samples(
         let sample = &input[range];
         let (metadata, payload, _) = encode_plan_payload(sample, &candidate.plan)?;
         sample_input = sample_input.saturating_add(sample.len());
-        sample_payload = sample_payload.saturating_add(payload.len());
-        metadata_once = metadata_once.max(metadata.len());
+        if matches!(candidate.plan.decoding.codec, CodecId::Numeric) {
+            // Every independently encoded sample contains its own fixed NUM1 header. Project only
+            // the packed body to full-block size and charge the header exactly once.
+            sample_payload = sample_payload.saturating_add(
+                payload
+                    .len()
+                    .saturating_sub(ace_codecs::NUMERIC_HEADER_SIZE),
+            );
+            metadata_once = metadata_once.max(ace_codecs::NUMERIC_HEADER_SIZE);
+        } else {
+            sample_payload = sample_payload.saturating_add(payload.len());
+            metadata_once = metadata_once.max(metadata.len());
+        }
     }
 
     if sample_input != 0 {

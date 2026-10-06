@@ -1,3 +1,5 @@
+use crate::{AccessHint, BlockSizePolicy};
+
 /// Planner profile that changes the relative importance of compressed size and runtime cost.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressionProfile {
@@ -28,12 +30,18 @@ pub struct AceConfig {
     pub memory_budget_bytes: usize,
     /// Emits a serialized block index and trailer when true.
     pub write_index: bool,
-    /// Enables ACE 0.3 deterministic planner fast paths.
+    /// Enables deterministic planner fast paths inherited from ACE 0.3.
     pub enable_planner_fast_paths: bool,
+    /// Controls whether the configured block size is fixed or chosen once per file.
+    pub block_size_policy: BlockSizePolicy,
+    /// Expected access pattern consulted by the automatic block-size advisor.
+    pub access_hint: AccessHint,
+    /// Enables ACE 0.4 schema-free numeric candidate generation.
+    pub enable_numeric_specialization: bool,
 }
 
 impl Default for AceConfig {
-    /// Returns the recommended ACE 0.3 defaults.
+    /// Returns the recommended ACE 0.4 defaults.
     fn default() -> Self {
         Self {
             block_size: 256 * 1024,
@@ -45,6 +53,9 @@ impl Default for AceConfig {
             memory_budget_bytes: 256 * 1024 * 1024,
             write_index: true,
             enable_planner_fast_paths: true,
+            block_size_policy: BlockSizePolicy::Fixed,
+            access_hint: AccessHint::Balanced,
+            enable_numeric_specialization: true,
         }
     }
 }

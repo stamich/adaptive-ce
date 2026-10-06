@@ -1,10 +1,12 @@
-//! Primary structural byte codecs used by ACE 0.2.1.
+//! Primary structural byte codecs used by ACE 0.4.
 
 mod lz;
+mod numeric;
 mod raw;
 mod rle;
 
 pub use lz::*;
+pub use numeric::*;
 pub use raw::*;
 pub use rle::*;
 
@@ -16,6 +18,7 @@ pub fn encode_codec(id: CodecId, lz_mode: Option<LzMode>, input: &[u8]) -> AceRe
         CodecId::Raw => Ok(raw_encode(input)),
         CodecId::Rle => Ok(rle_encode(input)),
         CodecId::Lz => Ok(lz_encode(input, lz_mode.unwrap_or(LzMode::Fast))),
+        CodecId::Numeric => numeric_encode(input),
     }
 }
 
@@ -25,5 +28,6 @@ pub fn decode_codec(id: CodecId, input: &[u8], expected_size: usize) -> AceResul
         CodecId::Raw => raw_decode(input, expected_size),
         CodecId::Rle => rle_decode(input, expected_size),
         CodecId::Lz => lz_decode(input, expected_size),
+        CodecId::Numeric => numeric_decode(input, expected_size),
     }
 }

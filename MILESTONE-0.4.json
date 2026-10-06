@@ -1,0 +1,33 @@
+{
+  "project": "ACE",
+  "milestone": "0.4",
+  "base": "0.3.1",
+  "workspace_version": "0.4.0",
+  "date": "2026-09-14",
+  "release_type": "capability development",
+  "format": {
+    "writer": "1.3",
+    "reader": ["1.0", "1.1", "1.2", "1.3"],
+    "wire_format_changed": true,
+    "change_scope": "additive primary codec id 3 and self-describing NUM1 payload; AIDX/ACET unchanged"
+  },
+  "planner": {
+    "version": "V4",
+    "base_pipeline": "V3.6 hardened stages",
+    "numeric_lane": true,
+    "hybrid_lz_changed": false,
+    "quality_envelope_changed": false
+  },
+  "numeric": {
+    "widths": ["u32", "u64"],
+    "modes": ["frame-of-reference+bitpack", "delta+zigzag+bitpack", "delta-of-delta+zigzag+bitpack"],
+    "schema_required": false
+  },
+  "block_policy": {
+    "fixed_default": 262144,
+    "auto_file_level": true,
+    "variable_per_block": false
+  },
+  "benchmark_schema_version": "2.0",
+  "new_benchmark_families": ["numeric", "numeric-ablation", "block-policy"]
+}

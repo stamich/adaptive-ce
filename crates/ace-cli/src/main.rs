@@ -1,4 +1,4 @@
-use ace_core::{AceConfig, CompressionProfile};
+use ace_core::{AccessHint, AceConfig, BlockSizePolicy, CompressionProfile};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use ace_format::AceReader;
 use ace_stream::{compress_reader_known_size, StreamLimits};
@@ -7,9 +7,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::fs;
 use std::io::{BufReader, BufWriter, Cursor};
 
-/// Command-line interface for Adaptive Compression Engine milestone 0.3.
+/// Command-line interface for Adaptive Compression Engine milestone 0.4.
 #[derive(Debug, Parser)]
-#[command(name = "ace", version, about = "Adaptive Compression Engine 0.3")]
+#[command(name = "ace", version, about = "Adaptive Compression Engine 0.4")]
 struct Cli {
     /// ACE operation to execute.
     #[command(subcommand)]
@@ -19,7 +19,7 @@ struct Cli {
 /// Supported ACE command-line operations.
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Compresses one file into ACE format 1.2 using the in-memory engine.
+    /// Compresses one file into ACE Format 1.3 using Planner V4.
     Compress {
         input: String,
         output: String,
@@ -27,15 +27,19 @@ enum Command {
         threads: usize,
         #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
         profile: ProfileArg,
+        #[arg(long, value_enum, default_value_t = BlockPolicyArg::Fixed)]
+        block_policy: BlockPolicyArg,
+        #[arg(long, value_enum, default_value_t = AccessHintArg::Balanced)]
+        access_hint: AccessHintArg,
     },
-    /// Compresses a file through the bounded-memory ACE 0.3 streaming path.
+    /// Compresses a file through the bounded-memory ACE 0.4 streaming path.
     CompressStream {
         input: String,
         output: String,
         #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
         profile: ProfileArg,
     },
-    /// Decompresses one ACE 1.0/1.1/1.2 file.
+    /// Decompresses one ACE 1.0/1.1/1.2/1.3 file.
     Decompress { input: String, output: String },
     /// Prints file and per-block physical metadata without decoding payloads.
     Inspect {
@@ -85,6 +89,42 @@ impl From<ProfileArg> for CompressionProfile {
     }
 }
 
+/// CLI representation of the file-level block-size policy.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum BlockPolicyArg {
+    Fixed,
+    Auto,
+}
+
+impl From<BlockPolicyArg> for BlockSizePolicy {
+    /// Maps CLI block policy to the core configuration enum.
+    fn from(value: BlockPolicyArg) -> Self {
+        match value {
+            BlockPolicyArg::Fixed => Self::Fixed,
+            BlockPolicyArg::Auto => Self::Auto,
+        }
+    }
+}
+
+/// CLI representation of the expected source access pattern.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum AccessHintArg {
+    Sequential,
+    Balanced,
+    RandomAccess,
+}
+
+impl From<AccessHintArg> for AccessHint {
+    /// Maps CLI access hint to the core block-size advisor enum.
+    fn from(value: AccessHintArg) -> Self {
+        match value {
+            AccessHintArg::Sequential => Self::Sequential,
+            AccessHintArg::Balanced => Self::Balanced,
+            AccessHintArg::RandomAccess => Self::RandomAccess,
+        }
+    }
+}
+
 /// Parses command-line arguments, executes the requested ACE operation and reports failures through `anyhow`.
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -94,7 +134,16 @@ fn main() -> Result<()> {
             output,
             threads,
             profile,
-        } => compress_command(&input, &output, threads, profile.into()),
+            block_policy,
+            access_hint,
+        } => compress_command(
+            &input,
+            &output,
+            threads,
+            profile.into(),
+            block_policy.into(),
+            access_hint.into(),
+        ),
         Command::CompressStream {
             input,
             output,
@@ -124,19 +173,23 @@ fn compress_command(
     output: &str,
     threads: usize,
     profile: CompressionProfile,
+    block_policy: BlockSizePolicy,
+    access_hint: AccessHint,
 ) -> Result<()> {
     let data = fs::read(input).with_context(|| format!("reading {input}"))?;
     let mut config = AceConfig::default();
     config.threads = threads;
     config.profile = profile;
+    config.block_size_policy = block_policy;
+    config.access_hint = access_hint;
     let engine = AceEngine::new(config)?;
     let (encoded, stats) = engine.compress_with_stats(&data)?;
     fs::write(output, encoded).with_context(|| format!("writing {output}"))?;
-    println!("ACE 0.3 compressed {} -> {} bytes ratio={:.3} blocks={} rANS={} rANS4x={} Huffman={} fast-path={} sampled={}", stats.input_bytes, stats.output_bytes, stats.compression_ratio(), stats.block_count, stats.rans_blocks, stats.rans4x_blocks, stats.huffman_blocks, stats.planner_fast_path_blocks, stats.planner_sampled_candidates);
+    println!("ACE 0.4 compressed {} -> {} bytes ratio={:.3} blocks={} rANS={} rANS4x={} Huffman={} fast-path={} sampled={}", stats.input_bytes, stats.output_bytes, stats.compression_ratio(), stats.block_count, stats.rans_blocks, stats.rans4x_blocks, stats.huffman_blocks, stats.planner_fast_path_blocks, stats.planner_sampled_candidates);
     Ok(())
 }
 
-/// Compresses a file with bounded source-block memory and a deterministic format-1.2 index.
+/// Compresses a file with bounded source-block memory and a deterministic Format 1.3 index.
 fn compress_stream_command(input: &str, output: &str, profile: CompressionProfile) -> Result<()> {
     let source = fs::File::open(input).with_context(|| format!("opening {input}"))?;
     let size = source
@@ -154,7 +207,7 @@ fn compress_stream_command(input: &str, output: &str, profile: CompressionProfil
         StreamLimits::default(),
     )?;
     println!(
-        "ACE 0.3 streamed {} -> {} bytes blocks={} peak_source_buffer={}",
+        "ACE 0.4 streamed {} -> {} bytes blocks={} peak_source_buffer={}",
         stats.input_bytes, stats.output_bytes, stats.blocks, stats.peak_source_buffer_bytes
     );
     Ok(())
@@ -208,6 +261,17 @@ fn explain_command(input: &str, profile: CompressionProfile) -> Result<()> {
             explanation.profile.run_score,
             explanation.profile.delta_score,
             explanation.profile.repetition_score
+        );
+        println!(
+            "  numeric detected={} width={:?} confidence={:.3} monotonic={:.3} delta_p95_bits={} dod_zero={:.3} dod_p95_bits={} tail={}",
+            explanation.numeric_profile.detected,
+            explanation.numeric_profile.width,
+            explanation.numeric_profile.confidence,
+            explanation.numeric_profile.monotonic_ratio,
+            explanation.numeric_profile.delta_bit_width_p95,
+            explanation.numeric_profile.dod_zero_ratio,
+            explanation.numeric_profile.dod_bit_width_p95,
+            explanation.numeric_profile.tail_bytes,
         );
         for candidate in &explanation.candidates {
             let score = display_score(candidate.score);
