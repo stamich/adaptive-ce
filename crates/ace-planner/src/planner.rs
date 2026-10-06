@@ -14,7 +14,7 @@ pub trait CompressionPlanner {
     ) -> Vec<PhysicalCompressionPlan>;
 }
 
-/// ACE 0.3 candidate generator with profile-specific search breadth.
+/// ACE 0.4 candidate generator with profile-specific search breadth.
 ///
 /// The buildfix deliberately separates the FAST search space from BALANCED/DENSE.
 /// FAST stays narrow to protect throughput, while BALANCED and DENSE retain enough
@@ -29,11 +29,34 @@ impl CompressionPlanner for DefaultCompressionPlanner {
             return vec![PhysicalCompressionPlan::raw()];
         }
 
-        match c.profile {
+        let mut candidates = match c.profile {
             CompressionProfile::Fast => fast_candidates(p),
             CompressionProfile::Balanced => balanced_candidates(p),
             CompressionProfile::Dense => dense_candidates(p),
+        };
+        if c.enable_numeric_specialization && p.size >= 4 * 1024 {
+            let numeric_tier = match c.profile {
+                CompressionProfile::Fast if p.delta_score >= 0.15 => Some(CandidateTier::Likely),
+                CompressionProfile::Fast => None,
+                CompressionProfile::Balanced => Some(if p.delta_score >= 0.05 {
+                    CandidateTier::Likely
+                } else {
+                    CandidateTier::Exploratory
+                }),
+                CompressionProfile::Dense => Some(CandidateTier::Likely),
+            };
+            if let Some(tier) = numeric_tier {
+                candidates.push(plan(
+                    Vec::new(),
+                    CodecId::Numeric,
+                    EntropyCodecId::None,
+                    None,
+                    tier,
+                    "ACE 0.4 schema-free numeric FOR/Delta/DoD+BitPack candidate",
+                ));
+            }
         }
+        deduplicate(candidates)
     }
 }
 
