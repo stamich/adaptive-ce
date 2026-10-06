@@ -5,3 +5,4 @@ examples/results/*.json
 !examples/results/.gitkeep
 examples/data/**
 !examples/data/.gitkeep
+Cargo.lock

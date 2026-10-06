@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 family="${1:-all}"
-version="0.3.1"
+version="0.4"
 mkdir -p examples/results
-cargo run --release -p ace-benchmark-0-3 -- "$family"
+cargo run --release -p ace-benchmark-0-4 -- "$family"
 if [[ "$family" == "all" ]]; then
   set +e
   python3 tools/check_regressions.py \
