@@ -1,4 +1,4 @@
-//! Deterministic candidate-size and resource estimators used by the ACE 0.3 planner.
+//! Deterministic candidate-size and resource estimators used by the ACE 0.4 Planner V4.
 //!
 //! ACE 0.3-buildfix6 keeps the cheap analytical estimator introduced in 0.3 and adds
 //! an explicit quality envelope before final scalar-cost selection. Candidate estimates retain
@@ -93,6 +93,16 @@ impl CandidateEstimator for DefaultCandidateEstimator {
                 // small analyzer sketches cannot fully represent long-range matches.
                 confidence = confidence.max((0.54 + signal as f32 * 0.34).clamp(0.0, 0.94));
             }
+            CodecId::Numeric => {
+                // Numeric candidate ranking deliberately uses only existing cheap BlockProfile
+                // signals. Planner V4 sample verification then executes the real self-describing
+                // numeric codec, avoiding the formula-overfitting failure seen in buildfix7.
+                let delta = p.delta_score.clamp(0.0, 1.0) as f64;
+                let structural = (1.0 - (p.entropy_h0 as f64 / 8.0)).clamp(0.0, 1.0);
+                let gain = (delta * 0.75 + structural * 0.25).clamp(0.0, 0.90);
+                primary_ratio *= (1.0 - gain).clamp(0.04, 1.02);
+                confidence = confidence.max((0.58 + p.delta_score * 0.35).clamp(0.0, 0.96));
+            }
         }
 
         let entropy_factor = match candidate.decoding.entropy {
@@ -120,11 +130,13 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             (CodecId::Rle, _) => 2,
             (CodecId::Lz, Some(LzMode::Balanced)) => 9,
             (CodecId::Lz, _) => 4,
+            (CodecId::Numeric, _) => 5,
         };
         let codec_decode = match candidate.decoding.codec {
             CodecId::Raw => 1u64,
             CodecId::Rle => 2,
             CodecId::Lz => 3,
+            CodecId::Numeric => 2,
         };
         let entropy_encode = match candidate.decoding.entropy {
             EntropyCodecId::None => 0u64,
