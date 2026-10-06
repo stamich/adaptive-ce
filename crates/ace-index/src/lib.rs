@@ -1,4 +1,4 @@
-//! Seekable block-index loading and indexed raw-block access for ACE format 1.2.
+//! Seekable block-index loading and indexed raw-block access for ACE formats 1.2/1.3.
 
 use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_format::{
