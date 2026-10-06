@@ -12,6 +12,8 @@ libfuzzer-sys = "0.4"
 ace-core = { path = "../crates/ace-core" }
 ace-engine = { path = "../crates/ace-engine" }
 ace-format = { path = "../crates/ace-format" }
+ace-codecs = { path = "../crates/ace-codecs" }
+ace-bitpack = { path = "../crates/ace-bitpack" }
 
 [[bin]]
 name = "container_decode"
@@ -37,6 +39,20 @@ bench = false
 [[bin]]
 name = "range_open"
 path = "fuzz_targets/range_open.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "numeric_decode"
+path = "fuzz_targets/numeric_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bitpack_decode"
+path = "fuzz_targets/bitpack_decode.rs"
 test = false
 doc = false
 bench = false

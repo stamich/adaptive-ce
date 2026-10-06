@@ -4,44 +4,52 @@ version = 4
 
 [[package]]
 name = "ace-analysis"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
  "ace-simd",
 ]
 
 [[package]]
-name = "ace-codecs"
-version = "0.3.1"
+name = "ace-bitpack"
+version = "0.4.4"
 dependencies = [
+ "ace-core",
+]
+
+[[package]]
+name = "ace-codecs"
+version = "0.4.4"
+dependencies = [
+ "ace-bitpack",
  "ace-core",
  "ace-simd",
 ]
 
 [[package]]
 name = "ace-core"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "ace-cost"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-dictionary"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-engine"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-analysis",
  "ace-codecs",
@@ -58,14 +66,14 @@ dependencies = [
 
 [[package]]
 name = "ace-entropy"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-format"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
  "crc32c",
@@ -75,6 +83,8 @@ dependencies = [
 name = "ace-fuzz"
 version = "0.0.0"
 dependencies = [
+ "ace-bitpack",
+ "ace-codecs",
  "ace-core",
  "ace-engine",
  "ace-format",
@@ -83,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "ace-index"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
  "ace-format",
@@ -91,8 +101,9 @@ dependencies = [
 
 [[package]]
 name = "ace-planner"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
+ "ace-analysis",
  "ace-codecs",
  "ace-core",
  "ace-cost",
@@ -102,7 +113,7 @@ dependencies = [
 
 [[package]]
 name = "ace-runtime"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
  "num_cpus",
@@ -111,11 +122,11 @@ dependencies = [
 
 [[package]]
 name = "ace-simd"
-version = "0.3.1"
+version = "0.4.4"
 
 [[package]]
 name = "ace-transforms"
-version = "0.3.1"
+version = "0.4.4"
 dependencies = [
  "ace-core",
 ]
@@ -140,9 +151,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-if"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
 name = "crc32c"
@@ -310,9 +321,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "syn"
-version = "3.0.5"
+version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12df2e0110f65b775f769bb17ef989067a1d931b2eb822bd4346631eeada89f9"
+checksum = "8593e8e72159ed2257d083c7a454a85cbf854f37a0966d8d483aff8c8a3ebcee"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -341,6 +352,6 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.24"
+version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+checksum = "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954"
