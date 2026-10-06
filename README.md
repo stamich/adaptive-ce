@@ -1,165 +1,129 @@
-# Adaptive Compression Engine (ACE) 0.3.1
+# Adaptive Compression Engine (ACE) 0.4-buildfix4
 
-ACE 0.3.1 is the hardened stabilization release of the ACE 0.3 line. It freezes the successful
-Planner V3.6 architecture from `0.3-buildfix9-compilefix` and strengthens correctness,
-determinism, malformed-input handling, fuzzability and benchmark reproducibility.
+ACE 0.4-buildfix4 is the **Planner V4.3 Policy Oracle Closure & Runtime Regression Fix** release.
 
-## Frozen compression architecture
+It does not add a new compression algorithm or wire format. It closes the remaining 0.4 policy
+semantics and removes duplicate work from the NumericFast hot path.
+
+## Core changes
+
+### One planning context per block
+
+`PlanningContext` classifies a block once. Its `RouteDecision` is reused by engine and evaluator.
+A validated NumericFast route carries `NumericFastEvidence`, so the block is not validated twice.
+
+### Strict NumericFast invariant
+
+NumericFast now requires a complete-block fixed-step sequence:
+
+- monotonically non-decreasing;
+- non-zero first delta;
+- every subsequent delta exactly equals the first delta.
+
+Outlier/sawtooth workloads fall back to NumericGeneral.
+
+### Direct NumericFast encode
+
+`numeric_encode_fixed_step` writes `NUM1 + DeltaOfDelta + bit_width=0` directly from evidence.
+It avoids numeric mode search, delta/DoD vectors, bit-width scan and bit packing.
+
+### Three oracle levels
+
+- **global oracle** — smallest physically possible diagnostic payload;
+- **route oracle** — smallest route-eligible payload;
+- **policy oracle** — candidate ACE should prefer under route, dominance, access and size-envelope rules.
+
+Only policy oracle drives release recall/regret gates.
+
+### Product dominance policy
+
+`DominancePolicy` introduces product preferences:
+
+- RLE preferred for zero/run-heavy blocks;
+- RAW preferred for incompressible data;
+- Numeric preferred for NumericFast/NumericGeneral;
+- RandomAccess can prefer cheaper-decode RAW/RLE.
+
+Preference is bounded by `DominanceEnvelope` so decode preference cannot hide an excessive size loss.
+
+## Compatibility
+
+- workspace version: 0.4.4
+- Planner: V4.3
+- writer: Format 1.3
+- readers: 1.0 / 1.1 / 1.2 / 1.3
+- NUM1/AIDX/ACET unchanged
+- benchmark schema: 2.0
+
+## Versioned scripts
+
+Every executable/script starts with `ace-` and carries the current milestone in its filename:
 
 ```text
-Block input
-  -> Block Analyzer / FAST Analyzer Lite
-  -> Candidate Generator
-  -> analytical estimator
-  -> adaptive Top-K
-  -> bounded Hybrid LZ micro-trials
-  -> deterministic sample verification
-  -> QualityEnvelope
-  -> deterministic CostModel V3
-  -> one production encode
-  -> Format 1.2 + AIDX + ACET
+ace-build0.4-buildfix4.sh
+ace-benchmark0.4-buildfix4.sh
+ace-benchmark-compare0.4-buildfix4.sh
+demo/ace-run-demo0.4-buildfix4.sh
+tools/*0.4-buildfix4.py
 ```
 
-ACE 0.3.1 does **not** redesign Planner V3.6, Hybrid LZ, QualityEnvelope, entropy codecs or the
-wire format.
-
-## Format compatibility
-
-- writer: Format 1.2
-- reader: Format 1.0 / 1.1 / 1.2
-- random access: AIDX index + ACET trailer
-- corruption detection: header/index/trailer checks and block CRC32C
-- decoder resource limits: `DecodeLimits`
-
-See `docs/FORMAT-COMPATIBILITY.md`.
-
-## 0.3.1 hardening
-
-The release adds:
-- property-based arbitrary-byte roundtrip tests;
-- property-based indexed-range equality tests;
-- byte-identical determinism matrix across profiles, block sizes and worker counts;
-- malformed index/trailer and resource-limit tests;
-- streaming premature-EOF/extra-data/resource-limit tests;
-- standalone `cargo-fuzz` project;
-- deterministic Corpus V2;
-- block-size benchmark matrix;
-- extended random-access benchmark matrix;
-- benchmark variance diagnostics;
-- p99 planner regret;
-- golden buildfix9 performance regression baseline.
-
-## Corpus V2
-
-Generate deterministic local corpora:
+Build/release:
 
 ```bash
-python3 tools/generate_hardening_corpus.py \
-  --output-dir examples/corpus/generated \
-  --sizes-mib 1,16,64
+./ace-build0.4-buildfix4.sh
 ```
 
-Classes:
-- zeros
-- low-cardinality
-- runs
-- numeric-u32
-- delta-series
-- structured-json
-- random
-- mixed
-
-No external downloads are required.
-
-## Build and test
+Full benchmark contract:
 
 ```bash
-cargo build --workspace --release
-cargo test --workspace
+./ace-benchmark0.4-buildfix4.sh all
 ```
 
-For fuzzing:
+## Benchmark JSON naming
+
+Every benchmark baseline/result JSON has `benchmark` in its filename.
+
+Current outputs use:
+
+```text
+examples/results/benchmark-0.4-buildfix4-<family>.json
+```
+
+New/important families:
 
 ```bash
-cargo install cargo-fuzz
-cargo fuzz run container_decode
-cargo fuzz run index_parse
-cargo fuzz run trailer_parse
-cargo fuzz run range_open
+./ace-benchmark0.4-buildfix4.sh policy-oracle-v2
+./ace-benchmark0.4-buildfix4.sh planner-hotpath
+./ace-benchmark0.4-buildfix4.sh random-access-plan-diff
+./ace-benchmark0.4-buildfix4.sh numeric-general
+./ace-benchmark0.4-buildfix4.sh numeric-fastpath
 ```
-
-## Demo
-
-```bash
-./demo/run-demo-0.3.1.sh
-```
-
-The demo builds/tests the workspace, generates Corpus V2, demonstrates thread-count determinism,
-verifies a Format 1.2 archive, confirms corruption rejection and runs focused hardening benchmarks.
-
-## Benchmarks
-
-Run the complete release contract:
-
-```bash
-./benchmark.sh all
-```
-
-Existing families:
-- compression
-- entropy
-- planner
-- parallel
-- random-access
-- streaming
-- memory
-
-0.3.1 hardening families:
-- corpus
-- block-matrix
-- random-access-extended
-- stability
-
-Results are written as `examples/results/0.3.1-<family>.json`.
-
-Benchmark schema remains 1.9. Timing objects now also report `stddev_ns`, `cv_percent` and
-`unstable_measurement`.
-
-See `docs/BENCHMARKS-0.3.1.md`.
 
 ## Release gates
 
-Quality:
-- generated recall >= 0.99
-- Top-K recall >= 0.98
-- mean regret <= 256 B/block
-- p95 regret <= 1024 B
-- p99 regret <= 4096 B
-- BALANCED ratio >= 3.45x
-- DENSE ratio >= 3.45x
-- full trial encodes/block == 0
+- policy candidate recall >= 0.99
+- policy Top-K recall >= 0.98
+- policy mean regret <= 16 B/block
+- policy p95 <= 64 B
+- policy p99 <= 256 B
+- full candidate trials == 0
+- BALANCED/DENSE ratio >= 3.70x
+- FAST/BALANCED/DENSE throughput >= 95% buildfix2
+- warm64K <= 110% buildfix2
+- u32 NumericFast >= 95% buildfix2
+- u64 timestamps >= 90 MB/s
+- delta-variable >= 75 MB/s
 
-Performance/stability:
-- FAST/BALANCED/DENSE throughput >= 95% of the buildfix9 golden baseline
-- warm 64 KiB latency <= 107.5% of buildfix9 golden latency
-- repeated output must be byte-identical
+Global and route regret remain diagnostic.
 
-Exact oracle Top-N rank remains diagnostic-only because earlier 0.3 experiments showed actual
-regret is the more meaningful product-quality metric.
+## Documentation
 
-## Important documentation
-
-- `TASKS-0.3.1.md`
-- `docs/BASELINE-0.3.1.md`
-- `docs/HARDENING-0.3.1.md`
-- `docs/BENCHMARKS-0.3.1.md`
-- `docs/FORMAT-COMPATIBILITY.md`
-- `docs/FUZZING-0.3.1.md`
+- `TASKS-0.4-buildfix4.md`
+- `docs/ARCHITECTURE-0.4-BUILDFIX4.md`
+- `docs/POLICY-ORACLE-0.4-BUILDFIX4.md`
+- `docs/NUMERIC-FAST-RUNTIME-0.4-BUILDFIX4.md`
+- `docs/BENCHMARKS-0.4-BUILDFIX4.md`
+- `docs/SCRIPT-AUDIT-0.4-BUILDFIX4.md`
+- `BUILD-AUDIT-0.4-buildfix4.md`
 - `CHANGELOG.md`
 - `ROADMAP.md`
-
-## Direction after 0.3.1
-
-ACE 0.3.1 closes the 0.3 planner-hardening line. New compression capabilities, new codecs,
-dictionary learning, format changes or learned planning belong to ACE 0.4 rather than another
-0.3 buildfix.
