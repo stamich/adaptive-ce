@@ -1,11 +1,11 @@
-//! Bounded-memory streaming adapters for ACE 0.3.
+//! Bounded-memory streaming adapters for ACE 0.4.
 //!
-//! Format 1.2 retains a fixed file header containing original size and block count, therefore
+//! Format 1.3 retains a fixed file header containing original size and block count, therefore
 //! the non-seekable encoder accepts the expected source size up front.  This keeps the wire
 //! format deterministic while allowing the payload to be processed one independent block at a
 //! time without holding the complete input in memory.
 
-use ace_core::{AceConfig, AceError, AceResult, DecodeLimits};
+use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, DecodeLimits};
 use ace_engine::AceEngine;
 use ace_format::{
     checksum, encode_block_header, encode_file_header, encode_index, encode_trailer, AceReader,
@@ -48,7 +48,7 @@ pub struct StreamingStats {
     pub peak_source_buffer_bytes: usize,
 }
 
-/// Compresses a reader into one ACE 1.2 stream using bounded block memory.
+/// Compresses a reader into one ACE 1.3 stream using bounded block memory.
 ///
 /// `original_size` is required because ACE's deterministic fixed header is written before the
 /// first block.  The function verifies that the reader yields exactly that many bytes.
@@ -61,6 +61,9 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
 ) -> AceResult<StreamingStats> {
     if original_size > limits.max_input_bytes {
         return Err(AceError::ResourceLimitExceeded("stream input size"));
+    }
+    if matches!(config.block_size_policy, BlockSizePolicy::Auto) {
+        return Err(AceError::InvalidConfig("streaming requires fixed block size; auto policy requires a seekable/presampled source"));
     }
     if config.block_size == 0 || config.block_size > u32::MAX as usize {
         return Err(AceError::InvalidConfig(
@@ -87,7 +90,7 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
     }
 
     let header = FileHeader {
-        minor_version: 2,
+        minor_version: 3,
         flags: FILE_FLAG_HAS_INDEX,
         default_block_size: config.block_size as u32,
         original_size,
@@ -183,7 +186,7 @@ pub fn compress_reader_known_size<R: Read, W: Write>(
     Ok(stats)
 }
 
-/// Sequentially decompresses an ACE 1.0/1.1/1.2 stream into a writer with explicit limits.
+/// Sequentially decompresses an ACE 1.0/1.1/1.2/1.3 stream into a writer with explicit limits.
 pub fn decompress_stream<R: Read, W: Write>(
     reader: R,
     writer: W,
