@@ -6,4 +6,5 @@ license.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
+ace-bitpack = { path = "../ace-bitpack" }
 ace-simd = { path = "../ace-simd" }
