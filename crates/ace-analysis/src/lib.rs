@@ -8,6 +8,7 @@ mod level;
 mod numeric;
 mod numeric_prefilter;
 mod repetition;
+mod run_profile;
 mod runs;
 
 pub use analyzer::*;
@@ -18,4 +19,5 @@ pub use level::*;
 pub use numeric::*;
 pub use numeric_prefilter::*;
 pub use repetition::*;
+pub use run_profile::*;
 pub use runs::*;
