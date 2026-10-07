@@ -46,6 +46,8 @@ reported as `decompression_alloc`.
 | `diagnostic` | informational |
 
 Stability limits (batch MAD): compression and numeric encode 3 %, decode 5 %, warm 64 KiB 5 %.
+`float_fast.f64_step` compression (0.5.0): 6 % — the FloatFast encode of 16 MiB takes ~5 ms
+(memory-bound), and its only gate is a same-run speedup with an ~8× margin.
 
 ## Relative gates: interleaved A/B
 
@@ -127,7 +129,7 @@ machine drift.
 | `float.int_sparse_change_ratio`, `…_vs_num1` | ≥ 5×, ≥ 1.5 × NUM1 | float |
 | `float.gorilla_estimate_p95_error` | ≤ 25 % | float |
 | `float.gorilla_codec_encode_mb_s`, `…_decode_mb_s` | ≥ 400, ≥ 600 MB/s (timed, batch MAD ≤ 5 %) | float |
-| `float.fast_encode_speedup_vs_disabled` | ≥ 5× (timed, batch MAD ≤ 3 %) | float |
+| `float.fast_encode_speedup_vs_disabled` | ≥ 5× (timed, batch MAD ≤ 6 %) | float |
 
 The codec-speed floors are the concept's indicative targets, set below the development-VM
 values (Gorilla f64 decode ≈ 760–830 MB/s there); they become hard values after the first
