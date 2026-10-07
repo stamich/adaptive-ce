@@ -56,17 +56,31 @@ fn x_pow_bytes(bytes: usize) -> u32 {
     result
 }
 
-/// Returns the CRC32C of `bytes` using SSE4.2, or `None` when the CPU lacks SSE4.2.
+/// Returns the CRC32C of `bytes` using SSE4.2, or `None` when the CPU lacks SSE4.2 or
+/// `ACE_SIMD=scalar` is set (callers then use a portable implementation).
 pub fn crc32c_hardware(bytes: &[u8]) -> Option<u32> {
+    if !crate::backend::sse42_available() {
+        return None;
+    }
     #[cfg(target_arch = "x86_64")]
     {
-        if std::arch::is_x86_feature_detected!("sse4.2") {
-            // SAFETY: SSE4.2 support was verified at runtime; the kernel reads only `bytes`.
-            return Some(!unsafe { sse42::crc32c_raw(!0, bytes) });
-        }
+        // SAFETY: SSE4.2 support was verified at runtime; the kernel reads only `bytes`.
+        Some(!unsafe { sse42::crc32c_raw(!0, bytes) })
     }
-    let _ = bytes;
-    None
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        let _ = bytes;
+        None
+    }
+}
+
+/// Name of the CRC32C implementation in use (`"sse4.2-3way"` or `"portable"`), for telemetry.
+pub fn crc32c_backend_name() -> &'static str {
+    if crate::backend::sse42_available() {
+        "sse4.2-3way"
+    } else {
+        "portable"
+    }
 }
 
 /// Merges the raw CRC state of three consecutive stripes of `stripe` bytes each.
@@ -94,10 +108,17 @@ mod sse42 {
             let (b, tail) = tail.split_at(stripe);
             let (c, rest) = tail.split_at(stripe);
             let (mut s0, mut s1, mut s2) = (state as u64, 0u64, 0u64);
-            for ((wa, wb), wc) in a.chunks_exact(8).zip(b.chunks_exact(8)).zip(c.chunks_exact(8)) {
-                s0 = _mm_crc32_u64(s0, word(wa));
-                s1 = _mm_crc32_u64(s1, word(wb));
-                s2 = _mm_crc32_u64(s2, word(wc));
+            for ((wa, wb), wc) in a
+                .chunks_exact(8)
+                .zip(b.chunks_exact(8))
+                .zip(c.chunks_exact(8))
+            {
+                // SAFETY: SSE4.2 is guaranteed by this function's contract.
+                unsafe {
+                    s0 = crc_u64(s0, word(wa));
+                    s1 = crc_u64(s1, word(wb));
+                    s2 = crc_u64(s2, word(wc));
+                }
             }
             (merge_stripes(s0 as u32, s1 as u32, s2 as u32, stripe), rest)
         } else {
@@ -105,18 +126,52 @@ mod sse42 {
         };
         let mut words = rest.chunks_exact(8);
         for chunk in &mut words {
-            state = _mm_crc32_u64(state as u64, word(chunk)) as u32;
+            // SAFETY: SSE4.2 is guaranteed by this function's contract.
+            state = unsafe { crc_u64(state as u64, word(chunk)) } as u32;
         }
         for &byte in words.remainder() {
-            state = _mm_crc32_u8(state, byte);
+            // SAFETY: SSE4.2 is guaranteed by this function's contract.
+            state = unsafe { crc_u8(state, byte) };
         }
         state
+    }
+
+    /// One 8-byte CRC32C step.
+    ///
+    /// # Safety
+    /// The CPU must support SSE4.2.
+    #[target_feature(enable = "sse4.2")]
+    #[inline]
+    unsafe fn crc_u64(state: u64, value: u64) -> u64 {
+        // SAFETY: SSE4.2 is guaranteed by the caller; the intrinsic has no memory operands.
+        // `unused_unsafe`: the intrinsic is safe inside `#[target_feature]` on newer compilers,
+        // but MSRV 1.75 requires the block.
+        #[allow(unused_unsafe)]
+        unsafe {
+            _mm_crc32_u64(state, value)
+        }
+    }
+
+    /// One 1-byte CRC32C step.
+    ///
+    /// # Safety
+    /// The CPU must support SSE4.2.
+    #[target_feature(enable = "sse4.2")]
+    #[inline]
+    unsafe fn crc_u8(state: u32, value: u8) -> u32 {
+        // SAFETY: as in `crc_u64`.
+        #[allow(unused_unsafe)]
+        unsafe {
+            _mm_crc32_u8(state, value)
+        }
     }
 
     /// Loads 8 little-endian bytes.
     #[inline(always)]
     fn word(chunk: &[u8]) -> u64 {
-        u64::from_le_bytes(chunk.try_into().expect("8-byte chunk"))
+        let mut word = [0u8; 8];
+        word.copy_from_slice(chunk);
+        u64::from_le_bytes(word)
     }
 }
 
@@ -130,7 +185,11 @@ mod tests {
         for &byte in bytes {
             crc ^= byte as u32;
             for _ in 0..8 {
-                crc = if crc & 1 != 0 { (crc >> 1) ^ POLY } else { crc >> 1 };
+                crc = if crc & 1 != 0 {
+                    (crc >> 1) ^ POLY
+                } else {
+                    crc >> 1
+                };
             }
         }
         !crc
@@ -139,7 +198,9 @@ mod tests {
     /// Matches the reference for every length around the stripe threshold and for large blocks.
     #[test]
     fn hardware_crc_matches_reference() {
-        let Some(_) = crc32c_hardware(b"") else { return };
+        let Some(_) = crc32c_hardware(b"") else {
+            return;
+        };
         let mut state = 0x1234_5678u64;
         let data: Vec<u8> = (0..300_010)
             .map(|_| {
@@ -153,7 +214,11 @@ mod tests {
         for len in (0..2_000).chain([3 * 256, 3 * 256 + 7, 65_536, 262_144, 299_999]) {
             for offset in [0usize, 1, 5] {
                 let slice = &data[offset..offset + len];
-                assert_eq!(crc32c_hardware(slice), Some(reference(slice)), "len={len} offset={offset}");
+                assert_eq!(
+                    crc32c_hardware(slice),
+                    Some(reference(slice)),
+                    "len={len} offset={offset}"
+                );
             }
         }
     }
@@ -164,7 +229,11 @@ mod tests {
         for bytes in [0usize, 1, 3, 8, 1000] {
             let mut state = 0xDEAD_BEEFu32;
             for _ in 0..bytes * 8 {
-                state = if state & 1 != 0 { (state >> 1) ^ POLY } else { state >> 1 };
+                state = if state & 1 != 0 {
+                    (state >> 1) ^ POLY
+                } else {
+                    state >> 1
+                };
             }
             assert_eq!(mul_mod_poly(0xDEAD_BEEF, x_pow_bytes(bytes)), state);
         }
