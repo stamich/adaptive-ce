@@ -12,5 +12,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install 1.75 --profile minimal
+      - run: rustup toolchain install 1.97.0 --profile minimal
       - run: ./ace-ci0.4.6.sh msrv
