@@ -1,5 +1,25 @@
 # ACE Roadmap
 
+## 0.5.0 - Lossless Floating-Point & Time-Series Compression (done)
+
+Format 1.4 with the TS1 codec (Gorilla f64 / f32, RunDelta), minimal-version writer (1.3 unless
+a block is TS1), Planner V5 Float lane (FloatFast / FloatGeneral, RunDelta on integer lanes),
+float / run prefilters with zero false positives on the 0.4 corpus, sampled Gorilla and exact
+RunDelta estimators, Corpus V4 + false-positive corpus, golden 0.5.0 with the 0.4.6 golden
+frozen, Float lane benchmark families and gates. Calibration showed that Gorilla rarely beats
+LZ + entropy on decimal-like data, which sets the 0.6 priorities below.
+
+## Next: ACE 0.6 candidates
+
+- **decimal floats (ALP-style)**: prices and quantized sensors, where Gorilla loses today;
+- **RunDelta / NUM1 for small non-zero deltas** (`int-counter-reset`: RunDelta 12× at codec
+  level vs 2.7–4.6× today) and **Patched FOR** for rare outliers (`monotonic-outliers`, 1.78×);
+- Chimp / Chimp128 as TS1 modes 4–5; SIMD Gorilla decode;
+- float column-phase detection (series not aligned to the block start);
+- faster `DefaultBlockAnalyzer`, interleaved rANS decode, parallel block decode, decode without
+  per-block buffers (from the 0.4.6 list);
+- trained dictionaries; variable physical block size.
+
 ## 0.4.6 - Hardened Release & Benchmark Stabilization (done)
 
 Semantic freeze (golden SHA-256), Benchmark Harness V3 (adaptive iterations, 3 x 7 batches,
@@ -7,7 +27,7 @@ median-of-medians, batch MAD, schema 2.1), interleaved A/B gates against 0.4.5-b
 environment fingerprint, determinism matrix incl. SIMD backend, malformed matrix, 12 fuzz
 targets, unsafe/panic audits, reproducible package tested from the archive. Closes the 0.4 line.
 
-## Next: format-compatible 0.4.x candidates (only if golden SHA-256 stays unchanged)
+## 0.4.x candidates listed at 0.4.6 (historical; carried into the 0.6 list)
 
 - faster `DefaultBlockAnalyzer` (~47 % of BALANCED encode time);
 - interleaved rANS decode; parallel block decode;
@@ -16,10 +36,10 @@ targets, unsafe/panic audits, reproducible package tested from the archive. Clos
 - skipping generic analysis under a dominant NumericMargin **only** if planner decisions stay
   identical (otherwise it is a semantic change and moves to 0.5).
 
-## ACE 0.5 - Advanced Time-Series & Numeric Compression
+## ACE 0.5 plan as written for 0.4.6 (historical)
 
-- Gorilla/XOR floats, decimal specialisation;
-- Patched FOR (exceptions) for `monotonic-outliers` (1.78x today);
+- Gorilla/XOR floats (done in 0.5.0), decimal specialisation (moved to 0.6);
+- Patched FOR (exceptions) for `monotonic-outliers` (moved to 0.6);
 - SIMD bit packing; richer timestamp models;
 - trained dictionaries; variable physical block size;
 - `--format 1.2` writer option for <= 0.4.4 readers if still needed.
