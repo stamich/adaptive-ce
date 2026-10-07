@@ -83,7 +83,7 @@ impl Default for NumericProfile {
 
 /// Deterministically detects little-endian 16/32/64-bit numeric structure in arbitrary bytes.
 ///
-/// Ties favour the *wider* interpretation that was historically preferred (u32, then u64, then
+/// Ties favor the *wider* interpretation that was historically preferred (u32, then u64, then
 /// u16), so adding the 16-bit lane in 0.4.5 never changes the verdict for existing 32/64-bit
 /// data: u16 wins only with strictly higher confidence.
 pub fn analyze_numeric(input: &[u8]) -> NumericProfile {
