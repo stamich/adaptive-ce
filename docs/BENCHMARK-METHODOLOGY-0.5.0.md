@@ -110,8 +110,9 @@ family.
 `release-performance` adds `float_fast.f64_step`, `float_general.f64_noisy` and
 `run_delta.int_sparse_change`; each also measures the same engine with the lane disabled in the
 same process (`compression_disabled`, `encode_speedup_vs_disabled`, `ratio_gain_vs_disabled`).
-These are **within-run ratios**: the 0.4.6 tree cannot generate Corpus V4, so they cannot be
-interleaved A/B cases, and a same-run ratio is immune to machine drift.
+These are **within-run ratios**: their output intentionally differs from 0.4.6, while byte
+identity is an invariant of every interleaved A/B case, and a same-run ratio is immune to
+machine drift.
 
 ### Float gates (Regression V3, 0.5.0)
 

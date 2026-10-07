@@ -69,8 +69,8 @@ it:
 
 New families plug into the `FAMILIES` registry; Float lane cases in `release-performance`
 measure the same engine with the lane disabled in the same run, so their gates are
-within-process ratios. The interleaved A/B against 0.4.6 covers the Corpus V3 cases (the
-0.4.6 tree has no Corpus V4) and checks byte identity.
+within-process ratios. The interleaved A/B against 0.4.6 covers the Corpus V3 cases, where
+byte identity with 0.4.6 is required (Float cases differ from 0.4.6 by design).
 
 ## 6. Principles applied in 0.5.0
 
