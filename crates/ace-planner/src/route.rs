@@ -1,14 +1,17 @@
 use ace_analysis::{
-    numeric_prefilter, strong_numeric_evidence, NumericFastEvidence, NumericPrefilter,
+    numeric_prefilter, strong_numeric_evidence, NumericFastEvidence, NumericPrefilter, RunPrefilter,
 };
 use ace_core::{
     AceConfig, CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId,
     PhysicalCompressionPlan, PlanCost,
 };
 
-use crate::{PlannerDecision, PlannerTelemetry};
+use crate::{FloatEvidence, PlannerDecision, PlannerTelemetry};
 
-/// Planner V4.3 execution route chosen before expensive candidate evaluation.
+/// Planner execution route chosen before expensive candidate evaluation.
+///
+/// V4.3 routes (`Generic`, `NumericGeneral`, `NumericFast`) are unchanged; Planner V5 (ACE
+/// 0.5.0) adds the Float lane (`FloatGeneral`, `FloatFast`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlannerRoute {
     /// Uses the frozen generic V3.6-style analysis and bounded candidate pipeline.
@@ -17,6 +20,29 @@ pub enum PlannerRoute {
     NumericGeneral,
     /// Selects Numeric directly after cheap sampling plus full-block structural validation.
     NumericFast,
+    /// Float data: the V4.3 pipeline of the block's base route plus a competing TS1 candidate.
+    FloatGeneral,
+    /// Float data whose TS1 estimate is dominant: one TS1 encode, no generic analysis.
+    FloatFast,
+}
+
+/// Inherent methods of [`PlannerRoute`].
+impl PlannerRoute {
+    /// Stable kebab-case label for explain output, telemetry and benchmarks.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Generic => "generic",
+            Self::NumericGeneral => "numeric-general",
+            Self::NumericFast => "numeric-fast",
+            Self::FloatGeneral => "float-general",
+            Self::FloatFast => "float-fast",
+        }
+    }
+
+    /// True for the Planner V5 Float lane routes.
+    pub const fn is_float(self) -> bool {
+        matches!(self, Self::FloatGeneral | Self::FloatFast)
+    }
 }
 
 /// Explainable reason for selecting one Planner V4 route.
@@ -30,6 +56,10 @@ pub enum RouteReason {
     NumericCandidate,
     /// Fixed-step monotonic structure was validated across the complete block.
     StrongFixedStepNumeric,
+    /// The float prefilter admitted the block; TS1 competes with the base-route pipeline.
+    FloatCandidate,
+    /// The float prefilter admitted the block and the TS1 estimate is dominant (FloatFast).
+    DominantFloat,
 }
 
 /// Route-classifier output used by tests, explain and route benchmarks.
@@ -43,27 +73,66 @@ pub struct RouteDecision {
     pub prefilter: NumericPrefilter,
     /// Reusable full-block evidence present only for a validated NumericFast route.
     pub numeric_fast_evidence: Option<NumericFastEvidence>,
+    /// V4.3 route of the block (`route` without the Float lane); drives generic candidates.
+    pub base_route: PlannerRoute,
+    /// Float lane evidence (admitted profile and best TS1 estimate) for the Float routes.
+    pub float_evidence: Option<FloatEvidence>,
+    /// Run-lane prefilter (RunDelta widths) for integer blocks; empty when not evaluated.
+    pub run_prefilter: RunPrefilter,
 }
 
-/// Classifies one block without running the generic block analyzer or numeric encoder.
+/// Inherent methods of [`RouteDecision`].
+impl RouteDecision {
+    /// Route whose V4.3 candidate pipeline runs for this block (Float routes use their base).
+    pub fn candidate_route(&self) -> PlannerRoute {
+        if self.route.is_float() {
+            self.base_route
+        } else {
+            self.route
+        }
+    }
+
+    /// V4.3 decision with no Float lane evidence.
+    fn v4(
+        route: PlannerRoute,
+        reason: RouteReason,
+        prefilter: NumericPrefilter,
+        numeric_fast_evidence: Option<NumericFastEvidence>,
+    ) -> Self {
+        Self {
+            route,
+            reason,
+            prefilter,
+            numeric_fast_evidence,
+            base_route: route,
+            float_evidence: None,
+            run_prefilter: RunPrefilter::default(),
+        }
+    }
+}
+
+/// Classifies one block with the Planner V4.3 rules (no Float lane).
+///
+/// Planner V5 production code uses `RoutePolicy::classify`, which runs this first and then the
+/// Float / run prefilters.
 pub fn classify_planner_route(input: &[u8], config: &AceConfig) -> RouteDecision {
     if !config.enable_numeric_specialization {
-        return RouteDecision {
-            route: PlannerRoute::Generic,
-            reason: RouteReason::NumericDisabled,
-            prefilter: numeric_prefilter(&[]),
-            numeric_fast_evidence: None,
-        };
+        return RouteDecision::v4(
+            PlannerRoute::Generic,
+            RouteReason::NumericDisabled,
+            numeric_prefilter(&[]),
+            None,
+        );
     }
 
     let prefilter = numeric_prefilter(input);
     if !prefilter.likely_numeric {
-        return RouteDecision {
-            route: PlannerRoute::Generic,
-            reason: RouteReason::PrefilterRejected,
+        return RouteDecision::v4(
+            PlannerRoute::Generic,
+            RouteReason::PrefilterRejected,
             prefilter,
-            numeric_fast_evidence: None,
-        };
+            None,
+        );
     }
 
     let fast_threshold = match config.profile {
@@ -82,19 +151,19 @@ pub fn classify_planner_route(input: &[u8], config: &AceConfig) -> RouteDecision
         };
 
     if numeric_fast_evidence.is_some() {
-        RouteDecision {
-            route: PlannerRoute::NumericFast,
-            reason: RouteReason::StrongFixedStepNumeric,
+        RouteDecision::v4(
+            PlannerRoute::NumericFast,
+            RouteReason::StrongFixedStepNumeric,
             prefilter,
             numeric_fast_evidence,
-        }
+        )
     } else {
-        RouteDecision {
-            route: PlannerRoute::NumericGeneral,
-            reason: RouteReason::NumericCandidate,
+        RouteDecision::v4(
+            PlannerRoute::NumericGeneral,
+            RouteReason::NumericCandidate,
             prefilter,
-            numeric_fast_evidence: None,
-        }
+            None,
+        )
     }
 }
 
@@ -152,6 +221,9 @@ pub fn numeric_fast_decision_from_route(
         selected_size_rank: 1,
         selected_cost_rank: 1,
         full_trial_encodes: 0,
+        time_series_estimates: 0,
+        float_fast_hit: false,
+        float_fast_fallback: false,
     };
 
     Some(PlannerDecision {
@@ -164,6 +236,7 @@ pub fn numeric_fast_decision_from_route(
         final_ranked_plans: vec![plan.clone()],
         quality_qualified_plans: vec![plan],
         numeric_estimate: None,
+        time_series: None,
     })
 }
 

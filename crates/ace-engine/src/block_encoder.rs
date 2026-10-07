@@ -103,8 +103,11 @@ fn plan_block(
     timings.generic_analysis = analysis_started.elapsed();
 
     let planning_started = Instant::now();
-    let candidates =
-        DefaultCompressionPlanner.candidates_for_route(&profile, config, context.route.route);
+    let candidates = DefaultCompressionPlanner.candidates_for_route(
+        &profile,
+        config,
+        context.route.candidate_route(),
+    );
     let decision =
         evaluate_candidates_v4_with_route(input, &profile, &candidates, config, &context.route)?;
     timings.planning = planning_started.elapsed();

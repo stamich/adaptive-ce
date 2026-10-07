@@ -218,7 +218,7 @@ impl AceEngine {
         let candidates = DefaultCompressionPlanner.candidates_for_route(
             &profile,
             &self.config,
-            context.route.route,
+            context.route.candidate_route(),
         );
         let evaluated = evaluate_all_candidates(block, &candidates, &self.config)?;
         let decision = evaluate_candidates_v4_with_route(

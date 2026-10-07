@@ -13,8 +13,8 @@ pub(crate) use ace_engine::{AceEngine, AceIndexedDecoder};
 pub(crate) use ace_entropy::{huffman_encode, rans4x_encode, rans_encode};
 pub(crate) use ace_planner::{
     classify_planner_route, encode_plan_payload, evaluate_candidates_v4_with_route,
-    CandidateEligibility, CompressionPlanner, DefaultCompressionPlanner, PlannerRoute,
-    PlanningContext, PolicyOracle, PolicyOracleCandidate, RoutePolicy,
+    CandidateEligibility, CompressionPlanner, DefaultCompressionPlanner, PlanningContext,
+    PolicyOracle, PolicyOracleCandidate, RoutePolicy,
 };
 pub(crate) use ace_stream::{compress_reader_known_size, StreamLimits};
 pub(crate) use flate2::{read::GzDecoder, write::GzEncoder, Compression};

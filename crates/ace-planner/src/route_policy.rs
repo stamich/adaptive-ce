@@ -2,7 +2,7 @@ use ace_core::{
     AceConfig, BlockProfile, CodecId, CompressionProfile, LzMode, PhysicalCompressionPlan,
 };
 
-use crate::{classify_planner_route, PlannerRoute, RouteDecision};
+use crate::{classify_float_lane, classify_planner_route, PlannerRoute, RouteDecision};
 
 /// Eligibility assigned by Planner V4.3 to a physical candidate under a concrete route.
 ///
@@ -58,7 +58,7 @@ impl RouteBudget {
     /// Returns the deterministic default budget for a route/profile pair.
     pub fn for_route(route: PlannerRoute, profile: CompressionProfile) -> Self {
         match route {
-            PlannerRoute::NumericFast => Self {
+            PlannerRoute::NumericFast | PlannerRoute::FloatFast => Self {
                 max_generated_candidates: 1,
                 max_sampled_candidates: 0,
                 hybrid_lz_policy: RouteHybridLzPolicy::Disabled,
@@ -70,7 +70,9 @@ impl RouteBudget {
                 hybrid_lz_policy: RouteHybridLzPolicy::OneStage,
                 allow_second_stage: false,
             },
-            PlannerRoute::Generic => Self {
+            // FloatGeneral runs its base route's pipeline; this budget applies when the base is
+            // Generic (the evaluator always receives `RouteDecision::candidate_route`).
+            PlannerRoute::Generic | PlannerRoute::FloatGeneral => Self {
                 max_generated_candidates: match profile {
                     CompressionProfile::Fast => 8,
                     CompressionProfile::Balanced => 16,
@@ -141,9 +143,13 @@ pub struct RoutePolicy;
 
 /// Inherent methods of [`RoutePolicy`].
 impl RoutePolicy {
-    /// Classifies one input block using the Planner V4.3 prefilter/validation implementation.
+    /// Classifies one input block: Planner V4.3 routing, then the Planner V5 Float lane.
+    ///
+    /// Order (cheap → expensive): NumericFast validation, float prefilter (FloatFast /
+    /// FloatGeneral), the V4.3 NumericGeneral / Generic verdict. Floats are checked before
+    /// NumericGeneral because f64 bit patterns often look like monotonic u64 values.
     pub fn classify(input: &[u8], config: &AceConfig) -> RouteDecision {
-        classify_planner_route(input, config)
+        classify_float_lane(input, config, classify_planner_route(input, config))
     }
 
     /// Returns whether a candidate may participate in the selected production route.
@@ -157,7 +163,7 @@ impl RoutePolicy {
         _config: &AceConfig,
     ) -> CandidateEligibility {
         match route {
-            PlannerRoute::Generic => {
+            PlannerRoute::Generic | PlannerRoute::FloatGeneral | PlannerRoute::FloatFast => {
                 if matches!(plan.decoding.codec, CodecId::Numeric) {
                     CandidateEligibility::DiagnosticOnly(
                         RouteRejectionReason::NumericOutsideNumericRoute,
@@ -176,7 +182,10 @@ impl RoutePolicy {
                 }
             }
             PlannerRoute::NumericGeneral => match plan.decoding.codec {
-                CodecId::Numeric | CodecId::Raw | CodecId::Rle => CandidateEligibility::Allowed,
+                // TS1 RunDelta competes on integer lanes (Planner V5).
+                CodecId::Numeric | CodecId::Raw | CodecId::Rle | CodecId::TimeSeries => {
+                    CandidateEligibility::Allowed
+                }
                 CodecId::Lz if matches!(plan.lz_mode, Some(LzMode::Fast | LzMode::Balanced)) => {
                     CandidateEligibility::Allowed
                 }
