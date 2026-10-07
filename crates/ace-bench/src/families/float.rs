@@ -1,7 +1,8 @@
 //! Float lane families (ACE 0.5.0).
 //!
 //! * `float-ablation` — every candidate codec on the same data, block by block, without the
-//!   planner: the ground truth the Float lane and its thresholds are calibrated against.
+//!   planner, next to the engine result of each profile: the ground truth the Float lane and
+//!   its thresholds are calibrated against.
 
 use ace_codecs::{
     lz_encode, numeric_encode, rle_encode, ts1_decode, ts1_encode_with, ts1_encoded_len,
@@ -16,6 +17,22 @@ use crate::prelude::*;
 const INPUT_BYTES: usize = 16 * 1024 * 1024;
 /// Block size used for codec-level ablation (the engine default).
 const BLOCK: usize = 256 * 1024;
+
+/// Profiles measured by the float families.
+const PROFILES: [CompressionProfile; 3] = [
+    CompressionProfile::Fast,
+    CompressionProfile::Balanced,
+    CompressionProfile::Dense,
+];
+
+/// Stable JSON key of `profile`.
+pub(crate) fn profile_name(profile: CompressionProfile) -> &'static str {
+    match profile {
+        CompressionProfile::Fast => "fast",
+        CompressionProfile::Balanced => "balanced",
+        CompressionProfile::Dense => "dense",
+    }
+}
 
 /// Workloads of the float families: Corpus V4 plus integer references from Corpus V3.
 pub(crate) fn float_family_workloads() -> Vec<Workload> {
@@ -132,11 +149,16 @@ pub(crate) fn float_ablation_family() -> Result<Vec<Value>, Box<dyn std::error::
         for (name, size) in &sizes {
             candidates.field(name, size);
         }
-        let generic = AceConfig {
-            threads: 1,
-            ..AceConfig::default()
-        };
-        let (engine, _) = engine_row(&data, generic)?;
+        // One engine row per profile: the Float lane must beat (or match) each of them.
+        let mut engine = JsonObjectBuilder::new();
+        for profile in PROFILES {
+            let config = AceConfig {
+                threads: 1,
+                profile,
+                ..AceConfig::default()
+            };
+            engine.value(profile_name(profile), engine_row(&data, config)?.0);
+        }
         let mut row = JsonObjectBuilder::new();
         row.field("workload_id", workload.name())
             .field("path", "float_ablation")
@@ -146,7 +168,7 @@ pub(crate) fn float_ablation_family() -> Result<Vec<Value>, Box<dyn std::error::
             .field("best_candidate_bytes", best.0)
             .field("best_ts1_bytes", best_ts1.0)
             .value("best_ts1", best_ts1_timing(&data, best_ts1.1)?)
-            .value("engine", engine);
+            .value("engine", engine.build());
         rows.push(row.build());
     }
     Ok(rows)
