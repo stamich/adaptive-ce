@@ -37,6 +37,8 @@ dependencies = [
 name = "ace-cost"
 version = "0.5.0"
 dependencies = [
+ "ace-analysis",
+ "ace-codecs",
  "ace-core",
 ]
 
@@ -54,6 +56,7 @@ dependencies = [
  "ace-analysis",
  "ace-codecs",
  "ace-core",
+ "ace-cost",
  "ace-dictionary",
  "ace-entropy",
  "ace-format",
