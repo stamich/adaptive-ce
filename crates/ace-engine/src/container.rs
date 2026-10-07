@@ -2,6 +2,7 @@
 
 use std::time::Instant;
 
+use ace_codecs::TimeSeriesMode;
 use ace_core::{AceResult, CompressionStats};
 use ace_format::{
     minimal_minor_version, AceWriter, FileHeader, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
@@ -62,4 +63,14 @@ fn record_block(stats: &mut CompressionStats, block: &EncodedBlock) {
     stats.planner_estimated_candidates += telemetry.estimated_candidates as u64;
     stats.planner_sampled_candidates += telemetry.sampled_candidates as u64;
     stats.planner_full_trial_encodes += telemetry.full_trial_encodes as u64;
+    stats.time_series_estimates += telemetry.time_series_estimates as u64;
+    stats.float_route_blocks += block.route.is_float() as u64;
+    stats.float_fast_blocks += telemetry.float_fast_hit as u64;
+    stats.float_fast_fallbacks += telemetry.float_fast_fallback as u64;
+    match block.time_series_layout.map(|layout| layout.mode) {
+        Some(TimeSeriesMode::GorillaF64) => stats.ts1_gorilla_f64_blocks += 1,
+        Some(TimeSeriesMode::GorillaF32) => stats.ts1_gorilla_f32_blocks += 1,
+        Some(TimeSeriesMode::RunDelta) => stats.ts1_run_delta_blocks += 1,
+        None => {}
+    }
 }

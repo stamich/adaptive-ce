@@ -38,6 +38,20 @@ pub struct CompressionStats {
     pub planner_sampled_candidates: u64,
     /// Number of complete candidate trial encodes performed by the hot-path planner.
     pub planner_full_trial_encodes: u64,
+    /// Blocks classified to a Float route (FloatGeneral or FloatFast), ACE 0.5.
+    pub float_route_blocks: u64,
+    /// Blocks encoded by the FloatFast route without generic analysis.
+    pub float_fast_blocks: u64,
+    /// FloatFast encodes that missed their bound and were re-planned (release gate: 0).
+    pub float_fast_fallbacks: u64,
+    /// TS1 size estimates computed by the planner.
+    pub time_series_estimates: u64,
+    /// Stored TS1 blocks in GorillaF64 mode.
+    pub ts1_gorilla_f64_blocks: u64,
+    /// Stored TS1 blocks in GorillaF32 mode.
+    pub ts1_gorilla_f32_blocks: u64,
+    /// Stored TS1 blocks in RunDelta mode (any lane width).
+    pub ts1_run_delta_blocks: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
     /// Time spent in route prefilter/classification/full NumericFast validation.
