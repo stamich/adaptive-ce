@@ -2,7 +2,7 @@
 //! on Corpus V3 and on the false-positive corpus (a hard gate of ACE 0.5.0).
 
 use ace_analysis::{float_prefilter, FloatWidth};
-use ace_corpus::Workload;
+use ace_corpus::{FalsePositiveCase, Workload};
 
 /// Engine block size: the prefilter sees one block at a time.
 const BLOCK: usize = 256 * 1024;
@@ -56,62 +56,15 @@ fn integer_and_byte_workloads_are_rejected() {
     }
 }
 
-/// The false-positive corpus: NaN-heavy, Inf-heavy, random and text-like buffers.
+/// The false-positive corpus (`ace_corpus::FalsePositiveCase`) is rejected block by block.
 #[test]
 fn false_positive_corpus_is_rejected() {
-    let mut state = 0x2545_F491_4F6C_DD1Du64;
-    let mut next = move || {
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        state
-    };
-    let mut cases: Vec<(&str, Vec<u8>)> = Vec::new();
-    let smooth = |i: u64| 20.0 + i as f64 * 0.001;
-    cases.push((
-        "nan-heavy",
-        (0..32_768u64)
-            .flat_map(|i| if i % 8 == 0 { f64::NAN } else { smooth(i) }.to_le_bytes())
-            .collect(),
-    ));
-    cases.push((
-        "inf-heavy",
-        (0..32_768u64)
-            .flat_map(|i| if i % 8 == 0 { f64::INFINITY } else { smooth(i) }.to_le_bytes())
-            .collect(),
-    ));
-    cases.push((
-        "random-u64",
-        (0..32_768).flat_map(|_| next().to_le_bytes()).collect(),
-    ));
-    cases.push((
-        "random-f64-finite",
-        (0..32_768)
-            .flat_map(|_| {
-                let bits = next() & !(0x7ffu64 << 52) | ((next() % 0x7fe) << 52);
-                bits.to_le_bytes()
-            })
-            .collect(),
-    ));
-    cases.push((
-        "text",
-        b"timestamp=1700000000123 sensor=temp-01 value=21.5 unit=C status=ok\n"
-            .iter()
-            .copied()
-            .cycle()
-            .take(BLOCK)
-            .collect(),
-    ));
-    cases.push((
-        "u64-small-ints",
-        (0..32_768u64)
-            .flat_map(|i| (i % 1000).to_le_bytes())
-            .collect(),
-    ));
-    for (name, data) in cases {
-        let prefilter = float_prefilter(&data);
-        assert_eq!(prefilter.admitted, None, "false positive: {name}");
-        assert!(prefilter.rejection.is_some(), "{name}");
+    for case in FalsePositiveCase::ALL {
+        for block in case.generate(BYTES).chunks(BLOCK) {
+            let prefilter = float_prefilter(block);
+            assert_eq!(prefilter.admitted, None, "false positive: {}", case.name());
+            assert!(prefilter.rejection.is_some(), "{}", case.name());
+        }
     }
 }
 

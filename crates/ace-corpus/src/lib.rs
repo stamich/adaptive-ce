@@ -6,12 +6,15 @@
 //! always produce the same bytes on every platform.
 //!
 //! `generators` holds the 0.4.x corpus (Corpus V3); `float_generators` holds Corpus V4
-//! (floating-point series and sparse-change integers, ACE 0.5.0).
+//! (floating-point series and sparse-change integers, ACE 0.5.0); `false_positive` holds the
+//! Float lane false-positive corpus (not part of [`Workload`], so golden files ignore it).
 
+mod false_positive;
 mod float_generators;
 mod generators;
 mod rng;
 mod workload;
 
+pub use false_positive::*;
 pub use rng::*;
 pub use workload::*;
