@@ -97,6 +97,11 @@ impl CandidateEstimator for DefaultCandidateEstimator {
                 primary_ratio *= (1.0 - gain).clamp(0.04, 1.02);
                 confidence = confidence.max((0.58 + p.delta_score * 0.35).clamp(0.0, 0.96));
             }
+            CodecId::TimeSeries => {
+                // TS1 is never ranked from the generic BlockProfile: the Float lane and the
+                // RunDelta admission use dedicated exact/sample estimators (ace_cost::time_series).
+                // A neutral ratio keeps an accidental TS1 candidate from winning generic ranking.
+            }
         }
 
         let entropy_factor = match candidate.decoding.entropy {
@@ -125,12 +130,14 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             (CodecId::Lz, Some(LzMode::Balanced)) => 9,
             (CodecId::Lz, _) => 4,
             (CodecId::Numeric, _) => 5,
+            (CodecId::TimeSeries, _) => 4,
         };
         let codec_decode = match candidate.decoding.codec {
             CodecId::Raw => 1u64,
             CodecId::Rle => 2,
             CodecId::Lz => 3,
             CodecId::Numeric => 2,
+            CodecId::TimeSeries => 2,
         };
         let entropy_encode = match candidate.decoding.entropy {
             EntropyCodecId::None => 0u64,

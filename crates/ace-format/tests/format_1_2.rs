@@ -1,22 +1,27 @@
-//! Format 1.2/1.3 header compatibility.
+//! Format 1.2/1.3/1.4 header compatibility.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
-use ace_format::{checksum, decode_file_header, encode_file_header, FileHeader, FORMAT_MINOR};
+use ace_format::{
+    checksum, decode_file_header, encode_file_header, FileHeader, FORMAT_MINOR, FORMAT_MINOR_BASE,
+};
 
-/// Verifies the ACE 0.4 writer emits Format 1.3 while preserving the fixed header shape.
+/// The writer emits the requested minor version (1.3 base, 1.4 maximum) in the unchanged
+/// fixed header shape; values above the maximum are capped.
 #[test]
-fn writer_emits_current_format_1_3() {
-    assert_eq!(FORMAT_MINOR, 3);
-    let header = FileHeader {
-        minor_version: 3,
-        flags: 0,
-        default_block_size: 262_144,
-        original_size: 123,
-        block_count: 1,
-    };
-    let bytes = encode_file_header(&header);
-    let decoded = decode_file_header(&bytes).unwrap();
-    assert_eq!(decoded.minor_version, 3);
+fn writer_emits_requested_minor_version() {
+    assert_eq!((FORMAT_MINOR_BASE, FORMAT_MINOR), (3, 4));
+    for (requested, written) in [(3u8, 3u8), (4, 4), (9, 4)] {
+        let header = FileHeader {
+            minor_version: requested,
+            flags: 0,
+            default_block_size: 262_144,
+            original_size: 123,
+            block_count: 1,
+        };
+        let bytes = encode_file_header(&header);
+        assert_eq!(bytes[5], written);
+        assert_eq!(decode_file_header(&bytes).unwrap().minor_version, written);
+    }
 }
 
 /// Verifies the ACE 0.4 reader still accepts a valid Format 1.2 fixed header.

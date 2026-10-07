@@ -16,6 +16,10 @@ pub fn encode_codec(id: CodecId, lz_mode: Option<LzMode>, input: &[u8]) -> AceRe
         CodecId::Rle => Ok(rle_encode(input)),
         CodecId::Lz => Ok(lz_encode(input, lz_mode.unwrap_or(LzMode::Fast))),
         CodecId::Numeric => numeric_encode(input),
+        // Wired to the TS1 codec once it exists (0.5.0 task 13).
+        CodecId::TimeSeries => Err(ace_core::AceError::UnsupportedCodec(
+            CodecId::TimeSeries as u8,
+        )),
     }
 }
 
@@ -26,6 +30,9 @@ pub fn decode_codec(id: CodecId, input: &[u8], expected_size: usize) -> AceResul
         CodecId::Rle => rle_decode(input, expected_size),
         CodecId::Lz => lz_decode(input, expected_size),
         CodecId::Numeric => numeric_decode(input, expected_size),
+        CodecId::TimeSeries => Err(ace_core::AceError::UnsupportedCodec(
+            CodecId::TimeSeries as u8,
+        )),
     }
 }
 

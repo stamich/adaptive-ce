@@ -20,6 +20,8 @@ pub struct CompressionStats {
     pub lz_blocks: u64,
     /// Number of blocks using ACE 0.4 numeric FOR/Delta/DoD+BitPack codec.
     pub numeric_blocks: u64,
+    /// Blocks encoded with the TS1 time-series codec (Format 1.4).
+    pub time_series_blocks: u64,
     /// Number of blocks using byte-delta transform.
     pub delta_blocks: u64,
     /// Number of blocks finalized by Huffman.
@@ -72,6 +74,7 @@ impl CompressionStats {
             CodecId::Rle => self.rle_blocks += 1,
             CodecId::Lz => self.lz_blocks += 1,
             CodecId::Numeric => self.numeric_blocks += 1,
+            CodecId::TimeSeries => self.time_series_blocks += 1,
         }
         match plan.decoding.entropy {
             EntropyCodecId::Huffman => self.huffman_blocks += 1,
