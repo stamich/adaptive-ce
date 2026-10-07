@@ -4,7 +4,7 @@ use std::io::{Cursor, Read, Write};
 
 use ace_analysis::{analyze_numeric, recommend_block_size, AnalysisLevel, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, CompressionStats, DecodeLimits};
-use ace_format::AceReader;
+use ace_format::{AceReader, FileHeader};
 use ace_planner::{
     evaluate_all_candidates, evaluate_candidates_v4_with_route, DefaultCompressionPlanner,
     PlanningContext,
@@ -19,6 +19,10 @@ use crate::{BlockExplanation, FixedBlockChunker};
 
 /// Largest input prefix sampled by the `Auto` block-size policy.
 const AUTO_POLICY_SAMPLE_BYTES: usize = 4 * 1024 * 1024;
+
+/// Upper bound on the output capacity [`AceEngine::decompress_into`] reserves up front from
+/// the untrusted file header; larger outputs simply grow the buffer while decoding.
+pub const PREALLOCATION_CAP_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Public façade of the ACE compression engine.
 #[derive(Debug, Clone)]
@@ -46,8 +50,14 @@ impl AceEngine {
     }
 
     /// Creates an engine using default settings.
+    ///
+    /// `AceConfig::default()` always satisfies [`AceEngine::new`]'s validation (asserted by
+    /// the `default_configuration_is_valid` test), so no fallible constructor is needed.
     pub fn default_engine() -> Self {
-        Self::new(AceConfig::default()).expect("default ACE configuration is valid")
+        Self {
+            config: AceConfig::default(),
+            limits: DecodeLimits::default(),
+        }
     }
 
     /// Replaces decoder resource limits.
@@ -126,14 +136,45 @@ impl AceEngine {
     /// Decompresses an in-memory ACE 1.0, 1.1, 1.2 or 1.3 file into reconstructed bytes.
     pub fn decompress(&self, input: &[u8]) -> AceResult<Vec<u8>> {
         let mut out = Vec::new();
-        self.decompress_from(Cursor::new(input), &mut out)?;
+        self.decompress_into(input, &mut out)?;
         Ok(out)
     }
 
+    /// Decompresses an in-memory ACE file into a caller-owned buffer and returns the number
+    /// of reconstructed bytes.
+    ///
+    /// `out` is cleared first and its capacity is reused, so repeated calls with the same
+    /// buffer avoid re-allocating the output. The reservation made from the (untrusted)
+    /// header is capped by [`DecodeLimits::max_output_size`] and [`PREALLOCATION_CAP_BYTES`];
+    /// on error `out` holds an unspecified prefix and must not be used.
+    pub fn decompress_into(&self, input: &[u8], out: &mut Vec<u8>) -> AceResult<usize> {
+        out.clear();
+        let mut ace = AceReader::new(Cursor::new(input), self.limits.clone());
+        let file = ace.read_file_header()?;
+        let reservation = file
+            .original_size
+            .min(self.limits.max_output_size)
+            .min(PREALLOCATION_CAP_BYTES);
+        out.reserve(usize::try_from(reservation).unwrap_or(0));
+        self.decode_blocks(&mut ace, &file, &mut *out)?;
+        Ok(out.len())
+    }
+
     /// Reads, validates and sequentially decompresses ACE 1.0–1.3 blocks to a writer.
-    pub fn decompress_from<R: Read, W: Write>(&self, reader: R, mut writer: W) -> AceResult<()> {
+    pub fn decompress_from<R: Read, W: Write>(&self, reader: R, writer: W) -> AceResult<()> {
         let mut ace = AceReader::new(reader, self.limits.clone());
         let file = ace.read_file_header()?;
+        self.decode_blocks(&mut ace, &file, writer)
+    }
+
+    /// Decodes every block announced by `file` in id order and streams it to `writer`,
+    /// enforcing block ordering, the declared original size and the output-size limit.
+    fn decode_blocks<R: Read, W: Write>(
+        &self,
+        ace: &mut AceReader<R>,
+        file: &FileHeader,
+        mut writer: W,
+    ) -> AceResult<()> {
         let mut total = 0u64;
         for expected_id in 0..file.block_count {
             let (header, metadata, payload) = ace.read_block()?;
@@ -204,5 +245,16 @@ impl AceEngine {
         }
         let numeric = analyze_numeric(&input[..input.len().min(AUTO_POLICY_SAMPLE_BYTES)]);
         recommend_block_size(self.config.access_hint, self.config.profile, &numeric).block_size
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The configuration used by [`AceEngine::default_engine`] passes full validation.
+    #[test]
+    fn default_configuration_is_valid() {
+        assert!(AceEngine::new(AceConfig::default()).is_ok());
     }
 }
