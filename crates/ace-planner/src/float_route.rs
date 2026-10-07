@@ -14,7 +14,7 @@
 //! ```
 //!
 //! The TS1 dominance rule ([`ts1_beats_generic`]) needs both a relative win (≤ 90 % of the
-//! generic size) and an absolute one (saves ≥ 1/32 of the input). The absolute floor keeps
+//! generic size for exact RunDelta sizes, ≤ 75 % for sampled Gorilla estimates) and an absolute one (saves ≥ 1/32 of the input). The absolute floor keeps
 //! blocks that the 0.4 pipeline already compresses below 3 % of their size in Format 1.3:
 //! a further gain of a few hundred bytes does not justify a file that 0.4.x cannot read.
 //! Thresholds were calibrated on the `float-ablation` family
@@ -38,8 +38,13 @@ pub const FLOAT_FAST_DIVISOR: u64 = 32;
 /// FloatFast fallback: an encoded payload above `input / FLOAT_FAST_FALLBACK_DIVISOR` is
 /// discarded and the block is re-planned as FloatGeneral.
 pub const FLOAT_FAST_FALLBACK_DIVISOR: u64 = 16;
-/// TS1 must be at most this fraction of the generic size to replace the generic plan.
+/// An exact TS1 size (RunDelta) must be at most this fraction of the generic size.
 pub const TS1_MAX_FRACTION_OF_GENERIC: f64 = 0.9;
+/// A sampled TS1 estimate (Gorilla) must be at most this fraction of the generic size.
+///
+/// Stricter than the exact rule: the Gorilla sample and the generic blended estimate can err
+/// in opposite directions (calibration: `f32-smooth` BALANCED lost 2.5 % at 0.9).
+pub const TS1_MAX_FRACTION_SAMPLED: f64 = 0.75;
 /// TS1 must save at least `input / TS1_MIN_SAVING_DIVISOR` bytes over the generic plan.
 pub const TS1_MIN_SAVING_DIVISOR: u64 = 32;
 
@@ -162,9 +167,20 @@ pub fn float_fast_decision(input: &[u8], route: &RouteDecision) -> AceResult<Flo
     ))))
 }
 
-/// The TS1 dominance rule: relative (≤ 90 % of generic) and absolute (≥ input / 32 saved).
-pub fn ts1_beats_generic(ts1_bytes: u64, generic_bytes: u64, input_len: usize) -> bool {
-    let relative = (ts1_bytes as f64) <= TS1_MAX_FRACTION_OF_GENERIC * generic_bytes as f64;
+/// The TS1 dominance rule: relative (≤ 90 % of generic when exact, ≤ 75 % when sampled) and
+/// absolute (≥ input / 32 saved).
+pub fn ts1_beats_generic(
+    estimate: &TimeSeriesEstimate,
+    generic_bytes: u64,
+    input_len: usize,
+) -> bool {
+    let fraction = if estimate.exact {
+        TS1_MAX_FRACTION_OF_GENERIC
+    } else {
+        TS1_MAX_FRACTION_SAMPLED
+    };
+    let ts1_bytes = estimate.estimated_bytes;
+    let relative = (ts1_bytes as f64) <= fraction * generic_bytes as f64;
     let saving = generic_bytes.saturating_sub(ts1_bytes);
     relative && saving.saturating_mul(TS1_MIN_SAVING_DIVISOR) >= input_len as u64
 }
@@ -203,9 +219,7 @@ pub fn apply_time_series_policy(
     let mut telemetry = decision.telemetry;
     telemetry.time_series_estimates = estimates;
     match candidate {
-        Some(estimate)
-            if ts1_beats_generic(estimate.estimated_bytes, generic_bytes, input.len()) =>
-        {
+        Some(estimate) if ts1_beats_generic(&estimate, generic_bytes, input.len()) => {
             Ok(time_series_decision(
                 input,
                 estimate,
@@ -316,10 +330,24 @@ mod tests {
     /// The dominance rule needs both the relative and the absolute win.
     #[test]
     fn dominance_rule() {
-        assert!(ts1_beats_generic(100, 100_000, 262_144));
-        assert!(!ts1_beats_generic(95_000, 100_000, 262_144)); // only 5 % better
-        assert!(!ts1_beats_generic(100, 8_000, 262_144)); // saves < input / 32
-        assert!(ts1_beats_generic(0, 8_192, 262_144)); // saves exactly input / 32
+        let exact = |bytes| TimeSeriesEstimate {
+            layout: TimeSeriesLayout::run_delta(4),
+            estimated_bytes: bytes,
+            exact: true,
+            confidence: 1.0,
+        };
+        let sampled = |bytes| TimeSeriesEstimate {
+            layout: TimeSeriesLayout::GORILLA_F64,
+            exact: false,
+            ..exact(bytes)
+        };
+        assert!(ts1_beats_generic(&exact(100), 100_000, 262_144));
+        assert!(!ts1_beats_generic(&exact(95_000), 100_000, 262_144)); // only 5 % better
+        assert!(!ts1_beats_generic(&exact(100), 8_000, 262_144)); // saves < input / 32
+        assert!(ts1_beats_generic(&exact(0), 8_192, 262_144)); // saves exactly input / 32
+        assert!(ts1_beats_generic(&exact(85_000), 100_000, 262_144));
+        assert!(!ts1_beats_generic(&sampled(85_000), 100_000, 262_144)); // sampled: ≤ 75 %
+        assert!(ts1_beats_generic(&sampled(75_000), 100_000, 262_144));
     }
 
     /// A constant f64 block is FloatFast with RunDelta and the payload is kept.
