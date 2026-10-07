@@ -25,11 +25,20 @@ members = [
 ]
 resolver = "2"
 
+[profile.release]
+# Recorded explicitly so benchmark results are reproducible (these are Cargo defaults).
+opt-level = 3
+lto = false
+codegen-units = 16
+debug = false
+panic = "unwind"
+
 [workspace.package]
 version = "0.4.5"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://example.invalid/ace"
+rust-version = "1.75"
 
 [workspace.dependencies]
 thiserror = "2"
