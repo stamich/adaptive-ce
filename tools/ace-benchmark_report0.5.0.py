@@ -30,8 +30,9 @@ lib = _benchlib()
 Row = dict[str, Any]
 
 #: Timing keys reported per row, in display order.
-TIMING_KEYS = ("compression", "decompression", "decompression_alloc", "encode", "timing",
-               "direct_numeric", "planner_v4_3", "wall_clock", "route_timing")
+TIMING_KEYS = ("compression", "decompression", "decompression_alloc", "compression_disabled",
+               "encode", "decode", "timing", "direct_numeric", "planner_v4_3", "wall_clock",
+               "route_timing")
 
 
 def row_label(row: Row) -> str:
@@ -129,6 +130,25 @@ def comparison_section(doc: Row) -> str:
     return lib.markdown_table(["Path", "Ratio", "Compress MB/s", "Decompress MB/s"], rows)
 
 
+def float_section(doc: Row) -> str:
+    """Markdown table of the ``float`` family: Float lane on vs off per workload and profile."""
+    rows = []
+    for row in doc["workloads"]:
+        stats = row["float_stats"]
+        engine = row["engine"]
+        modes = ", ".join(f"{name}={stats[key]}" for name, key in (
+            ("f64", "ts1_gorilla_f64_blocks"), ("f32", "ts1_gorilla_f32_blocks"),
+            ("rd", "ts1_run_delta_blocks")) if stats[key])
+        rows.append([row["workload_id"], row["profile"],
+                     lib.fmt(row["input_bytes"] / max(row["compressed_bytes"], 1), 2),
+                     lib.fmt(row["ratio_gain_vs_disabled"], 2), f"1.{row['format_minor']}",
+                     f"{stats['float_route_blocks']}/{stats['blocks']}", str(stats["float_fast_blocks"]),
+                     modes or "-", lib.fmt(engine["compression"].get("median_mb_s")),
+                     lib.fmt(engine["decompression"].get("median_mb_s"))])
+    return lib.markdown_table(["Workload", "Profile", "Ratio", "Gain vs off", "Format", "Float route",
+                               "FloatFast", "TS1 blocks", "Compress MB/s", "Decompress MB/s"], rows)
+
+
 def markdown_report(args: argparse.Namespace) -> str:
     """Build the full PERFORMANCE document."""
     release = lib.load_doc(lib.result_file(args.results, lib.MILESTONE, "release-performance"))
@@ -152,6 +172,10 @@ def markdown_report(args: argparse.Namespace) -> str:
     if compression.exists():
         parts += ["## ACE vs external codecs (mixed 16 MiB, 1 thread)", "",
                   comparison_section(lib.load_doc(compression)), ""]
+    float_doc = lib.result_file(args.results, lib.MILESTONE, "float")
+    if float_doc.exists():
+        parts += ["## Float lane (4 MiB per workload, 1 thread; gain = bytes with the lane off / on)", "",
+                  float_section(lib.load_doc(float_doc)), ""]
     if args.ab:
         parts += ["## Interleaved A/B", "", ab_section(lib.load_doc(args.ab)), ""]
     if args.regression:

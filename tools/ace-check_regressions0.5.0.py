@@ -7,6 +7,9 @@ Sections:
   and externally checked gates passed as ``--external NAME=pass|fail`` (golden SHA-256,
   determinism matrix, format readers, malformed matrix, ...);
 * ``quality``     -- Planner V4.3 policy recall/regret and compression ratios (unchanged);
+* ``float``       -- Planner V5 Float lane (0.5.0): zero false positives, Corpus V3 identity,
+  zero FloatFast fallbacks, never larger than the disabled lane, ratio targets, estimator
+  accuracy, codec-level TS1 speed and the FloatFast speedup measured in the same run;
 * ``performance`` -- absolute floors from ``release-performance`` and relative gates from
   the interleaved A/B document (``--ab``); without it relative gates are ``skipped``;
 * ``stability``   -- batch MAD of every ``release-performance`` measurement;
@@ -62,6 +65,11 @@ class Inputs:
         self.numeric = ours("numeric")
         self.numeric_general = ours("numeric-general")
         self.stability = ours("stability")
+        self.float = ours("float")
+        self.float_fastpath = ours("float-fastpath")
+        self.float_false_positive = ours("float-false-positive")
+        self.float_estimator = ours("float-estimator")
+        self.float_ablation = ours("float-ablation")
         legacy = baselines / "0.2.1-buildfix1"
         self.quality_compression = lib.load_doc(legacy / "benchmark-0.2.1-buildfix1-compression.json")
         stored = baselines / lib.BASELINE
@@ -129,8 +137,60 @@ def quality_gates(data: Inputs) -> list[Row]:
     return gates
 
 
+def float_gates(data: Inputs) -> list[Row]:
+    """Planner V5 Float lane gates (ACE 0.5.0); thresholds from docs/FLOAT-CALIBRATION-0.5.0.md."""
+    summary = lib.find_row(data.float_false_positive, workload_id="summary")
+    float_rows = data.float["workloads"]
+    fast_rows = data.float_fastpath["workloads"]
+    stats = lambda row: row["float_stats"]  # noqa: E731
+    fallbacks = sum(stats(r)["float_fast_fallbacks"] for r in float_rows + fast_rows)
+    full_trials = sum(stats(r)["planner_full_trial_encodes"] for r in float_rows)
+    generic_ns = max(float(r["generic_analysis_ns"]) for r in fast_rows)
+    all_fast = all(r["all_blocks_float_fast"] for r in fast_rows)
+    worst_gain = min(float(r["ratio_gain_vs_disabled"]) for r in float_rows)
+    row = lambda wid, profile="balanced": lib.find_row(data.float, workload_id=wid, profile=profile)  # noqa: E731
+    ratio = lambda r: r["input_bytes"] / max(r["compressed_bytes"], 1)  # noqa: E731
+    sparse = row("int-sparse-change")
+    sparse_ablation = lib.find_row(data.float_ablation, workload_id="int-sparse-change")
+    num1_ratio = sparse_ablation["input_bytes"] / max(sparse_ablation["candidate_bytes"]["num1"], 1)
+    estimator = lib.find_row(data.float_estimator, workload_id="summary")["gorilla_estimate"]
+    gates = [
+        threshold("float.false_positive_blocks", "correctness", float(summary["float_route_blocks"]), 0.0, False,
+                  "== 0 Float-route blocks on Corpus V3 + false-positive corpus"),
+        lib.gate("float.corpus_v3_identical", "correctness", lib.PASS if summary["corpus_v3_identical"] else lib.FAIL,
+                 float(bool(summary["corpus_v3_identical"])), 1.0, "Corpus V3 bytes equal with the lane on and off"),
+        threshold("float.fast_fallbacks", "correctness", float(fallbacks), 0.0, False, "== 0 (Corpus V4)"),
+        threshold("float.full_trial_encodes", "correctness", float(full_trials), 0.0, False, "== 0"),
+        threshold("float.fastpath_generic_analysis_ns", "correctness", generic_ns, 0.0, False,
+                  "FloatFast blocks skip generic analysis"),
+        lib.gate("float.fastpath_all_blocks", "correctness", lib.PASS if all_fast else lib.FAIL,
+                 float(all_fast), 1.0, "every f64-constant / f64-step block is FloatFast"),
+        threshold("float.min_ratio_gain_vs_disabled", "float", worst_gain, 1.0, True,
+                  ">= 1.0 (never larger than the 0.4.6 pipeline)"),
+        threshold("float.f64_constant_ratio", "float", ratio(row("f64-constant")), 50.0, True, ">= 50x"),
+        threshold("float.f64_smooth_ratio", "float", ratio(row("f64-smooth")), 2.5, True, ">= 2.5x"),
+        threshold("float.int_sparse_change_ratio", "float", ratio(sparse), 5.0, True, ">= 5x"),
+        threshold("float.int_sparse_change_vs_num1", "float", ratio(sparse) / num1_ratio, 1.5, True,
+                  ">= 1.5x the NUM1 codec ratio"),
+        threshold("float.gorilla_estimate_p95_error", "float", float(estimator["p95_abs_error"]), 0.25, False,
+                  "<= 25% relative error (p95)"),
+    ]
+    smooth = lib.find_row(data.float_ablation, workload_id="f64-smooth")["best_ts1"]
+    gates += [
+        timed_gate("float.gorilla_codec_encode_mb_s", lib.timing(smooth, "encode"),
+                   float(lib.timing(smooth, "encode")["median_mb_s"]), 400.0, True, ">= 400 MB/s", 5.0, "float"),
+        timed_gate("float.gorilla_codec_decode_mb_s", lib.timing(smooth, "decode"),
+                   float(lib.timing(smooth, "decode")["median_mb_s"]), 600.0, True, ">= 600 MB/s", 5.0, "float"),
+    ]
+    step = lib.find_row(data.release, case_id="float_fast.f64_step")
+    gates.append(timed_gate("float.fast_encode_speedup_vs_disabled", lib.timing(step, "compression"),
+                            float(step["encode_speedup_vs_disabled"]), 5.0, True,
+                            ">= 5x the disabled lane (same run)", 3.0, "float"))
+    return gates
+
+
 def timed_gate(name: str, timing_obj: Row, measured: float, required: float, higher: bool,
-               rule: str, limit: float) -> Row:
+               rule: str, limit: float, section: str = "performance") -> Row:
     """Absolute performance gate on a Harness V3 measurement (unstable beats pass/fail)."""
     mad = lib.batch_mad_percent(timing_obj)
     if mad is None:
@@ -139,7 +199,7 @@ def timed_gate(name: str, timing_obj: Row, measured: float, required: float, hig
         status = lib.UNSTABLE
     else:
         status = lib.threshold_status(measured, required, higher)
-    return lib.gate(name, "performance", status, measured, required, rule,
+    return lib.gate(name, section, status, measured, required, rule,
                     method="absolute", batch_mad_percent=mad, cv_percent=timing_obj.get("cv_percent"))
 
 
@@ -223,7 +283,8 @@ def main(argv: list[str]) -> int:
     external = dict(item.split("=", 1) for item in args.external)
     data = Inputs(args.results, args.baselines)
     ab = lib.load_doc(args.ab) if args.ab else None
-    gates = (correctness_gates(data, external) + quality_gates(data) + performance_gates(data, ab)
+    gates = (correctness_gates(data, external) + quality_gates(data) + float_gates(data)
+             + performance_gates(data, ab)
              + stability_gates(data) + environment_rows(data))
     status = lib.overall_status(gates)
     doc = {
