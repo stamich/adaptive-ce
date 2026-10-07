@@ -6,7 +6,7 @@ Rows are matched by ``case_id`` or ``(workload_id, path)``. Top-level numeric fi
 different methodologies (2.0 single median vs 2.1 median-of-medians) or different machines,
 a warning is printed: such deltas are diagnostics, not gates.
 
-usage: ace-benchmark_compare0.4.6.py OLD.json NEW.json
+usage: ace-benchmark_compare0.5.0.py OLD.json NEW.json
 """
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from typing import Any
 
 
 def _benchlib():
-    """Load the shared ``ace-benchlib0.4.6.py`` module that sits next to this script."""
-    path = pathlib.Path(__file__).with_name("ace-benchlib0.4.6.py")
+    """Load the shared ``ace-benchlib0.5.0.py`` module that sits next to this script."""
+    path = pathlib.Path(__file__).with_name("ace-benchlib0.5.0.py")
     spec = importlib.util.spec_from_file_location("ace_benchlib", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

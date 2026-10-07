@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Compare ACE benchmark results of any two milestones (schema 2.0 / 2.1).
 #
-#   ./ace-benchmark-compare0.4.6.sh OLD.json NEW.json
-#   ./ace-benchmark-compare0.4.6.sh OLD_DIR NEW_DIR     every family present in both
+#   ./ace-benchmark-compare0.5.0.sh OLD.json NEW.json
+#   ./ace-benchmark-compare0.5.0.sh OLD_DIR NEW_DIR     every family present in both
 #
 # Cross-machine or cross-methodology deltas are diagnostics only; release decisions use
-# the interleaved A/B (ace-ab0.4.6.sh).
+# the interleaved A/B (ace-ab0.5.0.sh).
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.4.6.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.5.0.sh"
 
 (( $# == 2 )) || ace_die "usage: $0 OLD NEW (files or result directories)"
-compare=(python3 "$ACE_ROOT/tools/ace-benchmark_compare0.4.6.py")
+compare=(python3 "$ACE_ROOT/tools/ace-benchmark_compare0.5.0.py")
 
 if [[ -f "$1" && -f "$2" ]]; then
   "${compare[@]}" "$1" "$2"

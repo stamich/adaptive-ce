@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Interleaved A/B performance comparison of ACE 0.4.6 against a baseline source tree.
+"""Interleaved A/B performance comparison of ACE 0.5.0 against a baseline source tree.
 
-Both trees get the same probe (``tools/ace-abprobe0.4.6``) compiled against their own
+Both trees get the same probe (``tools/ace-abprobe0.5.0``) compiled against their own
 engine crates with identical release settings. For every case the driver runs
 ``batches`` probe processes per side, alternating which side goes first, so machine drift
 (temperature, governor, background load) affects both sides equally.
@@ -16,7 +16,7 @@ Per case:
 * ``fail`` when ``speed_ratio < required`` *and* ``ratio_upper < required + margin``;
 * otherwise ``pass``.
 
-usage: ace-ab0.4.6.py --baseline-tree DIR [--candidate-tree DIR] [--quick]
+usage: ace-ab0.5.0.py --baseline-tree DIR [--candidate-tree DIR] [--quick]
                       [--cases ID,...] [--output FILE]
 """
 from __future__ import annotations
@@ -35,8 +35,8 @@ from dataclasses import dataclass
 
 
 def _benchlib():
-    """Load the shared ``ace-benchlib0.4.6.py`` module that sits next to this script."""
-    path = pathlib.Path(__file__).with_name("ace-benchlib0.4.6.py")
+    """Load the shared ``ace-benchlib0.5.0.py`` module that sits next to this script."""
+    path = pathlib.Path(__file__).with_name("ace-benchlib0.5.0.py")
     spec = importlib.util.spec_from_file_location("ace_benchlib", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -46,7 +46,7 @@ def _benchlib():
 lib = _benchlib()
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-PROBE_SOURCE = REPO / "tools" / "ace-abprobe0.4.6" / "src" / "main.rs"
+PROBE_SOURCE = REPO / "tools" / "ace-abprobe0.5.0" / "src" / "main.rs"
 #: Noise margin added to the required ratio for the per-batch upper bound.
 UPPER_MARGIN = 0.02
 
@@ -78,7 +78,7 @@ CASES = [
 
 PROBE_MANIFEST = """[package]
 name = "ace-abprobe"
-version = "0.4.6"
+version = "0.5.0"
 edition = "2021"
 publish = false
 

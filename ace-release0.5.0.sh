@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# ACE 0.4.6 release pipeline (acceptance matrix of docs/RELEASE-CHECKLIST-0.4.6.md).
+# ACE 0.5.0 release pipeline (acceptance matrix of docs/RELEASE-CHECKLIST-0.5.0.md).
 #
-#   ./ace-release0.4.6.sh <baseline-source-tree> [--quick]
+#   ./ace-release0.5.0.sh <baseline-source-tree> [--quick]
 #
 #   build/fmt/clippy/doc -> code audit -> release tests (proptest budget, ignored large files)
 #   -> golden (auto + scalar) -> process determinism -> benchmarks -> interleaved A/B
@@ -9,9 +9,9 @@
 #   -> deterministic package (x2) -> test from the archive
 #
 # --quick runs the same pipeline with smoke-sized measurements; its verdict is never a release.
-# The filled checklist is written to examples/results/release-checklist-0.4.6.md.
+# The filled checklist is written to examples/results/release-checklist-0.5.0.md.
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.4.6.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.5.0.sh"
 cd "$ACE_ROOT"
 
 (( $# >= 1 )) || ace_die "usage: $0 <baseline-source-tree> [--quick]"
@@ -24,12 +24,12 @@ checklist=()
 record() { checklist+=("| $1 | $2 | $3 |"); ace_log "$1: $2"; }
 
 ace_step "1/11 build, fmt, clippy, rustdoc"
-./ace-build0.4.6.sh --no-demo
-record "Build / fmt / clippy / doc" PASS "ace-build0.4.6.sh"
+./ace-build0.5.0.sh --no-demo
+record "Build / fmt / clippy / doc" PASS "ace-build0.5.0.sh"
 
 ace_step "2/11 code audit (unsafe placement, panic policy)"
-python3 tools/ace-code_audit0.4.6.py
-record "Unsafe / panic audit" PASS "tools/ace-code_audit0.4.6.py"
+python3 tools/ace-code_audit0.5.0.py
+record "Unsafe / panic audit" PASS "tools/ace-code_audit0.5.0.py"
 
 ace_step "3/11 release tests (proptest budget ${ACE_PROPTEST_CASES:-10000}) + ignored large-file tests"
 PROPTEST_CASES="${ACE_PROPTEST_CASES:-10000}" cargo test --release --workspace
@@ -63,21 +63,21 @@ externals=(--external golden_sha256=pass --external determinism_matrix=pass
 ab_json="$ACE_RESULTS/ab-${ACE_VERSION}-vs-${ACE_BASELINE}.json"
 
 ace_step "6/11 benchmarks (Harness V3)"
-./ace-benchmark0.4.6.sh all "${bench_flags[@]}" || true
+./ace-benchmark0.5.0.sh all "${bench_flags[@]}" || true
 
 ace_step "7/11 interleaved A/B vs $ACE_BASELINE + Regression V3"
 status=1
 for attempt in 1 2 3; do
-  ./ace-ab0.4.6.sh "$baseline_tree" "${ab_flags[@]}" || true
+  ./ace-ab0.5.0.sh "$baseline_tree" "${ab_flags[@]}" || true
   set +e
-  python3 tools/ace-check_regressions0.4.6.py --results "$ACE_RESULTS" --baselines examples/baselines \
+  python3 tools/ace-check_regressions0.5.0.py --results "$ACE_RESULTS" --baselines examples/baselines \
     --ab "$ab_json" "${externals[@]}" > "$work/regression.log"
   status=$?
   set -e
   tail -n +1 "$work/regression.log" | head -n 1
   (( status == 3 )) || break
   ace_log "measurement UNSTABLE (attempt $attempt/3): re-running release-performance"
-  ./ace-benchmark0.4.6.sh release-performance "${bench_flags[@]}"
+  ./ace-benchmark0.5.0.sh release-performance "${bench_flags[@]}"
 done
 cat "$work/regression.log"
 case "$status" in
@@ -90,18 +90,18 @@ esac
 ace_step "8/11 performance report"
 report="docs/PERFORMANCE-${ACE_VERSION}.md"
 (( quick )) && report="$ACE_RESULTS/PERFORMANCE-${ACE_VERSION}-quick.md"   # never overwrite docs
-python3 tools/ace-benchmark_report0.4.6.py --markdown "$report" \
+python3 tools/ace-benchmark_report0.5.0.py --markdown "$report" \
   --results "$ACE_RESULTS" --ab "$ab_json" \
   --regression "$ACE_RESULTS/benchmark-${ACE_VERSION}-regression.json"
 record "Performance report" PASS "$report"
 
 ace_step "9/11 demo"
-./demo/ace-run-demo0.4.6.sh
-record "Demo" PASS "demo/ace-run-demo0.4.6.sh"
+./demo/ace-run-demo0.5.0.sh
+record "Demo" PASS "demo/ace-run-demo0.5.0.sh"
 
 ace_step "10/11 deterministic package"
-python3 tools/ace-package0.4.6.py --verify-reproducible --output "$work/package"
-record "Reproducible package + name audit" PASS "tools/ace-package0.4.6.py"
+python3 tools/ace-package0.5.0.py --verify-reproducible --output "$work/package"
+record "Reproducible package + name audit" PASS "tools/ace-package0.5.0.py"
 
 ace_step "11/11 test from the archive"
 rm -rf "$work/unpacked" && mkdir -p "$work/unpacked"
@@ -116,7 +116,7 @@ python3 -c "import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.arg
 record "Tested from archive" PASS "unpacked ACE-${ACE_VERSION}.zip"
 
 {
-  echo "# ACE ${ACE_VERSION} — release checklist (filled by ace-release0.4.6.sh)"
+  echo "# ACE ${ACE_VERSION} — release checklist (filled by ace-release0.5.0.sh)"
   echo
   echo "Mode: $([[ $quick == 1 ]] && echo 'QUICK (not a release)' || echo release)"
   echo

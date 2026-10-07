@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# Vendor-neutral CI entry point for ACE 0.4.6.
+# Vendor-neutral CI entry point for ACE 0.5.0.
 #
-#   ./ace-ci0.4.6.sh pr        build gates + code audit + quick release-performance + demo
-#   ./ace-ci0.4.6.sh release   full ace-release0.4.6.sh (needs ACE_AB_BASELINE_TREE)
-#   ./ace-ci0.4.6.sh fuzz      all 12 fuzz targets, ACE_FUZZ_SECONDS each (default 60)
-#   ./ace-ci0.4.6.sh msrv      check + test with Rust 1.97 (SKIPPED when not installed)
+#   ./ace-ci0.5.0.sh pr        build gates + code audit + quick release-performance + demo
+#   ./ace-ci0.5.0.sh release   full ace-release0.5.0.sh (needs ACE_AB_BASELINE_TREE)
+#   ./ace-ci0.5.0.sh fuzz      all 12 fuzz targets, ACE_FUZZ_SECONDS each (default 60)
+#   ./ace-ci0.5.0.sh msrv      check + test with Rust 1.97 (SKIPPED when not installed)
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.4.6.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.5.0.sh"
 cd "$ACE_ROOT"
 
 case "${1:-}" in
   pr)
-    ./ace-build0.4.6.sh --no-demo
-    python3 tools/ace-code_audit0.4.6.py
-    ./ace-benchmark0.4.6.sh release-performance --quick
-    ./demo/ace-run-demo0.4.6.sh
+    ./ace-build0.5.0.sh --no-demo
+    python3 tools/ace-code_audit0.5.0.py
+    ./ace-benchmark0.5.0.sh release-performance --quick
+    ./demo/ace-run-demo0.5.0.sh
     ;;
   release)
     [[ -n "${ACE_AB_BASELINE_TREE:-}" ]] || ace_die "set ACE_AB_BASELINE_TREE to the $ACE_BASELINE source tree"
-    ./ace-release0.4.6.sh "$ACE_AB_BASELINE_TREE"
+    ./ace-release0.5.0.sh "$ACE_AB_BASELINE_TREE"
     ;;
   fuzz)
     if ! cargo +nightly fuzz --version >/dev/null 2>&1; then

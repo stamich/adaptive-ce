@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Deterministic release packaging of ACE 0.4.6.
+"""Deterministic release packaging of ACE 0.5.0.
 
 * collects the source tree minus build/output artefacts (``EXCLUDED_*``);
-* audits script names (``ace-`` prefix + ``0.4.6``) and fails on stale versioned files;
-* writes ``ACE-0.4.6/MANIFEST.txt`` and ``ACE-0.4.6/SHA256SUMS`` into the archive;
+* audits script names (``ace-`` prefix + ``0.5.0``) and fails on stale versioned files;
+* writes ``ACE-0.5.0/MANIFEST.txt`` and ``ACE-0.5.0/SHA256SUMS`` into the archive;
 * creates a ZIP with sorted entries, fixed timestamps (1980-01-01), 0644/0755 modes and no
   user metadata, so two runs produce the same SHA-256 (``--verify-reproducible`` checks it).
 
-usage: ace-package0.4.6.py [--output DIR] [--verify-reproducible]
+usage: ace-package0.5.0.py [--output DIR] [--verify-reproducible]
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ import re
 import sys
 import zipfile
 
-VERSION = "0.4.6"
+VERSION = "0.5.0"
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PREFIX = f"ACE-{VERSION}"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
@@ -35,7 +35,7 @@ EXCLUDED_RESULTS = re.compile(r"^examples/results/(?!README\.md$)")
 #: Scripts and tools must carry the product prefix and version in their names.
 NAMED_GLOBS = ("*.sh", "demo/*.sh", "tools/*.py", "tools/*.sh")
 #: Versioned files of an older milestone must not survive in the tree.
-STALE = re.compile(r"(0\.4\.5-buildfix\d|0\.4-buildfix\d)")
+STALE = re.compile(r"(0\.4\.\d|0\.4-buildfix\d)")
 
 
 def is_excluded(relative: pathlib.PurePosixPath) -> bool:

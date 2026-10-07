@@ -5,7 +5,7 @@ Schema 2.0 checks the version-independent contract (identity fields, result file
 environment keys). Schema 2.1 additionally requires the ``benchmark_methodology`` block and a
 complete ``stable_timing`` object next to every timing object (any dict with ``median_ns``).
 
-usage: ace-validate_benchmark_json0.4.6.py FILE...
+usage: ace-validate_benchmark_json0.5.0.py FILE...
 """
 from __future__ import annotations
 

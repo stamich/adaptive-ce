@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ACE 0.4.6 Regression V3: release gates with Pass / Fail / Unstable / Skipped statuses.
+"""ACE 0.5.0 Regression V3: release gates with Pass / Fail / Unstable / Skipped statuses.
 
 Sections:
 
@@ -11,11 +11,11 @@ Sections:
   the interleaved A/B document (``--ab``); without it relative gates are ``skipped``;
 * ``stability``   -- batch MAD of every ``release-performance`` measurement;
 * ``environment`` -- diagnostics only (fingerprint warnings, machine-speed drift vs the
-  stored 0.4.5-buildfix2 lz4/zstd numbers, stored-baseline comparison).
+  stored baseline lz4/zstd numbers, stored-baseline comparison).
 
 Exit codes: 0 pass, 1 fail, 3 unstable (release script retries), 4 incomplete.
 
-usage: ace-check_regressions0.4.6.py --results DIR [--baselines DIR] [--ab FILE]
+usage: ace-check_regressions0.5.0.py --results DIR [--baselines DIR] [--ab FILE]
                                      [--external NAME=STATUS ...] [--output FILE]
 """
 from __future__ import annotations
@@ -29,8 +29,8 @@ from typing import Any
 
 
 def _benchlib():
-    """Load the shared ``ace-benchlib0.4.6.py`` module that sits next to this script."""
-    path = pathlib.Path(__file__).with_name("ace-benchlib0.4.6.py")
+    """Load the shared ``ace-benchlib0.5.0.py`` module that sits next to this script."""
+    path = pathlib.Path(__file__).with_name("ace-benchlib0.5.0.py")
     spec = importlib.util.spec_from_file_location("ace_benchlib", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -44,17 +44,15 @@ Row = dict[str, Any]
 STABILITY_LIMITS = {"compression": 3.0, "decompression": 5.0, "timing": 5.0}
 #: Relative machine-speed drift (lz4/zstd vs stored baseline) that triggers a warning.
 MACHINE_DRIFT_LIMIT = 0.08
-#: Reference values of 0.4.5-buildfix2 on the i7-9850H reference machine (diagnostics).
-STORED_REFERENCE = {
-    "compression.fast": 224.5, "compression.balanced": 135.2, "compression.dense": 93.7,
-}
+#: release-performance cases compared with the stored baseline run (diagnostics only).
+STORED_REFERENCE_CASES = ("compression.fast", "compression.balanced", "compression.dense")
 
 
 class Inputs:
     """All benchmark documents the gates read."""
 
     def __init__(self, results: pathlib.Path, baselines: pathlib.Path) -> None:
-        """Load the 0.4.6 results and the stored baselines."""
+        """Load the 0.5.0 results and the stored baselines."""
         def ours(family: str) -> Row:
             return lib.load_doc(lib.result_file(results, lib.MILESTONE, family))
 
@@ -68,6 +66,7 @@ class Inputs:
         self.quality_compression = lib.load_doc(legacy / "benchmark-0.2.1-buildfix1-compression.json")
         stored = baselines / lib.BASELINE
         self.stored_compression = lib.load_doc(lib.result_file(stored, lib.BASELINE, "compression"))
+        self.stored_release = lib.load_doc(lib.result_file(stored, lib.BASELINE, "release-performance"))
 
 
 def threshold(name: str, section: str, measured: float, required: float, higher: bool, rule: str) -> Row:
@@ -94,7 +93,7 @@ def correctness_gates(data: Inputs, external: dict[str, str]) -> list[Row]:
     for name in ("golden_sha256", "determinism_matrix", "format_readers", "malformed_matrix"):
         status = external.get(name, lib.SKIPPED)
         gates.append(lib.gate(f"external.{name}", "correctness", status, None, None,
-                              "checked by ace-release0.4.6.sh / cargo test"))
+                              "checked by ace-release0.5.0.sh / cargo test"))
     for name, status in sorted(external.items()):
         if name not in ("golden_sha256", "determinism_matrix", "format_readers", "malformed_matrix"):
             gates.append(lib.gate(f"external.{name}", "correctness", status, None, None, "external check"))
@@ -157,7 +156,7 @@ def performance_gates(data: Inputs, ab: Row | None) -> list[Row]:
     ]
     if ab is None:
         gates.append(lib.gate("ab.relative_performance", "performance", lib.SKIPPED, None, 0.95,
-                              ">= 95% of 0.4.5-buildfix2 (requires --ab)"))
+                              f">= 95% of {lib.BASELINE} (requires --ab)"))
     else:
         quick = bool(ab.get("configuration", {}).get("quick"))
         for row in ab["workloads"]:
@@ -199,10 +198,11 @@ def environment_rows(data: Inputs) -> list[Row]:
         note = "machine speed drift" if abs(drift) > MACHINE_DRIFT_LIMIT else "within 8%"
         rows.append(lib.gate(f"environment.{path}_drift", "environment", lib.DIAGNOSTIC, drift, MACHINE_DRIFT_LIMIT,
                              note, stored_mb_s=then, measured_mb_s=now))
-    for case_id, stored in STORED_REFERENCE.items():
-        measured = float(lib.timing(lib.find_row(data.release, case_id=case_id), "compression")["median_mb_s"])
-        rows.append(lib.gate(f"stored_baseline.{case_id}_mb_s", "environment", lib.DIAGNOSTIC, measured, stored,
-                             "stored 0.4.5-buildfix2 value (other machine/methodology: diagnostic only)"))
+    for case_id in STORED_REFERENCE_CASES:
+        compression = lambda doc: float(lib.timing(lib.find_row(doc, case_id=case_id), "compression")["median_mb_s"])  # noqa: E731
+        rows.append(lib.gate(f"stored_baseline.{case_id}_mb_s", "environment", lib.DIAGNOSTIC,
+                             compression(data.release), compression(data.stored_release),
+                             f"stored {lib.BASELINE} value (other machine/run: diagnostic only)"))
     return rows
 
 
