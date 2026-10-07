@@ -42,7 +42,7 @@ fn counter_bytes() -> impl Strategy<Value = Vec<u8>> {
         let mut bytes: Vec<u8> = (0..count as u64)
             .flat_map(|i| start.wrapping_add(i.wrapping_mul(step)).to_le_bytes())
             .collect();
-        bytes.extend(std::iter::repeat(0xA5).take(tail));
+        bytes.extend(std::iter::repeat_n(0xA5, tail));
         bytes
     })
 }

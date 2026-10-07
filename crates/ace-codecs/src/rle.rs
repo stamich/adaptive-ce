@@ -56,7 +56,7 @@ pub fn rle_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
                 .get(i)
                 .ok_or(AceError::Malformed("truncated RLE run"))?;
             i += 1;
-            out.extend(std::iter::repeat(value).take(len));
+            out.extend(std::iter::repeat_n(value, len));
         } else {
             let end = i
                 .checked_add(len)

@@ -83,7 +83,7 @@ mod tests {
         let mut data = Vec::new();
         let (mut a, mut b) = (1usize, 1usize);
         for symbol in 0..20u8 {
-            data.extend(std::iter::repeat(symbol).take(a));
+            data.extend(std::iter::repeat_n(symbol, a));
             (a, b) = (b, a + b);
         }
         let (metadata, payload) = huffman_encode(&data).unwrap();

@@ -164,7 +164,7 @@ mod tests {
     fn slot_table_matches_reference_scan() {
         let mut data = vec![b'a'; 5_000];
         data.extend((0u8..=255).cycle().take(3_000));
-        data.extend(std::iter::repeat(b'z').take(77));
+        data.extend(std::iter::repeat_n(b'z', 77));
         for input in [data, vec![9u8; 100], vec![1u8, 2]] {
             let model = NormalizedFrequencyTable::from_input(&input).unwrap();
             let table = model.slot_lookup_table();

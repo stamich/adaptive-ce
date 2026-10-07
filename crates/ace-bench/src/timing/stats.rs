@@ -132,7 +132,7 @@ pub(crate) fn median(values: &[f64]) -> f64 {
     }
     let ordered = sorted(values);
     let mid = ordered.len() / 2;
-    if ordered.len() % 2 == 0 {
+    if ordered.len().is_multiple_of(2) {
         (ordered[mid - 1] + ordered[mid]) / 2.0
     } else {
         ordered[mid]
