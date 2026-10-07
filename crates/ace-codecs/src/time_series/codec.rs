@@ -141,6 +141,14 @@ pub fn ts1_encoded_len(input: &[u8], layout: TimeSeriesLayout) -> AceResult<usiz
     Ok(TIME_SERIES_HEADER_SIZE + info.stream_bytes() + info.tail_len)
 }
 
+/// Exact number of stream bits `ts1_encode_with(input, layout)` would write (header and tail
+/// excluded); used by the planner's sample estimator, which needs sub-byte precision.
+pub fn ts1_stream_bits(input: &[u8], layout: TimeSeriesLayout) -> AceResult<u64> {
+    let mut counter = BitCounter::default();
+    encode_stream(input, layout, &mut counter);
+    payload_info(input, layout, counter.bits).map(|info| info.stream_bits)
+}
+
 /// Encodes `input` with the smallest of the given layouts (ties: earlier layout wins).
 pub fn ts1_encode_best(input: &[u8], layouts: &[TimeSeriesLayout]) -> AceResult<Vec<u8>> {
     let mut best: Option<(usize, TimeSeriesLayout)> = None;

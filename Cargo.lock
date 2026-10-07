@@ -82,6 +82,8 @@ version = "0.5.0"
 name = "ace-cost"
 version = "0.5.0"
 dependencies = [
+ "ace-analysis",
+ "ace-codecs",
  "ace-core",
 ]
 
