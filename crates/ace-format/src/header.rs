@@ -250,6 +250,17 @@ pub fn decode_block_header(
             minor: minor_version,
         });
     }
+    // A TS1 payload is a complete bitstream: Format 1.4 defines it without transforms, entropy
+    // stage or dictionary, so any of them is rejected rather than given ad-hoc semantics.
+    if matches!(codec, CodecId::TimeSeries)
+        && (!transforms.is_empty()
+            || !matches!(entropy, EntropyCodecId::None)
+            || dictionary.is_some())
+    {
+        return Err(AceError::Malformed(
+            "TS1 block with transforms, entropy stage or dictionary",
+        ));
+    }
     Ok(BlockHeader {
         block_id: u64::from_le_bytes(
             fixed[0..8]
