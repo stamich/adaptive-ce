@@ -52,6 +52,10 @@ const FAMILIES: &[(&str, FamilyFn)] = &[
     ("planner-hotpath", planner_hotpath_family),
     ("random-access-plan-diff", random_access_plan_diff_family),
     ("float-ablation", float_ablation_family),
+    ("float", float_family),
+    ("float-fastpath", float_fastpath_family),
+    ("float-false-positive", float_false_positive_family),
+    ("float-estimator", float_estimator_family),
 ];
 
 /// Resolves the command-line selection into the families to run.
