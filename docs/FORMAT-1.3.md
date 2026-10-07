@@ -27,3 +27,9 @@ Reader compatibility:
 
 A Numeric codec block under a file version <1.3 is rejected as unsupported. This prevents an old
 container version from silently acquiring new decoder semantics.
+
+## Addendum (ACE 0.4.5): NUM1 lane width 2
+
+The NUM1 lane-width byte accepts `2` (u16), in addition to `4` and `8`. The container version and
+all headers are unchanged. Readers older than 0.4.5 reject such a block as a malformed numeric
+header; 0.4.5 reads every file produced by earlier 1.3 writers.

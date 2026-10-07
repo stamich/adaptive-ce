@@ -1,0 +1,298 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4-buildfix4",
+  "base": "0.4-buildfix3-buildfix1",
+  "scope": "numeric-ablation",
+  "benchmark_contract_origin": "ace-0.4-buildfix4",
+  "generated_at_utc_epoch_seconds": 1791222940,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33422209024,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "compressed_bytes": 6063728,
+      "compression": {
+        "cv_percent": 1.7909155068678766,
+        "max_ns": 351276497,
+        "mean_ns": 339081373.14285713,
+        "median_mb_s": 23.681532526695932,
+        "median_ns": 337815975.0,
+        "min_ns": 332950314,
+        "p95_ns": 351276497.0,
+        "p99_ns": 351276497.0,
+        "runs": 7,
+        "samples_ns": [
+          337815975,
+          335095753,
+          333673529,
+          338682267,
+          332950314,
+          351276497,
+          344075277
+        ],
+        "stddev_ns": 6072660.892515956,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 1.3834076990260777,
+      "input_bytes": 8388608,
+      "path": "generic-0.3.1-path",
+      "workload_id": "u32-counter"
+    },
+    {
+      "compressed_bytes": 40,
+      "compression": {
+        "cv_percent": 1.85674073995958,
+        "max_ns": 32943335,
+        "mean_ns": 31721771.14285714,
+        "median_mb_s": 253.62118746327644,
+        "median_ns": 31543106.0,
+        "min_ns": 31108058,
+        "p95_ns": 32943335.0,
+        "p99_ns": 32943335.0,
+        "runs": 7,
+        "samples_ns": [
+          31842213,
+          31449351,
+          31108058,
+          32030632,
+          31543106,
+          31135703,
+          32943335
+        ],
+        "stddev_ns": 588991.0482461703,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 209715.2,
+      "input_bytes": 8388608,
+      "path": "direct-numeric-codec",
+      "workload_id": "u32-counter"
+    },
+    {
+      "compressed_bytes": 3656,
+      "compression": {
+        "cv_percent": 3.367925423035388,
+        "max_ns": 3022295,
+        "mean_ns": 2820230.714285714,
+        "median_mb_s": 2889.7297199671293,
+        "median_ns": 2768425.0,
+        "min_ns": 2736095,
+        "p95_ns": 3022295.0,
+        "p99_ns": 3022295.0,
+        "runs": 7,
+        "samples_ns": [
+          3022295,
+          2751049,
+          2736095,
+          2822683,
+          2768425,
+          2882855,
+          2758213
+        ],
+        "stddev_ns": 94983.26721468108,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2294.477024070022,
+      "input_bytes": 8388608,
+      "path": "planner-v4",
+      "workload_id": "u32-counter"
+    },
+    {
+      "compressed_bytes": 3896686,
+      "compression": {
+        "cv_percent": 1.079689445883333,
+        "max_ns": 287274208,
+        "mean_ns": 281582535.85714287,
+        "median_mb_s": 28.40991314201743,
+        "median_ns": 281591850.0,
+        "min_ns": 277067336,
+        "p95_ns": 287274208.0,
+        "p99_ns": 287274208.0,
+        "runs": 7,
+        "samples_ns": [
+          281826206,
+          281591850,
+          279716850,
+          277067336,
+          283835703,
+          287274208,
+          279765598
+        ],
+        "stddev_ns": 3040216.9211002234,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2.152754417471667,
+      "input_bytes": 8388608,
+      "path": "generic-0.3.1-path",
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "compressed_bytes": 262184,
+      "compression": {
+        "cv_percent": 17.06827285754659,
+        "max_ns": 52530608,
+        "mean_ns": 38174741.14285714,
+        "median_mb_s": 227.15154966478394,
+        "median_ns": 35218778.0,
+        "min_ns": 33265793,
+        "p95_ns": 52530608.0,
+        "p99_ns": 52530608.0,
+        "runs": 7,
+        "samples_ns": [
+          33373873,
+          36304067,
+          34284064,
+          35218778,
+          33265793,
+          42246005,
+          52530608
+        ],
+        "stddev_ns": 6515768.980924956,
+        "unstable_measurement": true,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 31.99511793244439,
+      "input_bytes": 8388608,
+      "path": "direct-numeric-codec",
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "compressed_bytes": 265800,
+      "compression": {
+        "cv_percent": 4.12643447596783,
+        "max_ns": 70212162,
+        "mean_ns": 65362109.14285714,
+        "median_mb_s": 123.2861510555244,
+        "median_ns": 64889689.0,
+        "min_ns": 62222127,
+        "p95_ns": 70212162.0,
+        "p99_ns": 70212162.0,
+        "runs": 7,
+        "samples_ns": [
+          64889689,
+          63369905,
+          70212162,
+          63446717,
+          64948686,
+          68445478,
+          62222127
+        ],
+        "stddev_ns": 2697124.605890578,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 31.55984951091046,
+      "input_bytes": 8388608,
+      "path": "planner-v4",
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "compressed_bytes": 6456376,
+      "compression": {
+        "cv_percent": 1.0018999161686033,
+        "max_ns": 345028536,
+        "mean_ns": 338472810.5714286,
+        "median_mb_s": 23.71881817798247,
+        "median_ns": 337284933.0,
+        "min_ns": 335204562,
+        "p95_ns": 345028536.0,
+        "p99_ns": 345028536.0,
+        "runs": 7,
+        "samples_ns": [
+          335204562,
+          337284933,
+          335314505,
+          345028536,
+          336329214,
+          341766947,
+          338380977
+        ],
+        "stddev_ns": 3391158.8053686586,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 1.2992750112446982,
+      "input_bytes": 8388608,
+      "path": "generic-0.3.1-path",
+      "workload_id": "delta-variable"
+    },
+    {
+      "compressed_bytes": 1310759,
+      "compression": {
+        "cv_percent": 2.680387880321751,
+        "max_ns": 46591748,
+        "mean_ns": 43935703.571428575,
+        "median_mb_s": 183.88201082058288,
+        "median_ns": 43506159.0,
+        "min_ns": 42814747,
+        "p95_ns": 46591748.0,
+        "p99_ns": 46591748.0,
+        "runs": 7,
+        "samples_ns": [
+          43335253,
+          44253013,
+          43978897,
+          43070108,
+          46591748,
+          43506159,
+          42814747
+        ],
+        "stddev_ns": 1177647.2736626624,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 6.399809575978498,
+      "input_bytes": 8388608,
+      "path": "direct-numeric-codec",
+      "workload_id": "delta-variable"
+    },
+    {
+      "compressed_bytes": 1314344,
+      "compression": {
+        "cv_percent": 0.792081029451329,
+        "max_ns": 73825034,
+        "mean_ns": 72952651.28571428,
+        "median_mb_s": 109.35248470784099,
+        "median_ns": 73157917.0,
+        "min_ns": 71908133,
+        "p95_ns": 73825034.0,
+        "p99_ns": 73825034.0,
+        "runs": 7,
+        "samples_ns": [
+          73825034,
+          71908133,
+          73308008,
+          73159669,
+          72435041,
+          73157917,
+          72874757
+        ],
+        "stddev_ns": 577844.1113159239,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 6.382353478237052,
+      "input_bytes": 8388608,
+      "path": "planner-v4",
+      "workload_id": "delta-variable"
+    }
+  ]
+}

@@ -1,0 +1,368 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4-buildfix2",
+  "base": "0.4-buildfix1",
+  "scope": "numeric",
+  "benchmark_contract_origin": "ace-0.4-buildfix2",
+  "generated_at_utc_epoch_seconds": 1789627918,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33422217216,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "compressed_bytes": 7240,
+      "compression": {
+        "cv_percent": 0.831927438035501,
+        "max_ns": 45019635,
+        "mean_ns": 44533422.571428575,
+        "median_mb_s": 361.0375904441473,
+        "median_ns": 44316715.0,
+        "min_ns": 44023761,
+        "p95_ns": 45019635.0,
+        "p99_ns": 45019635.0,
+        "runs": 7,
+        "samples_ns": [
+          44297390,
+          44316715,
+          44263482,
+          44833125,
+          44023761,
+          44979850,
+          45019635
+        ],
+        "stddev_ns": 370485.7614680092,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2317.2950276243096,
+      "decompression": {
+        "cv_percent": 18.803046195056883,
+        "max_ns": 11093505,
+        "mean_ns": 7609209.714285715,
+        "median_mb_s": 2291.447487327579,
+        "median_ns": 6982486.0,
+        "min_ns": 6884807,
+        "p95_ns": 11093505.0,
+        "p99_ns": 11093505.0,
+        "runs": 7,
+        "samples_ns": [
+          7140302,
+          11093505,
+          7346674,
+          6924341,
+          6982486,
+          6892353,
+          6884807
+        ],
+        "stddev_ns": 1430763.2176558988,
+        "unstable_measurement": true,
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U32/DeltaOfDelta/0b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 3,
+        "detected": true,
+        "dod_bit_width_p95": 0,
+        "dod_zero_ratio": 1.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "u32-counter"
+    },
+    {
+      "compressed_bytes": 531528,
+      "compression": {
+        "cv_percent": 1.3402904102440591,
+        "max_ns": 355732943,
+        "mean_ns": 345338521.5714286,
+        "median_mb_s": 46.61054333869586,
+        "median_ns": 343269974.0,
+        "min_ns": 341223471,
+        "p95_ns": 355732943.0,
+        "p99_ns": 355732943.0,
+        "runs": 7,
+        "samples_ns": [
+          355732943,
+          344204552,
+          343269974,
+          343164019,
+          341223471,
+          347559950,
+          342214742
+        ],
+        "stddev_ns": 4628539.087500469,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 31.564124561641155,
+      "decompression": {
+        "cv_percent": 7.685484103984903,
+        "max_ns": 23113129,
+        "mean_ns": 19462658.285714287,
+        "median_mb_s": 845.6466086161981,
+        "median_ns": 18920433.0,
+        "min_ns": 18661925,
+        "p95_ns": 23113129.0,
+        "p99_ns": 23113129.0,
+        "runs": 7,
+        "samples_ns": [
+          18891323,
+          23113129,
+          18920433,
+          18999842,
+          18983217,
+          18668739,
+          18661925
+        ],
+        "stddev_ns": 1495799.5087614723,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U64/DeltaOfDelta/2b",
+      "numeric_profile": {
+        "confidence": 0.9000000357627869,
+        "delta_bit_width_p95": 11,
+        "detected": true,
+        "dod_bit_width_p95": 2,
+        "dod_zero_ratio": 0.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U64)"
+      },
+      "path": "planner_v4",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "compressed_bytes": 6298696,
+      "compression": {
+        "cv_percent": 0.5839361585008821,
+        "max_ns": 183578649,
+        "mean_ns": 181648382.0,
+        "median_mb_s": 88.20328670143171,
+        "median_ns": 181399136.0,
+        "min_ns": 179878229,
+        "p95_ns": 183578649.0,
+        "p99_ns": 183578649.0,
+        "runs": 7,
+        "samples_ns": [
+          181258509,
+          182252908,
+          179878229,
+          181399136,
+          183578649,
+          182048721,
+          181122522
+        ],
+        "stddev_ns": 1060710.5838298078,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2.6636014819575355,
+      "decompression": {
+        "cv_percent": 2.5939956357497818,
+        "max_ns": 67957918,
+        "mean_ns": 64086418.428571425,
+        "median_mb_s": 253.0576921401024,
+        "median_ns": 63226689.0,
+        "min_ns": 62943847,
+        "p95_ns": 67957918.0,
+        "p99_ns": 67957918.0,
+        "runs": 7,
+        "samples_ns": [
+          62943847,
+          67957918,
+          63226159,
+          63226689,
+          64622510,
+          63100740,
+          63527066
+        ],
+        "stddev_ns": 1662398.8971454867,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U32/FrameOfReference/12b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 2,
+        "detected": true,
+        "dod_bit_width_p95": 0,
+        "dod_zero_ratio": 1.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "gauge-sawtooth"
+    },
+    {
+      "compressed_bytes": 9444168,
+      "compression": {
+        "cv_percent": 2.245253037506112,
+        "max_ns": 97594448,
+        "mean_ns": 93474122.28571428,
+        "median_mb_s": 172.83173487922966,
+        "median_ns": 92575591.0,
+        "min_ns": 91269696,
+        "p95_ns": 97594448.0,
+        "p99_ns": 97594448.0,
+        "runs": 7,
+        "samples_ns": [
+          91644672,
+          91269696,
+          95159910,
+          93936798,
+          92137741,
+          92575591,
+          97594448
+        ],
+        "stddev_ns": 2098730.5699021774,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 1.7764631040023855,
+      "decompression": {
+        "cv_percent": 1.7160488255304018,
+        "max_ns": 96124058,
+        "mean_ns": 92682547.28571428,
+        "median_mb_s": 173.5778909847961,
+        "median_ns": 92177638.0,
+        "min_ns": 91247893,
+        "p95_ns": 96124058.0,
+        "p99_ns": 96124058.0,
+        "runs": 7,
+        "samples_ns": [
+          91791734,
+          96124058,
+          93745578,
+          92181008,
+          91247893,
+          91509922,
+          92177638
+        ],
+        "stddev_ns": 1590477.7641681593,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U32/DeltaOfDelta/18b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 2,
+        "detected": true,
+        "dod_bit_width_p95": 0,
+        "dod_zero_ratio": 0.9985344409942627,
+        "exception_ratio": 0.0007326007471419871,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "monotonic-outliers"
+    },
+    {
+      "compressed_bytes": 2628616,
+      "compression": {
+        "cv_percent": 3.472353574959538,
+        "max_ns": 419967685,
+        "mean_ns": 395640670.0,
+        "median_mb_s": 41.00344890772168,
+        "median_ns": 390211078.0,
+        "min_ns": 380347847,
+        "p95_ns": 419967685.0,
+        "p99_ns": 419967685.0,
+        "runs": 7,
+        "samples_ns": [
+          390211078,
+          380502245,
+          388170515,
+          419967685,
+          404678198,
+          405607122,
+          380347847
+        ],
+        "stddev_ns": 13738042.948738867,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 6.382528296259324,
+      "decompression": {
+        "cv_percent": 4.028118177961629,
+        "max_ns": 40837050,
+        "mean_ns": 37473506.0,
+        "median_mb_s": 431.87111670264244,
+        "median_ns": 37048090.0,
+        "min_ns": 36002279,
+        "p95_ns": 40837050.0,
+        "p99_ns": 40837050.0,
+        "runs": 7,
+        "samples_ns": [
+          37639026,
+          40837050,
+          37861248,
+          37048090,
+          36002279,
+          36273080,
+          36653769
+        ],
+        "stddev_ns": 1509477.1071055415,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U32/DeltaOfDelta/5b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 6,
+        "detected": true,
+        "dod_bit_width_p95": 5,
+        "dod_zero_ratio": 0.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "delta-variable"
+    }
+  ]
+}

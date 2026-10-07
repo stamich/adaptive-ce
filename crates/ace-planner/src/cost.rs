@@ -12,6 +12,7 @@ use ace_core::{
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DeterministicCostModel;
 
+/// Inherent methods of [`DeterministicCostModel`].
 impl DeterministicCostModel {
     /// Computes multidimensional cost from encoded size, explicit metadata and static work coefficients.
     pub fn cost(

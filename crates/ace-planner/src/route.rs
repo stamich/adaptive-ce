@@ -163,6 +163,7 @@ pub fn numeric_fast_decision_from_route(
         second_stage_plans: Vec::new(),
         final_ranked_plans: vec![plan.clone()],
         quality_qualified_plans: vec![plan],
+        numeric_estimate: None,
     })
 }
 

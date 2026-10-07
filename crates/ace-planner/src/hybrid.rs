@@ -5,8 +5,6 @@
 //! avoids the expensive full-block match analysis introduced experimentally in buildfix7 while
 //! giving the planner direct evidence from the production LZ encoder.
 
-use std::ops::Range;
-
 use ace_core::{AceResult, CodecId, CompressionProfile};
 use ace_cost::{CostModelV3, EstimatedCandidate};
 
@@ -25,6 +23,7 @@ pub struct HybridLzPolicy {
     pub optimistic_sample_weight: u64,
 }
 
+/// Inherent methods of [`HybridLzPolicy`].
 impl HybridLzPolicy {
     /// Returns the bounded micro-trial budget for a profile and verifier stage.
     pub fn for_profile(profile: CompressionProfile, stage: u8) -> Self {
@@ -86,6 +85,7 @@ pub struct HybridLzObservation {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct HybridLzEstimator;
 
+/// Inherent methods of [`HybridLzEstimator`].
 impl HybridLzEstimator {
     /// Refines one candidate if it uses LZ; non-LZ candidates are returned unchanged.
     ///
@@ -105,7 +105,8 @@ impl HybridLzEstimator {
         }
 
         let policy = HybridLzPolicy::for_profile(profile, stage);
-        let ranges = stratified_ranges(input.len(), policy.window_bytes, policy.window_count);
+        let ranges =
+            ace_cost::stratified_ranges(input.len(), policy.window_bytes, policy.window_count);
         if ranges.is_empty() {
             return Ok((candidate, HybridLzObservation::default()));
         }
@@ -168,41 +169,6 @@ impl HybridLzEstimator {
     }
 }
 
-/// Builds stable evenly distributed windows without crossing the end of the block.
-fn stratified_ranges(
-    len: usize,
-    requested_width: usize,
-    requested_count: usize,
-) -> Vec<Range<usize>> {
-    if len == 0 || requested_count == 0 {
-        return Vec::new();
-    }
-    let width = requested_width.min(len).max(1);
-    if width == len {
-        return vec![0..len];
-    }
-    let max_start = len - width;
-    if requested_count == 1 {
-        let start = max_start / 2;
-        return vec![start..start + width];
-    }
-
-    let mut ranges = Vec::with_capacity(requested_count);
-    for idx in 0..requested_count {
-        let start =
-            ((max_start as u128) * (idx as u128) / ((requested_count - 1) as u128)) as usize;
-        let range = start..start + width;
-        if ranges
-            .last()
-            .map(|previous: &Range<usize>| previous.start != range.start)
-            .unwrap_or(true)
-        {
-            ranges.push(range);
-        }
-    }
-    ranges
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,8 +188,8 @@ mod tests {
     /// Deterministic range generation must never depend on process state or randomness.
     #[test]
     fn ranges_are_deterministic() {
-        let a = stratified_ranges(262_144, 8 * 1024, 3);
-        let b = stratified_ranges(262_144, 8 * 1024, 3);
+        let a = ace_cost::stratified_ranges(262_144, 8 * 1024, 3);
+        let b = ace_cost::stratified_ranges(262_144, 8 * 1024, 3);
         assert_eq!(a, b);
         assert_eq!(a.len(), 3);
     }

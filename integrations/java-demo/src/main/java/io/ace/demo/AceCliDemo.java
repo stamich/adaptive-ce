@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * Minimal Java integration example for ACE 0.2.
+ * Minimal Java integration example for ACE 0.4.x (CLI process boundary).
  *
  * <p>The milestone deliberately does not expose a native JVM ABI yet. This class demonstrates the
  * process boundary only, keeping Java outside the compression core until the planned FFM integration.

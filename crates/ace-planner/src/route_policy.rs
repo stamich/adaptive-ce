@@ -53,6 +53,7 @@ pub struct RouteBudget {
     pub allow_second_stage: bool,
 }
 
+/// Inherent methods of [`RouteBudget`].
 impl RouteBudget {
     /// Returns the deterministic default budget for a route/profile pair.
     pub fn for_route(route: PlannerRoute, profile: CompressionProfile) -> Self {
@@ -100,6 +101,7 @@ pub struct NumericMargin {
     pub ratio: f64,
 }
 
+/// Inherent methods of [`NumericMargin`].
 impl NumericMargin {
     /// Builds a stable dominance descriptor from exact Numeric and generic sizes.
     pub fn new(numeric_bytes: u64, best_generic_bytes: u64) -> Self {
@@ -137,6 +139,7 @@ impl NumericMargin {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RoutePolicy;
 
+/// Inherent methods of [`RoutePolicy`].
 impl RoutePolicy {
     /// Classifies one input block using the Planner V4.3 prefilter/validation implementation.
     pub fn classify(input: &[u8], config: &AceConfig) -> RouteDecision {

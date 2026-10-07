@@ -1,134 +1,22 @@
-use ace_core::{AccessHint, AceConfig, BlockSizePolicy, CompressionProfile};
-use ace_engine::{AceEngine, AceIndexedDecoder};
-use ace_format::AceReader;
-use ace_stream::{compress_reader_known_size, StreamLimits};
-use anyhow::{Context, Result};
-use clap::{Parser, Subcommand, ValueEnum};
-use std::fs;
-use std::io::{BufReader, BufWriter, Cursor};
+//! `ace` command-line tool.
+//!
+//! * `args` — clap argument model.
+//! * `commands` — one module per command family (compress, decompress/verify/random access,
+//!   inspect, explain).
+//! * `files` — file I/O helpers with contextual error messages.
 
-/// Command-line interface for Adaptive Compression Engine milestone 0.4.
-#[derive(Debug, Parser)]
-#[command(name = "ace", version, about = "Adaptive Compression Engine 0.4")]
-struct Cli {
-    /// ACE operation to execute.
-    #[command(subcommand)]
-    command: Command,
-}
+mod args;
+mod commands;
+mod files;
 
-/// Supported ACE command-line operations.
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// Compresses one file into ACE Format 1.3 using Planner V4.
-    Compress {
-        input: String,
-        output: String,
-        #[arg(long, default_value_t = 0)]
-        threads: usize,
-        #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
-        profile: ProfileArg,
-        #[arg(long, value_enum, default_value_t = BlockPolicyArg::Fixed)]
-        block_policy: BlockPolicyArg,
-        #[arg(long, value_enum, default_value_t = AccessHintArg::Balanced)]
-        access_hint: AccessHintArg,
-    },
-    /// Compresses a file through the bounded-memory ACE 0.4 streaming path.
-    CompressStream {
-        input: String,
-        output: String,
-        #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
-        profile: ProfileArg,
-    },
-    /// Decompresses one ACE 1.0/1.1/1.2/1.3 file.
-    Decompress { input: String, output: String },
-    /// Prints file and per-block physical metadata without decoding payloads.
-    Inspect {
-        input: String,
-        #[arg(long)]
-        blocks: bool,
-    },
-    /// Prints analyzer features and deterministic planner decisions for source data.
-    Explain {
-        input: String,
-        #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
-        profile: ProfileArg,
-    },
-    /// Fully decodes and checks every block checksum while discarding the reconstructed bytes.
-    Verify { input: String },
-    /// Decodes one indexed block without reading preceding blocks.
-    DecodeBlock {
-        input: String,
-        block_id: u64,
-        output: String,
-    },
-    /// Decodes only indexed blocks intersecting a logical byte range.
-    ReadRange {
-        input: String,
-        offset: u64,
-        length: u64,
-        output: String,
-    },
-}
+use anyhow::Result;
+use clap::Parser;
 
-/// CLI representation of the three deterministic ACE cost profiles.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum ProfileArg {
-    Fast,
-    Balanced,
-    Dense,
-}
+use crate::args::{Cli, Command};
 
-impl From<ProfileArg> for CompressionProfile {
-    /// Maps CLI profile spelling to the core planner profile.
-    fn from(value: ProfileArg) -> Self {
-        match value {
-            ProfileArg::Fast => Self::Fast,
-            ProfileArg::Balanced => Self::Balanced,
-            ProfileArg::Dense => Self::Dense,
-        }
-    }
-}
-
-/// CLI representation of the file-level block-size policy.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum BlockPolicyArg {
-    Fixed,
-    Auto,
-}
-
-impl From<BlockPolicyArg> for BlockSizePolicy {
-    /// Maps CLI block policy to the core configuration enum.
-    fn from(value: BlockPolicyArg) -> Self {
-        match value {
-            BlockPolicyArg::Fixed => Self::Fixed,
-            BlockPolicyArg::Auto => Self::Auto,
-        }
-    }
-}
-
-/// CLI representation of the expected source access pattern.
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum AccessHintArg {
-    Sequential,
-    Balanced,
-    RandomAccess,
-}
-
-impl From<AccessHintArg> for AccessHint {
-    /// Maps CLI access hint to the core block-size advisor enum.
-    fn from(value: AccessHintArg) -> Self {
-        match value {
-            AccessHintArg::Sequential => Self::Sequential,
-            AccessHintArg::Balanced => Self::Balanced,
-            AccessHintArg::RandomAccess => Self::RandomAccess,
-        }
-    }
-}
-
-/// Parses command-line arguments, executes the requested ACE operation and reports failures through `anyhow`.
+/// Parses command-line arguments and dispatches to the requested command.
 fn main() -> Result<()> {
-    let cli = Cli::parse();
-    match cli.command {
+    match Cli::parse().command {
         Command::Compress {
             input,
             output,
@@ -136,7 +24,7 @@ fn main() -> Result<()> {
             profile,
             block_policy,
             access_hint,
-        } => compress_command(
+        } => commands::compress(
             &input,
             &output,
             threads,
@@ -148,209 +36,21 @@ fn main() -> Result<()> {
             input,
             output,
             profile,
-        } => compress_stream_command(&input, &output, profile.into()),
-        Command::Decompress { input, output } => decompress_command(&input, &output),
-        Command::Inspect { input, blocks } => inspect_command(&input, blocks),
-        Command::Explain { input, profile } => explain_command(&input, profile.into()),
-        Command::Verify { input } => verify_command(&input),
+        } => commands::compress_stream(&input, &output, profile.into()),
+        Command::Decompress { input, output } => commands::decompress(&input, &output),
+        Command::Inspect { input, blocks } => commands::inspect(&input, blocks),
+        Command::Explain { input, profile } => commands::explain(&input, profile.into()),
+        Command::Verify { input } => commands::verify(&input),
         Command::DecodeBlock {
             input,
             block_id,
             output,
-        } => decode_block_command(&input, block_id, &output),
+        } => commands::decode_block(&input, block_id, &output),
         Command::ReadRange {
             input,
             offset,
             length,
             output,
-        } => read_range_command(&input, offset, length, &output),
+        } => commands::read_range(&input, offset, length, &output),
     }
-}
-
-/// Compresses a source file and prints the most important telemetry.
-fn compress_command(
-    input: &str,
-    output: &str,
-    threads: usize,
-    profile: CompressionProfile,
-    block_policy: BlockSizePolicy,
-    access_hint: AccessHint,
-) -> Result<()> {
-    let data = fs::read(input).with_context(|| format!("reading {input}"))?;
-    let mut config = AceConfig::default();
-    config.threads = threads;
-    config.profile = profile;
-    config.block_size_policy = block_policy;
-    config.access_hint = access_hint;
-    let engine = AceEngine::new(config)?;
-    let (encoded, stats) = engine.compress_with_stats(&data)?;
-    fs::write(output, encoded).with_context(|| format!("writing {output}"))?;
-    println!("ACE 0.4 compressed {} -> {} bytes ratio={:.3} blocks={} rANS={} rANS4x={} Huffman={} fast-path={} sampled={}", stats.input_bytes, stats.output_bytes, stats.compression_ratio(), stats.block_count, stats.rans_blocks, stats.rans4x_blocks, stats.huffman_blocks, stats.planner_fast_path_blocks, stats.planner_sampled_candidates);
-    Ok(())
-}
-
-/// Compresses a file with bounded source-block memory and a deterministic Format 1.3 index.
-fn compress_stream_command(input: &str, output: &str, profile: CompressionProfile) -> Result<()> {
-    let source = fs::File::open(input).with_context(|| format!("opening {input}"))?;
-    let size = source
-        .metadata()
-        .with_context(|| format!("stat {input}"))?
-        .len();
-    let sink = fs::File::create(output).with_context(|| format!("creating {output}"))?;
-    let mut config = AceConfig::default();
-    config.profile = profile;
-    let stats = compress_reader_known_size(
-        BufReader::new(source),
-        BufWriter::new(sink),
-        size,
-        config,
-        StreamLimits::default(),
-    )?;
-    println!(
-        "ACE 0.4 streamed {} -> {} bytes blocks={} peak_source_buffer={}",
-        stats.input_bytes, stats.output_bytes, stats.blocks, stats.peak_source_buffer_bytes
-    );
-    Ok(())
-}
-
-/// Decompresses an ACE file and writes reconstructed bytes.
-fn decompress_command(input: &str, output: &str) -> Result<()> {
-    let data = fs::read(input).with_context(|| format!("reading {input}"))?;
-    let decoded = AceEngine::default_engine().decompress(&data)?;
-    fs::write(output, decoded).with_context(|| format!("writing {output}"))?;
-    Ok(())
-}
-
-/// Parses physical headers and optionally prints every block plan.
-fn inspect_command(input: &str, show_blocks: bool) -> Result<()> {
-    let data = fs::read(input).with_context(|| format!("reading {input}"))?;
-    let limits = ace_core::DecodeLimits::default();
-    let mut reader = AceReader::new(Cursor::new(&data), limits);
-    let file = reader.read_file_header()?;
-    println!(
-        "ACE format 1.{} flags=0x{:04x} original={} block_size={} blocks={} indexed={}",
-        file.minor_version,
-        file.flags,
-        file.original_size,
-        file.default_block_size,
-        file.block_count,
-        file.flags & ace_format::FILE_FLAG_HAS_INDEX != 0
-    );
-    for _ in 0..file.block_count {
-        let (header, metadata, payload) = reader.read_block()?;
-        if show_blocks {
-            println!("block={} original={} codec={:?} entropy={:?} transforms={:?} metadata={} payload={}", header.block_id, header.original_size, header.codec, header.entropy, header.transforms, metadata.len(), payload.len());
-        }
-    }
-    Ok(())
-}
-
-/// Runs analyzer and planner only, printing deterministic candidate scores per source block.
-fn explain_command(input: &str, profile: CompressionProfile) -> Result<()> {
-    let data = fs::read(input).with_context(|| format!("reading {input}"))?;
-    let mut config = AceConfig::default();
-    config.profile = profile;
-    let engine = AceEngine::new(config)?;
-    for explanation in engine.explain(&data)? {
-        println!(
-            "block {} size={} H0={:.3} H1={:.3} run={:.3} delta={:.3} repeat={:.3}",
-            explanation.block_id,
-            explanation.profile.size,
-            explanation.profile.entropy_h0,
-            explanation.profile.entropy_h1,
-            explanation.profile.run_score,
-            explanation.profile.delta_score,
-            explanation.profile.repetition_score
-        );
-        println!(
-            "  numeric detected={} width={:?} confidence={:.3} monotonic={:.3} delta_p95_bits={} dod_zero={:.3} dod_p95_bits={} tail={}",
-            explanation.numeric_profile.detected,
-            explanation.numeric_profile.width,
-            explanation.numeric_profile.confidence,
-            explanation.numeric_profile.monotonic_ratio,
-            explanation.numeric_profile.delta_bit_width_p95,
-            explanation.numeric_profile.dod_zero_ratio,
-            explanation.numeric_profile.dod_bit_width_p95,
-            explanation.numeric_profile.tail_bytes,
-        );
-        for candidate in &explanation.candidates {
-            let score = display_score(candidate.score);
-            println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason);
-        }
-        println!(
-            "  selected {:?}/{:?} transforms={:?} fast_path={} estimated={} sampled={} stage2={} hybrid_lz={} hybrid_stage1={} hybrid_stage2={} hybrid_skipped={} hybrid_high_conf_skips={} hybrid_bytes={} hybrid_disagreement_ppm={} quality={} best_blended={} quality_limit={} selected_blended={} size_rank={} cost_rank={} full_trials={}\n",
-            explanation.selected.decoding.codec,
-            explanation.selected.decoding.entropy,
-            explanation.selected.decoding.transforms,
-            explanation.telemetry.fast_path_hit,
-            explanation.telemetry.estimated_candidates,
-            explanation.telemetry.sampled_candidates,
-            explanation.telemetry.second_stage_candidates,
-            explanation.telemetry.hybrid_lz_candidates,
-            explanation.telemetry.hybrid_lz_stage1_candidates,
-            explanation.telemetry.hybrid_lz_stage2_candidates,
-            explanation.telemetry.hybrid_lz_skipped_candidates,
-            explanation.telemetry.hybrid_lz_high_confidence_skips,
-            explanation.telemetry.hybrid_lz_sample_bytes,
-            explanation.telemetry.hybrid_lz_max_disagreement_ppm,
-            explanation.telemetry.quality_qualified_candidates,
-            explanation.telemetry.best_blended_size_bytes,
-            explanation.telemetry.quality_limit_bytes,
-            explanation.telemetry.selected_blended_size_bytes,
-            explanation.telemetry.selected_size_rank,
-            explanation.telemetry.selected_cost_rank,
-            explanation.telemetry.full_trial_encodes,
-        );
-    }
-    Ok(())
-}
-
-/// Formats a planner score for human-facing diagnostics.
-///
-/// Entropy-selection policy uses a very large saturating penalty internally.  Presenting that
-/// sentinel as a decimal number makes `ace explain` look like an arithmetic overflow, so the CLI
-/// renders such values as `penalized` while preserving the exact numeric score inside the planner.
-fn display_score(score: u128) -> String {
-    if score >= u128::MAX / 8 {
-        "penalized".to_string()
-    } else {
-        score.to_string()
-    }
-}
-
-/// Verifies full logical reconstruction and every block CRC32C without persisting output.
-fn verify_command(input: &str) -> Result<()> {
-    let data = fs::read(input).with_context(|| format!("reading {input}"))?;
-    let decoded = AceEngine::default_engine().decompress(&data)?;
-    let mut header_reader = AceReader::new(Cursor::new(&data), ace_core::DecodeLimits::default());
-    let header = header_reader.read_file_header()?;
-    if header.flags & ace_format::FILE_FLAG_HAS_INDEX != 0 {
-        let indexed =
-            AceIndexedDecoder::open(Cursor::new(&data), ace_core::DecodeLimits::default())?;
-        println!("validated block index entries={}", indexed.block_count());
-    }
-    println!("verified {} reconstructed bytes", decoded.len());
-    Ok(())
-}
-
-/// Performs one indexed block read and writes its reconstructed bytes.
-fn decode_block_command(input: &str, block_id: u64, output: &str) -> Result<()> {
-    let file = fs::File::open(input).with_context(|| format!("opening {input}"))?;
-    let mut decoder = AceIndexedDecoder::open(file, ace_core::DecodeLimits::default())?;
-    let block = decoder.decode_block(block_id)?;
-    fs::write(output, &block).with_context(|| format!("writing {output}"))?;
-    println!("decoded block {block_id}: {} bytes", block.len());
-    Ok(())
-}
-
-/// Performs an indexed logical-range read and writes only the requested reconstructed bytes.
-fn read_range_command(input: &str, offset: u64, length: u64, output: &str) -> Result<()> {
-    let end = offset.checked_add(length).context("range overflow")?;
-    let file = fs::File::open(input).with_context(|| format!("opening {input}"))?;
-    let mut decoder = AceIndexedDecoder::open(file, ace_core::DecodeLimits::default())?;
-    let metrics = decoder.range_metrics(offset..end)?;
-    let bytes = decoder.read_range(offset..end)?;
-    fs::write(output, &bytes).with_context(|| format!("writing {output}"))?;
-    println!("decoded logical range [{offset}, {end}): {} bytes physical={} blocks={} physical/logical={:.3}", bytes.len(), metrics.physical_bytes_read, metrics.blocks_touched, metrics.overread_ratio());
-    Ok(())
 }

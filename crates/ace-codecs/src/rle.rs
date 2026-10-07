@@ -1,6 +1,8 @@
 use ace_core::{AceError, AceResult};
 
+/// Shortest run (bytes) that is stored as a run packet instead of literals.
 const MIN_RUN: usize = 4;
+/// Largest number of bytes one RLE packet can describe.
 const MAX_PACKET: usize = 128;
 
 /// Encodes bytes using packet RLE with 1..=128-byte literal and repeated-run packets.
@@ -54,7 +56,7 @@ pub fn rle_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
                 .get(i)
                 .ok_or(AceError::Malformed("truncated RLE run"))?;
             i += 1;
-            out.extend(std::iter::repeat(value).take(len));
+            out.extend(std::iter::repeat_n(value, len));
         } else {
             let end = i
                 .checked_add(len)

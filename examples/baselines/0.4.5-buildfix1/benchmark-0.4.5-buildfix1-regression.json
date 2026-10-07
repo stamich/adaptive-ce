@@ -1,0 +1,308 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4-buildfix4",
+  "base": "0.4-buildfix3-buildfix1",
+  "scope": "regression",
+  "benchmark_contract_origin": "ace-0.4-buildfix4",
+  "generated_at_utc_epoch_seconds": 1791222969,
+  "environment": {},
+  "configuration": {
+    "legacy_quality_baseline": "0.2.1-buildfix1",
+    "performance_reference": "0.3-buildfix9-compilefix",
+    "gate_policy": "Planner V4.3 policy-oracle quality + buildfix2 performance preservation"
+  },
+  "workloads": [
+    {
+      "workload_id": "release_gates",
+      "path": "0.4-buildfix4-release-gates",
+      "status": "fail",
+      "checks": [
+        {
+          "metric": "planner.generated_recall",
+          "baseline": 0.99,
+          "candidate": 1.0,
+          "delta": 0.010000000000000009,
+          "delta_percent": 1.010101010101011,
+          "rule": ">= 0.99",
+          "status": "pass"
+        },
+        {
+          "metric": "planner.top_k_recall",
+          "baseline": 0.98,
+          "candidate": 1.0,
+          "delta": 0.020000000000000018,
+          "delta_percent": 2.040816326530614,
+          "rule": ">= 0.98",
+          "status": "pass"
+        },
+        {
+          "metric": "planner.regret_bytes_per_block",
+          "baseline": 196.9375,
+          "candidate": 2.5,
+          "delta": -194.4375,
+          "delta_percent": -98.73056172643605,
+          "rule": "<= 16",
+          "status": "pass"
+        },
+        {
+          "metric": "planner.p95_regret_bytes_per_block",
+          "baseline": 1024.0,
+          "candidate": 10.0,
+          "delta": -1014.0,
+          "delta_percent": -99.0234375,
+          "rule": "<= 64",
+          "status": "pass"
+        },
+        {
+          "metric": "planner.p99_regret_bytes_per_block",
+          "baseline": 4096.0,
+          "candidate": 10.0,
+          "delta": -4086.0,
+          "delta_percent": -99.755859375,
+          "rule": "<= 256",
+          "status": "pass"
+        },
+        {
+          "metric": "planner.full_trial_encodes_per_block",
+          "baseline": 0.0,
+          "candidate": 0.0,
+          "delta": 0.0,
+          "delta_percent": null,
+          "rule": "== 0",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.balanced_ratio",
+          "baseline": 3.7,
+          "candidate": 3.72561427320257,
+          "delta": 0.025614273202569926,
+          "delta_percent": 0.6922776541235115,
+          "rule": ">= 3.70x",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.dense_ratio",
+          "baseline": 3.7,
+          "candidate": 3.7223079121265314,
+          "delta": 0.02230791212653127,
+          "delta_percent": 0.6029165439603046,
+          "rule": ">= 3.70x",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.dense_vs_hardened_0_2_1",
+          "baseline": 3.4621210666929922,
+          "candidate": 3.7223079121265314,
+          "delta": 0.2601868454335392,
+          "delta_percent": 7.515243991223823,
+          "rule": ">= 99.5% hardened 0.2.1",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.fast_mb_s",
+          "baseline": 172.88279258666753,
+          "candidate": 205.27307265166996,
+          "delta": 32.39028006500243,
+          "delta_percent": 18.735398462958607,
+          "rule": ">= 95% buildfix2",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.balanced_mb_s",
+          "baseline": 93.57982382059024,
+          "candidate": 124.65718397909924,
+          "delta": 31.07736015850901,
+          "delta_percent": 33.20946641029164,
+          "rule": ">= 95% buildfix2",
+          "status": "pass"
+        },
+        {
+          "metric": "compression.dense_mb_s",
+          "baseline": 54.154982803352425,
+          "candidate": 85.40258412526838,
+          "delta": 31.24760132191595,
+          "delta_percent": 57.700325444442,
+          "rule": ">= 95% buildfix2",
+          "status": "pass"
+        },
+        {
+          "metric": "random_access.warm_64k_median_ns",
+          "baseline": 71682.6,
+          "candidate": 76155.0,
+          "delta": 4472.399999999994,
+          "delta_percent": 6.23917101221216,
+          "rule": "<= 110% buildfix2",
+          "status": "fail"
+        },
+        {
+          "metric": "determinism.repeated_output",
+          "baseline": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0,
+          "delta_percent": 0.0,
+          "rule": "== true",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.u32_counter_ratio",
+          "baseline": 3.0,
+          "candidate": 2317.2950276243096,
+          "delta": 2314.2950276243096,
+          "delta_percent": 77143.16758747699,
+          "rule": ">= 3.0x",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.u64_timestamp_ratio",
+          "baseline": 4.0,
+          "candidate": 31.564124561641155,
+          "delta": 27.564124561641155,
+          "delta_percent": 689.1031140410289,
+          "rule": ">= 4.0x",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.delta_variable_ratio",
+          "baseline": 3.0,
+          "candidate": 6.382528296259324,
+          "delta": 3.3825282962593244,
+          "delta_percent": 112.75094320864414,
+          "rule": ">= 3.0x",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.u32_selected",
+          "baseline": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0,
+          "delta_percent": 0.0,
+          "rule": "> 0 numeric blocks",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.u32_planner_mb_s",
+          "baseline": 342.9857109219399,
+          "candidate": 2858.4623437783334,
+          "delta": 2515.4766328563937,
+          "delta_percent": 733.4056646543187,
+          "rule": ">= 95% buildfix2",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.u64_selected",
+          "baseline": 1.0,
+          "candidate": 1.0,
+          "delta": 0.0,
+          "delta_percent": 0.0,
+          "rule": "> 0 numeric blocks",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.u64_planner_mb_s",
+          "baseline": 90.0,
+          "candidate": 120.52417560917759,
+          "delta": 30.52417560917759,
+          "delta_percent": 33.915750676863986,
+          "rule": ">= 90 MB/s",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.delta_variable_mb_s",
+          "baseline": 75.0,
+          "candidate": 109.5419238131949,
+          "delta": 34.5419238131949,
+          "delta_percent": 46.0558984175932,
+          "rule": ">= 75 MB/s",
+          "status": "pass"
+        },
+        {
+          "metric": "numeric.fast_false_positive_count",
+          "baseline": 0.0,
+          "candidate": 0.0,
+          "delta": 0.0,
+          "delta_percent": null,
+          "rule": "== 0",
+          "status": "pass"
+        }
+      ],
+      "diagnostics": [
+        {
+          "metric": "planner.global_size_regret_bytes_per_block",
+          "candidate": 185.5,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "planner.oracle_top2_after_sampling",
+          "candidate": 0.75,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "planner.oracle_top3_after_sampling",
+          "candidate": 1.0,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "planner.quality_pool_recall",
+          "candidate": 0.6666666666666666,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "planner.final_selection_recall",
+          "candidate": 0.75,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "compression.fast_cv_percent",
+          "candidate": 5.435924031960184,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "compression.balanced_cv_percent",
+          "candidate": 0.819164370717808,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "compression.dense_cv_percent",
+          "candidate": 3.954290593218794,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "numeric.u32_compress_mb_s",
+          "candidate": 2858.4623437783334,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "numeric.u32_decompress_mb_s",
+          "candidate": 2982.599514432799,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "numeric.u64_compress_mb_s",
+          "candidate": 120.52417560917759,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "numeric.u64_decompress_mb_s",
+          "candidate": 971.2030996918129,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "planner_hotpath.mixed_route_classify_ns",
+          "candidate": 327157.0,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "planner_hotpath.mixed_generic_analysis_ns",
+          "candidate": 53986206.0,
+          "status": "diagnostic"
+        },
+        {
+          "metric": "planner_hotpath.u32_route_classify_ns",
+          "candidate": 2747063.0,
+          "status": "diagnostic"
+        }
+      ]
+    }
+  ]
+}

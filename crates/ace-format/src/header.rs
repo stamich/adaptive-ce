@@ -255,6 +255,7 @@ pub fn decode_block_header(
     })
 }
 
+/// Inherent methods of [`BlockHeader`].
 impl BlockHeader {
     /// Returns the decoder-relevant physical plan represented by this block header.
     pub fn decoding_plan(&self) -> DecodingPlan {

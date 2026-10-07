@@ -8,7 +8,12 @@ pub enum AceError {
     InvalidMagic,
     /// The file format version is not supported.
     #[error("unsupported ACE format version {major}.{minor}")]
-    UnsupportedVersion { major: u8, minor: u8 },
+    UnsupportedVersion {
+        /// Major version found in the header.
+        major: u8,
+        /// Minor version found in the header.
+        minor: u8,
+    },
     /// A required format feature is not supported by this decoder.
     #[error("unsupported required feature flag 0x{0:04x}")]
     UnsupportedFeature(u16),

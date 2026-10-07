@@ -17,6 +17,7 @@ pub trait PlannerFastPath: Send + Sync {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultPlannerFastPath;
 
+/// Implements [`PlannerFastPath`] for [`DefaultPlannerFastPath`].
 impl PlannerFastPath for DefaultPlannerFastPath {
     /// Applies high-confidence deterministic shortcuts before general candidate estimation.
     fn try_plan(&self, p: &BlockProfile, config: &AceConfig) -> Option<PhysicalCompressionPlan> {
@@ -116,8 +117,10 @@ mod buildfix8_tests {
     /// BALANCED must compare entropy alternatives instead of forcing bare RLE.
     #[test]
     fn balanced_zero_heavy_uses_general_planner() {
-        let mut config = AceConfig::default();
-        config.profile = CompressionProfile::Balanced;
+        let config = AceConfig {
+            profile: CompressionProfile::Balanced,
+            ..AceConfig::default()
+        };
         assert!(DefaultPlannerFastPath
             .try_plan(&zero_heavy_profile(), &config)
             .is_none());
@@ -126,8 +129,10 @@ mod buildfix8_tests {
     /// DENSE must compare entropy alternatives instead of forcing bare RLE.
     #[test]
     fn dense_zero_heavy_uses_general_planner() {
-        let mut config = AceConfig::default();
-        config.profile = CompressionProfile::Dense;
+        let config = AceConfig {
+            profile: CompressionProfile::Dense,
+            ..AceConfig::default()
+        };
         assert!(DefaultPlannerFastPath
             .try_plan(&zero_heavy_profile(), &config)
             .is_none());
@@ -136,8 +141,10 @@ mod buildfix8_tests {
     /// FAST preserves the speed-first RLE shortcut.
     #[test]
     fn fast_zero_heavy_keeps_rle_shortcut() {
-        let mut config = AceConfig::default();
-        config.profile = CompressionProfile::Fast;
+        let config = AceConfig {
+            profile: CompressionProfile::Fast,
+            ..AceConfig::default()
+        };
         let plan = DefaultPlannerFastPath
             .try_plan(&zero_heavy_profile(), &config)
             .expect("FAST zero-heavy profile should use fast path");

@@ -1,65 +1,68 @@
+//! Property tests: every transform of `ace-bitpack` is an exact bijection for every lane.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_bitpack::{
-    delta_i32, delta_i64, delta_of_delta_i32, delta_of_delta_i64, max_bit_width_u32,
-    max_bit_width_u64, pack_u32, pack_u64, undelta_i32, undelta_i64, undelta_of_delta_i32,
-    undelta_of_delta_i64, unpack_u32, unpack_u64, unzigzag_u32, unzigzag_u64, zigzag_i32,
-    zigzag_i64,
+    delta, delta_of_delta, frame_of_reference, max_bit_width, pack, undelta, undelta_of_delta,
+    unframe_of_reference, unpack, Lane,
 };
 use proptest::prelude::*;
 
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
-
-    /// Arbitrary u32 vectors survive fixed-width scalar bit packing exactly.
-    #[test]
-    fn arbitrary_u32_bitpack_roundtrip(values in proptest::collection::vec(any::<u32>(), 0..1024)) {
-        let width = max_bit_width_u32(&values);
-        let packed = pack_u32(&values, width).unwrap();
-        prop_assert_eq!(unpack_u32(&packed, values.len(), width).unwrap(), values);
-    }
-
-    /// Arbitrary u64 vectors survive fixed-width scalar bit packing exactly.
-    #[test]
-    fn arbitrary_u64_bitpack_roundtrip(values in proptest::collection::vec(any::<u64>(), 0..512)) {
-        let width = max_bit_width_u64(&values);
-        let packed = pack_u64(&values, width).unwrap();
-        prop_assert_eq!(unpack_u64(&packed, values.len(), width).unwrap(), values);
-    }
-
-    /// ZigZag is a bijection for arbitrary signed 32-bit integers.
-    #[test]
-    fn arbitrary_i32_zigzag_roundtrip(value in any::<i32>()) {
-        prop_assert_eq!(unzigzag_u32(zigzag_i32(value)), value);
-    }
-
-    /// ZigZag is a bijection for arbitrary signed 64-bit integers.
-    #[test]
-    fn arbitrary_i64_zigzag_roundtrip(value in any::<i64>()) {
-        prop_assert_eq!(unzigzag_u64(zigzag_i64(value)), value);
-    }
-
-    /// First-order u32 deltas reconstruct the original sequence exactly.
-    #[test]
-    fn arbitrary_u32_delta_roundtrip(values in proptest::collection::vec(any::<u32>(), 1..512)) {
-        prop_assert_eq!(undelta_i32(values[0], &delta_i32(&values)), values);
-    }
-
-    /// First-order u64 deltas reconstruct the original sequence exactly.
-    #[test]
-    fn arbitrary_u64_delta_roundtrip(values in proptest::collection::vec(any::<u64>(), 1..256)) {
-        prop_assert_eq!(undelta_i64(values[0], &delta_i64(&values)), values);
-    }
-
-    /// Delta-of-delta u32 representation reconstructs sequences with at least two values.
-    #[test]
-    fn arbitrary_u32_dod_roundtrip(values in proptest::collection::vec(any::<u32>(), 2..512)) {
-        let (first_delta, dod) = delta_of_delta_i32(&values);
-        prop_assert_eq!(undelta_of_delta_i32(values[0], first_delta, &dod), values);
-    }
-
-    /// Delta-of-delta u64 representation reconstructs sequences with at least two values.
-    #[test]
-    fn arbitrary_u64_dod_roundtrip(values in proptest::collection::vec(any::<u64>(), 2..256)) {
-        let (first_delta, dod) = delta_of_delta_i64(&values);
-        prop_assert_eq!(undelta_of_delta_i64(values[0], first_delta, &dod), values);
-    }
+/// Case budget: `PROPTEST_CASES` (release CI) or `default`.
+fn budget(default: u32) -> u32 {
+    std::env::var("PROPTEST_CASES")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(default)
 }
+
+/// Generates one property-test module per lane so the same properties cover u16, u32 and u64
+/// without copy-pasting the test bodies.
+macro_rules! lane_properties {
+    ($module:ident, $lane:ty, $max_len:expr) => {
+        mod $module {
+            use super::*;
+
+            proptest! {
+                #![proptest_config(ProptestConfig::with_cases(budget(64)))]
+
+                /// Bit packing at the minimal width round-trips exactly.
+                #[test]
+                fn bitpack_roundtrip(values in proptest::collection::vec(any::<$lane>(), 0..$max_len)) {
+                    let width = max_bit_width(&values);
+                    let packed = pack(&values, width).unwrap();
+                    prop_assert_eq!(unpack::<$lane>(&packed, values.len(), width).unwrap(), values);
+                }
+
+                /// ZigZag is a bijection.
+                #[test]
+                fn zigzag_roundtrip(value in any::<<$lane as Lane>::Signed>()) {
+                    prop_assert_eq!(<$lane>::zigzag(value).unzigzag(), value);
+                }
+
+                /// First-order deltas reconstruct the sequence.
+                #[test]
+                fn delta_roundtrip(values in proptest::collection::vec(any::<$lane>(), 1..$max_len)) {
+                    prop_assert_eq!(undelta(values[0], &delta(&values)), values);
+                }
+
+                /// Delta-of-delta reconstructs sequences of at least two values.
+                #[test]
+                fn dod_roundtrip(values in proptest::collection::vec(any::<$lane>(), 2..$max_len)) {
+                    let (first_delta, dod) = delta_of_delta(&values);
+                    prop_assert_eq!(undelta_of_delta(values[0], first_delta, &dod), values);
+                }
+
+                /// Frame-of-reference reconstructs the sequence.
+                #[test]
+                fn for_roundtrip(values in proptest::collection::vec(any::<$lane>(), 0..$max_len)) {
+                    let (base, offsets) = frame_of_reference(&values);
+                    prop_assert_eq!(unframe_of_reference(base, &offsets), values);
+                }
+            }
+        }
+    };
+}
+
+lane_properties!(lane_u16, u16, 1024usize);
+lane_properties!(lane_u32, u32, 1024usize);
+lane_properties!(lane_u64, u64, 512usize);

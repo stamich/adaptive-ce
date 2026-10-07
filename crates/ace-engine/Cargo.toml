@@ -3,6 +3,7 @@ name = "ace-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
@@ -19,3 +20,10 @@ rayon.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+ace-corpus = { path = "../ace-corpus" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

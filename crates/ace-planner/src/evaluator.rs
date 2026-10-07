@@ -1,193 +1,15 @@
-use crate::{DeterministicCostModel, EntropySelectionPolicy};
-use ace_codecs::encode_codec;
+//! Planner V3.6/V4 hot-path evaluator: analytical estimates, adaptive Top-K, sample
+//! verification, quality envelope and final cost selection — without full trial encodes.
+
 use ace_core::{
-    AceConfig, AceError, AceResult, CodecId, CompressionProfile, EntropyCodecId, LzMode,
-    PhysicalCompressionPlan,
+    AceConfig, AceError, AceResult, CodecId, CompressionProfile, LzMode, PhysicalCompressionPlan,
 };
-use ace_entropy::encode_entropy;
-use ace_transforms::apply_transform;
 
-/// Deterministically executes candidate pipelines and chooses the lowest cost without wall-clock timing.
-pub fn evaluate_candidates(
-    input: &[u8],
-    candidates: &[PhysicalCompressionPlan],
-    config: &AceConfig,
-) -> AceResult<PhysicalCompressionPlan> {
-    evaluate_all_candidates(input, candidates, config)?
-        .into_iter()
-        .min_by(|a, b| {
-            a.score
-                .cmp(&b.score)
-                .then_with(|| stable_plan_key(a).cmp(&stable_plan_key(b)))
-        })
-        .ok_or(AceError::Malformed("planner generated no candidates"))
-}
-
-/// Deterministically evaluates every candidate and returns populated cost/score fields in stable input order.
-pub fn evaluate_all_candidates(
-    input: &[u8],
-    candidates: &[PhysicalCompressionPlan],
-    config: &AceConfig,
-) -> AceResult<Vec<PhysicalCompressionPlan>> {
-    let model = DeterministicCostModel;
-    let mut evaluated = Vec::with_capacity(candidates.len());
-    for candidate in candidates {
-        let (metadata, payload, _) = encode_plan_payload(input, candidate)?;
-        let metadata_prefix = if matches!(candidate.decoding.entropy, EntropyCodecId::None) {
-            0
-        } else {
-            4
-        };
-        let encoded_bytes = metadata
-            .len()
-            .saturating_add(payload.len())
-            .saturating_add(metadata_prefix);
-        let mut plan = candidate.clone();
-        plan.cost = model.cost(
-            &plan,
-            input.len(),
-            encoded_bytes,
-            metadata.len().saturating_add(metadata_prefix),
-        );
-        plan.score = model.score(config.profile, plan.cost, input.len());
-        evaluated.push(plan);
-    }
-    apply_entropy_selection_policy(&mut evaluated, config.profile);
-    Ok(evaluated)
-}
-
-/// Executes only the reversible payload pipeline of one plan and returns entropy metadata, payload and primary-stream size.
-pub fn encode_plan_payload(
-    input: &[u8],
-    plan: &PhysicalCompressionPlan,
-) -> AceResult<(Vec<u8>, Vec<u8>, usize)> {
-    let mut stage = input.to_vec();
-    for &transform in &plan.decoding.transforms {
-        stage = apply_transform(transform, &stage)?;
-    }
-    stage = encode_codec(plan.decoding.codec, plan.lz_mode, &stage)?;
-    let primary_len = stage.len();
-    let (metadata, payload) = encode_entropy(plan.decoding.entropy, &stage)?;
-    Ok((metadata, payload, primary_len))
-}
-
-/// Produces a stable tie-break key that does not depend on address, thread scheduling or hash iteration order.
-pub fn stable_plan_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8, u8) {
-    let transforms = plan
-        .decoding
-        .transforms
-        .iter()
-        .map(|t| *t as u8)
-        .collect::<Vec<_>>();
-    let lz = match plan.lz_mode {
-        None => 0,
-        Some(LzMode::Fast) => 1,
-        Some(LzMode::Balanced) => 2,
-    };
-    (
-        transforms,
-        plan.decoding.codec as u8,
-        plan.decoding.entropy as u8,
-        lz,
-    )
-}
-
-/// Returns true when two physical plans have identical decoder semantics.
-pub fn same_plan_semantics(a: &PhysicalCompressionPlan, b: &PhysicalCompressionPlan) -> bool {
-    a.decoding == b.decoding && a.lz_mode == b.lz_mode
-}
-
-/// Penalizes rANS plans that do not beat an equivalent Huffman pipeline by the profile-specific minimum gain.
-fn apply_entropy_selection_policy(
-    plans: &mut [PhysicalCompressionPlan],
-    profile: CompressionProfile,
-) {
-    let policy = EntropySelectionPolicy::for_profile(profile);
-    let snapshot = plans.to_vec();
-    for plan in plans.iter_mut().filter(|p| {
-        matches!(
-            p.decoding.entropy,
-            EntropyCodecId::Rans | EntropyCodecId::Rans4x
-        )
-    }) {
-        let peer = snapshot.iter().find(|other| {
-            matches!(other.decoding.entropy, EntropyCodecId::Huffman)
-                && other.decoding.transforms == plan.decoding.transforms
-                && other.decoding.codec == plan.decoding.codec
-                && other.lz_mode == plan.lz_mode
-        });
-        if let Some(huffman) = peer {
-            let h = huffman.cost.predicted_size_bytes.max(1) as f64;
-            let r = plan.cost.predicted_size_bytes as f64;
-            let gain = ((h - r) / h).max(0.0) as f32;
-            if gain < policy.min_rans_gain_fraction {
-                plan.score = plan.score.saturating_add(u128::MAX / 4);
-            }
-        }
-    }
-}
-
-/// Planner V4 telemetry used by engine statistics, `ace explain` and benchmarks.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct PlannerTelemetry {
-    /// True when a deterministic fast path selected the plan without candidate sampling.
-    pub fast_path_hit: bool,
-    /// Number of candidates ranked by the analytical estimator.
-    pub estimated_candidates: usize,
-    /// Number of candidates entering stage-one sample verification.
-    pub sampled_candidates: usize,
-    /// Number of candidates entering the larger second-stage verifier.
-    pub second_stage_candidates: usize,
-    /// Number of LZ candidates refined by bounded production-codec micro-trials.
-    pub hybrid_lz_candidates: usize,
-    /// Number of LZ candidates refined during stage one.
-    pub hybrid_lz_stage1_candidates: usize,
-    /// Number of LZ candidates refined during stage two.
-    pub hybrid_lz_stage2_candidates: usize,
-    /// Number of LZ candidates skipped because the profile/data-class budget did not justify work.
-    pub hybrid_lz_skipped_candidates: usize,
-    /// Number of stage-two LZ trials skipped because stage-one analytical/sample agreement was high.
-    pub hybrid_lz_high_confidence_skips: usize,
-    /// Total source bytes processed by bounded LZ micro-trials for this block.
-    pub hybrid_lz_sample_bytes: usize,
-    /// Largest analytical-vs-micro-trial LZ disagreement observed, in parts per million.
-    pub hybrid_lz_max_disagreement_ppm: u64,
-    /// Number of candidates that passed the profile-specific quality envelope.
-    pub quality_qualified_candidates: usize,
-    /// Smallest blended size observed in the final candidate pool.
-    pub best_blended_size_bytes: u64,
-    /// Inclusive maximum blended size admitted by the active quality envelope.
-    pub quality_limit_bytes: u64,
-    /// Blended size of the plan finally selected by the scalar cost model.
-    pub selected_blended_size_bytes: u64,
-    /// One-based size rank of the selected plan in the full post-sampling pool.
-    pub selected_size_rank: usize,
-    /// One-based scalar-cost rank of the selected plan in the full post-sampling pool.
-    pub selected_cost_rank: usize,
-    /// Number of full candidate trial encodes performed by the hot-path planner.
-    pub full_trial_encodes: usize,
-}
-
-/// Result returned by the ACE 0.4 Planner V4 hot path.
-#[derive(Debug, Clone)]
-pub struct PlannerDecision {
-    /// Selected physical compression plan.
-    pub plan: PhysicalCompressionPlan,
-    /// Work performed while reaching the decision.
-    pub telemetry: PlannerTelemetry,
-    /// Complete analytical ranking before sample verification.
-    pub analytical_ranked_plans: Vec<PhysicalCompressionPlan>,
-    /// Plans that survived analytical pruning and entered stage-one verification.
-    pub top_k_plans: Vec<PhysicalCompressionPlan>,
-    /// Complete ranking after stage-one sample verification.
-    pub stage_one_ranked_plans: Vec<PhysicalCompressionPlan>,
-    /// Plans selected for the larger second-stage verifier.
-    pub second_stage_plans: Vec<PhysicalCompressionPlan>,
-    /// Complete post-sampling ranking before quality-envelope filtering.
-    pub final_ranked_plans: Vec<PhysicalCompressionPlan>,
-    /// Plans admitted by the profile-specific quality envelope.
-    pub quality_qualified_plans: Vec<PhysicalCompressionPlan>,
-}
+use crate::plan_identity::semantic_family_key;
+use crate::{
+    encode_plan_payload, same_plan_semantics, stable_plan_key, EntropySelectionPolicy,
+    PlannerDecision, PlannerTelemetry,
+};
 
 /// ACE 0.4 Planner V4 compatibility entry point.
 ///
@@ -218,19 +40,41 @@ pub fn evaluate_candidates_v4_with_route(
         return Ok(decision);
     }
 
+    // Safety net (0.4.5): even when the caller built `candidates` without the route-aware
+    // generator, a NumericGeneral block must be able to choose Numeric.
+    let injected;
+    let candidates = if crate::needs_numeric_candidate(candidates, route.route, config) {
+        let mut with_numeric = candidates.to_vec();
+        crate::ensure_numeric_candidate(&mut with_numeric, route.route, config);
+        injected = with_numeric;
+        &injected[..]
+    } else {
+        candidates
+    };
+
     let numeric_estimate = if matches!(route.route, crate::PlannerRoute::NumericGeneral) {
-        ace_codecs::estimate_numeric(input).map(|estimate| estimate.encoded_bytes as u64)
+        match (config.profile, route.prefilter.width_hint) {
+            // FAST trusts the prefilter's lane width and scans the block once instead of three
+            // times (u16/u32/u64). BALANCED/DENSE keep the exhaustive exact search.
+            (ace_core::CompressionProfile::Fast, Some(width)) => {
+                ace_codecs::estimate_numeric_for_width(input, width)
+            }
+            _ => ace_codecs::estimate_numeric(input),
+        }
     } else {
         None
     };
-    evaluate_candidates_internal(
+    let mut decision = evaluate_candidates_internal(
         input,
         profile,
         candidates,
         config,
-        numeric_estimate,
+        numeric_estimate.map(|estimate| estimate.encoded_bytes as u64),
         Some(route.route),
-    )
+    )?;
+    // Hand the exact estimate to the encoder so it does not repeat the width/mode search.
+    decision.numeric_estimate = numeric_estimate;
+    Ok(decision)
 }
 
 /// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
@@ -298,6 +142,7 @@ fn evaluate_candidates_internal(
             second_stage_plans: Vec::new(),
             final_ranked_plans: vec![plan.clone()],
             quality_qualified_plans: vec![plan.clone()],
+            numeric_estimate: None,
         });
     }
     if candidates.is_empty() {
@@ -440,7 +285,7 @@ fn evaluate_candidates_internal(
             )?);
         }
     }
-    apply_entropy_policy_estimates(&mut stage_one, config.profile);
+    EntropySelectionPolicy::for_profile(config.profile).penalize_weak_rans(&mut stage_one);
     stage_one.sort_by(estimated_order);
     let stage_one_ranked_plans = stage_one
         .iter()
@@ -505,7 +350,7 @@ fn evaluate_candidates_internal(
             final_pool.push(candidate);
         }
     }
-    apply_entropy_policy_estimates(&mut final_pool, config.profile);
+    EntropySelectionPolicy::for_profile(config.profile).penalize_weak_rans(&mut final_pool);
     final_pool.sort_by(estimated_order);
 
     let final_ranked_plans = final_pool
@@ -586,6 +431,7 @@ fn evaluate_candidates_internal(
         second_stage_plans,
         final_ranked_plans,
         quality_qualified_plans,
+        numeric_estimate: None,
     })
 }
 
@@ -742,22 +588,6 @@ fn quality_preserving_pool(
     pool
 }
 
-/// Groups entropy variants of the same physical transform/primary-codec family.
-fn semantic_family_key(plan: &PhysicalCompressionPlan) -> (Vec<u8>, u8, u8) {
-    let transforms = plan
-        .decoding
-        .transforms
-        .iter()
-        .map(|t| *t as u8)
-        .collect::<Vec<_>>();
-    let lz = match plan.lz_mode {
-        None => 0,
-        Some(LzMode::Fast) => 1,
-        Some(LzMode::Balanced) => 2,
-    };
-    (transforms, plan.decoding.codec as u8, lz)
-}
-
 /// Applies non-LZ sample verification while retaining analytical, sampled and blended size diagnostics.
 ///
 /// LZ candidates are handled by [`crate::HybridLzEstimator`] so reset-window pessimism cannot
@@ -893,36 +723,6 @@ fn adaptive_second_stage_k(
         k = k.max(3).min(candidates.len());
     }
     k
-}
-
-/// Applies the entropy-gain policy to estimated candidates without requiring full-block encoding.
-fn apply_entropy_policy_estimates(
-    plans: &mut [ace_cost::EstimatedCandidate],
-    profile: CompressionProfile,
-) {
-    let policy = EntropySelectionPolicy::for_profile(profile);
-    let snapshot = plans.to_vec();
-    for plan in plans.iter_mut().filter(|p| {
-        matches!(
-            p.plan.decoding.entropy,
-            EntropyCodecId::Rans | EntropyCodecId::Rans4x
-        )
-    }) {
-        let peer = snapshot.iter().find(|other| {
-            matches!(other.plan.decoding.entropy, EntropyCodecId::Huffman)
-                && other.plan.decoding.transforms == plan.plan.decoding.transforms
-                && other.plan.decoding.codec == plan.plan.decoding.codec
-                && other.plan.lz_mode == plan.plan.lz_mode
-        });
-        if let Some(huffman) = peer {
-            let h = huffman.cost.predicted_size_bytes.max(1) as f64;
-            let r = plan.cost.predicted_size_bytes as f64;
-            let gain = ((h - r) / h).max(0.0) as f32;
-            if gain < policy.min_rans_gain_fraction {
-                plan.score = plan.score.saturating_add(u128::MAX / 4);
-            }
-        }
-    }
 }
 
 #[cfg(test)]

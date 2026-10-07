@@ -1,9 +1,0 @@
-[package]
-name = "ace-random-access-demo-0-3"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-
-[dependencies]
-ace-core = { path = "../../crates/ace-core" }
-ace-engine = { path = "../../crates/ace-engine" }

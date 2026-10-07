@@ -12,6 +12,7 @@ pub trait BlockAnalyzer {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultBlockAnalyzer;
 
+/// Inherent methods of [`DefaultBlockAnalyzer`].
 impl DefaultBlockAnalyzer {
     /// Analyzes one source block using the requested deterministic analysis budget.
     ///
@@ -80,6 +81,7 @@ impl DefaultBlockAnalyzer {
     }
 }
 
+/// Implements [`BlockAnalyzer`] for [`DefaultBlockAnalyzer`].
 impl BlockAnalyzer for DefaultBlockAnalyzer {
     /// Computes the standard BALANCED feature set for backwards-compatible callers.
     fn analyze(&self, input: &[u8]) -> BlockProfile {

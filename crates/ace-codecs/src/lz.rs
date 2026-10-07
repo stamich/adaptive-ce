@@ -1,11 +1,17 @@
 use ace_core::{AceError, AceResult, LzMode};
 use ace_simd::common_prefix_len;
 
+/// Shortest match (bytes) worth encoding as a reference.
 const MIN_MATCH: usize = 4;
+/// Longest match (bytes) one reference token can express (`MIN_MATCH + 126`).
 const MAX_MATCH: usize = 130;
+/// Largest back-reference distance, bounded by the 16-bit distance field.
 const WINDOW: usize = 65_535;
+/// Number of bits of the 4-byte rolling hash.
 const HASH_BITS: usize = 16;
+/// Number of hash buckets (`1 << HASH_BITS`).
 const HASH_SIZE: usize = 1 << HASH_BITS;
+/// Maximum candidates inspected per position in `LzMode::Balanced`.
 const MAX_CHAIN: usize = 16;
 
 /// Encodes a byte slice into a simple LZ token stream.
@@ -86,16 +92,35 @@ pub fn lz_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
             if out.len() + len > expected_size {
                 return Err(AceError::Malformed("LZ match exceeds expected output"));
             }
-            for _ in 0..len {
-                let b = out[out.len() - distance];
-                out.push(b);
-            }
+            copy_match(&mut out, distance, len);
         }
     }
     if out.len() != expected_size {
         return Err(AceError::Malformed("LZ decoded size mismatch"));
     }
     Ok(out)
+}
+
+/// Appends `len` bytes copied from `distance` bytes back, honouring overlap (LZ77 semantics).
+///
+/// When `distance >= len` the source range is fully initialised, so one `extend_from_within`
+/// (a `memcpy`) suffices. Overlapping matches (`distance < len`, e.g. run-length patterns)
+/// repeat the `distance`-byte period chunk by chunk, never reading bytes that have not been
+/// written yet. Callers must have validated `0 < distance <= out.len()`.
+#[inline]
+fn copy_match(out: &mut Vec<u8>, distance: usize, len: usize) {
+    let start = out.len() - distance;
+    if distance >= len {
+        out.extend_from_within(start..start + len);
+    } else {
+        let mut remaining = len;
+        while remaining > 0 {
+            // Each pass copies at most one full period, all of which already exists.
+            let chunk = remaining.min(distance);
+            out.extend_from_within(start..start + chunk);
+            remaining -= chunk;
+        }
+    }
 }
 
 /// Computes a 16-bit hash bucket from four consecutive source bytes.
@@ -152,6 +177,26 @@ fn flush_literals(out: &mut Vec<u8>, literals: &[u8]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `copy_match` must equal the naive byte-by-byte reference for overlapping and disjoint copies.
+    #[test]
+    fn copy_match_matches_reference() {
+        for distance in 1..40usize {
+            for len in 1..130usize {
+                let seed: Vec<u8> = (0..64u8)
+                    .map(|i| i.wrapping_mul(37).wrapping_add(5))
+                    .collect();
+                let mut fast = seed.clone();
+                let mut slow = seed.clone();
+                copy_match(&mut fast, distance, len);
+                for _ in 0..len {
+                    let b = slow[slow.len() - distance];
+                    slow.push(b);
+                }
+                assert_eq!(fast, slow, "distance {distance} len {len}");
+            }
+        }
+    }
 
     /// Verifies overlapping LZ references are decoded correctly.
     #[test]

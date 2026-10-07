@@ -5,4 +5,6 @@ examples/results/*.json
 !examples/results/.gitkeep
 examples/data/**
 !examples/data/.gitkeep
-Cargo.lock
+__pycache__/
+fuzz/artifacts/
+fuzz/corpus/

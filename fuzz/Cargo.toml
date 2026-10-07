@@ -14,6 +14,8 @@ ace-engine = { path = "../crates/ace-engine" }
 ace-format = { path = "../crates/ace-format" }
 ace-codecs = { path = "../crates/ace-codecs" }
 ace-bitpack = { path = "../crates/ace-bitpack" }
+ace-cost = { path = "../crates/ace-cost" }
+ace-entropy = { path = "../crates/ace-entropy" }
 
 [[bin]]
 name = "container_decode"
@@ -53,6 +55,48 @@ bench = false
 [[bin]]
 name = "bitpack_decode"
 path = "fuzz_targets/bitpack_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "numeric_roundtrip"
+path = "fuzz_targets/numeric_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "planner_sample_offsets"
+path = "fuzz_targets/planner_sample_offsets.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rans_decoder"
+path = "fuzz_targets/rans_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rans4x_decoder"
+path = "fuzz_targets/rans4x_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rle_roundtrip"
+path = "fuzz_targets/rle_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "engine_roundtrip"
+path = "fuzz_targets/engine_roundtrip.rs"
 test = false
 doc = false
 bench = false

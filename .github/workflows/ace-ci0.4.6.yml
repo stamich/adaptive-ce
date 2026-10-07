@@ -1,0 +1,17 @@
+# Thin GitHub Actions wrapper around the vendor-neutral ./ace-ci0.4.6.sh.
+# The toolchain (1.97.0 + rustfmt + clippy) comes from rust-toolchain.toml.
+name: ace-ci-0.4.6
+on: [push, pull_request]
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show && rustc --version && cargo clippy --version
+      - run: ./ace-ci0.4.6.sh pr
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show && rustc --version
+      - run: ./ace-ci0.4.6.sh msrv

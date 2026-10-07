@@ -1,3 +1,6 @@
+//! Format 1.3 NUM1 codec id handling and rejection by older versions.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_core::{CodecId, EntropyCodecId};
 use ace_format::{decode_block_header, encode_block_header, BlockHeader, BLOCK_HEADER_SIZE};
 

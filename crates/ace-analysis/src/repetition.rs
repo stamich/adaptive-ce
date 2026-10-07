@@ -9,7 +9,9 @@ pub struct RepetitionStats {
 
 /// Estimates repeated-sequence density and match length without running the full LZ matcher.
 pub fn analyze_repetition(input: &[u8]) -> RepetitionStats {
+    /// Number of hash-table slots used by the repetition sampler.
     const TABLE: usize = 4096;
+    /// Sampling stride in bytes between inspected positions.
     const STEP: usize = 16;
     if input.len() < 4 {
         return RepetitionStats {
@@ -27,7 +29,7 @@ pub fn analyze_repetition(input: &[u8]) -> RepetitionStats {
         let previous = last[h];
         if previous != usize::MAX
             && previous < i
-            && &input[previous..previous + 4] == &input[i..i + 4]
+            && input[previous..previous + 4] == input[i..i + 4]
         {
             hits += 1;
             let max = (input.len() - i).min(64);

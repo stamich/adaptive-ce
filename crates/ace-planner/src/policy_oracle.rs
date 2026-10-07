@@ -34,6 +34,7 @@ pub struct PolicyOracleDecision<'a> {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PolicyOracle;
 
+/// Inherent methods of [`PolicyOracle`].
 impl PolicyOracle {
     /// Chooses the best candidate under route eligibility, dominance preference and size envelope.
     pub fn choose<'a>(

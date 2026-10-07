@@ -16,6 +16,7 @@ pub struct PlanningContext {
     pub route_classify_time: Duration,
 }
 
+/// Inherent methods of [`PlanningContext`].
 impl PlanningContext {
     /// Classifies one block once and records the route-classification latency.
     pub fn classify(input: &[u8], config: &AceConfig) -> Self {

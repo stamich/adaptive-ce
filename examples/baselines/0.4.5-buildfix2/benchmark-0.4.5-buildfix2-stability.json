@@ -1,0 +1,57 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4.5-buildfix2",
+  "base": "0.4.5-buildfix1",
+  "scope": "stability",
+  "benchmark_contract_origin": "ace-0.4.5-buildfix2",
+  "generated_at_utc_epoch_seconds": 1791226891,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33422209024,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "compression": {
+        "cv_percent": 5.003111499714689,
+        "max_ns": 133512299,
+        "mean_ns": 121099447.85714285,
+        "median_mb_s": 135.4090571360717,
+        "median_ns": 118160486.0,
+        "min_ns": 115809462,
+        "p95_ns": 133512299.0,
+        "p99_ns": 133512299.0,
+        "runs": 7,
+        "samples_ns": [
+          119364248,
+          118160486,
+          115809462,
+          117062355,
+          117114129,
+          126673156,
+          133512299
+        ],
+        "stddev_ns": 6058740.401831707,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "deterministic_output": true,
+      "encoded_bytes": 4503208,
+      "path": "repeatability",
+      "workload_id": "mixed_16m"
+    }
+  ]
+}

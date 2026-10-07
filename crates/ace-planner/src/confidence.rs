@@ -11,6 +11,7 @@ pub enum EstimateConfidence {
     Low,
 }
 
+/// Inherent methods of [`EstimateConfidence`].
 impl EstimateConfidence {
     /// Classifies one candidate by analytical/sample disagreement.
     pub fn from_candidate(candidate: &EstimatedCandidate) -> Self {

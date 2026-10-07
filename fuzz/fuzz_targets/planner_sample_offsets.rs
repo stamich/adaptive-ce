@@ -1,13 +1,22 @@
 #![no_main]
-use libfuzzer_sys::fuzz_target;
-use ace_cost::{deterministic_sample_ranges, SamplePolicy};
 
-/// Fuzzes deterministic sample-range generation and asserts every returned range stays in bounds.
+use ace_core::CompressionProfile;
+use ace_cost::{deterministic_sample_ranges, SamplePolicy};
+use libfuzzer_sys::fuzz_target;
+
 fuzz_target!(|data: &[u8]| {
-    if data.len() < 3 { return; }
-    let len = ((data[0] as usize) << 12) | ((data[1] as usize) << 4) | (data[2] as usize & 0x0f);
-    let policy = SamplePolicy { sample_bytes: 4096, sample_count: 3, top_k: 3 };
-    for range in deterministic_sample_ranges(len, policy) {
+    // Deterministic sample-range generation must stay in bounds for every input length and
+    // every profile budget.
+    if data.len() < 4 {
+        return;
+    }
+    let len = (usize::from(data[0]) << 16) | (usize::from(data[1]) << 8) | usize::from(data[2]);
+    let profile = match data[3] % 3 {
+        0 => CompressionProfile::Fast,
+        1 => CompressionProfile::Balanced,
+        _ => CompressionProfile::Dense,
+    };
+    for range in deterministic_sample_ranges(len, SamplePolicy::for_profile(profile)) {
         assert!(range.start <= range.end);
         assert!(range.end <= len);
     }

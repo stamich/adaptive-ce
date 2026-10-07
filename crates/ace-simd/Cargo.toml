@@ -3,3 +3,19 @@ name = "ace-simd"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
+
+# The only production crate allowed to contain `unsafe` (runtime-dispatched SIMD/CRC kernels,
+# see docs/UNSAFE-AUDIT-0.4.6.md). Every other lint matches the workspace table.
+[lints.rust]
+missing_docs = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+undocumented_unsafe_blocks = "deny"

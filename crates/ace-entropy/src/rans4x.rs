@@ -44,9 +44,9 @@ pub fn rans4x_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> Ace
     }
     let model_bytes = RANS4X_LANES * 512;
     let mut payload_lengths = [0usize; RANS4X_LANES];
-    for lane in 0..RANS4X_LANES {
+    for (lane, length) in payload_lengths.iter_mut().enumerate() {
         let start = model_bytes + lane * 4;
-        payload_lengths[lane] = u32::from_le_bytes(
+        *length = u32::from_le_bytes(
             metadata[start..start + 4]
                 .try_into()
                 .map_err(|_| AceError::InvalidRans("invalid rANS4x lane length"))?,

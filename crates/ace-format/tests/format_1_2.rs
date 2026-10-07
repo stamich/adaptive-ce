@@ -1,3 +1,6 @@
+//! Format 1.2/1.3 header compatibility.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_format::{checksum, decode_file_header, encode_file_header, FileHeader, FORMAT_MINOR};
 
 /// Verifies the ACE 0.4 writer emits Format 1.3 while preserving the fixed header shape.

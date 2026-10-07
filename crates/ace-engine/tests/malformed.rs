@@ -1,3 +1,6 @@
+//! Malformed containers are rejected with errors, never panics.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use std::io::Cursor;
 

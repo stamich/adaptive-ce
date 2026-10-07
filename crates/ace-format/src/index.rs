@@ -33,6 +33,7 @@ pub struct BlockIndex {
     pub entries: Vec<BlockIndexEntry>,
 }
 
+/// Inherent methods of [`BlockIndex`].
 impl BlockIndex {
     /// Finds one block by identifier using binary search.
     pub fn by_id(&self, block_id: u64) -> Option<&BlockIndexEntry> {

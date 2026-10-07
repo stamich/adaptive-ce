@@ -4,6 +4,7 @@ pub struct FixedBlockChunker {
     block_size: usize,
 }
 
+/// Inherent methods of [`FixedBlockChunker`].
 impl FixedBlockChunker {
     /// Creates a chunker or returns `None` for a zero block size.
     pub fn new(block_size: usize) -> Option<Self> {

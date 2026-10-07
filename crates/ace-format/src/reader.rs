@@ -1,17 +1,24 @@
-use crate::{
-    block_descriptor_size, decode_block_header, decode_file_header, BlockHeader, FileHeader,
-    BLOCK_HEADER_SIZE, FILE_HEADER_SIZE,
-};
-use ace_core::{AceError, AceResult, DecodeLimits};
+//! Sequential container reader.
+
 use std::io::Read;
+
+use ace_core::{AceError, AceResult, DecodeLimits};
+
+use crate::{
+    decode_file_header, read_serialized_block, FileHeader, SerializedBlock, FILE_HEADER_SIZE,
+};
 
 /// Streaming ACE reader that validates structural limits before allocating block buffers.
 pub struct AceReader<R: Read> {
+    /// Underlying byte source.
     inner: R,
+    /// Resource limits applied to every header.
     limits: DecodeLimits,
+    /// Minor version of the file header (selects the block-descriptor layout).
     minor_version: u8,
 }
 
+/// Inherent methods of [`AceReader`].
 impl<R: Read> AceReader<R> {
     /// Creates a reader with explicit decoder resource limits.
     pub fn new(inner: R, limits: DecodeLimits) -> Self {
@@ -35,30 +42,8 @@ impl<R: Read> AceReader<R> {
     }
 
     /// Reads one block and returns header, entropy metadata and encoded payload.
-    pub fn read_block(&mut self) -> AceResult<(BlockHeader, Vec<u8>, Vec<u8>)> {
-        let mut fixed = [0u8; BLOCK_HEADER_SIZE];
-        self.inner.read_exact(&mut fixed)?;
-        let descriptor_size = block_descriptor_size(&fixed, self.minor_version);
-        if fixed[22] as usize > self.limits.max_transforms {
-            return Err(AceError::ResourceLimitExceeded("transform count"));
-        }
-        let mut descriptors = vec![0u8; descriptor_size];
-        self.inner.read_exact(&mut descriptors)?;
-        let header = decode_block_header(&fixed, &descriptors, self.minor_version)?;
-        if header.original_size as usize > self.limits.max_block_size {
-            return Err(AceError::ResourceLimitExceeded("block output size"));
-        }
-        let total = (header.metadata_size as usize)
-            .checked_add(header.encoded_size as usize)
-            .ok_or(AceError::Malformed("encoded block size overflow"))?;
-        if total > self.limits.max_encoded_block_size {
-            return Err(AceError::ResourceLimitExceeded("encoded block size"));
-        }
-        let mut metadata = vec![0u8; header.metadata_size as usize];
-        self.inner.read_exact(&mut metadata)?;
-        let mut payload = vec![0u8; header.encoded_size as usize];
-        self.inner.read_exact(&mut payload)?;
-        Ok((header, metadata, payload))
+    pub fn read_block(&mut self) -> AceResult<SerializedBlock> {
+        read_serialized_block(&mut self.inner, self.minor_version, &self.limits)
     }
 
     /// Returns the wrapped reader after parsing is complete.

@@ -1,3 +1,6 @@
+//! End-to-end round-trips and repeat determinism on heterogeneous data.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_core::{AceConfig, DecodeLimits};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use std::io::Cursor;
@@ -31,8 +34,10 @@ fn deterministic_output() {
 #[test]
 fn parallel_output_matches_single_thread() {
     let data = b"parallel deterministic ACE block\n".repeat(100_000);
-    let mut one = AceConfig::default();
-    one.threads = 1;
+    let one = AceConfig {
+        threads: 1,
+        ..AceConfig::default()
+    };
     let mut many = one.clone();
     many.threads = 8;
     assert_eq!(

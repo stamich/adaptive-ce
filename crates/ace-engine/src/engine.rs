@@ -1,51 +1,39 @@
-use crate::{BlockExplanation, FixedBlockChunker};
+//! The [`AceEngine`] façade: configuration, compression, decompression and explanation.
+
+use std::io::{Cursor, Read, Write};
+
 use ace_analysis::{analyze_numeric, recommend_block_size, AnalysisLevel, DefaultBlockAnalyzer};
-use ace_codecs::{decode_codec, numeric_encode_fixed_step};
-use ace_core::{
-    AceConfig, AceError, AceResult, BlockSizePolicy, CodecId, CompressionStats, DecodeLimits,
-    EntropyCodecId, PhysicalCompressionPlan,
-};
-use ace_entropy::decode_entropy;
-use ace_format::{
-    checksum, encode_block_header, encode_file_header, encode_index, encode_trailer, AceReader,
-    BlockHeader, BlockIndex, BlockIndexEntry, FileHeader, FileTrailer, BLOCK_HEADER_SIZE,
-    FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
-};
+use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, CompressionStats, DecodeLimits};
+use ace_format::{AceReader, FileHeader};
 use ace_planner::{
-    encode_plan_payload, evaluate_all_candidates, evaluate_candidates_v4_with_route,
-    numeric_fast_decision_from_route, CompressionPlanner, DefaultCompressionPlanner,
-    PlannerTelemetry, PlanningContext,
+    evaluate_all_candidates, evaluate_candidates_v4_with_route, DefaultCompressionPlanner,
+    PlanningContext,
 };
 use ace_runtime::RuntimeConfig;
-use ace_transforms::invert_transform;
 use rayon::prelude::*;
-use std::io::{Cursor, Read, Write};
-use std::time::{Duration, Instant};
 
-/// Public façade of the ACE 0.4 compression engine.
+use crate::block_encoder::encode_block;
+use crate::block_pipeline::decode_encoded_block;
+use crate::container::assemble_container;
+use crate::{BlockExplanation, FixedBlockChunker};
+
+/// Largest input prefix sampled by the `Auto` block-size policy.
+const AUTO_POLICY_SAMPLE_BYTES: usize = 4 * 1024 * 1024;
+
+/// Upper bound on the output capacity [`AceEngine::decompress_into`] reserves up front from
+/// the untrusted file header; larger outputs simply grow the buffer while decoding.
+pub const PREALLOCATION_CAP_BYTES: u64 = 256 * 1024 * 1024;
+
+/// Public façade of the ACE compression engine.
 #[derive(Debug, Clone)]
 pub struct AceEngine {
+    /// Encoder configuration.
     config: AceConfig,
+    /// Decoder resource limits.
     limits: DecodeLimits,
 }
 
-/// Fully encoded independent block produced by a parallel worker before ordered file assembly.
-#[derive(Debug)]
-struct EncodedBlock {
-    id: u64,
-    original_size: usize,
-    metadata: Vec<u8>,
-    payload: Vec<u8>,
-    plan: PhysicalCompressionPlan,
-    crc32c: u32,
-    route_classify_time: Duration,
-    generic_analysis_time: Duration,
-    analysis_time: Duration,
-    planning_time: Duration,
-    encoding_time: Duration,
-    planner_telemetry: PlannerTelemetry,
-}
-
+/// Inherent methods of [`AceEngine`].
 impl AceEngine {
     /// Creates an engine with explicit encoder configuration and default decoder limits.
     pub fn new(config: AceConfig) -> AceResult<Self> {
@@ -61,9 +49,15 @@ impl AceEngine {
         })
     }
 
-    /// Creates an engine using ACE 0.4 default settings.
+    /// Creates an engine using default settings.
+    ///
+    /// `AceConfig::default()` always satisfies [`AceEngine::new`]'s validation (asserted by
+    /// the `default_configuration_is_valid` test), so no fallible constructor is needed.
     pub fn default_engine() -> Self {
-        Self::new(AceConfig::default()).expect("default ACE configuration is valid")
+        Self {
+            config: AceConfig::default(),
+            limits: DecodeLimits::default(),
+        }
     }
 
     /// Replaces decoder resource limits.
@@ -83,148 +77,49 @@ impl AceEngine {
     }
 
     /// Compresses bytes and returns both the file image and detailed telemetry.
+    ///
+    /// Blocks are encoded in parallel in batches of at most `max_in_flight_blocks`, then
+    /// serialized in block-id order, so the output never depends on the thread count.
     pub fn compress_with_stats(&self, input: &[u8]) -> AceResult<(Vec<u8>, CompressionStats)> {
-        let resolved_block_size = self.resolved_block_size(input);
-        let chunker = FixedBlockChunker::new(resolved_block_size)
-            .ok_or(AceError::InvalidConfig("zero block size"))?;
-        let chunks = chunker
+        let block_size = self.resolved_block_size(input);
+        let chunker =
+            FixedBlockChunker::new(block_size).ok_or(AceError::InvalidConfig("zero block size"))?;
+        let chunks: Vec<(u64, &[u8])> = chunker
             .chunks(input)
             .enumerate()
             .map(|(id, bytes)| (id as u64, bytes))
-            .collect::<Vec<_>>();
+            .collect();
         let mut effective_config = self.config.clone();
-        effective_config.block_size = resolved_block_size;
+        effective_config.block_size = block_size;
         let runtime = RuntimeConfig::from_ace(&effective_config)?;
         let pool = runtime.build_pool()?;
-        let mut encoded = Vec::with_capacity(chunks.len());
+
+        let mut blocks = Vec::with_capacity(chunks.len());
         for batch in chunks.chunks(runtime.max_in_flight_blocks) {
-            let mut result = pool.install(|| {
+            let encoded: Vec<_> = pool.install(|| {
                 batch
                     .par_iter()
-                    .map(|(id, bytes)| self.encode_one_block(*id, bytes))
-                    .collect::<Vec<_>>()
+                    .map(|&(id, bytes)| encode_block(&self.config, id, bytes))
+                    .collect()
             });
-            for item in result.drain(..) {
-                encoded.push(item?);
+            for block in encoded {
+                blocks.push(block?);
             }
         }
-        encoded.sort_by_key(|block| block.id);
-        let mut flags = 0u16;
-        if self.config.write_index {
-            flags |= FILE_FLAG_HAS_INDEX;
-        }
-        let file_header = FileHeader {
-            minor_version: 3,
-            flags,
-            default_block_size: resolved_block_size as u32,
-            original_size: input.len() as u64,
-            block_count: encoded.len() as u64,
-        };
-        let mut output = Vec::with_capacity(input.len().saturating_add(FILE_HEADER_SIZE));
-        output.extend_from_slice(&encode_file_header(&file_header));
-        let mut index = BlockIndex::default();
-        let mut original_offset = 0u64;
+
         let mut stats = CompressionStats {
             input_bytes: input.len() as u64,
-            block_count: encoded.len() as u64,
+            block_count: blocks.len() as u64,
             ..Default::default()
         };
-        let serialization_started = Instant::now();
-        for block in encoded {
-            let file_offset = output.len() as u64;
-            let header = BlockHeader {
-                block_id: block.id,
-                original_size: block.original_size as u32,
-                encoded_size: block.payload.len() as u32,
-                metadata_size: block.metadata.len() as u32,
-                codec: block.plan.decoding.codec,
-                entropy: block.plan.decoding.entropy,
-                transforms: block.plan.decoding.transforms.clone(),
-                dictionary: block.plan.decoding.dictionary,
-                flags: 0,
-                payload_crc32c: block.crc32c,
-            };
-            let header_bytes = encode_block_header(&header);
-            output.extend_from_slice(&header_bytes);
-            output.extend_from_slice(&block.metadata);
-            output.extend_from_slice(&block.payload);
-            let span = output.len() as u64 - file_offset;
-            if span > u32::MAX as u64 {
-                return Err(AceError::ResourceLimitExceeded("serialized block span"));
-            }
-            index.entries.push(BlockIndexEntry {
-                block_id: block.id,
-                original_offset,
-                original_size: block.original_size as u32,
-                file_offset,
-                encoded_span: span as u32,
-                flags: 0,
-            });
-            original_offset = original_offset
-                .checked_add(block.original_size as u64)
-                .ok_or(AceError::Malformed("logical output offset overflow"))?;
-            stats.route_classify_time += block.route_classify_time;
-            stats.generic_analysis_time += block.generic_analysis_time;
-            stats.analysis_time += block.analysis_time;
-            stats.planning_time += block.planning_time;
-            stats.encoding_time += block.encoding_time;
-            match header.codec {
-                CodecId::Raw => stats.raw_blocks += 1,
-                CodecId::Rle => stats.rle_blocks += 1,
-                CodecId::Lz => stats.lz_blocks += 1,
-                CodecId::Numeric => stats.numeric_blocks += 1,
-            }
-            if header
-                .transforms
-                .iter()
-                .any(|t| matches!(t, ace_core::TransformId::DeltaByte))
-            {
-                stats.delta_blocks += 1;
-            }
-            match header.entropy {
-                EntropyCodecId::Huffman => stats.huffman_blocks += 1,
-                EntropyCodecId::Rans => stats.rans_blocks += 1,
-                EntropyCodecId::Rans4x => stats.rans4x_blocks += 1,
-                EntropyCodecId::None => {}
-            }
-            stats.planner_fast_path_blocks += if block.planner_telemetry.fast_path_hit {
-                1
-            } else {
-                0
-            };
-            stats.planner_estimated_candidates +=
-                block.planner_telemetry.estimated_candidates as u64;
-            stats.planner_sampled_candidates += block.planner_telemetry.sampled_candidates as u64;
-            stats.planner_full_trial_encodes += block.planner_telemetry.full_trial_encodes as u64;
-            stats.record_plan(plan_label(&block.plan));
-        }
-        stats.serialization_time = serialization_started.elapsed();
-        if self.config.write_index {
-            let index_started = Instant::now();
-            let index_bytes = encode_index(&index);
-            let index_offset = output.len() as u64;
-            let index_crc32c = checksum(&index_bytes);
-            output.extend_from_slice(&index_bytes);
-            let trailer = FileTrailer {
-                index_offset,
-                index_size: index_bytes.len() as u64,
-                index_crc32c,
-            };
-            output.extend_from_slice(&encode_trailer(trailer));
-            stats.index_time = index_started.elapsed();
-        }
-        stats.output_bytes = output.len() as u64;
+        let output = assemble_container(
+            blocks,
+            input.len(),
+            block_size,
+            self.config.write_index,
+            &mut stats,
+        )?;
         Ok((output, stats))
-    }
-
-    /// Resolves the effective file-level block size according to ACE 0.4 policy.
-    fn resolved_block_size(&self, input: &[u8]) -> usize {
-        if !matches!(self.config.block_size_policy, BlockSizePolicy::Auto) {
-            return self.config.block_size;
-        }
-        let sample_len = input.len().min(4 * 1024 * 1024);
-        let numeric = analyze_numeric(&input[..sample_len]);
-        recommend_block_size(self.config.access_hint, self.config.profile, &numeric).block_size
     }
 
     /// Compresses source bytes and writes the finished ACE file to an arbitrary sink.
@@ -241,14 +136,45 @@ impl AceEngine {
     /// Decompresses an in-memory ACE 1.0, 1.1, 1.2 or 1.3 file into reconstructed bytes.
     pub fn decompress(&self, input: &[u8]) -> AceResult<Vec<u8>> {
         let mut out = Vec::new();
-        self.decompress_from(Cursor::new(input), &mut out)?;
+        self.decompress_into(input, &mut out)?;
         Ok(out)
     }
 
-    /// Reads, validates and sequentially decompresses ACE 1.0, 1.1, 1.2 or 1.3 blocks to an arbitrary writer.
-    pub fn decompress_from<R: Read, W: Write>(&self, reader: R, mut writer: W) -> AceResult<()> {
+    /// Decompresses an in-memory ACE file into a caller-owned buffer and returns the number
+    /// of reconstructed bytes.
+    ///
+    /// `out` is cleared first and its capacity is reused, so repeated calls with the same
+    /// buffer avoid re-allocating the output. The reservation made from the (untrusted)
+    /// header is capped by [`DecodeLimits::max_output_size`] and [`PREALLOCATION_CAP_BYTES`];
+    /// on error `out` holds an unspecified prefix and must not be used.
+    pub fn decompress_into(&self, input: &[u8], out: &mut Vec<u8>) -> AceResult<usize> {
+        out.clear();
+        let mut ace = AceReader::new(Cursor::new(input), self.limits.clone());
+        let file = ace.read_file_header()?;
+        let reservation = file
+            .original_size
+            .min(self.limits.max_output_size)
+            .min(PREALLOCATION_CAP_BYTES);
+        out.reserve(usize::try_from(reservation).unwrap_or(0));
+        self.decode_blocks(&mut ace, &file, &mut *out)?;
+        Ok(out.len())
+    }
+
+    /// Reads, validates and sequentially decompresses ACE 1.0–1.3 blocks to a writer.
+    pub fn decompress_from<R: Read, W: Write>(&self, reader: R, writer: W) -> AceResult<()> {
         let mut ace = AceReader::new(reader, self.limits.clone());
         let file = ace.read_file_header()?;
+        self.decode_blocks(&mut ace, &file, writer)
+    }
+
+    /// Decodes every block announced by `file` in id order and streams it to `writer`,
+    /// enforcing block ordering, the declared original size and the output-size limit.
+    fn decode_blocks<R: Read, W: Write>(
+        &self,
+        ace: &mut AceReader<R>,
+        file: &FileHeader,
+        mut writer: W,
+    ) -> AceResult<()> {
         let mut total = 0u64;
         for expected_id in 0..file.block_count {
             let (header, metadata, payload) = ace.read_block()?;
@@ -272,226 +198,63 @@ impl AceEngine {
         Ok(())
     }
 
-    /// Produces deterministic detailed planner explanations without writing an ACE stream.
+    /// Produces deterministic planner explanations (every candidate fully evaluated) without
+    /// writing an ACE stream.
     pub fn explain(&self, input: &[u8]) -> AceResult<Vec<BlockExplanation>> {
-        let resolved_block_size = self.resolved_block_size(input);
-        let chunker = FixedBlockChunker::new(resolved_block_size)
+        let chunker = FixedBlockChunker::new(self.resolved_block_size(input))
             .ok_or(AceError::InvalidConfig("zero block size"))?;
-        let analyzer = DefaultBlockAnalyzer;
-        let planner = DefaultCompressionPlanner;
-        let mut out = Vec::new();
-        for (id, block) in chunker.chunks(input).enumerate() {
-            let planning_context = PlanningContext::classify(block, &self.config);
-            let profile =
-                analyzer.analyze_with_level(block, AnalysisLevel::for_profile(self.config.profile));
-            let candidates = planner.candidates(&profile, &self.config);
-            let evaluated = evaluate_all_candidates(block, &candidates, &self.config)?;
-            let numeric_profile = analyze_numeric(block);
-            let decision = evaluate_candidates_v4_with_route(
-                block,
-                &profile,
-                &candidates,
-                &self.config,
-                &planning_context.route,
-            )?;
-            out.push(BlockExplanation {
-                block_id: id as u64,
-                profile,
-                numeric_profile,
-                candidates: evaluated,
-                selected: decision.plan,
-                telemetry: decision.telemetry,
-            });
-        }
-        Ok(out)
+        chunker
+            .chunks(input)
+            .enumerate()
+            .map(|(id, block)| self.explain_block(id as u64, block))
+            .collect()
     }
 
-    /// Encodes one independent source block using one authoritative Planner V4.3 context.
-    fn encode_one_block(&self, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
-        let analyzer = DefaultBlockAnalyzer;
-        let planner = DefaultCompressionPlanner;
-
-        // Route classification and strict NumericFast validation happen exactly once.
-        let planning_context = PlanningContext::classify(input, &self.config);
-        let route_classify_time = planning_context.route_classify_time;
-
-        let (decision, generic_analysis_time, planning_time) = if let Some(decision) =
-            numeric_fast_decision_from_route(input, &planning_context.route)
-        {
-            (decision, Duration::ZERO, Duration::ZERO)
-        } else {
-            let analysis_started = Instant::now();
-            let profile =
-                analyzer.analyze_with_level(input, AnalysisLevel::for_profile(self.config.profile));
-            let generic_analysis_time = analysis_started.elapsed();
-
-            let planning_started = Instant::now();
-            let candidates = planner.candidates(&profile, &self.config);
-            let decision = evaluate_candidates_v4_with_route(
-                input,
-                &profile,
-                &candidates,
-                &self.config,
-                &planning_context.route,
-            )?;
-            let planning_time = planning_started.elapsed();
-            (decision, generic_analysis_time, planning_time)
-        };
-
-        let analysis_time = route_classify_time.saturating_add(generic_analysis_time);
-        let mut selected = decision.plan;
-        let planner_telemetry = decision.telemetry;
-        let encoding_started = Instant::now();
-
-        // A validated fixed-step NumericFast block can serialize NUM1 directly from evidence,
-        // avoiding the generic Numeric mode search and a third full-block scan.
-        let (mut entropy_metadata, mut payload, primary_len) = if planner_telemetry.fast_path_hit
-            && matches!(selected.decoding.codec, CodecId::Numeric)
-            && selected.decoding.transforms.is_empty()
-            && matches!(selected.decoding.entropy, EntropyCodecId::None)
-        {
-            if let Some(evidence) = planning_context.route.numeric_fast_evidence {
-                let payload = numeric_encode_fixed_step(
-                    input,
-                    evidence.width,
-                    evidence.first_value,
-                    evidence.first_delta,
-                    evidence.value_count,
-                    evidence.tail_bytes,
-                )?;
-                let primary_len = payload.len();
-                (Vec::new(), payload, primary_len)
-            } else {
-                encode_plan_payload(input, &selected)?
-            }
-        } else {
-            encode_plan_payload(input, &selected)?
-        };
-
-        let mut metadata = wrap_entropy_metadata(
-            selected.decoding.entropy,
-            primary_len,
-            &mut entropy_metadata,
+    /// Explains one block: routing, analysis, all candidate costs and the selected plan.
+    fn explain_block(&self, block_id: u64, block: &[u8]) -> AceResult<BlockExplanation> {
+        let context = PlanningContext::classify(block, &self.config);
+        let profile = DefaultBlockAnalyzer
+            .analyze_with_level(block, AnalysisLevel::for_profile(self.config.profile));
+        let candidates = DefaultCompressionPlanner.candidates_for_route(
+            &profile,
+            &self.config,
+            context.route.route,
+        );
+        let evaluated = evaluate_all_candidates(block, &candidates, &self.config)?;
+        let decision = evaluate_candidates_v4_with_route(
+            block,
+            &profile,
+            &candidates,
+            &self.config,
+            &context.route,
         )?;
-        let nonraw_overhead =
-            BLOCK_HEADER_SIZE + selected.decoding.transforms.len() + metadata.len();
-        if selected.decoding.codec != CodecId::Raw
-            || !selected.decoding.transforms.is_empty()
-            || !metadata.is_empty()
-        {
-            if payload
-                .len()
-                .saturating_add(nonraw_overhead)
-                .saturating_add(self.config.min_gain_bytes)
-                >= input.len().saturating_add(BLOCK_HEADER_SIZE)
-            {
-                selected = PhysicalCompressionPlan::raw();
-                metadata.clear();
-                payload = input.to_vec();
-            }
-        }
-
-        let encoding_time = encoding_started.elapsed();
-        Ok(EncodedBlock {
-            id,
-            original_size: input.len(),
-            metadata,
-            payload,
-            plan: selected,
-            crc32c: checksum(input),
-            route_classify_time,
-            generic_analysis_time,
-            analysis_time,
-            planning_time,
-            encoding_time,
-            planner_telemetry,
+        Ok(BlockExplanation {
+            block_id,
+            profile,
+            numeric_profile: analyze_numeric(block),
+            candidates: evaluated,
+            selected: decision.plan,
+            telemetry: decision.telemetry,
         })
     }
-}
 
-/// Returns a stable human-readable label for benchmark plan-distribution telemetry.
-fn plan_label(plan: &PhysicalCompressionPlan) -> String {
-    let mut parts = plan
-        .decoding
-        .transforms
-        .iter()
-        .map(|t| match t {
-            ace_core::TransformId::None => "none",
-            ace_core::TransformId::DeltaByte => "delta",
-        })
-        .collect::<Vec<_>>();
-    parts.push(match (plan.decoding.codec, plan.lz_mode) {
-        (CodecId::Raw, _) => "raw",
-        (CodecId::Rle, _) => "rle",
-        (CodecId::Lz, Some(ace_core::LzMode::Balanced)) => "lz_balanced",
-        (CodecId::Lz, _) => "lz_fast",
-        (CodecId::Numeric, _) => "numeric",
-    });
-    parts.push(match plan.decoding.entropy {
-        EntropyCodecId::None => "none",
-        EntropyCodecId::Huffman => "huffman",
-        EntropyCodecId::Rans => "rans",
-        EntropyCodecId::Rans4x => "rans4x",
-    });
-    parts.join("+")
-}
-
-/// Adds the uncompressed primary-codec byte length in front of entropy model metadata when required.
-fn wrap_entropy_metadata(
-    entropy: EntropyCodecId,
-    primary_len: usize,
-    metadata: &mut Vec<u8>,
-) -> AceResult<Vec<u8>> {
-    if matches!(entropy, EntropyCodecId::None) {
-        return Ok(std::mem::take(metadata));
-    }
-    if primary_len > u32::MAX as usize {
-        return Err(AceError::ResourceLimitExceeded("primary codec stream size"));
-    }
-    let mut wrapped = Vec::with_capacity(metadata.len() + 4);
-    wrapped.extend_from_slice(&(primary_len as u32).to_le_bytes());
-    wrapped.append(metadata);
-    Ok(wrapped)
-}
-
-/// Decodes one already-parsed independent ACE block and verifies its reconstructed checksum.
-pub(crate) fn decode_encoded_block(
-    header: &BlockHeader,
-    metadata: &[u8],
-    payload: &[u8],
-    limits: &DecodeLimits,
-) -> AceResult<Vec<u8>> {
-    if header.original_size as usize > limits.max_block_size {
-        return Err(AceError::ResourceLimitExceeded("block output size"));
-    }
-    if header.dictionary.is_some() {
-        return Err(AceError::MissingDictionary(
-            header.dictionary.expect("checked").id.0,
-        ));
-    }
-    let (entropy_metadata, primary_size) = if matches!(header.entropy, EntropyCodecId::None) {
-        (&metadata[..], payload.len())
-    } else {
-        if metadata.len() < 4 {
-            return Err(AceError::Malformed("missing primary-stream length"));
+    /// Resolves the file-level block size according to the configured block-size policy.
+    fn resolved_block_size(&self, input: &[u8]) -> usize {
+        if !matches!(self.config.block_size_policy, BlockSizePolicy::Auto) {
+            return self.config.block_size;
         }
-        let primary = u32::from_le_bytes(
-            metadata[0..4]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid primary-stream length"))?,
-        ) as usize;
-        (&metadata[4..], primary)
-    };
-    let codec_bytes = decode_entropy(header.entropy, entropy_metadata, payload, primary_size)?;
-    let mut stage = decode_codec(header.codec, &codec_bytes, header.original_size as usize)?;
-    for &transform in header.transforms.iter().rev() {
-        stage = invert_transform(transform, &stage)?;
+        let numeric = analyze_numeric(&input[..input.len().min(AUTO_POLICY_SAMPLE_BYTES)]);
+        recommend_block_size(self.config.access_hint, self.config.profile, &numeric).block_size
     }
-    if stage.len() != header.original_size as usize {
-        return Err(AceError::Malformed("decoded block size mismatch"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The configuration used by [`AceEngine::default_engine`] passes full validation.
+    #[test]
+    fn default_configuration_is_valid() {
+        assert!(AceEngine::new(AceConfig::default()).is_ok());
     }
-    if checksum(&stage) != header.payload_crc32c {
-        return Err(AceError::ChecksumMismatch(header.block_id));
-    }
-    Ok(stage)
 }

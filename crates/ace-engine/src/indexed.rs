@@ -1,4 +1,4 @@
-use crate::decode_encoded_block;
+use crate::block_pipeline::decode_encoded_block;
 use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_index::AceIndexReader;
 use std::io::{Read, Seek};
@@ -17,6 +17,7 @@ pub struct RangeAccessMetrics {
     pub blocks_decoded: usize,
 }
 
+/// Inherent methods of [`RangeAccessMetrics`].
 impl RangeAccessMetrics {
     /// Returns physical serialized bytes read divided by logical reconstructed bytes requested.
     pub fn physical_to_logical_ratio(&self) -> f64 {
@@ -39,6 +40,7 @@ pub struct AceIndexedDecoder<R: Read + Seek> {
     limits: DecodeLimits,
 }
 
+/// Inherent methods of [`AceIndexedDecoder`].
 impl<R: Read + Seek> AceIndexedDecoder<R> {
     /// Opens and validates an indexed ACE stream.
     pub fn open(reader: R, limits: DecodeLimits) -> AceResult<Self> {

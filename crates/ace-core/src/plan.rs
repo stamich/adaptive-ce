@@ -52,6 +52,7 @@ pub struct CostWeights {
     pub memory: u64,
 }
 
+/// Inherent methods of [`CostWeights`].
 impl CostWeights {
     /// Returns deterministic weights for a high-throughput encoder.
     pub fn fast() -> Self {
@@ -107,6 +108,7 @@ pub struct PhysicalCompressionPlan {
     pub reason: &'static str,
 }
 
+/// Inherent methods of [`PhysicalCompressionPlan`].
 impl PhysicalCompressionPlan {
     /// Creates the universal RAW fallback plan.
     pub fn raw() -> Self {
@@ -123,5 +125,61 @@ impl PhysicalCompressionPlan {
             score: 0,
             reason: "RAW mandatory fallback",
         }
+    }
+
+    /// True for a bare NUM1 plan (Numeric codec, no transforms, no entropy stage), the only
+    /// shape whose payload can be produced directly from planner numeric evidence.
+    pub fn is_plain_numeric(&self) -> bool {
+        matches!(self.decoding.codec, CodecId::Numeric)
+            && self.decoding.transforms.is_empty()
+            && matches!(self.decoding.entropy, EntropyCodecId::None)
+    }
+
+    /// Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry.
+    pub fn label(&self) -> String {
+        let mut parts: Vec<&str> = self
+            .decoding
+            .transforms
+            .iter()
+            .map(|transform| match transform {
+                TransformId::None => "none",
+                TransformId::DeltaByte => "delta",
+            })
+            .collect();
+        parts.push(match (self.decoding.codec, self.lz_mode) {
+            (CodecId::Raw, _) => "raw",
+            (CodecId::Rle, _) => "rle",
+            (CodecId::Lz, Some(LzMode::Balanced)) => "lz_balanced",
+            (CodecId::Lz, _) => "lz_fast",
+            (CodecId::Numeric, _) => "numeric",
+        });
+        parts.push(self.decoding.entropy.label());
+        parts.join("+")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Plan labels are stable and `is_plain_numeric` recognizes only bare NUM1 plans.
+    #[test]
+    fn plan_label_and_numeric_shape() {
+        let mut plan = PhysicalCompressionPlan::raw();
+        assert_eq!(plan.label(), "raw+none");
+        assert!(!plan.is_plain_numeric());
+        plan.decoding.codec = CodecId::Numeric;
+        assert!(plan.is_plain_numeric());
+        assert_eq!(plan.label(), "numeric+none");
+        plan.decoding.codec = CodecId::Lz;
+        plan.lz_mode = Some(LzMode::Balanced);
+        plan.decoding.transforms = vec![TransformId::DeltaByte];
+        plan.decoding.entropy = EntropyCodecId::Rans4x;
+        assert_eq!(plan.label(), "delta+lz_balanced+rans4x");
+        assert_eq!(EntropyCodecId::None.metadata_prefix_bytes(), 0);
+        assert_eq!(
+            EntropyCodecId::Huffman.metadata_prefix_bytes(),
+            crate::PRIMARY_LENGTH_PREFIX_BYTES
+        );
     }
 }

@@ -43,6 +43,7 @@ pub struct DominanceEnvelope {
     pub max_relative_size_loss: f64,
 }
 
+/// Inherent methods of [`DominanceEnvelope`].
 impl DominanceEnvelope {
     /// Returns the profile/access-specific preference envelope.
     pub fn for_config(config: &AceConfig) -> Self {
@@ -80,6 +81,7 @@ impl DominanceEnvelope {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DominancePolicy;
 
+/// Inherent methods of [`DominancePolicy`].
 impl DominancePolicy {
     /// Assigns a preference class and reason to one physical plan.
     pub fn preference(

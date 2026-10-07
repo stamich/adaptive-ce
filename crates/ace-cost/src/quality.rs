@@ -13,6 +13,7 @@ pub struct QualityEnvelope {
     pub slack_ppm: u64,
 }
 
+/// Inherent methods of [`QualityEnvelope`].
 impl QualityEnvelope {
     /// Returns the default quality envelope for a public compression profile.
     ///

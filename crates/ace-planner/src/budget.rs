@@ -13,6 +13,7 @@ pub enum PlannerDataClass {
     Structured,
 }
 
+/// Inherent methods of [`PlannerDataClass`].
 impl PlannerDataClass {
     /// Classifies a block using features already present in `BlockProfile`.
     pub fn classify(profile: &BlockProfile) -> Self {
@@ -40,6 +41,7 @@ pub struct PlanningBudget {
     pub hybrid_stage2_candidates: usize,
 }
 
+/// Inherent methods of [`PlanningBudget`].
 impl PlanningBudget {
     /// Returns the profile/data-class work budget used by Planner V3.6.
     pub fn for_block(profile: CompressionProfile, class: PlannerDataClass) -> Self {
