@@ -1,0 +1,15 @@
+[package]
+name = "ace-corpus"
+description = "Deterministic synthetic workloads shared by ACE tests, golden files, demo and benchmarks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+
+[[bin]]
+name = "ace-corpus"
+path = "src/bin/ace-corpus.rs"
+
+[lints]
+workspace = true
