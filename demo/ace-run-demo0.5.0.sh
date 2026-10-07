@@ -62,7 +62,7 @@ for spec in f64-constant:balanced f64-step:balanced f64-smooth:fast f64-noisy:fa
 done
 echo "Files without a TS1 block stay Format 1.3 (readable by ACE 0.4.x); a TS1 block makes them 1.4."
 echo "Planner V5 route of block 0 of f64-step (FAST):"
-"$ACE" explain --profile fast "$WORK/f64-step.bin" | awk '/^block 1 /{exit} /route=|float width|ts1 selected/'
+"$ACE" explain --profile fast "$WORK/f64-step.bin" | awk '/^block 1 /{done = 1} !done && /route=|float width|ts1 selected/'
 
 ace_step "3. random access: 64 KiB at offset 5 000 000 of structured-json"
 "$ACE" read-range "$WORK/structured-json.ace" 5000000 65536 "$WORK/range.out"
