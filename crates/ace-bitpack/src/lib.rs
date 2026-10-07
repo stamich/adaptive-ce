@@ -9,13 +9,14 @@
 //! | `zigzag`          | signed ⇄ unsigned ZigZag mapping                            |
 //! | `width`           | bit-width helpers                                           |
 //! | `scalar`          | fixed-width little-endian bit packing                       |
+//! | `bitstream`       | LSB-first bit I/O: [`BitWriter`] / [`BitReader`] (TS1)       |
 //! | `delta`           | first-order wrapping deltas                                 |
 //! | `delta_of_delta`  | second-order wrapping deltas                                |
 //! | `for_codec`       | frame-of-reference offsets                                  |
 //!
 //! All arithmetic is wrapping: every transform is a bijection modulo `2^lane_bits`.
 
-mod bit_io;
+mod bitstream;
 mod delta;
 mod delta_of_delta;
 mod for_codec;
@@ -24,6 +25,7 @@ mod scalar;
 mod width;
 mod zigzag;
 
+pub use bitstream::{BitReader, BitWriter};
 pub use delta::*;
 pub use delta_of_delta::*;
 pub use for_codec::*;
