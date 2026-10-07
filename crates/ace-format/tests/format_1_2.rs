@@ -57,3 +57,19 @@ fn reader_accepts_1_1() {
     bytes[28..32].copy_from_slice(&crc.to_le_bytes());
     assert_eq!(decode_file_header(&bytes).unwrap().minor_version, 1);
 }
+
+/// Minimal-version rule: only a TS1 block raises the declared version to 1.4.
+#[test]
+fn minimal_minor_version_depends_only_on_ts1() {
+    use ace_core::CodecId;
+    use ace_format::minimal_minor_version;
+    assert_eq!(minimal_minor_version([]), 3);
+    assert_eq!(
+        minimal_minor_version([CodecId::Raw, CodecId::Lz, CodecId::Numeric, CodecId::Rle]),
+        3
+    );
+    assert_eq!(
+        minimal_minor_version([CodecId::Raw, CodecId::TimeSeries]),
+        4
+    );
+}

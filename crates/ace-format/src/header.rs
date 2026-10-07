@@ -66,6 +66,22 @@ pub struct BlockHeader {
     pub payload_crc32c: u32,
 }
 
+/// Minor version a writer must declare for a file whose blocks use `codecs`.
+///
+/// This is the *minimal-version* rule of Format 1.4: only files that contain a TS1 block are
+/// written as 1.4; all others stay Format 1.3, byte-identical to ACE 0.4.x output and readable
+/// by 0.4.x decoders.
+pub fn minimal_minor_version(codecs: impl IntoIterator<Item = CodecId>) -> u8 {
+    if codecs
+        .into_iter()
+        .any(|codec| matches!(codec, CodecId::TimeSeries))
+    {
+        FORMAT_MINOR
+    } else {
+        FORMAT_MINOR_BASE
+    }
+}
+
 /// Serializes a file header, including a CRC32C over its first 28 bytes.
 ///
 /// The minor version byte is `header.minor_version` capped at [`FORMAT_MINOR`].

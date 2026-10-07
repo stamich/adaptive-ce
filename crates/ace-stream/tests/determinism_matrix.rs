@@ -67,7 +67,7 @@ fn byte_identical_across_threads_and_api_paths() {
             let mut streamed = Vec::new();
             compress_reader_known_size(
                 Cursor::new(&data),
-                &mut streamed,
+                Cursor::new(&mut streamed),
                 data.len() as u64,
                 config(profile, 1),
                 StreamLimits::default(),

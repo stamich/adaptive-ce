@@ -208,7 +208,7 @@ pub(crate) fn streaming_family() -> Result<Vec<Value>, Box<dyn std::error::Error
             let mut out = Vec::new();
             let telemetry = compress_reader_known_size(
                 Cursor::new(&data),
-                &mut out,
+                Cursor::new(&mut out),
                 data.len() as u64,
                 cfg.clone(),
                 limits,

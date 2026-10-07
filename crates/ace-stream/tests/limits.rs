@@ -17,7 +17,7 @@ fn input_limit_is_enforced_before_streaming() {
     let mut encoded = Vec::new();
     assert!(compress_reader_known_size(
         Cursor::new(data),
-        &mut encoded,
+        Cursor::new(&mut encoded),
         32,
         AceConfig::default(),
         limits,
@@ -32,7 +32,7 @@ fn short_reader_is_rejected() {
     let mut encoded = Vec::new();
     assert!(compress_reader_known_size(
         Cursor::new(data),
-        &mut encoded,
+        Cursor::new(&mut encoded),
         64,
         AceConfig::default(),
         StreamLimits::default(),
@@ -47,7 +47,7 @@ fn reader_longer_than_declared_size_is_rejected() {
     let mut encoded = Vec::new();
     assert!(compress_reader_known_size(
         Cursor::new(data),
-        &mut encoded,
+        Cursor::new(&mut encoded),
         32,
         AceConfig::default(),
         StreamLimits::default(),

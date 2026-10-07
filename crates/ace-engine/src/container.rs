@@ -3,11 +3,16 @@
 use std::time::Instant;
 
 use ace_core::{AceResult, CompressionStats};
-use ace_format::{AceWriter, FileHeader, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE};
+use ace_format::{
+    minimal_minor_version, AceWriter, FileHeader, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
+};
 
 use crate::block_encoder::EncodedBlock;
 
-/// Serializes blocks (already in id order) into a Format 1.3 container and fills `stats`.
+/// Serializes blocks (already in id order) into a container and fills `stats`.
+///
+/// The declared format version is the minimal one the blocks need: 1.4 only when a block uses
+/// the TS1 codec, otherwise 1.3 (see [`minimal_minor_version`]).
 pub(crate) fn assemble_container(
     blocks: Vec<EncodedBlock>,
     input_len: usize,
@@ -16,7 +21,7 @@ pub(crate) fn assemble_container(
     stats: &mut CompressionStats,
 ) -> AceResult<Vec<u8>> {
     let file_header = FileHeader {
-        minor_version: 3,
+        minor_version: minimal_minor_version(blocks.iter().map(|block| block.header.codec)),
         flags: if write_index { FILE_FLAG_HAS_INDEX } else { 0 },
         default_block_size: block_size as u32,
         original_size: input_len as u64,

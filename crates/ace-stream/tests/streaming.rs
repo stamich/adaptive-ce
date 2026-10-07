@@ -13,7 +13,7 @@ fn streaming_round_trip() {
     let mut encoded = Vec::new();
     let stats = compress_reader_known_size(
         Cursor::new(&data),
-        &mut encoded,
+        Cursor::new(&mut encoded),
         data.len() as u64,
         AceConfig::default(),
         StreamLimits::default(),
@@ -47,7 +47,7 @@ fn streaming_output_equals_in_memory_output() {
     let mut streamed = Vec::new();
     compress_reader_known_size(
         Cursor::new(&data),
-        &mut streamed,
+        Cursor::new(&mut streamed),
         data.len() as u64,
         AceConfig::default(),
         StreamLimits::default(),
@@ -66,7 +66,7 @@ fn streaming_rejects_size_mismatch() {
     let limits = StreamLimits::default();
     assert!(compress_reader_known_size(
         Cursor::new(&data),
-        Vec::new(),
+        Cursor::new(Vec::new()),
         10_001,
         AceConfig::default(),
         limits
@@ -74,7 +74,7 @@ fn streaming_rejects_size_mismatch() {
     .is_err());
     assert!(compress_reader_known_size(
         Cursor::new(&data),
-        Vec::new(),
+        Cursor::new(Vec::new()),
         9_999,
         AceConfig::default(),
         limits
