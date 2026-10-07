@@ -80,7 +80,7 @@ fn golden_path() -> PathBuf {
 
 /// Computes the golden document from the current code.
 fn compute() -> GoldenFile {
-    let entries = Workload::ALL
+    let entries = Workload::CORPUS_V3
         .iter()
         .map(|&workload| {
             let input = workload.generate(WORKLOAD_BYTES);
