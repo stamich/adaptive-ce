@@ -1,70 +1,14 @@
-# ACE 0.3-buildfix5 benchmark results
+# Benchmark results
 
-`./benchmark.sh all` writes:
+Generated, never committed or packaged (the release packager excludes everything here except
+this file).
 
-- `0.3-buildfix5-compression.json`
-- `0.3-buildfix5-entropy.json`
-- `0.3-buildfix5-planner.json`
-- `0.3-buildfix5-parallel.json`
-- `0.3-buildfix5-random-access.json`
-- `0.3-buildfix5-streaming.json`
-- `0.3-buildfix5-memory.json`
-- `0.3-buildfix5-regression.json`
+| File | Producer |
+|---|---|
+| `benchmark-0.4.6-<family>.json` | `./ace-benchmark0.4.6.sh <family>` (schema 2.1, Harness V3) |
+| `benchmark-0.4.6-regression.json` | Regression V3 (`tools/ace-check_regressions0.4.6.py`) |
+| `ab-0.4.6-vs-0.4.5-buildfix2.json` | interleaved A/B (`./ace-ab0.4.6.sh <baseline-tree>`) |
 
-Planner V3.2 additionally records oracle rank before/after sampling and Top-1/Top-2/Top-3 survival statistics.
-
-## 0.3-buildfix6
-
-`0.3-buildfix6` adds Planner V3.3 quality-envelope diagnostics and emits:
-
-```text
-0.3-buildfix6-compression.json
-0.3-buildfix6-entropy.json
-0.3-buildfix6-planner.json
-0.3-buildfix6-parallel.json
-0.3-buildfix6-random-access.json
-0.3-buildfix6-streaming.json
-0.3-buildfix6-memory.json
-0.3-buildfix6-regression.json
-```
-
-The planner family records analytical/sample/final oracle rank, quality-pool recall,
-selected size/cost rank and predicted-size regret.
-
-## 0.3-buildfix8
-
-Schema 1.8 results use `0.3-buildfix8-*.json`. Planner output includes hybrid LZ budgets/disagreement and analytical calibration diagnostics.
-
-## 0.3-buildfix9
-Schema 1.9 files use `0.3-buildfix9-*.json`. Hard gates are product-quality-first; exact oracle-rank metrics remain diagnostics.
-
-## 0.3-buildfix9-compilefix
-
-Result files use the `0.3-buildfix9-compilefix-*.json` prefix. Schema version remains 1.9.
-The compilefix changes only how JSON is built in Rust source; result field names and meanings
-are identical to 0.3-buildfix9.
-
-## 0.3.1
-
-ACE 0.3.1 keeps benchmark schema 1.9 and writes `0.3.1-<family>.json`.
-
-New hardening families:
-- `corpus`
-- `block-matrix`
-- `random-access-extended`
-- `stability`
-
-Timing objects add `stddev_ns`, `cv_percent` and `unstable_measurement`.
-Planner output adds `p99_regret_bytes_per_block`.
-
-## 0.4
-
-ACE 0.4 uses benchmark schema 2.0 and writes `0.4-<family>.json`.
-
-New families:
-- `numeric`
-- `numeric-ablation`
-- `block-policy`
-
-The numeric family records schema-free NumericProfile telemetry and selected numeric block count.
-The ablation family compares the generic 0.3.1-compatible path, direct Numeric codec and Planner V4.
+`ACE_BENCH_OUT_DIR` redirects the output. Accepted reference results are kept under
+`examples/baselines/<version>/` together with a `BASELINE.json` descriptor; schema history is
+described in `docs/BENCHMARK-METHODOLOGY-0.4.6.md`.

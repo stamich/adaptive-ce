@@ -1,0 +1,45 @@
+{
+  "project": "ACE",
+  "version": "0.4.6",
+  "milestone": "0.4.6",
+  "title": "Hardened Release & Benchmark Stabilization",
+  "base": "0.4.5-buildfix2",
+  "workspace_version": "0.4.6",
+  "planner": "V4.3",
+  "format": {
+    "writer": "1.3",
+    "readers": ["1.0", "1.1", "1.2", "1.3"],
+    "wire_format_changed": false
+  },
+  "freeze": "semantic (golden SHA-256, examples/golden/0.4.6/GOLDEN.json)",
+  "byte_identical_to": "0.4.5-buildfix2",
+  "benchmark_schema": "2.1",
+  "benchmark_harness": "v3 (adaptive iterations, 3x7 batches, median-of-medians, batch MAD)",
+  "baseline": "0.4.5-buildfix2",
+  "performance_method": "interleaved A/B (tools/ace-ab0.4.6.py)",
+  "msrv": "1.75",
+  "cargo_lock_shipped": true,
+  "new_crates": ["ace-corpus", "ace-bench"],
+  "new_public_api": [
+    "ace_engine::AceEngine::decompress_into",
+    "ace_engine::PREALLOCATION_CAP_BYTES",
+    "ace_simd::{SIMD_OVERRIDE_ENV, scalar_forced, crc32c_backend_name}",
+    "ace_corpus::Workload"
+  ],
+  "removed_public_api": [],
+  "scripts": [
+    "ace-build0.4.6.sh",
+    "ace-benchmark0.4.6.sh",
+    "ace-benchmark-compare0.4.6.sh",
+    "ace-ab0.4.6.sh",
+    "ace-release0.4.6.sh",
+    "ace-ci0.4.6.sh",
+    "demo/ace-run-demo0.4.6.sh"
+  ],
+  "fuzz_targets": 12,
+  "unsafe_scope": ["ace-simd (SIMD/CRC kernels)", "ace-bench (counting allocator)"],
+  "production_panic_lint_exceptions": 0,
+  "release_gate_sections": ["correctness", "quality", "performance", "stability", "environment"],
+  "gate_statuses": ["pass", "fail", "unstable", "skipped", "diagnostic"],
+  "next": "0.5 - Advanced Time-Series & Numeric Compression"
+}

@@ -1,5 +1,103 @@
 # Changelog
 
+## 0.4.6 - 2026-10-06 — Hardened Release & Benchmark Stabilization
+
+Base: 0.4.5-buildfix2. **Format 1.3, Planner V4.3 and every encoded byte unchanged**
+(semantic freeze: golden SHA-256 for 15 workloads × 3 profiles, auto and `ACE_SIMD=scalar`;
+byte-identical output of 0.4.5-buildfix2 and 0.4.6 in every A/B case). Product and Cargo
+version 0.4.6. Concept: `AdaptiveCE_0_4_6_Koncepcja.md`; task order: `TASKS-0.4.6.md`.
+
+### Added
+- `ace-corpus` crate + `ace-corpus` CLI: deterministic workloads (15) shared by tests, golden
+  files, demo and benchmarks (byte-identical to the former harness generators).
+- Golden files `examples/golden/0.4.6/GOLDEN.json` + `crates/ace-engine/tests/golden.rs`
+  (`ACE_GOLDEN_UPDATE=1` regenerates).
+- `ACE_SIMD=scalar` override (`ace_simd::{SIMD_OVERRIDE_ENV, scalar_forced}`),
+  `ace_simd::crc32c_backend_name`.
+- `AceEngine::decompress_into` (reusable output buffer, reservation capped by
+  `DecodeLimits::max_output_size` and `PREALLOCATION_CAP_BYTES`); `decompress`,
+  `decompress_into` and `decompress_from` share one `decode_blocks`.
+- Benchmark Harness V3 in `crates/ace-bench` (moved from `examples/rust-benchmark`):
+  `timing/{plan,runner,stats,report}` — 5 warm-ups, doubling calibration to ≥ 50 ms per
+  sample, 3 × 7 batches, median-of-medians, batch MAD, MAD outliers (reported, not removed);
+  `ACE_BENCH_QUICK`, `ACE_BENCH_MIN_SAMPLE_MS`, `ACE_BENCH_OUT_DIR`; family registry and
+  `--list`.
+- Benchmark schema 2.1: all 2.0 fields (computed from the MoM) + `stable_timing`,
+  `benchmark_methodology`, environment fingerprint from `build.rs` (rustc, target, opt-level,
+  LTO, codegen-units, target features, RUSTFLAGS) and before/after runtime snapshots
+  (governor, frequency, temperature, load) with warnings.
+- `release-performance` family (exact gate cases, pre-allocated decode + allocating diagnostic);
+  `memory` family gains allocation counts (counting `GlobalAlloc`) and peak RSS (`VmHWM`).
+- Interleaved A/B: probe `tools/ace-abprobe0.4.6` compiled against any 0.4.x tree, driver
+  `tools/ace-ab0.4.6.py` (alternating order, MoM ratio, per-batch bounds, byte identity,
+  A/A control), `ace-ab0.4.6.sh`.
+- Regression V3 (`tools/ace-check_regressions0.4.6.py`): sections correctness / quality /
+  performance / stability / environment; statuses pass / fail / unstable / skipped /
+  diagnostic; exit 0 / 1 / 3 / 4.
+- Tools: shared `ace-benchlib0.4.6.py`, schema 2.0/2.1 validator, report with `--markdown`
+  (generates `docs/PERFORMANCE-0.4.6.md`), comparator with methodology/machine warnings,
+  `ace-code_audit0.4.6.py` (unsafe placement, SAFETY comments, allow justifications →
+  generated `docs/PANIC-AUDIT-0.4.6.md`), deterministic packager `ace-package0.4.6.py`.
+- Hardening tests: `malformed_matrix` (table, every-7th truncation, exhaustive single-byte
+  flips, forged sizes with re-sealed CRC, resource limits, no large pre-allocation),
+  `random_access_stress` (10 000 ranges, per-block, out-of-bounds, 8 concurrent readers),
+  `determinism_matrix` (4 workloads × 3 profiles × 5 thread counts × 3 API paths,
+  `decompress_into` reuse), `num1_properties`, `large_files` (1 GiB streaming, 256 MiB
+  indexed; `--ignored`), `PROPTEST_CASES` budgets for all property tests, compiled API
+  doctest in `ace-engine`.
+- Scripts: `ace-build`, `ace-benchmark` (`--quick`, `--isolated`, `--ab`),
+  `ace-benchmark-compare` (files or directories), `ace-ab`, `ace-release` (11 steps, retry on
+  `unstable`, filled checklist, test from the archive), `ace-ci` (`pr`, `release`, `fuzz`,
+  `msrv`) — all `…0.4.6.sh` with shared `tools/ace-common0.4.6.sh`; GitHub Actions wrapper.
+- Short product demo `demo/ace-run-demo0.4.6.sh` (< 1 min, no benchmarks).
+- Docs: `RELEASE-NOTES`, `ARCHITECTURE`, `ARCHITECTURE-FREEZE`, `BENCHMARK-METHODOLOGY`,
+  `UNSAFE-AUDIT`, `PANIC-AUDIT`, `RELEASE-CHECKLIST`, `PERFORMANCE` (all `-0.4.6`),
+  `MILESTONE-0.4.6.json`, `examples/baselines/*/BASELINE.json`.
+
+### Changed
+- Workspace: `rust-version = "1.75"`, explicit `[profile.release]`, MSRV-aware `Cargo.lock`
+  shipped (lz4_flex 0.11.3), workspace lints (`unsafe_code = forbid`, `missing_docs = deny`,
+  `unsafe_op_in_unsafe_fn = deny`, clippy `unwrap_used / expect_used / panic / todo /
+  unimplemented / dbg_macro = deny`; tests exempt via `clippy.toml`).
+- Production code free of `unwrap` / `expect` / `panic!`: `AceEngine::default_engine` builds
+  directly, `Lane::WIDTH`, infallible `read_bits_validated`, NUM1 header and Huffman length
+  reads via `read_lane`, Huffman code-length construction without `expect`.
+- `ace-simd`: `unsafe` operations wrapped in explicit blocks with `// SAFETY:` comments
+  (`clippy::undocumented_unsafe_blocks = deny`).
+- `cargo fmt` applied to the whole workspace (fmt-only change, golden unchanged).
+- README rewritten release-style; `docs/SECURITY.md` updated with 0.4.6 evidence;
+  `ROADMAP.md` updated (0.4.x candidates vs 0.5).
+- Fuzz project: 12 registered targets (`planner_sample_offsets`, `rans_decoder`,
+  `rans4x_decoder`, `rle_roundtrip` were present but unregistered; stale `ace_decoder`
+  replaced by `engine_roundtrip`; `planner_sample_offsets` fixed for the current API).
+- Java / Scala integration examples: version-neutral docs, run instructions.
+
+### Removed
+- 0.4.5-buildfix2 scripts and tools, Python corpus generators (replaced by `ace-corpus`),
+  cost-model calibration script, `MANIFEST.txt` (generated into the package now).
+- Example crates `rust-demo`, `random-access-demo`, `parallel-demo`; harness moved to
+  `crates/ace-bench`.
+- Duplicate Java / Scala sources outside the Maven / sbt layout.
+- Obsolete baselines (0.2, 0.2.1, 0.3-*, 0.3.1, 0.4-buildfix1, 0.4-buildfix3-buildfix1);
+  kept: 0.2.1-buildfix1 (quality), 0.4-buildfix2, 0.4.5-buildfix1, 0.4.5-buildfix2.
+- Historic documents moved to `docs/history/`.
+
+### Verification (development VM: 2-vCPU Xeon, rustc 1.97)
+| Check | Result |
+|---|---|
+| `cargo fmt --check`, `clippy --all-targets -D warnings`, `RUSTDOCFLAGS=-D warnings cargo doc` | clean |
+| tests (debug) | 218 passed, 0 failed, 2 ignored (large files) |
+| tests (release) incl. `--ignored` | 220 passed |
+| property tests at `PROPTEST_CASES=10000` | pass |
+| golden SHA-256 (auto + `ACE_SIMD=scalar`) | identical |
+| CLI byte identity vs 0.4.5-buildfix2 (6 workloads × 3 profiles + streaming) | identical |
+| code audit | 24 `unsafe` sites, all in audited files; 0 panic-lint exceptions |
+| fuzz project (12 targets) | `cargo check` clean (campaign: reference machine) |
+| Harness V3 full run (21 families) + interleaved A/B | Regression V3 PASS: correctness 8, quality 13, performance 15, stability 15 (after two `unstable` sessions, as designed) |
+| `ace-release0.4.6.sh --quick` end-to-end | all steps run; verdict "not releasable" by design (quick) |
+| package | reproducible (2 × same SHA-256), tested from the archive |
+| MSRV 1.75 toolchain | not available offline; enforced by `clippy.toml`, lockfile and `ace-ci0.4.6.sh msrv` |
+
 ## 0.4.5-buildfix2 - 2026-10-05
 
 Base: 0.4.5-buildfix1. Format 1.3 and every encoded byte unchanged (byte-for-byte identical

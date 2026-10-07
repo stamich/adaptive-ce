@@ -1,165 +1,151 @@
-# Adaptive Compression Engine (ACE) 0.4.5-buildfix2
+# Adaptive Compression Engine (ACE) 0.4.6
 
-Schema-free adaptive block compression in Rust: every block is analysed, routed (Generic /
-NumericGeneral / NumericFast), planned by a deterministic cost model and stored in the
-self-describing ACE Format 1.3 container with a random-access index.
+ACE is a schema-free, adaptive block compressor written in Rust. Every block of the input is
+analysed, routed (Generic / NumericGeneral / NumericFast), planned by a deterministic cost
+model and stored in the self-describing **ACE Format 1.3** container, which carries a block
+index for random access.
 
-## What is new in 0.4.5-buildfix2
+**0.4.6 is the hardened release of the 0.4 line.** It changes no format, no planner decision
+and no encoded byte (enforced by golden SHA-256 files); it makes the 0.4 architecture
+measurable, reproducible and auditable. See [`docs/RELEASE-NOTES-0.4.6.md`](docs/RELEASE-NOTES-0.4.6.md).
 
-**Structure.** Every crate's `lib.rs` (and every `mod.rs`) now contains only `mod` and
-`pub use`; implementation is split into one module per responsibility. Duplicated code was
-replaced by single generic implementations (e.g. one `Lane` trait instead of three copies of
-every bit-packing transform, one `AceWriter` for in-memory and streaming containers, one block
-reader for sequential and indexed decoding). See `docs/ARCHITECTURE-0.4.5-BUILDFIX2.md`.
+## Features
 
-**Decode hot path** (closes the warm-64K gate that failed in 0.4.5-buildfix1):
+- **Adaptive planning** — Planner V4.3 evaluates RAW, RLE, LZ, NUM1 and delta pipelines with
+  Huffman / rANS / rANS4x entropy coding per block; quality is gated against a policy oracle.
+- **Numeric compression** — NUM1 (frame-of-reference, delta, delta-of-delta + bit packing) for
+  u16 / u32 / u64 lanes, with a validated fixed-step fast path.
+- **Random access** — `AceIndexedDecoder` decodes only the blocks that intersect a byte range.
+- **Streaming** — bounded-memory encoder whose output is byte-identical to in-memory compression.
+- **Determinism** — identical bytes for every thread count, process and SIMD backend.
+- **Safety** — `unsafe` only in audited SIMD/CRC kernels, no `unwrap`/`expect`/`panic` in
+  production code, decoder resource limits, fuzzed parsers.
+- **Hardware acceleration** — AVX2 scans and 3-way SSE4.2 CRC32C, runtime-detected; portable
+  scalar fallback (`ACE_SIMD=scalar` forces it).
 
-- CRC32C with three interleaved SSE4.2 chains (`ace_simd::crc32c_hardware`): 256 KiB 41 → 12 µs;
-- table-driven Huffman decoder with a 64-bit bit buffer;
-- fused NUM1 decoding without intermediate vectors (1.6–2× faster);
-- RAW blocks are copied once instead of twice.
+## Architecture
 
-Container A/B (same machine, same harness): warm-64K range read 78 → 40 µs, full decompression
-of `mixed_16m` +30 %, FAST/BALANCED/DENSE decode +14…+43 %, numeric encode +11…+60 %.
+```text
+input ─► chunker ─► analysis ─► route (Generic | NumericGeneral | NumericFast)
+                                   │
+                                   ▼
+                    Planner V4.3 (cost model, sampling, policies)
+                                   │
+              transforms ─► codec (RAW/RLE/LZ/NUM1) ─► entropy (Huffman/rANS/rANS4x)
+                                   │
+                                   ▼
+         Format 1.3 container: header · blocks (CRC32C) · index · trailer
+```
 
-**Compatibility.** Format, planner decisions and every encoded byte are unchanged (verified
-byte-for-byte against 0.4.5-buildfix1 on Corpus V3 for FAST/BALANCED/DENSE and streaming).
-Removed public API: the width-specific `ace_bitpack::*_u16/_u32/_u64` functions (use the
-generic `Lane` functions).
+| Crate | Role |
+|---|---|
+| `ace-core` | shared model: ids, plans, configuration, limits, errors, statistics |
+| `ace-simd` | runtime-dispatched SIMD scans and hardware CRC32C (the only `unsafe` crate) |
+| `ace-bitpack` | generic `Lane` integer transforms and bit packing |
+| `ace-analysis` | block statistics, numeric detection, block-size advisor |
+| `ace-transforms`, `ace-codecs`, `ace-entropy` | reversible stages: delta; RAW/RLE/LZ/NUM1; Huffman/rANS/rANS4x |
+| `ace-cost`, `ace-planner` | estimation, sampling, routing, evaluation and policies |
+| `ace-format`, `ace-index` | container format, checksums, block I/O, index |
+| `ace-engine`, `ace-stream`, `ace-runtime` | façade, block pipeline, random access, streaming, worker pool |
+| `ace-dictionary` | dictionary registry seam |
+| `ace-cli` | the `ace` command-line tool |
+| `ace-corpus` | deterministic synthetic workloads (tests, golden files, demo, benchmarks) |
+| `ace-bench` | Benchmark Harness V3 (`benchmark-0.4.6-<family>.json`, schema 2.1) |
 
-Benchmark analysis of 0.4.5-buildfix1: `docs/BENCHMARK-ANALYSIS-0.4.5-buildfix1.md`.
+Details: [`docs/ARCHITECTURE-0.4.6.md`](docs/ARCHITECTURE-0.4.6.md),
+[`docs/ARCHITECTURE-FREEZE-0.4.6.md`](docs/ARCHITECTURE-FREEZE-0.4.6.md).
 
 ## Quick start
 
 ```bash
-./ace-build0.4.5-buildfix2.sh                  # check, test, release build, demo, benchmarks
-cargo run --release -p ace-cli -- compress in.bin out.ace --profile balanced
-cargo run --release -p ace-cli -- inspect out.ace --blocks
-cargo run --release -p ace-cli -- read-range out.ace 1000 65536 part.bin
-./ace-benchmark0.4.5-buildfix2.sh all          # full benchmark contract + release gates
+./ace-build0.4.6.sh                      # fmt, clippy, tests, release build, rustdoc, demo
+./demo/ace-run-demo0.4.6.sh              # < 1 minute product tour
 ```
 
-## Workspace
+Requirements: Rust ≥ 1.75 (MSRV, `Cargo.lock` included), Python 3.9+ for the tools.
 
-| Crate | Role |
-|---|---|
-| `ace-core` | shared model: ids, plans, config, limits, errors, statistics |
-| `ace-simd` | runtime-dispatched SIMD scans and hardware CRC32C (only crate with `unsafe`) |
-| `ace-bitpack` | generic `Lane` integer transforms and bit packing |
-| `ace-analysis` | block statistics, numeric detection, prefilter, block-size advisor |
-| `ace-transforms` / `ace-codecs` / `ace-entropy` | reversible pipeline stages (delta; RAW/RLE/LZ/NUM1; Huffman/rANS/rANS4x) |
-| `ace-cost` / `ace-planner` | estimation, sampling, Planner V4.3 routing, evaluation and policies |
-| `ace-format` / `ace-index` | container format, checksums, block I/O, index |
-| `ace-engine` / `ace-stream` / `ace-runtime` | façade, block encoder/pipeline, streaming, parallel runtime |
-| `ace-dictionary` | dictionary registry seam (training deferred) |
-| `ace-cli` | `ace` command-line tool |
+## Command-line interface
 
-## Planner V4.3 background (0.4-buildfix4)
+```bash
+ace compress in.bin out.ace --profile balanced --threads 0   # fast | balanced | dense
+ace compress-stream in.bin out.ace                           # bounded memory
+ace decompress out.ace restored.bin
+ace verify out.ace                                           # decode + check every CRC
+ace inspect out.ace --blocks                                 # per-block codec / numeric telemetry
+ace explain in.bin                                           # planner decisions, no output file
+ace read-range out.ace 1000000 65536 part.bin                # random access
+ace decode-block out.ace 7 block.bin
+```
 
-ACE 0.4-buildfix4 is the **Planner V4.3 Policy Oracle Closure & Runtime Regression Fix** release.
+## Library API
 
-It does not add a new compression algorithm or wire format. It closes the remaining 0.4 policy
-semantics and removes duplicate work from the NumericFast hot path.
+```rust
+use std::io::Cursor;
+use ace_core::{AceConfig, CompressionProfile, DecodeLimits};
+use ace_engine::{AceEngine, AceIndexedDecoder};
 
-#### One planning context per block
+let engine = AceEngine::new(AceConfig { profile: CompressionProfile::Balanced, ..AceConfig::default() })?;
+let packed = engine.compress(&input)?;
+let restored = engine.decompress(&packed)?;              // or decompress_into(&packed, &mut buf)
+let mut reader = AceIndexedDecoder::open(Cursor::new(&packed), DecodeLimits::default())?;
+let slice = reader.read_range(4_000..4_100)?;
+```
 
-`PlanningContext` classifies a block once. Its `RouteDecision` is reused by engine and evaluator.
-A validated NumericFast route carries `NumericFastEvidence`, so the block is not validated twice.
-
-#### Strict NumericFast invariant
-
-NumericFast now requires a complete-block fixed-step sequence:
-
-- monotonically non-decreasing;
-- non-zero first delta;
-- every subsequent delta exactly equals the first delta.
-
-Outlier/sawtooth workloads fall back to NumericGeneral.
-
-#### Direct NumericFast encode
-
-`numeric_encode_fixed_step` writes `NUM1 + DeltaOfDelta + bit_width=0` directly from evidence.
-It avoids numeric mode search, delta/DoD vectors, bit-width scan and bit packing.
-
-#### Three oracle levels
-
-- **global oracle** — smallest physically possible diagnostic payload;
-- **route oracle** — smallest route-eligible payload;
-- **policy oracle** — candidate ACE should prefer under route, dominance, access and size-envelope rules.
-
-Only policy oracle drives release recall/regret gates.
-
-#### Product dominance policy
-
-`DominancePolicy` introduces product preferences:
-
-- RLE preferred for zero/run-heavy blocks;
-- RAW preferred for incompressible data;
-- Numeric preferred for NumericFast/NumericGeneral;
-- RandomAccess can prefer cheaper-decode RAW/RLE.
-
-Preference is bounded by `DominanceEnvelope` so decode preference cannot hide an excessive size loss.
+The same example is compiled and executed as a doctest of `ace-engine`.
 
 ## Compatibility
 
-- workspace version: 0.4.5 (milestone 0.4.5-buildfix2)
-- Planner: V4.3
-- writer: Format 1.3; readers: 1.0 / 1.1 / 1.2 / 1.3
-- NUM1 lane width 2 (u16) since 0.4.5; AIDX/ACET unchanged
-- MSRV: Rust 1.75 (`clippy.toml`)
-- benchmark schema: 2.0
+| Item | 0.4.6 |
+|---|---|
+| Writer / readers | Format 1.3 / 1.0, 1.1, 1.2, 1.3 |
+| Planner | V4.3 (decisions frozen, golden SHA-256) |
+| Encoded bytes | identical to 0.4.5-buildfix2 (and to 0.4.5-buildfix1) |
+| Public API | additive only: `AceEngine::decompress_into`, `PREALLOCATION_CAP_BYTES` |
+| MSRV | Rust 1.75 |
+| Benchmark schema | 2.1 (all 2.0 fields kept) |
 
-## Versioned scripts
+## Performance
 
-Every script starts with `ace-` and carries the milestone in its filename:
-
-```text
-ace-build0.4.5-buildfix2.sh
-ace-benchmark0.4.5-buildfix2.sh
-ace-benchmark-compare0.4.5-buildfix2.sh
-demo/ace-run-demo0.4.5-buildfix2.sh
-tools/*0.4.5-buildfix2.py
-```
-
-## Benchmark JSON naming
-
-```text
-examples/results/benchmark-0.4.5-buildfix2-<family>.json
-```
-
-The milestone tag is defined once (`examples/rust-benchmark/src/json.rs::MILESTONE`).
-Previous results for A/B comparisons: `examples/baselines/0.4.5-buildfix1/`.
+Generated tables: [`docs/PERFORMANCE-0.4.6.md`](docs/PERFORMANCE-0.4.6.md). Methodology
+(adaptive iterations, 3 × 7 batches, median-of-medians, MAD, interleaved A/B):
+[`docs/BENCHMARK-METHODOLOGY-0.4.6.md`](docs/BENCHMARK-METHODOLOGY-0.4.6.md).
 
 ```bash
-./ace-benchmark-compare0.4.5-buildfix2.sh \
-  examples/baselines/0.4.5-buildfix1/benchmark-0.4.5-buildfix1-numeric.json \
-  examples/results/benchmark-0.4.5-buildfix2-numeric.json
+./ace-benchmark0.4.6.sh all [--quick] [--isolated]   # Harness V3 + Regression V3
+./ace-ab0.4.6.sh /path/to/ace-0.4.5-buildfix2        # interleaved A/B vs the baseline tree
+./ace-benchmark-compare0.4.6.sh OLD NEW              # any two result files or directories
+./ace-release0.4.6.sh /path/to/ace-0.4.5-buildfix2   # full release pipeline
 ```
 
-## Release gates
+## Security limits
 
-- policy candidate recall >= 0.99
-- policy Top-K recall >= 0.98
-- policy mean regret <= 16 B/block
-- policy p95 <= 64 B
-- policy p99 <= 256 B
-- full candidate trials == 0
-- BALANCED/DENSE ratio >= 3.70x
-- FAST/BALANCED/DENSE throughput >= 95% buildfix2
-- warm64K <= 110% buildfix2
-- u32 NumericFast >= 95% buildfix2
-- u64 timestamps >= 90 MB/s
-- delta-variable >= 75 MB/s
+Decoding enforces `DecodeLimits` (output size, block size, encoded block size, transforms,
+dictionary size, index entries) before allocating; every block carries a CRC32C; header,
+index and trailer are checksummed. Malformed input is rejected with an error, never a panic —
+covered by the malformed matrix, property tests and 12 fuzz targets. See
+[`docs/SECURITY.md`](docs/SECURITY.md), [`docs/UNSAFE-AUDIT-0.4.6.md`](docs/UNSAFE-AUDIT-0.4.6.md),
+[`docs/PANIC-AUDIT-0.4.6.md`](docs/PANIC-AUDIT-0.4.6.md).
 
-Global and route regret remain diagnostic.
+## Repository map
 
-## Documentation
+| Path | Content |
+|---|---|
+| `ace-*0.4.6.sh` | build, benchmark, compare, A/B, release and CI entry points |
+| `demo/` | product demo |
+| `tools/` | Python benchmark tools (validator, report, compare, Regression V3, A/B, package, audit) |
+| `examples/golden/0.4.6/` | semantic-freeze golden SHA-256 file |
+| `examples/baselines/` | accepted reference results (`BASELINE.json` per version) |
+| `fuzz/` | `cargo-fuzz` project (12 targets) |
+| `integrations/` | Java / Scala CLI-boundary examples |
+| `docs/` | current documentation; `docs/history/` keeps earlier milestones |
+| `TASKS-0.4.6.md`, `MILESTONE-0.4.6.json` | implementation order and machine-readable summary |
 
-- `TASKS-0.4.5-buildfix2.md` — ordered implementation tasks (types, traits, modules)
-- `MILESTONE-0.4.5-buildfix2.json` — machine-readable release summary
-- `docs/ARCHITECTURE-0.4.5-BUILDFIX2.md` — module map and SOLID/KISS/DRY decisions
-- `docs/BENCHMARK-ANALYSIS-0.4.5-buildfix1.md` — detailed analysis of the previous run
-- `docs/NUMERIC-0.4.5.md`, `docs/CONCEPT-TRACEABILITY-0.4.md`, `docs/FORMAT-1.3.md`
-- `docs/ARCHITECTURE-0.4-BUILDFIX4.md`, `docs/POLICY-ORACLE-0.4-BUILDFIX4.md`
-- `docs/history/` — task lists, milestone files and audits of earlier builds
-- `CHANGELOG.md`, `ROADMAP.md`
+## Roadmap
+
+0.4.6 closes the 0.4 line. Next: ACE 0.5 — advanced time-series and numeric compression
+(Gorilla/XOR floats, decimal specialisation, Patched FOR, SIMD bit packing). See
+[`ROADMAP.md`](ROADMAP.md); history of all builds: [`CHANGELOG.md`](CHANGELOG.md).
+
+## License
+
+Apache-2.0 (see `LICENSE`).
