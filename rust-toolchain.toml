@@ -1,0 +1,7 @@
+# Pins the toolchain to the MSRV so local builds, CI runners and benchmark fingerprints use the
+# same compiler and the same clippy lint set (a newer stable on a runner can add lints that
+# fail `clippy -D warnings`). rustup installs it automatically on first use.
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

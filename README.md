@@ -62,7 +62,7 @@ Details: [`docs/ARCHITECTURE-0.4.6.md`](docs/ARCHITECTURE-0.4.6.md),
 ./demo/ace-run-demo0.4.6.sh              # < 1 minute product tour
 ```
 
-Requirements: Rust ≥ 1.97 (MSRV, `Cargo.lock` included), Python 3.9+ for the tools.
+Requirements: Rust 1.97.0 (MSRV, pinned by `rust-toolchain.toml`; `Cargo.lock` included), Python 3.9+ for the tools.
 
 ## Command-line interface
 
