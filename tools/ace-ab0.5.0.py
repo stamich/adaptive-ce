@@ -108,9 +108,13 @@ def build_probe(label: str, tree: pathlib.Path, work: pathlib.Path) -> pathlib.P
     lock = tree / "Cargo.lock"
     if lock.exists() and not (crate / "Cargo.lock").exists():
         shutil.copyfile(lock, crate / "Cargo.lock")
+    # Each side builds into its own target directory, also when the caller exported
+    # CARGO_TARGET_DIR: a shared directory would make the two probes overwrite each other.
+    env = dict(os.environ, CARGO_TARGET_DIR=str(crate / "target"))
     subprocess.run(
         ["cargo", "build", "--release", "--quiet", "--manifest-path", str(crate / "Cargo.toml")],
         check=True,
+        env=env,
     )
     return crate / "target" / "release" / "ace-abprobe"
 
