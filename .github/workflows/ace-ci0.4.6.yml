@@ -1,0 +1,16 @@
+# Thin GitHub Actions wrapper around the vendor-neutral ./ace-ci0.4.6.sh.
+name: ace-ci-0.4.6
+on: [push, pull_request]
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup component add rustfmt clippy
+      - run: ./ace-ci0.4.6.sh pr
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.75 --profile minimal
+      - run: ./ace-ci0.4.6.sh msrv
