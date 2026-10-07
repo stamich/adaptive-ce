@@ -3,7 +3,7 @@
 #
 #   ./ace-ci0.5.0.sh pr        build gates + code audit + quick release-performance + demo
 #   ./ace-ci0.5.0.sh release   full ace-release0.5.0.sh (needs ACE_AB_BASELINE_TREE)
-#   ./ace-ci0.5.0.sh fuzz      all 12 fuzz targets, ACE_FUZZ_SECONDS each (default 60)
+#   ./ace-ci0.5.0.sh fuzz      all 15 fuzz targets, ACE_FUZZ_SECONDS each (default 60)
 #   ./ace-ci0.5.0.sh msrv      check + test with Rust 1.97 (SKIPPED when not installed)
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.5.0.sh"
