@@ -1,4 +1,4 @@
-# ACE fuzzing (0.4.6)
+# ACE fuzzing (0.5.0)
 
 `fuzz/` is a separate `cargo-fuzz` project (not a workspace member; requires a nightly
 toolchain and `cargo install cargo-fuzz`).
@@ -16,14 +16,17 @@ toolchain and `cargo install cargo-fuzz`).
 | `rans4x_decoder` | interleaved rANS4x | rejected safely |
 | `rle_roundtrip` | RLE codec | lossless |
 | `planner_sample_offsets` | `ace_cost::deterministic_sample_ranges` | ranges stay in bounds |
-| `engine_roundtrip` | full planner + encoder, all profiles | lossless |
+| `engine_roundtrip` | full planner + encoder (incl. the Float lane), all profiles | lossless |
+| `bitstream_roundtrip` | `ace_bitpack::{BitWriter, BitReader}` | any width sequence round-trips; reads past the end return `None` |
+| `ts1_decode` | TS1 decoder (`ts1_decode`, `ts1_inspect`) | arbitrary payloads rejected or decoded to the declared size, never panic |
+| `ts1_roundtrip` | TS1 encode → decode, every layout | bit-exact (`to_bits`), `ts1_encoded_len` equals the payload size |
 
 ## Campaigns
 
 ```bash
-cargo +nightly fuzz run <target> -- -max_total_time=600     # release: 12 x 10 min
-cargo +nightly fuzz run <target> -- -max_total_time=60      # nightly CI: 12 x 60 s
-./ace-ci0.4.6.sh fuzz                                       # all targets, ACE_FUZZ_SECONDS each
+cargo +nightly fuzz run <target> -- -max_total_time=600     # release: 15 x 10 min
+cargo +nightly fuzz run <target> -- -max_total_time=60      # nightly CI: 15 x 60 s
+./ace-ci0.5.0.sh fuzz                                       # all targets, ACE_FUZZ_SECONDS each
 ```
 
 Crashes land in `fuzz/artifacts/<target>/`; a minimised corpus may be kept in

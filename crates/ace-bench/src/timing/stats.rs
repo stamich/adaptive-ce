@@ -1,6 +1,6 @@
 //! Robust summary statistics for batched timing samples.
 //!
-//! Definitions (see `docs/BENCHMARK-METHODOLOGY-0.4.6.md`):
+//! Definitions (see `docs/BENCHMARK-METHODOLOGY-0.5.0.md`):
 //!
 //! * **median-of-medians (MoM)** — median of the per-batch medians; the release value;
 //! * **batch MAD %** — median absolute deviation of the batch medians from the MoM, relative
