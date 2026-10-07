@@ -1,17 +1,32 @@
+//! Property tests: arbitrary input round-trips and serializes identically for every worker count.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use std::io::Cursor;
 
 use ace_core::{AceConfig, CompressionProfile, DecodeLimits};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use proptest::prelude::*;
 
+/// Case budget: `PROPTEST_CASES` (release CI) or `default`.
+fn budget(default: u32) -> u32 {
+    std::env::var("PROPTEST_CASES")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(default)
+}
+
 /// Builds a deterministic engine configuration suitable for property tests.
 fn config_for(profile: CompressionProfile, block_size: usize) -> AceConfig {
-    
-    AceConfig { profile, block_size, threads: 1, ..AceConfig::default() }
+    AceConfig {
+        profile,
+        block_size,
+        threads: 1,
+        ..AceConfig::default()
+    }
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(32))]
+    #![proptest_config(ProptestConfig::with_cases(budget(32)))]
 
     /// Arbitrary byte vectors must survive a complete encode/decode round-trip.
     #[test]
@@ -51,7 +66,11 @@ proptest! {
 #[test]
 fn deterministic_worker_matrix_0_3_1() {
     let data = b"ACE 0.3.1 deterministic matrix / planner-v3.6\n".repeat(40_000);
-    for profile in [CompressionProfile::Fast, CompressionProfile::Balanced, CompressionProfile::Dense] {
+    for profile in [
+        CompressionProfile::Fast,
+        CompressionProfile::Balanced,
+        CompressionProfile::Dense,
+    ] {
         for block_size in [64 * 1024usize, 256 * 1024usize, 1024 * 1024usize] {
             let mut reference = None;
             for threads in [1usize, 2, 4] {

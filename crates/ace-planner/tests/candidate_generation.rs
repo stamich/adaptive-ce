@@ -1,3 +1,6 @@
+//! Candidate generation per profile (mandatory baselines, entropy policy).
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_core::{
     AceConfig, BlockProfile, CandidateTier, CompressionProfile, EntropyCodecId, LzMode,
 };
@@ -37,16 +40,24 @@ fn balanced_mandatory_entropy_baselines_are_present() {
 #[test]
 fn fast_excludes_balanced_lz() {
     let profile = structured_profile();
-    let cfg = AceConfig { profile: CompressionProfile::Fast, ..AceConfig::default() };
+    let cfg = AceConfig {
+        profile: CompressionProfile::Fast,
+        ..AceConfig::default()
+    };
     let candidates = DefaultCompressionPlanner.candidates(&profile, &cfg);
-    assert!(candidates.iter().all(|p| p.lz_mode != Some(LzMode::Balanced)));
+    assert!(candidates
+        .iter()
+        .all(|p| p.lz_mode != Some(LzMode::Balanced)));
 }
 
 /// Ensures FAST does not treat scalar rANS as a mandatory baseline.
 #[test]
 fn fast_does_not_have_mandatory_rans() {
     let profile = structured_profile();
-    let cfg = AceConfig { profile: CompressionProfile::Fast, ..AceConfig::default() };
+    let cfg = AceConfig {
+        profile: CompressionProfile::Fast,
+        ..AceConfig::default()
+    };
     let candidates = DefaultCompressionPlanner.candidates(&profile, &cfg);
     assert!(candidates.iter().all(|p| {
         !(p.tier == CandidateTier::Mandatory && p.decoding.entropy == EntropyCodecId::Rans)
@@ -57,7 +68,10 @@ fn fast_does_not_have_mandatory_rans() {
 #[test]
 fn dense_search_space_is_not_narrower_than_fast() {
     let profile = structured_profile();
-    let fast = AceConfig { profile: CompressionProfile::Fast, ..AceConfig::default() };
+    let fast = AceConfig {
+        profile: CompressionProfile::Fast,
+        ..AceConfig::default()
+    };
     let mut dense = fast.clone();
     dense.profile = CompressionProfile::Dense;
     assert!(
@@ -72,12 +86,12 @@ fn balanced_covers_deeper_lz_oracle_families() {
     let profile = structured_profile();
     let cfg = AceConfig::default();
     let candidates = DefaultCompressionPlanner.candidates(&profile, &cfg);
-    assert!(candidates.iter().any(|p| p.lz_mode == Some(LzMode::Balanced)));
-    assert!(
-        candidates
-            .iter()
-            .any(|p| !p.decoding.transforms.is_empty() && p.lz_mode.is_some())
-    );
+    assert!(candidates
+        .iter()
+        .any(|p| p.lz_mode == Some(LzMode::Balanced)));
+    assert!(candidates
+        .iter()
+        .any(|p| !p.decoding.transforms.is_empty() && p.lz_mode.is_some()));
 }
 
 /// Ensures rANS eligibility remains profile-specific and deterministic.

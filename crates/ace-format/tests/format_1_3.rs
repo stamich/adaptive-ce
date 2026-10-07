@@ -1,3 +1,6 @@
+//! Format 1.3 NUM1 codec id handling and rejection by older versions.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_core::{CodecId, EntropyCodecId};
 use ace_format::{decode_block_header, encode_block_header, BlockHeader, BLOCK_HEADER_SIZE};
 
@@ -17,7 +20,8 @@ fn numeric_codec_roundtrips_in_1_3_block_header() {
         payload_crc32c: 123,
     };
     let bytes = encode_block_header(&header);
-    let decoded = decode_block_header(&bytes[..BLOCK_HEADER_SIZE], &bytes[BLOCK_HEADER_SIZE..], 3).unwrap();
+    let decoded =
+        decode_block_header(&bytes[..BLOCK_HEADER_SIZE], &bytes[BLOCK_HEADER_SIZE..], 3).unwrap();
     assert_eq!(decoded.codec, CodecId::Numeric);
 }
 
@@ -37,5 +41,7 @@ fn numeric_codec_requires_format_1_3() {
         payload_crc32c: 0,
     };
     let bytes = encode_block_header(&header);
-    assert!(decode_block_header(&bytes[..BLOCK_HEADER_SIZE], &bytes[BLOCK_HEADER_SIZE..], 2).is_err());
+    assert!(
+        decode_block_header(&bytes[..BLOCK_HEADER_SIZE], &bytes[BLOCK_HEADER_SIZE..], 2).is_err()
+    );
 }

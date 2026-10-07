@@ -1,3 +1,6 @@
+//! Block index (AIDX) and trailer (ACET) validation against malformed input.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_core::DecodeLimits;
 use ace_format::{
     decode_index, decode_trailer, encode_index, encode_trailer, BlockIndex, BlockIndexEntry,
@@ -33,7 +36,10 @@ fn valid_index() -> BlockIndex {
 fn index_roundtrip_is_exact() {
     let index = valid_index();
     let bytes = encode_index(&index);
-    assert_eq!(decode_index(&bytes, &DecodeLimits::default()).unwrap(), index);
+    assert_eq!(
+        decode_index(&bytes, &DecodeLimits::default()).unwrap(),
+        index
+    );
 }
 
 /// Index entry count must be checked before attacker-controlled allocation.
@@ -41,7 +47,10 @@ fn index_roundtrip_is_exact() {
 fn index_entry_limit_is_enforced() {
     let index = valid_index();
     let bytes = encode_index(&index);
-    let limits = DecodeLimits { max_index_entries: 1, ..DecodeLimits::default() };
+    let limits = DecodeLimits {
+        max_index_entries: 1,
+        ..DecodeLimits::default()
+    };
     assert!(decode_index(&bytes, &limits).is_err());
 }
 

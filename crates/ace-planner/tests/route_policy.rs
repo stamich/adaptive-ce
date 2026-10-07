@@ -1,3 +1,6 @@
+//! NumericGeneral route budgets and the zero-full-trial invariant.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, CodecId, CompressionProfile};
 use ace_planner::{
@@ -23,7 +26,11 @@ fn variable_u64_timestamps(bytes: usize) -> Vec<u8> {
 #[test]
 fn numeric_general_uses_bounded_v4_2_budget() {
     let input = variable_u64_timestamps(256 * 1024);
-    let config = AceConfig { profile: CompressionProfile::Balanced, threads: 1, ..AceConfig::default() };
+    let config = AceConfig {
+        profile: CompressionProfile::Balanced,
+        threads: 1,
+        ..AceConfig::default()
+    };
 
     let route = RoutePolicy::classify(&input, &config);
     assert_eq!(route.route, PlannerRoute::NumericGeneral);

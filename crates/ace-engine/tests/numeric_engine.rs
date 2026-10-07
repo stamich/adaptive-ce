@@ -1,3 +1,6 @@
+//! Engine-level NUM1 selection, Auto block policy and numeric round-trips.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use std::io::Cursor;
 
 use ace_core::{AccessHint, AceConfig, BlockSizePolicy, CompressionProfile};
@@ -20,18 +23,30 @@ fn u32_counter(bytes: usize) -> Vec<u8> {
 #[test]
 fn planner_v4_numeric_roundtrip() {
     let input = u32_counter(2 * 1024 * 1024);
-    let config = AceConfig { profile: CompressionProfile::Balanced, threads: 1, ..AceConfig::default() };
+    let config = AceConfig {
+        profile: CompressionProfile::Balanced,
+        threads: 1,
+        ..AceConfig::default()
+    };
     let engine = AceEngine::new(config).unwrap();
     let (encoded, stats) = engine.compress_with_stats(&input).unwrap();
     assert_eq!(engine.decompress(&encoded).unwrap(), input);
-    assert!(stats.numeric_blocks > 0, "numeric workload should admit/select the Format 1.3 numeric codec");
+    assert!(
+        stats.numeric_blocks > 0,
+        "numeric workload should admit/select the Format 1.3 numeric codec"
+    );
 }
 
 /// Auto block policy uses a larger file-level block for strong numeric sequential input.
 #[test]
 fn auto_block_policy_selects_large_numeric_block() {
     let input = u32_counter(4 * 1024 * 1024);
-    let config = AceConfig { block_size_policy: BlockSizePolicy::Auto, access_hint: AccessHint::Sequential, threads: 1, ..AceConfig::default() };
+    let config = AceConfig {
+        block_size_policy: BlockSizePolicy::Auto,
+        access_hint: AccessHint::Sequential,
+        threads: 1,
+        ..AceConfig::default()
+    };
     let engine = AceEngine::new(config).unwrap();
     let encoded = engine.compress(&input).unwrap();
     let mut reader = AceReader::new(Cursor::new(encoded), ace_core::DecodeLimits::default());
@@ -43,7 +58,12 @@ fn auto_block_policy_selects_large_numeric_block() {
 #[test]
 fn auto_block_policy_respects_random_access_cap() {
     let input = u32_counter(4 * 1024 * 1024);
-    let config = AceConfig { block_size_policy: BlockSizePolicy::Auto, access_hint: AccessHint::RandomAccess, threads: 1, ..AceConfig::default() };
+    let config = AceConfig {
+        block_size_policy: BlockSizePolicy::Auto,
+        access_hint: AccessHint::RandomAccess,
+        threads: 1,
+        ..AceConfig::default()
+    };
     let engine = AceEngine::new(config).unwrap();
     let encoded = engine.compress(&input).unwrap();
     let mut reader = AceReader::new(Cursor::new(encoded), ace_core::DecodeLimits::default());

@@ -1,3 +1,6 @@
+//! Policy oracle (V2) and product dominance preferences.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_core::{
     AceConfig, BlockProfile, CandidateTier, CodecId, DecodingPlan, EntropyCodecId,
     PhysicalCompressionPlan, PlanCost,
@@ -57,15 +60,13 @@ fn zero_policy_oracle_prefers_rle_within_envelope() {
         },
     ];
 
-    let decision = PolicyOracle::choose(
-        PlannerRoute::Generic,
-        &candidates,
-        &profile,
-        &config,
-    )
-    .expect("policy oracle decision");
+    let decision = PolicyOracle::choose(PlannerRoute::Generic, &candidates, &profile, &config)
+        .expect("policy oracle decision");
 
-    assert!(matches!(decision.candidate.plan.decoding.codec, CodecId::Rle));
+    assert!(matches!(
+        decision.candidate.plan.decoding.codec,
+        CodecId::Rle
+    ));
     assert_eq!(decision.preference, CandidatePreference::Preferred);
     assert_eq!(decision.accepted_size_loss_bytes, 252);
 }

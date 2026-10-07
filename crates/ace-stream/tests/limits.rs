@@ -1,3 +1,6 @@
+//! Streaming encoder limits: declared size, premature EOF, extra bytes.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use std::io::Cursor;
 
 use ace_core::AceConfig;

@@ -2,6 +2,7 @@
 //!
 //! Each test pins one defect found by the 0.4.5 A/B benchmark: u64 nanosecond timestamps being
 //! rejected by the prefilter, FAST never considering Numeric, and the new u16 lane.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use ace_core::{AccessHint, AceConfig, BlockSizePolicy, CodecId, CompressionProfile};
 use ace_engine::AceEngine;
@@ -40,7 +41,11 @@ fn u16_series(bytes: usize) -> Vec<u8> {
 
 /// Builds a single-threaded engine for the given profile.
 fn engine(profile: CompressionProfile) -> AceEngine {
-    let config = AceConfig { profile, threads: 1, ..AceConfig::default() };
+    let config = AceConfig {
+        profile,
+        threads: 1,
+        ..AceConfig::default()
+    };
     AceEngine::new(config).unwrap()
 }
 
@@ -53,7 +58,11 @@ fn ns_timestamps_use_numeric_in_fast_and_balanced() {
         let (encoded, stats) = e.compress_with_stats(&input).unwrap();
         assert_eq!(e.decompress(&encoded).unwrap(), input);
         assert!(stats.numeric_blocks > 0, "{profile:?} must select Numeric");
-        assert!(encoded.len() * 3 < input.len(), "{profile:?} ratio too low: {}", encoded.len());
+        assert!(
+            encoded.len() * 3 < input.len(),
+            "{profile:?} ratio too low: {}",
+            encoded.len()
+        );
     }
 }
 
@@ -64,7 +73,10 @@ fn fast_explain_selects_numeric_for_timestamps() {
     let blocks = engine(CompressionProfile::Fast).explain(&input).unwrap();
     assert!(!blocks.is_empty());
     for block in blocks {
-        assert!(block.candidates.iter().any(|c| matches!(c.decoding.codec, CodecId::Numeric)));
+        assert!(block
+            .candidates
+            .iter()
+            .any(|c| matches!(c.decoding.codec, CodecId::Numeric)));
         assert!(matches!(block.selected.decoding.codec, CodecId::Numeric));
     }
 }
@@ -87,7 +99,11 @@ fn tail_bytes_survive_for_every_lane_width() {
         let mut input = u64_ns_timestamps(64 * 1024);
         input.extend((0..tail).map(|i| 0xA0 + i as u8));
         let e = engine(CompressionProfile::Balanced);
-        assert_eq!(e.decompress(&e.compress(&input).unwrap()).unwrap(), input, "tail {tail}");
+        assert_eq!(
+            e.decompress(&e.compress(&input).unwrap()).unwrap(),
+            input,
+            "tail {tail}"
+        );
     }
 }
 
@@ -97,7 +113,10 @@ fn output_is_deterministic_across_thread_counts() {
     let input = u64_ns_timestamps(2 << 20);
     let mut outputs = Vec::new();
     for threads in [1usize, 2, 4] {
-        let config = AceConfig { threads, ..AceConfig::default() };
+        let config = AceConfig {
+            threads,
+            ..AceConfig::default()
+        };
         outputs.push(AceEngine::new(config).unwrap().compress(&input).unwrap());
     }
     assert!(outputs.windows(2).all(|w| w[0] == w[1]));
@@ -107,9 +126,17 @@ fn output_is_deterministic_across_thread_counts() {
 #[test]
 fn auto_block_policy_respects_random_access_cap() {
     let input = u64_ns_timestamps(4 << 20);
-    let config = AceConfig { block_size_policy: BlockSizePolicy::Auto, access_hint: AccessHint::RandomAccess, threads: 1, ..AceConfig::default() };
+    let config = AceConfig {
+        block_size_policy: BlockSizePolicy::Auto,
+        access_hint: AccessHint::RandomAccess,
+        threads: 1,
+        ..AceConfig::default()
+    };
     let e = AceEngine::new(config).unwrap();
-    assert!(e.explain(&input).unwrap().len() >= 16, "random-access blocks must stay small");
+    assert!(
+        e.explain(&input).unwrap().len() >= 16,
+        "random-access blocks must stay small"
+    );
     assert_eq!(e.decompress(&e.compress(&input).unwrap()).unwrap(), input);
 }
 
@@ -129,7 +156,11 @@ fn reused_numeric_estimate_matches_numeric_encode() {
             let block = &input[offset..offset + header.original_size as usize];
             offset += header.original_size as usize;
             if matches!(header.codec, CodecId::Numeric) {
-                assert_eq!(payload, ace_codecs::numeric_encode(block).unwrap(), "{profile:?}");
+                assert_eq!(
+                    payload,
+                    ace_codecs::numeric_encode(block).unwrap(),
+                    "{profile:?}"
+                );
             }
         }
     }

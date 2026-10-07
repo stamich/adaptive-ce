@@ -1,3 +1,6 @@
+//! Hybrid-LZ micro-trial budgets and planner telemetry bounds.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, CompressionProfile};
 use ace_planner::{
@@ -7,7 +10,10 @@ use ace_planner::{
 
 /// Runs Planner V3.6 for one block and returns the decision telemetry.
 fn plan_block(data: &[u8], profile: CompressionProfile) -> ace_planner::PlannerDecision {
-    let config = AceConfig { profile, ..AceConfig::default() };
+    let config = AceConfig {
+        profile,
+        ..AceConfig::default()
+    };
     let block_profile = DefaultBlockAnalyzer.analyze(data);
     let candidates = DefaultCompressionPlanner.candidates(&block_profile, &config);
     evaluate_candidates_v3(data, &block_profile, &candidates, &config).unwrap()
@@ -37,7 +43,11 @@ fn incompressible_budget_is_zero() {
 #[test]
 fn production_planner_has_zero_full_trials() {
     let data = b"{\"service\":\"ace\",\"status\":\"ACTIVE\",\"value\":123456}\n".repeat(4_000);
-    for profile in [CompressionProfile::Fast, CompressionProfile::Balanced, CompressionProfile::Dense] {
+    for profile in [
+        CompressionProfile::Fast,
+        CompressionProfile::Balanced,
+        CompressionProfile::Dense,
+    ] {
         let decision = plan_block(&data, profile);
         assert_eq!(decision.telemetry.full_trial_encodes, 0);
     }

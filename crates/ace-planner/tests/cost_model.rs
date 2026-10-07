@@ -1,5 +1,9 @@
+//! Cost-model ordering per profile (FAST may prefer cheaper CPU over size).
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+
 use ace_core::{
-    CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId, PhysicalCompressionPlan,
+    CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId,
+    PhysicalCompressionPlan,
 };
 use ace_planner::DeterministicCostModel;
 
