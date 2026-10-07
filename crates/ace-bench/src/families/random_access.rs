@@ -4,8 +4,11 @@ use crate::prelude::*;
 
 /// Benchmarks full reconstruction, codec-diverse single blocks and crossing logical ranges.
 pub(crate) fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
-    let data=mixed_data(16); let engine=AceEngine::default_engine(); let encoded=engine.compress(&data)?;
-    let (full,restored)=measure(|| Ok(engine.decompress(&encoded)?))?; assert_eq!(restored,data);
+    let data = mixed_data(16);
+    let engine = AceEngine::default_engine();
+    let encoded = engine.compress(&data)?;
+    let (full, restored) = measure(|| Ok(engine.decompress(&encoded)?))?;
+    assert_eq!(restored, data);
     let mut full_row = JsonObjectBuilder::new();
     full_row
         .field("workload_id", "mixed_16m")
@@ -16,7 +19,12 @@ pub(crate) fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::E
 
     // Opening/index validation is measured separately so random-access latency represents
     // an already-open archive, which is the storage-engine usage model.
-    let (open_stats, opened) = measure(|| Ok(AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?))?;
+    let (open_stats, opened) = measure(|| {
+        Ok(AceIndexedDecoder::open(
+            Cursor::new(&encoded),
+            ace_core::DecodeLimits::default(),
+        )?)
+    })?;
     let mut open_row = JsonObjectBuilder::new();
     open_row
         .field("workload_id", "mixed_16m")
@@ -26,12 +34,15 @@ pub(crate) fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::E
     out.push(open_row.build());
     drop(opened);
 
-    for block_id in [0u64,20,40,60] {
-        let metrics_decoder=AceIndexedDecoder::open(Cursor::new(&encoded),ace_core::DecodeLimits::default())?;
-        let start=block_id*262_144; let end=(start+262_144).min(data.len() as u64);
-        let metrics=metrics_decoder.range_metrics(start..end)?;
-        let mut decoder=AceIndexedDecoder::open(Cursor::new(&encoded),ace_core::DecodeLimits::default())?;
-        let (stats,block)=measure(|| Ok(decoder.decode_block(block_id)?))?;
+    for block_id in [0u64, 20, 40, 60] {
+        let metrics_decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+        let start = block_id * 262_144;
+        let end = (start + 262_144).min(data.len() as u64);
+        let metrics = metrics_decoder.range_metrics(start..end)?;
+        let mut decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+        let (stats, block) = measure(|| Ok(decoder.decode_block(block_id)?))?;
         let mut row = JsonObjectBuilder::new();
         row.field("workload_id", "mixed_16m")
             .field("path", "decode_block")
@@ -45,12 +56,14 @@ pub(crate) fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::E
         out.push(row.build());
     }
 
-    let cold_start=3_000_000u64; let cold_end=cold_start+65_536u64;
-    let (cold_stats,cold_range)=measure(|| {
-        let mut decoder=AceIndexedDecoder::open(Cursor::new(&encoded),ace_core::DecodeLimits::default())?;
+    let cold_start = 3_000_000u64;
+    let cold_end = cold_start + 65_536u64;
+    let (cold_stats, cold_range) = measure(|| {
+        let mut decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
         Ok(decoder.read_range(cold_start..cold_end)?)
     })?;
-    assert_eq!(cold_range,data[cold_start as usize..cold_end as usize]);
+    assert_eq!(cold_range, data[cold_start as usize..cold_end as usize]);
     let mut cold_row = JsonObjectBuilder::new();
     cold_row
         .field("workload_id", "mixed_16m")
@@ -60,11 +73,17 @@ pub(crate) fn random_access_family() -> Result<Vec<Value>, Box<dyn std::error::E
         .value("timing", timing_json(&cold_stats, cold_range.len()));
     out.push(cold_row.build());
 
-    for (name,start,len) in [("range_64k_warm",3_000_000u64,65_536u64),("range_cross_2",262_144-32_768,131_072),("range_cross_4",262_144*3-65_536,786_432)] {
-        let end=(start+len).min(data.len() as u64);
-        let mut decoder=AceIndexedDecoder::open(Cursor::new(&encoded),ace_core::DecodeLimits::default())?;
-        let (stats,(range,metrics))=measure(|| Ok(decoder.read_range_with_metrics(start..end)?))?;
-        assert_eq!(range,data[start as usize..end as usize]);
+    for (name, start, len) in [
+        ("range_64k_warm", 3_000_000u64, 65_536u64),
+        ("range_cross_2", 262_144 - 32_768, 131_072),
+        ("range_cross_4", 262_144 * 3 - 65_536, 786_432),
+    ] {
+        let end = (start + len).min(data.len() as u64);
+        let mut decoder =
+            AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
+        let (stats, (range, metrics)) =
+            measure(|| Ok(decoder.read_range_with_metrics(start..end)?))?;
+        assert_eq!(range, data[start as usize..end as usize]);
         let mut row = JsonObjectBuilder::new();
         row.field("workload_id", "mixed_16m")
             .field("path", name)
@@ -100,10 +119,8 @@ pub(crate) fn random_access_extended_family() -> Result<Vec<Value>, Box<dyn std:
             ("unaligned", 2 * 262_144u64 + 12_345),
         ] {
             let end = (start + requested).min(data.len() as u64);
-            let mut decoder = AceIndexedDecoder::open(
-                Cursor::new(&encoded),
-                ace_core::DecodeLimits::default(),
-            )?;
+            let mut decoder =
+                AceIndexedDecoder::open(Cursor::new(&encoded), ace_core::DecodeLimits::default())?;
             let (stats, (range, metrics)) =
                 measure(|| Ok(decoder.read_range_with_metrics(start..end)?))?;
             assert_eq!(range, data[start as usize..end as usize]);
@@ -133,10 +150,16 @@ pub(crate) fn random_access_extended_family() -> Result<Vec<Value>, Box<dyn std:
 /// compare this family with the archived distribution without contaminating the timed decoder path.
 pub(crate) fn random_access_plan_diff_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let data = mixed_data(16);
-    let cfg = AceConfig { profile: CompressionProfile::Balanced, threads: 1, access_hint: AccessHint::RandomAccess, ..AceConfig::default() };
+    let cfg = AceConfig {
+        profile: CompressionProfile::Balanced,
+        threads: 1,
+        access_hint: AccessHint::RandomAccess,
+        ..AceConfig::default()
+    };
     let engine = AceEngine::new(cfg)?;
     let (encoded, stats) = engine.compress_with_stats(&data)?;
-    let mut decoder = AceIndexedDecoder::open(Cursor::new(encoded), ace_core::DecodeLimits::default())?;
+    let mut decoder =
+        AceIndexedDecoder::open(Cursor::new(encoded), ace_core::DecodeLimits::default())?;
 
     let ranges = [
         ("range-4k", 4 * 1024usize),

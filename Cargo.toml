@@ -18,10 +18,7 @@ members = [
   "crates/ace-engine",
   "crates/ace-cli",
   "crates/ace-corpus",
-  "examples/rust-demo",
-  "examples/rust-benchmark",
-  "examples/random-access-demo",
-  "examples/parallel-demo",
+  "crates/ace-bench",
 ]
 resolver = "2"
 

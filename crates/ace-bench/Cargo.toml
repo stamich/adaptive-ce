@@ -1,0 +1,39 @@
+[package]
+name = "ace-bench"
+description = "ACE Benchmark Harness V3 (release gates, A/B, schema 2.1)"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ace-core = { path = "../ace-core" }
+ace-cost = { path = "../ace-cost" }
+ace-analysis = { path = "../ace-analysis" }
+ace-codecs = { path = "../ace-codecs" }
+ace-format = { path = "../ace-format" }
+ace-engine = { path = "../ace-engine" }
+ace-entropy = { path = "../ace-entropy" }
+ace-planner = { path = "../ace-planner" }
+ace-stream = { path = "../ace-stream" }
+ace-simd = { path = "../ace-simd" }
+ace-runtime = { path = "../ace-runtime" }
+ace-corpus = { path = "../ace-corpus" }
+serde.workspace = true
+serde_json.workspace = true
+flate2.workspace = true
+lz4_flex.workspace = true
+zstd.workspace = true
+
+num_cpus.workspace = true
+
+# Benchmark harness: `unsafe` only for the counting global allocator (docs/UNSAFE-AUDIT-0.4.6.md);
+# panics are acceptable in a measurement tool and therefore not denied here.
+[lints.rust]
+missing_docs = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+dbg_macro = "deny"
+undocumented_unsafe_blocks = "deny"
