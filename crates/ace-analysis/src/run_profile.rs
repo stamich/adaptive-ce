@@ -5,6 +5,11 @@
 //! ([`crate::lane_sample_windows`]) and keeps every lane width whose sampled values repeat
 //! their predecessor at least [`MIN_EQUAL_RATIO`] of the time. The planner then counts the
 //! exact RunDelta size of each kept width (`ace_cost::estimate_run_delta`).
+//!
+//! Lanes made of one repeated byte ("splats" such as `0x0000…` or `0x1111…`) are byte runs,
+//! not numbers: RLE already encodes them optimally and the 0.4 planner handles them, so a
+//! width whose sampled values are mostly splats ([`MAX_SPLAT_RATIO`]) is not admitted. This
+//! keeps zero padding and run-heavy byte data in Format 1.3.
 
 use ace_core::read_lane;
 
@@ -14,6 +19,8 @@ use crate::{lane_sample_windows, LANE_WINDOW_VALUES};
 pub const RUN_LANE_BYTES: [u8; 3] = [8, 4, 2];
 /// Minimum fraction of sampled values equal to their predecessor.
 pub const MIN_EQUAL_RATIO: f32 = 0.8;
+/// Maximum fraction of sampled values that are a single repeated byte.
+pub const MAX_SPLAT_RATIO: f32 = 0.5;
 
 /// Sampled change statistics of a block read as lanes of one width.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -24,6 +31,16 @@ pub struct RunProfile {
     pub value_count: usize,
     /// Fraction of sampled transitions where the value equals its predecessor.
     pub equal_ratio: f32,
+    /// Fraction of sampled values whose bytes are all equal (byte runs, zero padding).
+    pub splat_ratio: f32,
+}
+
+/// Inherent methods of [`RunProfile`].
+impl RunProfile {
+    /// True when RunDelta should be considered: values mostly repeat and are not byte runs.
+    pub fn admitted(&self) -> bool {
+        self.equal_ratio >= MIN_EQUAL_RATIO && self.splat_ratio <= MAX_SPLAT_RATIO
+    }
 }
 
 /// Result of [`run_prefilter`]: the admitted profile of every width in [`RUN_LANE_BYTES`].
@@ -65,10 +82,15 @@ fn run_profile_lane<const B: usize>(input: &[u8]) -> Option<RunProfile> {
     }
     let mut transitions = 0u32;
     let mut equal = 0u32;
+    let mut values = 0u32;
+    let mut splats = 0u32;
     for window in lane_sample_windows(value_count) {
         let mut previous: Option<u64> = None;
         for index in window {
-            let value = read_lane::<B>(&input[index * B..index * B + B]);
+            let bytes = &input[index * B..index * B + B];
+            let value = read_lane::<B>(bytes);
+            values += 1;
+            splats += u32::from(bytes.iter().all(|&b| b == bytes[0]));
             if let Some(previous) = previous {
                 transitions += 1;
                 equal += u32::from(previous == value);
@@ -84,14 +106,15 @@ fn run_profile_lane<const B: usize>(input: &[u8]) -> Option<RunProfile> {
         } else {
             equal as f32 / transitions as f32
         },
+        splat_ratio: splats as f32 / values.max(1) as f32,
     })
 }
 
-/// Keeps every lane width whose sampled equal ratio reaches [`MIN_EQUAL_RATIO`].
+/// Keeps every lane width whose profile is [`RunProfile::admitted`].
 pub fn run_prefilter(input: &[u8]) -> RunPrefilter {
     let mut prefilter = RunPrefilter::default();
     for (slot, lane_bytes) in prefilter.lanes.iter_mut().zip(RUN_LANE_BYTES) {
-        *slot = run_profile(input, lane_bytes).filter(|p| p.equal_ratio >= MIN_EQUAL_RATIO);
+        *slot = run_profile(input, lane_bytes).filter(RunProfile::admitted);
     }
     prefilter
 }
@@ -117,6 +140,18 @@ mod tests {
     fn counters_are_rejected() {
         let data: Vec<u8> = (0..65_536u32).flat_map(u32::to_le_bytes).collect();
         assert!(!run_prefilter(&data).any());
+    }
+
+    /// Byte runs and zero padding are left to RLE.
+    #[test]
+    fn byte_runs_are_rejected() {
+        assert!(!run_prefilter(&[0u8; 65_536]).any());
+        let mut runs = vec![0x11u8; 32_768];
+        runs.extend(vec![0x22u8; 32_768]);
+        let profile = run_profile(&runs, 8).expect("profile");
+        assert_eq!(profile.equal_ratio, 1.0);
+        assert_eq!(profile.splat_ratio, 1.0);
+        assert!(!profile.admitted());
     }
 
     /// Short inputs and unsupported widths produce no profile.
