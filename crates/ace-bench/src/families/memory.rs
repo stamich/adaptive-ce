@@ -10,7 +10,7 @@ use crate::prelude::*;
 const INPUT_BYTES: usize = 16 * 1024 * 1024;
 
 /// `(path, workload, profile)` of every allocation case.
-const ALLOCATION_CASES: [(&str, &str, CompressionProfile); 5] = [
+const ALLOCATION_CASES: [(&str, &str, CompressionProfile); 8] = [
     ("fast", "mixed", CompressionProfile::Fast),
     ("balanced", "mixed", CompressionProfile::Balanced),
     ("dense", "mixed", CompressionProfile::Dense),
@@ -18,6 +18,13 @@ const ALLOCATION_CASES: [(&str, &str, CompressionProfile); 5] = [
     (
         "numeric_general",
         "u64-timestamps",
+        CompressionProfile::Balanced,
+    ),
+    ("float_fast", "f64-step", CompressionProfile::Balanced),
+    ("ts1_gorilla", "f64-noisy", CompressionProfile::Fast),
+    (
+        "ts1_run_delta",
+        "int-sparse-change",
         CompressionProfile::Balanced,
     ),
 ];

@@ -1,7 +1,9 @@
 //! `release-performance`: exactly the cases the 0.4.6 performance gates are evaluated on.
 //!
 //! Every row carries a stable `case_id` (`<area>.<variant>`) used by
-//! `tools/ace-benchmark-regression0.4.6.py` and by the interleaved A/B script.
+//! `tools/ace-check_regressions0.5.0.py` and by the interleaved A/B script.
+//! Float lane cases (ACE 0.5.0) also measure the same engine with the lane disabled in the
+//! same run, so their gates are ratios within one process, not cross-run comparisons.
 //! Decompression is measured into a reused, pre-allocated buffer
 //! ([`AceEngine::decompress_into`]) so the gate does not measure page faults of a fresh
 //! 16 MiB vector; the allocating variant is kept as the diagnostic `decompression_alloc`.
@@ -19,39 +21,65 @@ struct CodecCase {
     workload: &'static str,
     /// Compression profile used by the engine.
     profile: CompressionProfile,
+    /// Also measure compression with the Float lane disabled (Float lane cases).
+    compare_disabled: bool,
 }
 
 /// Encode/decode cases, in report order.
-const CODEC_CASES: [CodecCase; 6] = [
+const CODEC_CASES: [CodecCase; 9] = [
     CodecCase {
         case_id: "compression.fast",
         workload: "mixed",
         profile: CompressionProfile::Fast,
+        compare_disabled: false,
     },
     CodecCase {
         case_id: "compression.balanced",
         workload: "mixed",
         profile: CompressionProfile::Balanced,
+        compare_disabled: false,
     },
     CodecCase {
         case_id: "compression.dense",
         workload: "mixed",
         profile: CompressionProfile::Dense,
+        compare_disabled: false,
     },
     CodecCase {
         case_id: "numeric_fast.u32_counter",
         workload: "u32-counter",
         profile: CompressionProfile::Balanced,
+        compare_disabled: false,
     },
     CodecCase {
         case_id: "numeric_general.u64_timestamps",
         workload: "u64-timestamps",
         profile: CompressionProfile::Balanced,
+        compare_disabled: false,
     },
     CodecCase {
         case_id: "numeric_general.delta_variable",
         workload: "delta-variable",
         profile: CompressionProfile::Balanced,
+        compare_disabled: false,
+    },
+    CodecCase {
+        case_id: "float_fast.f64_step",
+        workload: "f64-step",
+        profile: CompressionProfile::Balanced,
+        compare_disabled: true,
+    },
+    CodecCase {
+        case_id: "float_general.f64_noisy",
+        workload: "f64-noisy",
+        profile: CompressionProfile::Fast,
+        compare_disabled: true,
+    },
+    CodecCase {
+        case_id: "run_delta.int_sparse_change",
+        workload: "int-sparse-change",
+        profile: CompressionProfile::Balanced,
+        compare_disabled: true,
     },
 ];
 
@@ -111,6 +139,28 @@ fn codec_case_row(case: &CodecCase) -> Result<Value, Box<dyn std::error::Error>>
             "decompression_alloc",
             timing_json(&decompression_alloc, data.len()),
         );
+    if case.compare_disabled {
+        let disabled = AceEngine::new(AceConfig {
+            profile: case.profile,
+            threads: 1,
+            enable_float_specialization: false,
+            ..AceConfig::default()
+        })?;
+        let (compression_disabled, plain) = measure(|| Ok(disabled.compress(&data)?))?;
+        row.field("disabled_compressed_bytes", plain.len())
+            .field(
+                "encode_speedup_vs_disabled",
+                compression_disabled.median_ns / compression.median_ns.max(1.0),
+            )
+            .field(
+                "ratio_gain_vs_disabled",
+                plain.len() as f64 / encoded.len().max(1) as f64,
+            )
+            .value(
+                "compression_disabled",
+                timing_json(&compression_disabled, data.len()),
+            );
+    }
     Ok(row.build())
 }
 
