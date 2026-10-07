@@ -32,6 +32,11 @@ the hardened 0.4 line.
 
 Ratios are deterministic; speeds are indicative (shared 2-vCPU VM).
 
+Interleaved A/B against the 0.4.6 tree on the same VM: 12 / 12 cases PASS with
+byte-identical output (encode 0.97–1.09×, decode 0.97–1.02×; NumericFast encode 1.32× after
+the grouped fixed-step validation); Regression V3: **PASS** (74 gates, no failure or
+instability).
+
 Every Corpus V4 workload is at least as small as with the lane off, in every profile; zero
 blocks of Corpus V3 and of the false-positive corpus take a Float route; FloatFast never fell
 back. Generated tables: [`PERFORMANCE-0.5.0.md`](PERFORMANCE-0.5.0.md).
