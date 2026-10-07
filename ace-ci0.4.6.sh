@@ -4,7 +4,7 @@
 #   ./ace-ci0.4.6.sh pr        build gates + code audit + quick release-performance + demo
 #   ./ace-ci0.4.6.sh release   full ace-release0.4.6.sh (needs ACE_AB_BASELINE_TREE)
 #   ./ace-ci0.4.6.sh fuzz      all 12 fuzz targets, ACE_FUZZ_SECONDS each (default 60)
-#   ./ace-ci0.4.6.sh msrv      check + test with Rust 1.75 (SKIPPED when not installed)
+#   ./ace-ci0.4.6.sh msrv      check + test with Rust 1.97 (SKIPPED when not installed)
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.4.6.sh"
 cd "$ACE_ROOT"
@@ -32,12 +32,18 @@ case "${1:-}" in
     done
     ;;
   msrv)
-    if ! rustup toolchain list 2>/dev/null | grep -q '^1\.75'; then
-      ace_log "msrv: SKIPPED (toolchain 1.75 not installed: rustup toolchain install 1.75)"
+    # Use a pinned 1.97.0 / 1.97 toolchain when installed, otherwise the default one if it is 1.97.x.
+    toolchain=()
+    if cargo +1.97.0 --version >/dev/null 2>&1; then
+      toolchain=(+1.97.0)
+    elif cargo +1.97 --version >/dev/null 2>&1; then
+      toolchain=(+1.97)
+    elif ! rustc --version | grep -q '^rustc 1\.97\.'; then
+      ace_log "msrv: SKIPPED (Rust 1.97 not installed: rustup toolchain install 1.97.0)"
       exit 0
     fi
-    cargo +1.75 check --workspace --all-targets --locked
-    cargo +1.75 test --workspace --locked
+    cargo "${toolchain[@]}" check --workspace --all-targets --locked
+    cargo "${toolchain[@]}" test --workspace --locked
     ;;
   *)
     ace_die "usage: $0 {pr|release|fuzz|msrv}"
