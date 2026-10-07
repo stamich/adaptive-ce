@@ -9,5 +9,8 @@ rust-version.workspace = true
 ace-core = { path = "../ace-core" }
 ace-simd = { path = "../ace-simd" }
 
+[dev-dependencies]
+ace-corpus = { path = "../ace-corpus" }
+
 [lints]
 workspace = true
