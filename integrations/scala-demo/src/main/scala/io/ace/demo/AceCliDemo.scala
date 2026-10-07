@@ -4,7 +4,7 @@ import java.nio.file.Path
 import scala.sys.process.Process
 
 /**
- * Minimal Scala integration example for ACE 0.2.
+ * Minimal Scala integration example for ACE 0.4.x (CLI process boundary).
  *
  * The milestone keeps Scala outside the native compression core and demonstrates only the stable
  * command-line boundary. Panama/FFM wrappers are intentionally deferred to a later milestone.
