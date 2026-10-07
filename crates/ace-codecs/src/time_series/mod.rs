@@ -22,9 +22,11 @@
 //! on arbitrary input. Lossless means bit-identical, including NaN payloads and `-0.0`.
 
 mod codec;
+mod gamma;
 mod gorilla;
 mod header;
 mod mode;
+mod run_delta;
 mod sink;
 
 pub use codec::*;
