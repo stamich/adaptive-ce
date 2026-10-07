@@ -1,0 +1,432 @@
+{
+  "schema_version": "2.1",
+  "project": "ace",
+  "milestone": "0.4.6",
+  "base": "0.4.5-buildfix2",
+  "scope": "planner-route",
+  "benchmark_contract_origin": "ace-0.4.6",
+  "generated_at_utc_epoch_seconds": 1791239579,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": null,
+      "freq_khz_before": null,
+      "governor": null,
+      "logical_cpus": 2,
+      "max_freq_khz": null,
+      "model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "physical_cores": 2
+    },
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      1.04,
+      0.96,
+      0.69
+    ],
+    "loadavg_before": [
+      1.05,
+      0.96,
+      0.68
+    ],
+    "logical_cpus": 2,
+    "memory_bytes": 8421236736,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.18.44-fc-v70",
+      "name": "linux"
+    },
+    "physical_cores": 2,
+    "rust": {
+      "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": null,
+    "thermal_c_before": null,
+    "warnings": [
+      "loadavg 1.05 exceeds 1.00 (0.5 x physical cores)"
+    ]
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "planner_version": "4.3",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workloads": [
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 1.0,
+      "prefilter_likely_numeric": true,
+      "prefilter_strong_numeric": true,
+      "prefilter_width": "Some(U32)",
+      "reason": "StrongFixedStepNumeric",
+      "route": "numeric-fast",
+      "route_timing": {
+        "cv_percent": 9.893841662244574,
+        "max_ns": 3314771,
+        "mean_ns": 2732203.380952381,
+        "median_mb_s": 6249.292072382426,
+        "median_ns": 2560290.0,
+        "min_ns": 2553465,
+        "p95_ns": 3241957.0,
+        "p99_ns": 3314771.0,
+        "runs": 21,
+        "samples_ns": [
+          2553465,
+          2562204,
+          2566650,
+          2557062,
+          2557950,
+          2559191,
+          2560772,
+          2560559,
+          2559684,
+          2559840,
+          2564292,
+          2560290,
+          2567948,
+          2556666,
+          3203859,
+          3241957,
+          3227203,
+          3314771,
+          2946649,
+          2788338,
+          2806921
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.04292482492217679,
+          "batch_medians_ns": [
+            2559191.0,
+            2560290.0,
+            3203859.0
+          ],
+          "batches": 3,
+          "global_median_ns": 2562204.0,
+          "harness": "v3",
+          "iterations_per_sample": 32,
+          "mad_ns": 5142.0,
+          "median_of_medians_ns": 2560290.0,
+          "outlier_indices": [
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 270319.8764019215,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "u32-counter"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.8499999642372131,
+      "prefilter_likely_numeric": true,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U64)",
+      "reason": "NumericCandidate",
+      "route": "numeric-general",
+      "route_timing": {
+        "cv_percent": 8.923812552223334,
+        "max_ns": 4490,
+        "mean_ns": 3458.2380952380954,
+        "median_mb_s": 4841149.773071105,
+        "median_ns": 3305.0,
+        "min_ns": 3285,
+        "p95_ns": 4004.0,
+        "p99_ns": 4490.0,
+        "runs": 21,
+        "samples_ns": [
+          3315,
+          3327,
+          3305,
+          3286,
+          3296,
+          3299,
+          3312,
+          3285,
+          3294,
+          3297,
+          3299,
+          3291,
+          3307,
+          3301,
+          3289,
+          3810,
+          4004,
+          4490,
+          3825,
+          3502,
+          3489
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.2420574886535552,
+          "batch_medians_ns": [
+            3305.0,
+            3297.0,
+            3810.0
+          ],
+          "batches": 3,
+          "global_median_ns": 3305.0,
+          "harness": "v3",
+          "iterations_per_sample": 16384,
+          "mad_ns": 14.0,
+          "median_of_medians_ns": 3305.0,
+          "outlier_indices": [
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 308.6066852286263,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.8499999642372131,
+      "prefilter_likely_numeric": true,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U32)",
+      "reason": "NumericCandidate",
+      "route": "numeric-general",
+      "route_timing": {
+        "cv_percent": 7.996160188676574,
+        "max_ns": 5297,
+        "mean_ns": 4236.666666666667,
+        "median_mb_s": 3835091.083413231,
+        "median_ns": 4172.0,
+        "min_ns": 3682,
+        "p95_ns": 4611.0,
+        "p99_ns": 5297.0,
+        "runs": 21,
+        "samples_ns": [
+          5297,
+          3682,
+          3931,
+          3962,
+          4268,
+          4162,
+          3816,
+          3775,
+          4611,
+          3956,
+          4158,
+          4172,
+          4363,
+          4422,
+          4542,
+          4386,
+          4261,
+          4296,
+          4302,
+          4300,
+          4308
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 3.11601150527325,
+          "batch_medians_ns": [
+            3962.0,
+            4172.0,
+            4302.0
+          ],
+          "batches": 3,
+          "global_median_ns": 4268.0,
+          "harness": "v3",
+          "iterations_per_sample": 16384,
+          "mad_ns": 118.0,
+          "median_of_medians_ns": 4172.0,
+          "outlier_indices": [
+            0,
+            1
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 338.77065332693087,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "delta-variable"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.949999988079071,
+      "prefilter_likely_numeric": false,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U32)",
+      "reason": "PrefilterRejected",
+      "route": "generic",
+      "route_timing": {
+        "cv_percent": 7.08090925357105,
+        "max_ns": 4338,
+        "mean_ns": 4006.4761904761904,
+        "median_mb_s": 4152608.3571243184,
+        "median_ns": 3853.0,
+        "min_ns": 3531,
+        "p95_ns": 4336.0,
+        "p99_ns": 4338.0,
+        "runs": 21,
+        "samples_ns": [
+          4241,
+          4336,
+          4177,
+          3619,
+          3740,
+          3853,
+          3632,
+          3636,
+          3857,
+          3756,
+          3605,
+          3531,
+          4279,
+          4213,
+          4241,
+          4209,
+          4206,
+          4232,
+          4338,
+          4231,
+          4204
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 2.5175188165066182,
+          "batch_medians_ns": [
+            3853.0,
+            3756.0,
+            4231.0
+          ],
+          "batches": 3,
+          "global_median_ns": 4204.0,
+          "harness": "v3",
+          "iterations_per_sample": 16384,
+          "mad_ns": 132.0,
+          "median_of_medians_ns": 3853.0,
+          "outlier_indices": [
+            10,
+            11
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 283.6949433135494,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "mixed"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.4498533606529236,
+      "prefilter_likely_numeric": false,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U32)",
+      "reason": "PrefilterRejected",
+      "route": "generic",
+      "route_timing": {
+        "cv_percent": 2.572719212700529,
+        "max_ns": 4269,
+        "mean_ns": 4128.047619047619,
+        "median_mb_s": 3908158.2804103564,
+        "median_ns": 4094.0,
+        "min_ns": 3966,
+        "p95_ns": 4247.0,
+        "p99_ns": 4269.0,
+        "runs": 21,
+        "samples_ns": [
+          4245,
+          4241,
+          4233,
+          4242,
+          4191,
+          4186,
+          4207,
+          4033,
+          4094,
+          4153,
+          4009,
+          4079,
+          4143,
+          4269,
+          4247,
+          4200,
+          3972,
+          4002,
+          4006,
+          3966,
+          3971
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 2.247191011235955,
+          "batch_medians_ns": [
+            4233.0,
+            4094.0,
+            4002.0
+          ],
+          "batches": 3,
+          "global_median_ns": 4153.0,
+          "harness": "v3",
+          "iterations_per_sample": 16384,
+          "mad_ns": 89.0,
+          "median_of_medians_ns": 4094.0,
+          "outlier_indices": [],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 106.20307420466483,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "random"
+    }
+  ]
+}

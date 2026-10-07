@@ -1,0 +1,14 @@
+{
+  "version": "0.4.6",
+  "accepted": true,
+  "purpose": "baseline of 0.5.0 (stored-result diagnostics; release gates use the interleaved A/B against the 0.4.6 source tree)",
+  "machine_fingerprint": {
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "logical_cpus": 2,
+    "os": "linux",
+    "arch": "x86_64",
+    "rustc": "rustc 1.97.0"
+  },
+  "methodology": "schema 2.1, Harness V3 (3 x 7 batches, median-of-medians), Regression V3 PASS with interleaved A/B vs 0.4.5-buildfix2",
+  "note": "development VM run; replace with a run on the i7-9850H reference machine when available"
+}

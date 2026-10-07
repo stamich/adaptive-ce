@@ -1,0 +1,218 @@
+{
+  "schema_version": "2.1",
+  "project": "ace",
+  "milestone": "0.4.6",
+  "base": "0.4.5-buildfix2",
+  "scope": "memory",
+  "benchmark_contract_origin": "ace-0.4.6",
+  "generated_at_utc_epoch_seconds": 1791239410,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": null,
+      "freq_khz_before": null,
+      "governor": null,
+      "logical_cpus": 2,
+      "max_freq_khz": null,
+      "model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "physical_cores": 2
+    },
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      1.13,
+      0.9,
+      0.61
+    ],
+    "loadavg_before": [
+      1.13,
+      0.9,
+      0.61
+    ],
+    "logical_cpus": 2,
+    "memory_bytes": 8421236736,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.18.44-fc-v70",
+      "name": "linux"
+    },
+    "physical_cores": 2,
+    "rust": {
+      "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": null,
+    "thermal_c_before": null,
+    "warnings": [
+      "loadavg 1.13 exceeds 1.00 (0.5 x physical cores)"
+    ]
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "planner_version": "4.3",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workloads": [
+    {
+      "block_size_bytes": 262144,
+      "path": "worker_scratch_and_planner",
+      "planner_estimated_candidates": 752,
+      "planner_fast_path_blocks": 16,
+      "planner_full_trial_encodes": 0,
+      "planner_sampled_candidates": 272,
+      "scratch_capacity_preserved": true,
+      "scratch_reserved_after_reset_bytes": 787456,
+      "scratch_reserved_bytes": 787456,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 99705444,
+        "allocations": 1407,
+        "peak_live_bytes": 21443471
+      },
+      "compress_allocated_bytes_per_input_byte": 5.9429075717926025,
+      "compressed_bytes": 4556392,
+      "decompress": {
+        "allocated_bytes": 38278120,
+        "allocations": 354,
+        "peak_live_bytes": 17296552
+      },
+      "decompress_into": {
+        "allocated_bytes": 21498832,
+        "allocations": 352,
+        "peak_live_bytes": 524288
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_fast",
+      "process_peak_rss_bytes": 221917184,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 270253130,
+        "allocations": 13658,
+        "peak_live_bytes": 21447638
+      },
+      "compress_allocated_bytes_per_input_byte": 16.108341813087463,
+      "compressed_bytes": 4503208,
+      "decompress": {
+        "allocated_bytes": 38356520,
+        "allocations": 450,
+        "peak_live_bytes": 17296552
+      },
+      "decompress_into": {
+        "allocated_bytes": 21577232,
+        "allocations": 448,
+        "peak_live_bytes": 524288
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_balanced",
+      "process_peak_rss_bytes": 221917184,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 407641029,
+        "allocations": 24080,
+        "peak_live_bytes": 21321504
+      },
+      "compress_allocated_bytes_per_input_byte": 24.29729872941971,
+      "compressed_bytes": 4507208,
+      "decompress": {
+        "allocated_bytes": 38353352,
+        "allocations": 226,
+        "peak_live_bytes": 17296552
+      },
+      "decompress_into": {
+        "allocated_bytes": 21574064,
+        "allocations": 224,
+        "peak_live_bytes": 524288
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_dense",
+      "process_peak_rss_bytes": 221917184,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 16906116,
+        "allocations": 607,
+        "peak_live_bytes": 16821504
+      },
+      "compress_allocated_bytes_per_input_byte": 1.0076830387115479,
+      "compressed_bytes": 7240,
+      "decompress": {
+        "allocated_bytes": 33559064,
+        "allocations": 130,
+        "peak_live_bytes": 17039400
+      },
+      "decompress_into": {
+        "allocated_bytes": 16779776,
+        "allocations": 128,
+        "peak_live_bytes": 262184
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_numeric_fast",
+      "process_peak_rss_bytes": 221917184,
+      "workload_id": "u32-counter_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 73533188,
+        "allocations": 3231,
+        "peak_live_bytes": 17345792
+      },
+      "compress_allocated_bytes_per_input_byte": 4.382919549942017,
+      "compressed_bytes": 531528,
+      "decompress": {
+        "allocated_bytes": 34083352,
+        "allocations": 130,
+        "peak_live_bytes": 17047592
+      },
+      "decompress_into": {
+        "allocated_bytes": 17304064,
+        "allocations": 128,
+        "peak_live_bytes": 270376
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_numeric_general",
+      "process_peak_rss_bytes": 221917184,
+      "workload_id": "u64-timestamps_16m"
+    }
+  ]
+}
