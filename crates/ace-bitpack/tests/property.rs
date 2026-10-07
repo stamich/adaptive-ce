@@ -1,10 +1,19 @@
 //! Property tests: every transform of `ace-bitpack` is an exact bijection for every lane.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use ace_bitpack::{
     delta, delta_of_delta, frame_of_reference, max_bit_width, pack, undelta, undelta_of_delta,
     unframe_of_reference, unpack, Lane,
 };
 use proptest::prelude::*;
+
+/// Case budget: `PROPTEST_CASES` (release CI) or `default`.
+fn budget(default: u32) -> u32 {
+    std::env::var("PROPTEST_CASES")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(default)
+}
 
 /// Generates one property-test module per lane so the same properties cover u16, u32 and u64
 /// without copy-pasting the test bodies.
@@ -14,7 +23,7 @@ macro_rules! lane_properties {
             use super::*;
 
             proptest! {
-                #![proptest_config(ProptestConfig::with_cases(64))]
+                #![proptest_config(ProptestConfig::with_cases(budget(64)))]
 
                 /// Bit packing at the minimal width round-trips exactly.
                 #[test]
