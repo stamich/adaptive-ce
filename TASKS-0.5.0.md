@@ -103,7 +103,9 @@ Status: ✅ done in this release · ⏩ executed by the release pipeline on the 
 | 42 ✅ | `BENCHMARK-METHODOLOGY-0.5.0`, `RELEASE-CHECKLIST-0.5.0` | Adds the 0.5.0 benchmark methodology and release checklist | review |
 | 43 ✅ | `RELEASE-NOTES-0.5.0`, `MIGRATION-0.4-TO-0.5` | Adds 0.5.0 release notes and the 0.4 to 0.5 migration guide | review |
 | 44–46 ✅ | README, ROADMAP, CHANGELOG, this file, milestone summary | Updates README / roadmap / changelog … | review |
-| 47 ✅ | `PERFORMANCE-0.5.0.md` from a full Harness V3 run + interleaved A/B vs 0.4.6 on the development VM | Adds the 0.5.0 performance report | generated |
+| 47 ✅ | `PERFORMANCE-0.5.0.md` from a full Harness V3 run + interleaved A/B vs 0.4.6 on the development VM | Adds the 0.5.0 performance report | A/B 12/12 PASS, Regression V3 PASS |
+| 50 ✅ | Layout-robust grouped fixed-step validation (A/B found NumericFast encode at 0.84× with identical instruction counts) | Validates fixed-step blocks in groups of eight values | NumericFast encode 1.32× vs 0.4.6 |
+| — ✅ | Tooling follow-ups found by the full run: per-side A/B target directory, FloatFast stability limit, CI fuzz count | Builds each A/B probe in its own target directory; Sets a 6% stability limit …; Updates the CI script fuzz target count | full pipeline runs |
 | 48 ⏩ | Fuzz campaign 15 × 10 min | `ACE_FUZZ_SECONDS=600 ./ace-ci0.5.0.sh fuzz` | 0 crashes |
 | 49 ⏩ | Full release run on the reference machine; publish `examples/baselines/0.5.0/`; harden the indicative Float speed floors | `./ace-release0.5.0.sh <0.4.6 tree>` | checklist all PASS |
 

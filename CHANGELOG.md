@@ -59,12 +59,18 @@ order: `TASKS-0.5.0.md`; migration: `docs/MIGRATION-0.4-TO-0.5.md`.
 - Scripts / tools renamed to `…0.5.0`; A/B baseline 0.4.6; release step 5 also hashes
   f64-noisy; demo gains a Float lane step; `ace_bin` honours `CARGO_TARGET_DIR`.
 - 0.4.6 versioned documents moved to `docs/history/`.
+- `strong_numeric_evidence` validates fixed-step blocks in groups of eight values (same
+  result, layout-robust, NumericFast encode 1.32× vs 0.4.6 in the interleaved A/B).
+- A/B driver builds each probe in its own target directory (also with `CARGO_TARGET_DIR`);
+  Regression V3 per-case stability limit for the FloatFast encode (6 %).
 
 ### Measured (development VM, 4 MiB per workload)
 - f64-constant BALANCED 141× → 2 416×, f64-step 136× → 464× (FloatFast, encode ≈ 35–38×
   faster); int-sparse-change BALANCED 83× → 235×; f64-smooth FAST 1.53× → 1.82×, f64-noisy
   FAST 1.00× → 1.23×; zero Float-route blocks on Corpus V3 and the false-positive corpus;
   zero FloatFast fallbacks.
+- Interleaved A/B vs 0.4.6: 12 / 12 PASS, byte-identical; Regression V3 PASS
+  (`docs/PERFORMANCE-0.5.0.md`).
 
 ## 0.4.6 - 2026-10-06 — Hardened Release & Benchmark Stabilization
 
