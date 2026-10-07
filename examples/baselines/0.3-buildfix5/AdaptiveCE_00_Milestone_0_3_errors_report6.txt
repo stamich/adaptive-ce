@@ -1,0 +1,105 @@
+Finished `release` profile [optimized] target(s) in 0.04s
+     Running `target/release/ace-benchmark-0-3 all`
+results written to /store/Projects/ACE/ace-milestone0.3-buildfix5/examples/results/0.3-buildfix5-compression.json
+results written to /store/Projects/ACE/ace-milestone0.3-buildfix5/examples/results/0.3-buildfix5-entropy.json
+results written to /store/Projects/ACE/ace-milestone0.3-buildfix5/examples/results/0.3-buildfix5-planner.json
+results written to /store/Projects/ACE/ace-milestone0.3-buildfix5/examples/results/0.3-buildfix5-parallel.json
+results written to /store/Projects/ACE/ace-milestone0.3-buildfix5/examples/results/0.3-buildfix5-random-access.json
+results written to /store/Projects/ACE/ace-milestone0.3-buildfix5/examples/results/0.3-buildfix5-streaming.json
+results written to /store/Projects/ACE/ace-milestone0.3-buildfix5/examples/results/0.3-buildfix5-memory.json
+ACE 0.3-buildfix5 regression gates: fail; results written to examples/results/0.3-buildfix5-regression.json
+  PASS planner.generated_recall: 1.0 (>= 0.99)
+  PASS planner.top_k_recall: 1.0 (>= 0.98)
+  PASS planner.sample_survival_recall: 1.0 (>= 0.97)
+  FAIL planner.regret_bytes_per_block: 8713.6875 (<= 1024)
+  PASS planner.full_trial_encodes_per_block: 0.0 (== 0)
+  FAIL compression.dense_ratio: 3.438826489179017 (>= 99.5% baseline)
+  PASS compression.profile_order_dense_balanced: 3.438826489179017 (dense ratio >= balanced ratio)
+  PASS compression.profile_order_balanced_fast: 3.1189262866869276 (balanced ratio >= fast ratio)
+  PASS compression.fast_mb_s: 170.94914211737265 (>= 2.0x baseline)
+  PASS compression.balanced_mb_s: 47.32820047364347 (>= 4.0x baseline)
+  FAIL compression.dense_mb_s: 32.46121926100566 (>= 3.5x baseline)
+  PASS random_access.warm_64k_median_ns: 45250.0 (<= 115% baseline)
+valid benchmark JSON: examples/results/0.3-buildfix5-compression.json
+valid benchmark JSON: examples/results/0.3-buildfix5-entropy.json
+valid benchmark JSON: examples/results/0.3-buildfix5-memory.json
+valid benchmark JSON: examples/results/0.3-buildfix5-parallel.json
+valid benchmark JSON: examples/results/0.3-buildfix5-planner.json
+valid benchmark JSON: examples/results/0.3-buildfix5-random-access.json
+valid benchmark JSON: examples/results/0.3-buildfix5-regression.json
+valid benchmark JSON: examples/results/0.3-buildfix5-streaming.json
+
+ACE 0.3-buildfix5 benchmark scope=compression file=examples/results/0.3-buildfix5-compression.json
+workload             path                              ratio        bytes    median MB/s
+------------------------------------------------------------------------------------------
+mixed_16m            ace-fast                         1.9766      8487912         170.95
+mixed_16m            ace-balanced                     3.1189      5379164          47.33
+mixed_16m            ace-dense                        3.4388      4878762          32.46
+mixed_16m            lz4                              3.1695      5293265        1919.64
+mixed_16m            zstd-3                           3.7605      4461438        1358.87
+mixed_16m            gzip-6                           3.6359      4614306          65.57
+
+ACE 0.3-buildfix5 benchmark scope=entropy file=examples/results/0.3-buildfix5-entropy.json
+workload             path                              ratio        bytes    median MB/s
+------------------------------------------------------------------------------------------
+skewed               huffman                          3.6352       825256         227.66
+skewed               rans                             3.7198       806486         123.13
+skewed               rans4x                           3.7127       808048         104.68
+mixed                huffman                          1.3952      3006311         106.09
+mixed                rans                             1.4063      2982567         111.61
+mixed                rans4x                           1.4486      2895393          96.10
+
+ACE 0.3-buildfix5 benchmark scope=planner file=examples/results/0.3-buildfix5-planner.json
+workload             path                              ratio        bytes    median MB/s
+------------------------------------------------------------------------------------------
+mixed_8m             planner_v3_2_rank_only_confidence_blend          -            -          56.42
+
+ACE 0.3-buildfix5 benchmark scope=parallel file=examples/results/0.3-buildfix5-parallel.json
+workload             path                              ratio        bytes    median MB/s
+------------------------------------------------------------------------------------------
+mixed_16m            threads-1                             -      5379164          47.91
+mixed_16m            threads-2                             -      5379164          93.21
+mixed_16m            threads-4                             -      5379164         165.66
+mixed_16m            threads-6                             -      5379164         183.62
+mixed_16m            threads-8                             -      5379164         224.32
+mixed_16m            threads-12                            -      5379164         238.52
+
+ACE 0.3-buildfix5 benchmark scope=random-access file=examples/results/0.3-buildfix5-random-access.json
+workload             path                              ratio        bytes    median MB/s
+------------------------------------------------------------------------------------------
+mixed_16m            full_decompress                       -            -         135.48
+mixed_16m            decoder_open                          -            -     4663609.59
+mixed_16m            decode_block                          -            -        4779.38
+mixed_16m            decode_block                          -            -          21.37
+mixed_16m            decode_block                          -            -         698.98
+mixed_16m            decode_block                          -            -        3856.83
+mixed_16m            range_64k_cold                        -            -        1343.71
+mixed_16m            range_64k_warm                        -            -        1381.22
+mixed_16m            range_cross_2                         -            -        1353.93
+mixed_16m            range_cross_4                         -            -        3820.04
+
+ACE 0.3-buildfix5 benchmark scope=streaming file=examples/results/0.3-buildfix5-streaming.json
+workload             path                              ratio        bytes    median MB/s
+------------------------------------------------------------------------------------------
+mixed_16m            bounded_stream                   3.1189            -          46.02
+mixed_64m            bounded_stream                   3.1190            -          45.25
+
+ACE 0.3-buildfix5 benchmark scope=memory file=examples/results/0.3-buildfix5-memory.json
+workload             path                              ratio        bytes    median MB/s
+------------------------------------------------------------------------------------------
+mixed_16m            worker_scratch_and_planner            -            -              -
+
+ACE 0.3-buildfix5 benchmark scope=regression file=examples/results/0.3-buildfix5-regression.json
+status=fail
+  PASS planner.generated_recall: baseline=1.0 candidate=1.0 rule=>= 0.99
+  PASS planner.top_k_recall: baseline=1.0 candidate=1.0 rule=>= 0.98
+  PASS planner.sample_survival_recall: baseline=1.0 candidate=1.0 rule=>= 0.97
+  FAIL planner.regret_bytes_per_block: baseline=196.9375 candidate=8713.6875 rule=<= 1024
+  PASS planner.full_trial_encodes_per_block: baseline=0.0 candidate=0.0 rule=== 0
+  FAIL compression.dense_ratio: baseline=3.479518659992957 candidate=3.438826489179017 rule=>= 99.5% baseline
+  PASS compression.profile_order_dense_balanced: baseline=3.1189262866869276 candidate=3.438826489179017 rule=dense ratio >= balanced ratio
+  PASS compression.profile_order_balanced_fast: baseline=1.976601076919742 candidate=3.1189262866869276 rule=balanced ratio >= fast ratio
+  PASS compression.fast_mb_s: baseline=68.9680048459679 candidate=170.94914211737265 rule=>= 2.0x baseline
+  PASS compression.balanced_mb_s: baseline=11.029947175880228 candidate=47.32820047364347 rule=>= 4.0x baseline
+  FAIL compression.dense_mb_s: baseline=10.654331160181172 candidate=32.46121926100566 rule=>= 3.5x baseline
+  PASS random_access.warm_64k_median_ns: baseline=66082.0 candidate=45250.0 rule=<= 115% baseline

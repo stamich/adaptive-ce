@@ -1,0 +1,92 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4-buildfix3",
+  "base": "0.4-buildfix2",
+  "scope": "streaming",
+  "benchmark_contract_origin": "ace-0.4-buildfix3",
+  "generated_at_utc_epoch_seconds": 1789632310,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33422217216,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "blocks": 64,
+      "compression_ratio": 3.72561427320257,
+      "input_bytes": 16777216,
+      "output_bytes": 4503208,
+      "path": "bounded_stream",
+      "peak_source_buffer_bytes": 262144,
+      "timing": {
+        "cv_percent": 1.3412339855171895,
+        "max_ns": 172857056,
+        "mean_ns": 168335943.42857143,
+        "median_mb_s": 95.56471153093007,
+        "median_ns": 167425818.0,
+        "min_ns": 165391368,
+        "p95_ns": 172857056.0,
+        "p99_ns": 172857056.0,
+        "runs": 7,
+        "samples_ns": [
+          169259463,
+          172857056,
+          166740454,
+          167255866,
+          169421579,
+          167425818,
+          165391368
+        ],
+        "stddev_ns": 2257778.8831049902,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "blocks": 256,
+      "compression_ratio": 3.725658949260896,
+      "input_bytes": 67108864,
+      "output_bytes": 18012616,
+      "path": "bounded_stream",
+      "peak_source_buffer_bytes": 262144,
+      "timing": {
+        "cv_percent": 6.036597449913866,
+        "max_ns": 735877783,
+        "mean_ns": 643153059.2857143,
+        "median_mb_s": 102.38344811842987,
+        "median_ns": 625101041.0,
+        "min_ns": 617899226,
+        "p95_ns": 735877783.0,
+        "p99_ns": 735877783.0,
+        "runs": 7,
+        "samples_ns": [
+          735877783,
+          646823410,
+          624988621,
+          621410981,
+          625101041,
+          617899226,
+          629970353
+        ],
+        "stddev_ns": 38824561.17588444,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "workload_id": "mixed_64m"
+    }
+  ]
+}

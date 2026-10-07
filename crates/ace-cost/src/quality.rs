@@ -13,6 +13,7 @@ pub struct QualityEnvelope {
     pub slack_ppm: u64,
 }
 
+/// Inherent methods of [`QualityEnvelope`].
 impl QualityEnvelope {
     /// Returns the default quality envelope for a public compression profile.
     ///
@@ -20,7 +21,7 @@ impl QualityEnvelope {
     /// only a small quality loss, while DENSE stays very close to the smallest predicted output.
     pub fn for_profile(profile: CompressionProfile) -> Self {
         let slack_ppm = match profile {
-            CompressionProfile::Fast => 250_000,    // +25.0%
+            CompressionProfile::Fast => 250_000,     // +25.0%
             CompressionProfile::Balanced => 15_000, // +1.5%
             CompressionProfile::Dense => 3_000,     // +0.3%
         };
@@ -116,9 +117,7 @@ mod tests {
         ];
         let qualified = envelope.qualify(&candidates);
         assert_eq!(qualified.len(), 2);
-        assert!(qualified
-            .iter()
-            .all(|candidate| candidate.blended_size_bytes <= 100_300));
+        assert!(qualified.iter().all(|candidate| candidate.blended_size_bytes <= 100_300));
     }
 
     /// Verifies BALANCED admits a modest size trade-off while still excluding a large ratio loss.
@@ -132,11 +131,7 @@ mod tests {
         ];
         let qualified = envelope.qualify(&candidates);
         assert_eq!(qualified.len(), 2);
-        assert!(qualified
-            .iter()
-            .any(|candidate| candidate.blended_size_bytes == 101_000));
-        assert!(!qualified
-            .iter()
-            .any(|candidate| candidate.blended_size_bytes == 103_000));
+        assert!(qualified.iter().any(|candidate| candidate.blended_size_bytes == 101_000));
+        assert!(!qualified.iter().any(|candidate| candidate.blended_size_bytes == 103_000));
     }
 }

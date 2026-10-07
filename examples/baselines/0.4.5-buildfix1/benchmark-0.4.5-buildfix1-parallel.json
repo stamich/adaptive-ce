@@ -1,0 +1,220 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4-buildfix4",
+  "base": "0.4-buildfix3-buildfix1",
+  "scope": "parallel",
+  "benchmark_contract_origin": "ace-0.4-buildfix4",
+  "generated_at_utc_epoch_seconds": 1791222891,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33422209024,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "compression": {
+        "cv_percent": 8.091857586274251,
+        "max_ns": 160242057,
+        "mean_ns": 134127458.71428572,
+        "median_mb_s": 123.73034397522815,
+        "median_ns": 129313469.0,
+        "min_ns": 126892461,
+        "p95_ns": 160242057.0,
+        "p99_ns": 160242057.0,
+        "runs": 7,
+        "samples_ns": [
+          128365801,
+          131245421,
+          129083999,
+          129313469,
+          126892461,
+          133749003,
+          160242057
+        ],
+        "stddev_ns": 10853402.943248795,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "deterministic_vs_1t": true,
+      "encoded_bytes": 4503208,
+      "parallel_efficiency": 1.0,
+      "path": "threads-1",
+      "speedup_vs_1t": 1.0,
+      "threads": 1,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compression": {
+        "cv_percent": 1.4363118949724676,
+        "max_ns": 68962573,
+        "mean_ns": 67581520.85714285,
+        "median_mb_s": 236.45861722222398,
+        "median_ns": 67665117.0,
+        "min_ns": 66125212,
+        "p95_ns": 68962573.0,
+        "p99_ns": 68962573.0,
+        "runs": 7,
+        "samples_ns": [
+          68593450,
+          67552335,
+          67808632,
+          68962573,
+          67665117,
+          66363327,
+          66125212
+        ],
+        "stddev_ns": 970681.4228744418,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "deterministic_vs_1t": true,
+      "encoded_bytes": 4503208,
+      "parallel_efficiency": 0.9555401271234039,
+      "path": "threads-2",
+      "speedup_vs_1t": 1.9110802542468077,
+      "threads": 2,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compression": {
+        "cv_percent": 21.404175822571762,
+        "max_ns": 65619956,
+        "mean_ns": 48427418.571428575,
+        "median_mb_s": 326.1264882807771,
+        "median_ns": 49060719.0,
+        "min_ns": 35190688,
+        "p95_ns": 65619956.0,
+        "p99_ns": 65619956.0,
+        "runs": 7,
+        "samples_ns": [
+          35190688,
+          50734026,
+          65619956,
+          49060719,
+          43892502,
+          58477238,
+          36016801
+        ],
+        "stddev_ns": 10365489.817361342,
+        "unstable_measurement": true,
+        "warmup_iterations": 3
+      },
+      "deterministic_vs_1t": true,
+      "encoded_bytes": 4503208,
+      "parallel_efficiency": 0.6589460551933614,
+      "path": "threads-4",
+      "speedup_vs_1t": 2.6357842207734454,
+      "threads": 4,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compression": {
+        "cv_percent": 9.5332249196632,
+        "max_ns": 40897967,
+        "mean_ns": 36499639.428571425,
+        "median_mb_s": 434.24909592052285,
+        "median_ns": 36845212.0,
+        "min_ns": 30649618,
+        "p95_ns": 40897967.0,
+        "p99_ns": 40897967.0,
+        "runs": 7,
+        "samples_ns": [
+          40747779,
+          40897967,
+          35007831,
+          37846138,
+          36845212,
+          30649618,
+          33502931
+        ],
+        "stddev_ns": 3479592.7215917856,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "deterministic_vs_1t": true,
+      "encoded_bytes": 4503208,
+      "parallel_efficiency": 0.5849401771207974,
+      "path": "threads-6",
+      "speedup_vs_1t": 3.5096410627247843,
+      "threads": 6,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compression": {
+        "cv_percent": 4.334339386455921,
+        "max_ns": 30365909,
+        "mean_ns": 28410842.14285714,
+        "median_mb_s": 566.7931146680921,
+        "median_ns": 28228995.0,
+        "min_ns": 26854890,
+        "p95_ns": 30365909.0,
+        "p99_ns": 30365909.0,
+        "runs": 7,
+        "samples_ns": [
+          29826607,
+          28228995,
+          26952893,
+          30365909,
+          26854890,
+          28634051,
+          28012550
+        ],
+        "stddev_ns": 1231422.3210216747,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "deterministic_vs_1t": true,
+      "encoded_bytes": 4503208,
+      "parallel_efficiency": 0.5726092489300451,
+      "path": "threads-8",
+      "speedup_vs_1t": 4.5808739914403604,
+      "threads": 8,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compression": {
+        "cv_percent": 5.874311306781597,
+        "max_ns": 30495741,
+        "mean_ns": 28457787.0,
+        "median_mb_s": 548.7552960888083,
+        "median_ns": 29156894.0,
+        "min_ns": 26020361,
+        "p95_ns": 30495741.0,
+        "p99_ns": 30495741.0,
+        "runs": 7,
+        "samples_ns": [
+          26970032,
+          30495741,
+          26020361,
+          29156894,
+          29762122,
+          29989889,
+          26809470
+        ],
+        "stddev_ns": 1671698.9994008234,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "deterministic_vs_1t": true,
+      "encoded_bytes": 4503208,
+      "parallel_efficiency": 0.3695908904654475,
+      "path": "threads-12",
+      "speedup_vs_1t": 4.4350906855853705,
+      "threads": 12,
+      "workload_id": "mixed_16m"
+    }
+  ]
+}

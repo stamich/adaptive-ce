@@ -9,6 +9,7 @@ name = "ace"
 path = "src/main.rs"
 
 [dependencies]
+ace-codecs = { path = "../ace-codecs" }
 ace-core = { path = "../ace-core" }
 ace-engine = { path = "../ace-engine" }
 ace-format = { path = "../ace-format" }

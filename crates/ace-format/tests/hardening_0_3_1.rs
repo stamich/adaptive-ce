@@ -33,10 +33,7 @@ fn valid_index() -> BlockIndex {
 fn index_roundtrip_is_exact() {
     let index = valid_index();
     let bytes = encode_index(&index);
-    assert_eq!(
-        decode_index(&bytes, &DecodeLimits::default()).unwrap(),
-        index
-    );
+    assert_eq!(decode_index(&bytes, &DecodeLimits::default()).unwrap(), index);
 }
 
 /// Index entry count must be checked before attacker-controlled allocation.
@@ -44,8 +41,7 @@ fn index_roundtrip_is_exact() {
 fn index_entry_limit_is_enforced() {
     let index = valid_index();
     let bytes = encode_index(&index);
-    let mut limits = DecodeLimits::default();
-    limits.max_index_entries = 1;
+    let limits = DecodeLimits { max_index_entries: 1, ..DecodeLimits::default() };
     assert!(decode_index(&bytes, &limits).is_err());
 }
 

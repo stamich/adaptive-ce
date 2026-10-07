@@ -1,6 +1,4 @@
-use ace_analysis::{
-    numeric_prefilter, strong_numeric_evidence, NumericFastEvidence, NumericPrefilter,
-};
+use ace_analysis::{numeric_prefilter, strong_numeric_evidence, NumericFastEvidence, NumericPrefilter};
 use ace_core::{
     AceConfig, CandidateTier, CodecId, CompressionProfile, DecodingPlan, EntropyCodecId,
     PhysicalCompressionPlan, PlanCost,
@@ -72,14 +70,15 @@ pub fn classify_planner_route(input: &[u8], config: &AceConfig) -> RouteDecision
         CompressionProfile::Dense => 0.97,
     };
 
-    let numeric_fast_evidence =
-        if prefilter.strong_numeric && prefilter.confidence >= fast_threshold {
-            prefilter
-                .width_hint
-                .and_then(|width| strong_numeric_evidence(input, width))
-        } else {
-            None
-        };
+    let numeric_fast_evidence = if prefilter.strong_numeric
+        && prefilter.confidence >= fast_threshold
+    {
+        prefilter
+            .width_hint
+            .and_then(|width| strong_numeric_evidence(input, width))
+    } else {
+        None
+    };
 
     if numeric_fast_evidence.is_some() {
         RouteDecision {
@@ -111,7 +110,8 @@ pub fn numeric_fast_decision_from_route(
     }
 
     let evidence = route.numeric_fast_evidence?;
-    let predicted_size = ace_codecs::NUMERIC_HEADER_SIZE.saturating_add(evidence.tail_bytes) as u64;
+    let predicted_size =
+        ace_codecs::NUMERIC_HEADER_SIZE.saturating_add(evidence.tail_bytes) as u64;
 
     let plan = PhysicalCompressionPlan {
         decoding: DecodingPlan {
@@ -163,6 +163,7 @@ pub fn numeric_fast_decision_from_route(
         second_stage_plans: Vec::new(),
         final_ranked_plans: vec![plan.clone()],
         quality_qualified_plans: vec![plan],
+        numeric_estimate: None,
     })
 }
 

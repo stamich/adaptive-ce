@@ -6,8 +6,7 @@ use ace_planner::{evaluate_candidates_v3, CompressionPlanner, DefaultCompression
 #[test]
 fn hot_path_has_zero_full_trials() {
     let data = b"status=ACTIVE region=eu service=ace\n".repeat(10_000);
-    let mut config = AceConfig::default();
-    config.profile = CompressionProfile::Balanced;
+    let config = AceConfig { profile: CompressionProfile::Balanced, ..AceConfig::default() };
     let profile = DefaultBlockAnalyzer.analyze(&data);
     let candidates = DefaultCompressionPlanner.candidates(&profile, &config);
     let decision = evaluate_candidates_v3(&data, &profile, &candidates, &config).unwrap();
@@ -34,8 +33,7 @@ fn planner_is_deterministic() {
 #[test]
 fn dense_keeps_multiple_quality_candidates() {
     let data = b"{\"status\":\"ACTIVE\",\"service\":\"ace\",\"region\":\"eu\"}\n".repeat(6_000);
-    let mut config = AceConfig::default();
-    config.profile = CompressionProfile::Dense;
+    let config = AceConfig { profile: CompressionProfile::Dense, ..AceConfig::default() };
     let profile = DefaultBlockAnalyzer.analyze(&data);
     let candidates = DefaultCompressionPlanner.candidates(&profile, &config);
     let decision = evaluate_candidates_v3(&data, &profile, &candidates, &config).unwrap();

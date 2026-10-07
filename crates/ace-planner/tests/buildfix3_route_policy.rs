@@ -23,9 +23,7 @@ fn variable_u64_timestamps(bytes: usize) -> Vec<u8> {
 #[test]
 fn numeric_general_uses_bounded_v4_2_budget() {
     let input = variable_u64_timestamps(256 * 1024);
-    let mut config = AceConfig::default();
-    config.profile = CompressionProfile::Balanced;
-    config.threads = 1;
+    let config = AceConfig { profile: CompressionProfile::Balanced, threads: 1, ..AceConfig::default() };
 
     let route = RoutePolicy::classify(&input, &config);
     assert_eq!(route.route, PlannerRoute::NumericGeneral);

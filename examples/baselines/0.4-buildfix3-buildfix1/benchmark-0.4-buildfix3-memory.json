@@ -1,0 +1,40 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4-buildfix3",
+  "base": "0.4-buildfix2",
+  "scope": "memory",
+  "benchmark_contract_origin": "ace-0.4-buildfix3",
+  "generated_at_utc_epoch_seconds": 1789632310,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33422217216,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "block_size_bytes": 262144,
+      "path": "worker_scratch_and_planner",
+      "planner_estimated_candidates": 752,
+      "planner_fast_path_blocks": 16,
+      "planner_full_trial_encodes": 0,
+      "planner_sampled_candidates": 272,
+      "scratch_capacity_preserved": true,
+      "scratch_reserved_after_reset_bytes": 787456,
+      "scratch_reserved_bytes": 787456,
+      "workload_id": "mixed_16m"
+    }
+  ]
+}

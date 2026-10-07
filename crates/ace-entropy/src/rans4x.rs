@@ -1,5 +1,5 @@
-use crate::{rans_decode, rans_encode};
 use ace_core::{AceError, AceResult};
+use crate::{rans_decode, rans_encode};
 
 /// Number of independent scalar states used by the ACE 0.3 rANS4x container.
 pub const RANS4X_LANES: usize = 4;
@@ -13,9 +13,7 @@ pub const RANS4X_METADATA_BYTES: usize = RANS4X_LANES * 512 + RANS4X_LANES * 4;
 /// lane execution without changing the surrounding entropy identifier or metadata contract.
 pub fn rans4x_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
     let mut lanes = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
-    for (index, &byte) in input.iter().enumerate() {
-        lanes[index & 3].push(byte);
-    }
+    for (index, &byte) in input.iter().enumerate() { lanes[index & 3].push(byte); }
     let mut metadata = Vec::with_capacity(RANS4X_METADATA_BYTES);
     let mut payload = Vec::new();
     let mut encoded_lanes = Vec::with_capacity(RANS4X_LANES);
@@ -23,44 +21,26 @@ pub fn rans4x_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
         let (model, encoded) = rans_encode(lane)?;
         encoded_lanes.push((model, encoded));
     }
-    for (model, _) in &encoded_lanes {
-        metadata.extend_from_slice(model);
-    }
+    for (model, _) in &encoded_lanes { metadata.extend_from_slice(model); }
     for (_, encoded) in &encoded_lanes {
-        let len = u32::try_from(encoded.len())
-            .map_err(|_| AceError::InvalidRans("rANS4x lane payload exceeds u32"))?;
+        let len = u32::try_from(encoded.len()).map_err(|_| AceError::InvalidRans("rANS4x lane payload exceeds u32"))?;
         metadata.extend_from_slice(&len.to_le_bytes());
     }
-    for (_, encoded) in encoded_lanes {
-        payload.extend_from_slice(&encoded);
-    }
+    for (_, encoded) in encoded_lanes { payload.extend_from_slice(&encoded); }
     Ok((metadata, payload))
 }
 
 /// Decodes four round-robin rANS lanes and restores the original byte order.
 pub fn rans4x_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
-    if metadata.len() != RANS4X_METADATA_BYTES {
-        return Err(AceError::InvalidRans("invalid rANS4x metadata size"));
-    }
+    if metadata.len() != RANS4X_METADATA_BYTES { return Err(AceError::InvalidRans("invalid rANS4x metadata size")); }
     let model_bytes = RANS4X_LANES * 512;
     let mut payload_lengths = [0usize; RANS4X_LANES];
-    for lane in 0..RANS4X_LANES {
+    for (lane, length) in payload_lengths.iter_mut().enumerate() {
         let start = model_bytes + lane * 4;
-        payload_lengths[lane] = u32::from_le_bytes(
-            metadata[start..start + 4]
-                .try_into()
-                .map_err(|_| AceError::InvalidRans("invalid rANS4x lane length"))?,
-        ) as usize;
+        *length = u32::from_le_bytes(metadata[start..start + 4].try_into().map_err(|_| AceError::InvalidRans("invalid rANS4x lane length"))?) as usize;
     }
-    let total_payload = payload_lengths.iter().try_fold(0usize, |acc, &n| {
-        acc.checked_add(n)
-            .ok_or(AceError::InvalidRans("rANS4x payload length overflow"))
-    })?;
-    if total_payload != input.len() {
-        return Err(AceError::InvalidRans(
-            "rANS4x payload lengths do not match payload",
-        ));
-    }
+    let total_payload = payload_lengths.iter().try_fold(0usize, |acc, &n| acc.checked_add(n).ok_or(AceError::InvalidRans("rANS4x payload length overflow")))?;
+    if total_payload != input.len() { return Err(AceError::InvalidRans("rANS4x payload lengths do not match payload")); }
 
     let mut decoded = Vec::with_capacity(RANS4X_LANES);
     let mut cursor = 0usize;
@@ -77,9 +57,7 @@ pub fn rans4x_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> Ace
     for index in 0..expected_size {
         let lane = index & 3;
         let pos = positions[lane];
-        let byte = *decoded[lane]
-            .get(pos)
-            .ok_or(AceError::InvalidRans("rANS4x lane underflow"))?;
+        let byte = *decoded[lane].get(pos).ok_or(AceError::InvalidRans("rANS4x lane underflow"))?;
         positions[lane] += 1;
         output.push(byte);
     }
@@ -95,9 +73,6 @@ mod tests {
     fn round_trip() {
         let data: Vec<u8> = (0u8..=255).cycle().take(100_003).collect();
         let (metadata, payload) = rans4x_encode(&data).unwrap();
-        assert_eq!(
-            rans4x_decode(&metadata, &payload, data.len()).unwrap(),
-            data
-        );
+        assert_eq!(rans4x_decode(&metadata, &payload, data.len()).unwrap(), data);
     }
 }

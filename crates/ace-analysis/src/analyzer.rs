@@ -1,6 +1,6 @@
-use crate::{analyze_repetition, analyze_runs, entropy_h0, sampled_entropy_h1, AnalysisLevel};
 use ace_core::BlockProfile;
 use ace_simd::count_zeroes;
+use crate::{analyze_repetition, analyze_runs, entropy_h0, sampled_entropy_h1, AnalysisLevel};
 
 /// Interface implemented by a component that extracts deterministic compression features from one block.
 pub trait BlockAnalyzer {
@@ -12,6 +12,7 @@ pub trait BlockAnalyzer {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultBlockAnalyzer;
 
+/// Inherent methods of [`DefaultBlockAnalyzer`].
 impl DefaultBlockAnalyzer {
     /// Analyzes one source block using the requested deterministic analysis budget.
     ///
@@ -20,18 +21,7 @@ impl DefaultBlockAnalyzer {
     /// table removes substantial per-block work without changing FAST planner decisions.
     pub fn analyze_with_level(&self, input: &[u8], level: AnalysisLevel) -> BlockProfile {
         if input.is_empty() {
-            return BlockProfile {
-                size: 0,
-                entropy_h0: 0.0,
-                entropy_h1: 0.0,
-                zero_ratio: 0.0,
-                run_score: 0.0,
-                delta_score: 0.0,
-                repetition_score: 0.0,
-                sampled_match_length: 0.0,
-                unique_byte_count: 0,
-                incompressibility_score: 0.0,
-            };
+            return BlockProfile { size: 0, entropy_h0: 0.0, entropy_h1: 0.0, zero_ratio: 0.0, run_score: 0.0, delta_score: 0.0, repetition_score: 0.0, sampled_match_length: 0.0, unique_byte_count: 0, incompressibility_score: 0.0 };
         }
         let mut histogram = [0u32; 256];
         let mut delta_histogram = [0u32; 256];
@@ -59,27 +49,19 @@ impl DefaultBlockAnalyzer {
         let delta_score = ((h0 - delta_h).max(0.0) / 8.0).clamp(0.0, 1.0);
         let unique_byte_count = histogram.iter().filter(|&&n| n != 0).count() as u16;
         let entropy_component = (h0 / 8.0).clamp(0.0, 1.0);
-        let strongest_structure = run_score
-            .max(delta_score)
-            .max(repetition.collision_ratio)
-            .clamp(0.0, 1.0);
-        let incompressibility_score =
-            (0.72 * entropy_component + 0.28 * (1.0 - strongest_structure)).clamp(0.0, 1.0);
+        let strongest_structure = run_score.max(delta_score).max(repetition.collision_ratio).clamp(0.0, 1.0);
+        let incompressibility_score = (0.72 * entropy_component + 0.28 * (1.0 - strongest_structure)).clamp(0.0, 1.0);
         BlockProfile {
-            size: input.len(),
-            entropy_h0: h0,
-            entropy_h1: h1,
+            size: input.len(), entropy_h0: h0, entropy_h1: h1,
             zero_ratio: zero_count as f32 / input.len() as f32,
-            run_score,
-            delta_score,
-            repetition_score: repetition.collision_ratio,
-            sampled_match_length: repetition.mean_match_length,
-            unique_byte_count,
+            run_score, delta_score, repetition_score: repetition.collision_ratio,
+            sampled_match_length: repetition.mean_match_length, unique_byte_count,
             incompressibility_score,
         }
     }
 }
 
+/// Implements [`BlockAnalyzer`] for [`DefaultBlockAnalyzer`].
 impl BlockAnalyzer for DefaultBlockAnalyzer {
     /// Computes the standard BALANCED feature set for backwards-compatible callers.
     fn analyze(&self, input: &[u8]) -> BlockProfile {
@@ -94,9 +76,7 @@ mod tests {
     /// FAST and STANDARD must preserve every planner-consumed feature.
     #[test]
     fn fast_level_preserves_planner_features() {
-        let data = (0..65536)
-            .map(|i| ((i * 17) % 251) as u8)
-            .collect::<Vec<_>>();
+        let data = (0..65536).map(|i| ((i * 17) % 251) as u8).collect::<Vec<_>>();
         let analyzer = DefaultBlockAnalyzer;
         let fast = analyzer.analyze_with_level(&data, AnalysisLevel::Fast);
         let standard = analyzer.analyze_with_level(&data, AnalysisLevel::Standard);
@@ -108,9 +88,6 @@ mod tests {
         assert_eq!(fast.repetition_score, standard.repetition_score);
         assert_eq!(fast.sampled_match_length, standard.sampled_match_length);
         assert_eq!(fast.unique_byte_count, standard.unique_byte_count);
-        assert_eq!(
-            fast.incompressibility_score,
-            standard.incompressibility_score
-        );
+        assert_eq!(fast.incompressibility_score, standard.incompressibility_score);
     }
 }

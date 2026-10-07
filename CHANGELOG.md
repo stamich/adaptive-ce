@@ -1,5 +1,142 @@
 # Changelog
 
+## 0.4.5-buildfix2 - 2026-10-05
+
+Base: 0.4.5-buildfix1. Format 1.3 and every encoded byte unchanged (byte-for-byte identical
+output on Corpus V3 for FAST/BALANCED/DENSE and streaming). Analysis of the 0.4.5-buildfix1
+benchmark run: `docs/BENCHMARK-ANALYSIS-0.4.5-buildfix1.md`.
+
+### Fixed - warm-64K random-access gate (76.2 µs > 71.7 µs in 0.4.5-buildfix1)
+- Root cause: CRC32C of the whole decoded 256 KiB block took 55–60 % of a block decode
+  (single SSE4.2 dependency chain). New `ace_simd::crc32c_hardware` runs three interleaved
+  chains and merges them in GF(2) (`crc32c` crate remains the portable fallback):
+  256 KiB 41 → 12 µs. Container gate run: warm-64K 40.0 µs, 23/23 gates PASS.
+- Huffman decoder: 11-bit lookup table + 64-bit MSB-first bit buffer with canonical fallback
+  for long codes / stream end (identical results, incl. errors); encoder uses a 64-bit
+  accumulator. 256 KiB JSON decode 2 246 → 1 043 µs, encode 1 509 → 614 µs.
+- NUM1 decoding fused into one iterator pipeline (`unpack_iter → unzigzag → undelta_iter →
+  write_lanes_from_iter`): 1.6–2× faster, no intermediate vectors.
+- `decode_entropy_cow`: entropy `None` borrows the payload; RAW blocks are copied once.
+- NUM1 estimator accumulates bit widths with OR (same highest bit, no compare per value): 2×.
+
+### Changed - structure (SOLID / KISS / DRY)
+- Every `lib.rs` and `mod.rs` contains only `mod` declarations and `pub use` re-exports;
+  implementation moved to dedicated modules in all 16 crates, the CLI and the benchmark
+  harness (`docs/ARCHITECTURE-0.4.5-BUILDFIX2.md`).
+- `ace-bitpack`: sealed `Lane` trait (u16/u32/u64) replaces three copies of ZigZag, delta,
+  delta-of-delta, FOR, bit-width and pack/unpack; modules follow concept §46
+  (`scalar`, `zigzag`, `for_codec`, `delta`, `delta_of_delta`).
+- `ace-codecs`: NUM1 split into `mode`, `header`, `estimate`, `encode`, `decode`,
+  `lane_dispatch`; `encode_u16/u32/u64` and `decode_u16/u32/u64` replaced by generic
+  `encode_lane::<T>` / `decode_lane::<T>`; `serialize_payload` replaces an 8-argument builder.
+- `ace-format`: `read_serialized_block` is the single block parser (sequential and indexed
+  readers); `AceWriter` now builds the block index and trailer and is used by both the engine
+  and the streaming encoder.
+- `ace-core`: `EntropyCodecId::metadata_prefix_bytes` / `PRIMARY_LENGTH_PREFIX_BYTES`
+  (single source of the entropy-metadata prefix rule), `EntropyCodecId::label`,
+  `PhysicalCompressionPlan::{label, is_plain_numeric}`, `CompressionStats::record_selected_plan`.
+- `ace-planner`: `decision`, `pipeline`, `plan_identity`, `exhaustive` split out of
+  `evaluator`; `RankedPlan` + `EntropySelectionPolicy::penalize_weak_rans` replace two copies
+  of the rANS gain rule; `hybrid` uses `ace_cost::stratified_ranges` (duplicate removed).
+- `ace-engine`: `AceEngine` is a façade over `block_encoder`, `block_pipeline`, `container`.
+- `ace-stream`: validation / single-block encoding / exact reads extracted; uses `AceWriter`.
+- `ace-simd`: `backend`, `scan`, `avx2`, `crc32c`; `unsafe` remains confined to this crate.
+- CLI: `args`, `files`, `commands/*`; version printed from `CARGO_PKG_VERSION`;
+  `read-range` uses one index lookup (`read_range_with_metrics`).
+- Benchmark harness split into `prelude`, `json`, `timing`, `corpus`, `plan_util`,
+  `families/*`; milestone tag defined once (`json::MILESTONE`).
+- `AceConfig` / `DecodeLimits` built with struct-update syntax instead of field reassignment.
+
+### Removed (public API)
+- `ace_bitpack::{zigzag_i16, unzigzag_u16, zigzag_i32, unzigzag_u32, max_bit_width_u16/u32/u64,
+  pack_u32/u64, unpack_u32/u64, delta_i16/i32/i64, undelta_*, delta_of_delta_*,
+  undelta_of_delta_*, frame_of_reference_u*, unframe_of_reference_u*}` — use the generic
+  `Lane`-based functions (`zigzag_i64` / `unzigzag_u64` / `bits_required_u64` remain).
+
+### Tests and tooling
+- 184 tests (was 155): per-lane property tests (macro), bit I/O references, Huffman long-code
+  / malformed cases, CRC32C reference and GF(2) shift tests, `AceWriter` index test,
+  streaming == in-memory identity, plan label / statistics / rANS policy tests.
+- `cargo clippy --workspace --all-targets`: 0 warnings (MSRV 1.75); rustdoc: 0 warnings;
+  doc-comment coverage 100 %. Fuzz target `bitpack_decode` covers all three lanes.
+- Scripts, tools, demo and result files renamed to `0.4.5-buildfix2`; previous milestone
+  files moved to `docs/history/`; 0.4.5-buildfix1 results added as
+  `examples/baselines/0.4.5-buildfix1/`.
+
+## 0.4.5 / 0.4.5-buildfix1 (milestone 0.4-buildfix5) - 2026-10-05
+
+### Fixed - numeric coverage (ratio)
+- **u64 timestamps with wide jitter were rejected by the prefilter.** The "small delta" limit was a
+  fixed 16 bits, so nanosecond clocks (deltas of 17-32 bits) never reached the numeric route. The
+  limit is now lane-relative (`NumericWidth::small_delta_bits`: u16 -> 8, u32 -> 16, u64 -> 32).
+  `u64-timestamps-ns`, BALANCED: 1.64x -> 6.38x.
+- **FAST never considered Numeric for timestamp-like blocks.** FAST only added the Numeric candidate
+  when the *byte-delta* score was >= 0.15. Planner V4 now guarantees "NumericGeneral route => Numeric
+  candidate" in every profile (`DefaultCompressionPlanner::candidates_for_route`,
+  `ensure_numeric_candidate`, plus a safety net in `evaluate_candidates_v4_with_route`).
+  FAST: `u64-timestamps-ms` 1.00x -> 31.56x, `delta-series` 1.33x -> 15.89x, `delta-variable` 1.00x -> 3.81x,
+  `u64-timestamps-ns` 1.28x -> 6.38x.
+- The injection rule initially treated FAST's `Raw + Huffman` baseline as "RAW only" and skipped
+  injection; the guard now only suppresses Numeric for a lone RAW (early-raw) candidate.
+
+### Added
+- `NumericWidth::U16` (2-byte lanes) across analysis, planner, codec and bit-packing
+  (`ace-bitpack` u16 lane functions, `max_bit_width_u16`).
+- Lane-ring ("modular") delta arithmetic so wrapping counters (65535 -> 0) stay small deltas.
+- `ace_codecs::{numeric_inspect, NumericPayloadInfo, estimate_numeric_for_width, numeric_encode_with,
+  numeric_encode_fixed_step}`; `ace inspect --blocks` prints width/mode/bit width/bits-per-value per
+  numeric block and a numeric summary line.
+- Fuzz target `numeric_roundtrip` (inspect/decode of garbage, encode->decode identity,
+  estimate == encoded length).
+- Tests: `ace-planner/tests/buildfix5_numeric_coverage.rs`, `ace-engine/tests/numeric_0_4_5.rs`,
+  malformed-header / garbage / u16 / tail-byte / estimate-equals-length codec tests, bit-pack
+  equivalence tests, prefilter regression `wide_jitter_u64_timestamps_are_likely_numeric`.
+
+### Performance (decode hot path, wire-compatible)
+- rANS: slot->symbol lookup table (`NormalizedFrequencyTable::slot_lookup_table`) replaces a
+  256-step scan per decoded byte; rANS4x inherits it.
+- Huffman: canonical `first_code/count/offset` tables replace a linear scan per bit.
+- LZ: `copy_match` uses `extend_from_within` (memcpy) instead of a byte loop.
+- Numeric zero-width decode: const-generic `fill_arithmetic::<B>`.
+- Bit-pack: byte-fragment `write_bits`/`read_bits`.
+- Hot numeric loops are monomorphized per lane (`read_lane::<B>`, `lane_delta_const::<B>`); a first
+  run-time-width generalization had made encode 2.5-3x slower and was replaced.
+- Measured (min of 3, same machine, old binary vs new): `gauge-sawtooth` decode 24 -> 427 MB/s,
+  `structured-json` decode 349 -> 699 MB/s, `runs` BALANCED decode 320 -> 732 MB/s,
+  `u32-counter` decode 759 -> 877 MB/s. Encode throughput within +-10% (noise) except
+  `u64-timestamps-ms` BALANCED/FAST ~-15..20% because NumericGeneral estimates twice
+  (planner estimate + encode); tracked for 0.4.1.
+
+### Fixed after the first 0.4.5 benchmark run (i7-9850H, `ace-benchmark0.4-buildfix4.sh all`)
+- `numeric.u64_planner_mb_s` failed (89.2 < 90 MB/s); A/B against 0.4.4 confirmed a 0.4.5 regression
+  (u64-timestamps 110 -> 85 MB/s, delta-variable 92 -> 78 MB/s in the test container).
+  Fix: `PlannerDecision::numeric_estimate` carries the planner's exact `NumericEstimate` to the
+  engine, which encodes with `numeric_encode_with(width, mode)` instead of repeating the full
+  three-width search in `numeric_encode`. Container A/B: u64-timestamps 85 -> 122 MB/s (0.4.4: 110),
+  delta-variable 78 -> 105 MB/s (0.4.4: 92), monotonic-outliers 75 -> 95 MB/s (0.4.4: 77).
+- `compression.fast_mb_s` (165.0 < 172.9 = 95 % of buildfix2) — FAST now estimates Numeric only for
+  the prefilter's lane width (`estimate_numeric_for_width`) instead of all three widths.
+  Container A/B on mixed_16m: 0.4.4 = 1.977x @ 144-154 MB/s, 0.4.5 = 3.682x @ 166-176 MB/s.
+  BALANCED/DENSE keep the exhaustive search (bytes identical to `numeric_encode`, tested by
+  `reused_numeric_estimate_matches_numeric_encode`).
+
+### Documentation
+- Every item (fn/struct/enum/trait/const/impl) in the workspace now has a doc comment
+  (coverage 585/585 by the repository doc-coverage script).
+- New: `TASKS-0.4-buildfix5.md`, `docs/CONCEPT-TRACEABILITY-0.4.md`, `docs/NUMERIC-0.4.5.md`,
+  `MILESTONE-0.4-buildfix5.json`; README and ROADMAP updated.
+
+### Compatibility
+- Writer stays Format 1.3; readers 1.0-1.3. No header or index change.
+- **Additive NUM1 change:** the lane-width byte may now be `2`. Files written by 0.4.5 that contain a
+  u16 numeric block are *not* readable by 0.4.4 and older (they report a malformed numeric header).
+  Files written by 0.4.4 are fully readable by 0.4.5.
+- Benchmark schema 2.0 and the script/JSON names (`0.4-buildfix4`) are intentionally unchanged.
+
+### Known limits (not fixed here)
+- `monotonic-outliers` stays at 1.78x: needs Patched FOR (exceptions list) - moved to 0.4.1.
+- FAST encode of timestamp data pays one extra numeric estimate (see Performance).
+
 ## 0.4-buildfix4-buildfix3 - 2026-09-17
 
 ### Script/dependency hardening

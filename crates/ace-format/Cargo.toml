@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
+ace-simd = { path = "../ace-simd" }
 crc32c.workspace = true
 
 [dev-dependencies]

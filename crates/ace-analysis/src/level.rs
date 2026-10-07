@@ -11,6 +11,7 @@ pub enum AnalysisLevel {
     Dense,
 }
 
+/// Inherent methods of [`AnalysisLevel`].
 impl AnalysisLevel {
     /// Maps a public compression profile to its deterministic analysis budget.
     pub fn for_profile(profile: CompressionProfile) -> Self {

@@ -6,11 +6,8 @@ use proptest::prelude::*;
 
 /// Builds a deterministic engine configuration suitable for property tests.
 fn config_for(profile: CompressionProfile, block_size: usize) -> AceConfig {
-    let mut config = AceConfig::default();
-    config.profile = profile;
-    config.block_size = block_size;
-    config.threads = 1;
-    config
+    
+    AceConfig { profile, block_size, threads: 1, ..AceConfig::default() }
 }
 
 proptest! {
@@ -54,11 +51,7 @@ proptest! {
 #[test]
 fn deterministic_worker_matrix_0_3_1() {
     let data = b"ACE 0.3.1 deterministic matrix / planner-v3.6\n".repeat(40_000);
-    for profile in [
-        CompressionProfile::Fast,
-        CompressionProfile::Balanced,
-        CompressionProfile::Dense,
-    ] {
+    for profile in [CompressionProfile::Fast, CompressionProfile::Balanced, CompressionProfile::Dense] {
         for block_size in [64 * 1024usize, 256 * 1024usize, 1024 * 1024usize] {
             let mut reference = None;
             for threads in [1usize, 2, 4] {

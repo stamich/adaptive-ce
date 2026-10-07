@@ -56,3 +56,10 @@ path = "fuzz_targets/bitpack_decode.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "numeric_roundtrip"
+path = "fuzz_targets/numeric_roundtrip.rs"
+test = false
+doc = false
+bench = false

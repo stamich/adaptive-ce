@@ -9,14 +9,11 @@ pub struct RepetitionStats {
 
 /// Estimates repeated-sequence density and match length without running the full LZ matcher.
 pub fn analyze_repetition(input: &[u8]) -> RepetitionStats {
+    /// Number of hash-table slots used by the repetition sampler.
     const TABLE: usize = 4096;
+    /// Sampling stride in bytes between inspected positions.
     const STEP: usize = 16;
-    if input.len() < 4 {
-        return RepetitionStats {
-            collision_ratio: 0.0,
-            mean_match_length: 0.0,
-        };
-    }
+    if input.len() < 4 { return RepetitionStats { collision_ratio: 0.0, mean_match_length: 0.0 }; }
     let mut last = vec![usize::MAX; TABLE];
     let mut samples = 0usize;
     let mut hits = 0usize;
@@ -25,16 +22,11 @@ pub fn analyze_repetition(input: &[u8]) -> RepetitionStats {
     while i + 4 <= input.len() {
         let h = hash4(&input[i..i + 4]) & (TABLE - 1);
         let previous = last[h];
-        if previous != usize::MAX
-            && previous < i
-            && &input[previous..previous + 4] == &input[i..i + 4]
-        {
+        if previous != usize::MAX && previous < i && input[previous..previous + 4] == input[i..i + 4] {
             hits += 1;
             let max = (input.len() - i).min(64);
             let mut len = 4usize;
-            while len < max && previous + len < i && input[previous + len] == input[i + len] {
-                len += 1;
-            }
+            while len < max && previous + len < i && input[previous + len] == input[i + len] { len += 1; }
             match_bytes += len;
         }
         last[h] = i;
@@ -42,16 +34,8 @@ pub fn analyze_repetition(input: &[u8]) -> RepetitionStats {
         i = i.saturating_add(STEP);
     }
     RepetitionStats {
-        collision_ratio: if samples == 0 {
-            0.0
-        } else {
-            hits as f32 / samples as f32
-        },
-        mean_match_length: if hits == 0 {
-            0.0
-        } else {
-            match_bytes as f32 / hits as f32
-        },
+        collision_ratio: if samples == 0 { 0.0 } else { hits as f32 / samples as f32 },
+        mean_match_length: if hits == 0 { 0.0 } else { match_bytes as f32 / hits as f32 },
     }
 }
 

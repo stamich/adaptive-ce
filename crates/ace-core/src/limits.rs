@@ -15,6 +15,7 @@ pub struct DecodeLimits {
     pub max_index_entries: usize,
 }
 
+/// Provides the documented default values of [`DecodeLimits`].
 impl Default for DecodeLimits {
     /// Returns conservative general-purpose limits suitable for files up to 64 GiB.
     fn default() -> Self {

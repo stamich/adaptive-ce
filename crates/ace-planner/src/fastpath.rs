@@ -1,28 +1,20 @@
-use ace_core::{
-    AceConfig, BlockProfile, CandidateTier, CodecId, DecodingPlan, EntropyCodecId, LzMode,
-    PhysicalCompressionPlan, TransformId,
-};
+use ace_core::{AceConfig, BlockProfile, CandidateTier, CodecId, DecodingPlan, EntropyCodecId, LzMode, PhysicalCompressionPlan, TransformId};
 
 /// Deterministic planner shortcut for blocks whose statistics strongly imply one inexpensive plan.
 pub trait PlannerFastPath: Send + Sync {
     /// Returns a complete candidate when no sampled verification is necessary.
-    fn try_plan(
-        &self,
-        profile: &BlockProfile,
-        config: &AceConfig,
-    ) -> Option<PhysicalCompressionPlan>;
+    fn try_plan(&self, profile: &BlockProfile, config: &AceConfig) -> Option<PhysicalCompressionPlan>;
 }
 
 /// Default ACE 0.3.1 fast-path classifier with the frozen zero-heavy quality guard.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultPlannerFastPath;
 
+/// Implements [`PlannerFastPath`] for [`DefaultPlannerFastPath`].
 impl PlannerFastPath for DefaultPlannerFastPath {
     /// Applies high-confidence deterministic shortcuts before general candidate estimation.
     fn try_plan(&self, p: &BlockProfile, config: &AceConfig) -> Option<PhysicalCompressionPlan> {
-        if !config.enable_planner_fast_paths {
-            return None;
-        }
+        if !config.enable_planner_fast_paths { return None; }
         if p.incompressibility_score > 0.985 && p.entropy_h0 > 7.985 && p.repetition_score < 0.003 {
             return Some(PhysicalCompressionPlan::raw());
         }
@@ -42,28 +34,14 @@ impl PlannerFastPath for DefaultPlannerFastPath {
             return None;
         }
         if matches!(config.profile, ace_core::CompressionProfile::Fast)
-            && p.repetition_score > 0.55
-            && p.sampled_match_length >= 12.0
+            && p.repetition_score > 0.55 && p.sampled_match_length >= 12.0
         {
-            return Some(simple_plan(
-                CodecId::Lz,
-                EntropyCodecId::Huffman,
-                Some(LzMode::Fast),
-                Vec::new(),
-                "0.3 fast path: strong LZ evidence",
-            ));
+            return Some(simple_plan(CodecId::Lz, EntropyCodecId::Huffman, Some(LzMode::Fast), Vec::new(), "0.3 fast path: strong LZ evidence"));
         }
         if matches!(config.profile, ace_core::CompressionProfile::Fast)
-            && p.delta_score > 0.75
-            && p.entropy_h0 > 4.0
+            && p.delta_score > 0.75 && p.entropy_h0 > 4.0
         {
-            return Some(simple_plan(
-                CodecId::Raw,
-                EntropyCodecId::Huffman,
-                None,
-                vec![TransformId::DeltaByte],
-                "0.3 fast path: strong delta evidence",
-            ));
+            return Some(simple_plan(CodecId::Raw, EntropyCodecId::Huffman, None, vec![TransformId::DeltaByte], "0.3 fast path: strong delta evidence"));
         }
         None
     }
@@ -78,12 +56,7 @@ fn simple_plan(
     reason: &'static str,
 ) -> PhysicalCompressionPlan {
     PhysicalCompressionPlan {
-        decoding: DecodingPlan {
-            transforms,
-            codec,
-            dictionary: None,
-            entropy,
-        },
+        decoding: DecodingPlan { transforms, codec, dictionary: None, entropy },
         lz_mode,
         tier: CandidateTier::Likely,
         cost: Default::default(),
@@ -91,6 +64,7 @@ fn simple_plan(
         reason,
     }
 }
+
 
 #[cfg(test)]
 mod buildfix8_tests {
@@ -116,28 +90,21 @@ mod buildfix8_tests {
     /// BALANCED must compare entropy alternatives instead of forcing bare RLE.
     #[test]
     fn balanced_zero_heavy_uses_general_planner() {
-        let mut config = AceConfig::default();
-        config.profile = CompressionProfile::Balanced;
-        assert!(DefaultPlannerFastPath
-            .try_plan(&zero_heavy_profile(), &config)
-            .is_none());
+        let config = AceConfig { profile: CompressionProfile::Balanced, ..AceConfig::default() };
+        assert!(DefaultPlannerFastPath.try_plan(&zero_heavy_profile(), &config).is_none());
     }
 
     /// DENSE must compare entropy alternatives instead of forcing bare RLE.
     #[test]
     fn dense_zero_heavy_uses_general_planner() {
-        let mut config = AceConfig::default();
-        config.profile = CompressionProfile::Dense;
-        assert!(DefaultPlannerFastPath
-            .try_plan(&zero_heavy_profile(), &config)
-            .is_none());
+        let config = AceConfig { profile: CompressionProfile::Dense, ..AceConfig::default() };
+        assert!(DefaultPlannerFastPath.try_plan(&zero_heavy_profile(), &config).is_none());
     }
 
     /// FAST preserves the speed-first RLE shortcut.
     #[test]
     fn fast_zero_heavy_keeps_rle_shortcut() {
-        let mut config = AceConfig::default();
-        config.profile = CompressionProfile::Fast;
+        let config = AceConfig { profile: CompressionProfile::Fast, ..AceConfig::default() };
         let plan = DefaultPlannerFastPath
             .try_plan(&zero_heavy_profile(), &config)
             .expect("FAST zero-heavy profile should use fast path");

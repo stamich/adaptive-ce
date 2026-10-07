@@ -40,6 +40,7 @@ pub struct AceConfig {
     pub enable_numeric_specialization: bool,
 }
 
+/// Provides the documented default values of [`AceConfig`].
 impl Default for AceConfig {
     /// Returns the recommended ACE 0.4 defaults.
     fn default() -> Self {

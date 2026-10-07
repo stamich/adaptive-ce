@@ -12,7 +12,9 @@ pub enum CodecId {
     Numeric = 3,
 }
 
+/// Parses the serialized one-byte identifier of [`CodecId`], rejecting unknown values.
 impl TryFrom<u8> for CodecId {
+    /// Error type returned for unknown numeric identifiers.
     type Error = crate::AceError;
 
     /// Converts a serialized codec identifier into a supported codec.
@@ -41,7 +43,36 @@ pub enum EntropyCodecId {
     Rans4x = 3,
 }
 
+/// Bytes of the little-endian `u32` primary-stream length stored in front of the entropy model
+/// metadata of every block whose entropy coder is not [`EntropyCodecId::None`].
+pub const PRIMARY_LENGTH_PREFIX_BYTES: usize = 4;
+
+/// Inherent methods of [`EntropyCodecId`].
+impl EntropyCodecId {
+    /// Container bytes added in front of this coder's model metadata (`0` or
+    /// [`PRIMARY_LENGTH_PREFIX_BYTES`]); the single source of that wire rule for encoder,
+    /// decoder and planner cost estimates.
+    pub const fn metadata_prefix_bytes(self) -> usize {
+        match self {
+            Self::None => 0,
+            Self::Huffman | Self::Rans | Self::Rans4x => PRIMARY_LENGTH_PREFIX_BYTES,
+        }
+    }
+
+    /// Stable lower-case label used in plan-distribution telemetry.
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Huffman => "huffman",
+            Self::Rans => "rans",
+            Self::Rans4x => "rans4x",
+        }
+    }
+}
+
+/// Parses the serialized one-byte identifier of [`EntropyCodecId`], rejecting unknown values.
 impl TryFrom<u8> for EntropyCodecId {
+    /// Error type returned for unknown numeric identifiers.
     type Error = crate::AceError;
 
     /// Converts a serialized entropy identifier into a supported entropy codec.
@@ -66,7 +97,9 @@ pub enum TransformId {
     DeltaByte = 1,
 }
 
+/// Parses the serialized one-byte identifier of [`TransformId`], rejecting unknown values.
 impl TryFrom<u8> for TransformId {
+    /// Error type returned for unknown numeric identifiers.
     type Error = crate::AceError;
 
     /// Converts a serialized transform identifier into a supported transform.
