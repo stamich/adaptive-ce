@@ -102,6 +102,7 @@ dependencies = [
  "ace-codecs",
  "ace-core",
  "ace-corpus",
+ "ace-cost",
  "ace-dictionary",
  "ace-entropy",
  "ace-format",

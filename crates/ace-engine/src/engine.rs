@@ -6,8 +6,8 @@ use ace_analysis::{analyze_numeric, recommend_block_size, AnalysisLevel, Default
 use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, CompressionStats, DecodeLimits};
 use ace_format::{AceReader, FileHeader};
 use ace_planner::{
-    evaluate_all_candidates, evaluate_candidates_v4_with_route, DefaultCompressionPlanner,
-    PlanningContext,
+    apply_time_series_policy, evaluate_all_candidates, evaluate_candidates_v4_with_route,
+    float_fast_decision, DefaultCompressionPlanner, FloatFastOutcome, PlanningContext,
 };
 use ace_runtime::RuntimeConfig;
 use rayon::prelude::*;
@@ -211,6 +211,9 @@ impl AceEngine {
     }
 
     /// Explains one block: routing, analysis, all candidate costs and the selected plan.
+    ///
+    /// The selection follows the production path (`plan_block`): FloatFast first, then the
+    /// V4.3 pipeline of the base route and the TS1 policy.
     fn explain_block(&self, block_id: u64, block: &[u8]) -> AceResult<BlockExplanation> {
         let context = PlanningContext::classify(block, &self.config);
         let profile = DefaultBlockAnalyzer
@@ -221,13 +224,23 @@ impl AceEngine {
             context.route.candidate_route(),
         );
         let evaluated = evaluate_all_candidates(block, &candidates, &self.config)?;
-        let decision = evaluate_candidates_v4_with_route(
-            block,
-            &profile,
-            &candidates,
-            &self.config,
-            &context.route,
-        )?;
+        let decision = match float_fast_decision(block, &context.route)? {
+            FloatFastOutcome::Selected(decision) => *decision,
+            outcome => {
+                let generic = evaluate_candidates_v4_with_route(
+                    block,
+                    &profile,
+                    &candidates,
+                    &self.config,
+                    &context.route,
+                )?;
+                let mut decision =
+                    apply_time_series_policy(block, generic, &context.route, &self.config)?;
+                decision.telemetry.float_fast_fallback =
+                    matches!(outcome, FloatFastOutcome::Fallback);
+                decision
+            }
+        };
         Ok(BlockExplanation {
             block_id,
             profile,
@@ -235,6 +248,8 @@ impl AceEngine {
             candidates: evaluated,
             selected: decision.plan,
             telemetry: decision.telemetry,
+            route: context.route,
+            time_series: decision.time_series.map(|selection| selection.estimate),
         })
     }
 

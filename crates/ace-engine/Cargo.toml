@@ -10,6 +10,7 @@ ace-core = { path = "../ace-core" }
 ace-analysis = { path = "../ace-analysis" }
 ace-transforms = { path = "../ace-transforms" }
 ace-codecs = { path = "../ace-codecs" }
+ace-cost = { path = "../ace-cost" }
 ace-entropy = { path = "../ace-entropy" }
 ace-dictionary = { path = "../ace-dictionary" }
 ace-planner = { path = "../ace-planner" }
