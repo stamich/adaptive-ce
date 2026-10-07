@@ -9,6 +9,7 @@ mod args;
 mod commands;
 mod files;
 
+use ace_core::AceConfig;
 use anyhow::Result;
 use clap::Parser;
 
@@ -24,22 +25,47 @@ fn main() -> Result<()> {
             profile,
             block_policy,
             access_hint,
+            disable_float,
         } => commands::compress(
             &input,
             &output,
-            threads,
-            profile.into(),
-            block_policy.into(),
-            access_hint.into(),
+            AceConfig {
+                threads,
+                profile: profile.into(),
+                block_size_policy: block_policy.into(),
+                access_hint: access_hint.into(),
+                enable_float_specialization: !disable_float,
+                ..AceConfig::default()
+            },
         ),
         Command::CompressStream {
             input,
             output,
             profile,
-        } => commands::compress_stream(&input, &output, profile.into()),
+            disable_float,
+        } => commands::compress_stream(
+            &input,
+            &output,
+            AceConfig {
+                profile: profile.into(),
+                enable_float_specialization: !disable_float,
+                ..AceConfig::default()
+            },
+        ),
         Command::Decompress { input, output } => commands::decompress(&input, &output),
         Command::Inspect { input, blocks } => commands::inspect(&input, blocks),
-        Command::Explain { input, profile } => commands::explain(&input, profile.into()),
+        Command::Explain {
+            input,
+            profile,
+            disable_float,
+        } => commands::explain(
+            &input,
+            AceConfig {
+                profile: profile.into(),
+                enable_float_specialization: !disable_float,
+                ..AceConfig::default()
+            },
+        ),
         Command::Verify { input } => commands::verify(&input),
         Command::DecodeBlock {
             input,
