@@ -26,6 +26,8 @@ pub trait Lane:
     const BITS: u8;
     /// Lane width in bytes.
     const BYTES: usize;
+    /// The NUM1 lane width this type represents.
+    const WIDTH: ace_core::NumericWidth;
     /// Error message for a bit width larger than the lane.
     const WIDTH_TOO_LARGE: &'static str;
     /// Error message for a non-zero value packed with zero bit width.
@@ -60,7 +62,7 @@ pub trait Lane:
 /// Implements [`Lane`] for one unsigned/signed pair; the bodies are identical for every width,
 /// which is exactly the duplication the trait removes from the algorithms.
 macro_rules! impl_lane {
-    ($unsigned:ty, $signed:ty) => {
+    ($unsigned:ty, $signed:ty, $width:ident) => {
         /// Marks the lane as one of the three NUM1 widths.
         impl sealed::Sealed for $unsigned {}
 
@@ -72,6 +74,7 @@ macro_rules! impl_lane {
             const BITS: u8 = <$unsigned>::BITS as u8;
             /// See [`Lane::BYTES`].
             const BYTES: usize = std::mem::size_of::<$unsigned>();
+            const WIDTH: ace_core::NumericWidth = ace_core::NumericWidth::$width;
             /// See [`Lane::WIDTH_TOO_LARGE`].
             const WIDTH_TOO_LARGE: &'static str =
                 concat!(stringify!($unsigned), " bit width exceeds lane width");
@@ -146,9 +149,9 @@ macro_rules! impl_lane {
     };
 }
 
-impl_lane!(u16, i16);
-impl_lane!(u32, i32);
-impl_lane!(u64, i64);
+impl_lane!(u16, i16, U16);
+impl_lane!(u32, i32, U32);
+impl_lane!(u64, i64, U64);
 
 /// Decodes every complete little-endian lane of `input`; trailing bytes are ignored.
 pub fn read_lanes<T: Lane>(input: &[u8]) -> Vec<T> {

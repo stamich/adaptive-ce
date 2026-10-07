@@ -59,9 +59,21 @@ mod tests {
     /// Confidence bands must follow the documented five/fifteen-percent thresholds.
     #[test]
     fn confidence_bands_are_deterministic() {
-        assert_eq!(EstimateConfidence::from_candidate(&candidate(1000, Some(1030))), EstimateConfidence::High);
-        assert_eq!(EstimateConfidence::from_candidate(&candidate(1000, Some(1100))), EstimateConfidence::Medium);
-        assert_eq!(EstimateConfidence::from_candidate(&candidate(1000, Some(1300))), EstimateConfidence::Low);
-        assert_eq!(EstimateConfidence::from_candidate(&candidate(1000, None)), EstimateConfidence::Low);
+        assert_eq!(
+            EstimateConfidence::from_candidate(&candidate(1000, Some(1030))),
+            EstimateConfidence::High
+        );
+        assert_eq!(
+            EstimateConfidence::from_candidate(&candidate(1000, Some(1100))),
+            EstimateConfidence::Medium
+        );
+        assert_eq!(
+            EstimateConfidence::from_candidate(&candidate(1000, Some(1300))),
+            EstimateConfidence::Low
+        );
+        assert_eq!(
+            EstimateConfidence::from_candidate(&candidate(1000, None)),
+            EstimateConfidence::Low
+        );
     }
 }

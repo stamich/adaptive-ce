@@ -19,7 +19,9 @@ const MAX_CHAIN: usize = 16;
 /// Token format: `0LLLLLLL <literal bytes>` for a literal packet and
 /// `1LLLLLLL <distance:u16-le>` for a match of `L + MIN_MATCH` bytes.
 pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
-    if input.is_empty() { return Vec::new(); }
+    if input.is_empty() {
+        return Vec::new();
+    }
     let mut head = vec![usize::MAX; HASH_SIZE];
     let mut prev = vec![usize::MAX; input.len()];
     let mut out = Vec::with_capacity(input.len());
@@ -27,25 +29,31 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
     let mut i = 0usize;
     while i < input.len() {
         let best = if i + MIN_MATCH <= input.len() {
-            let h = hash4(&input[i..i+4]);
+            let h = hash4(&input[i..i + 4]);
             let candidate = head[h];
             prev[i] = candidate;
             head[h] = i;
             find_best(input, i, candidate, &prev, mode)
-        } else { None };
+        } else {
+            None
+        };
         if let Some((distance, len)) = best {
             flush_literals(&mut out, &input[literal_start..i]);
             let encoded_len = len - MIN_MATCH;
             out.push(0x80 | encoded_len as u8);
             out.extend_from_slice(&(distance as u16).to_le_bytes());
-            for p in i+1..i+len {
+            for p in i + 1..i + len {
                 if p + MIN_MATCH <= input.len() {
-                    let h = hash4(&input[p..p+4]);
-                    prev[p] = head[h]; head[h] = p;
+                    let h = hash4(&input[p..p + 4]);
+                    prev[p] = head[h];
+                    head[h] = p;
                 }
             }
-            i += len; literal_start = i;
-        } else { i += 1; }
+            i += len;
+            literal_start = i;
+        } else {
+            i += 1;
+        }
     }
     flush_literals(&mut out, &input[literal_start..]);
     out
@@ -56,24 +64,40 @@ pub fn lz_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let mut out = Vec::with_capacity(expected_size.min(1024 * 1024));
     let mut i = 0usize;
     while i < input.len() {
-        let control = input[i]; i += 1;
+        let control = input[i];
+        i += 1;
         if control & 0x80 == 0 {
             let len = (control as usize) + 1;
-            let end = i.checked_add(len).ok_or(AceError::Malformed("LZ literal overflow"))?;
-            let lit = input.get(i..end).ok_or(AceError::Malformed("truncated LZ literal"))?;
-            if out.len() + len > expected_size { return Err(AceError::Malformed("LZ literal exceeds expected output")); }
-            out.extend_from_slice(lit); i = end;
+            let end = i
+                .checked_add(len)
+                .ok_or(AceError::Malformed("LZ literal overflow"))?;
+            let lit = input
+                .get(i..end)
+                .ok_or(AceError::Malformed("truncated LZ literal"))?;
+            if out.len() + len > expected_size {
+                return Err(AceError::Malformed("LZ literal exceeds expected output"));
+            }
+            out.extend_from_slice(lit);
+            i = end;
         } else {
             let len = ((control & 0x7f) as usize) + MIN_MATCH;
-            let dist_bytes = input.get(i..i+2).ok_or(AceError::Malformed("truncated LZ distance"))?;
+            let dist_bytes = input
+                .get(i..i + 2)
+                .ok_or(AceError::Malformed("truncated LZ distance"))?;
             i += 2;
             let distance = u16::from_le_bytes([dist_bytes[0], dist_bytes[1]]) as usize;
-            if distance == 0 || distance > out.len() || distance > WINDOW { return Err(AceError::InvalidLzReference); }
-            if out.len() + len > expected_size { return Err(AceError::Malformed("LZ match exceeds expected output")); }
+            if distance == 0 || distance > out.len() || distance > WINDOW {
+                return Err(AceError::InvalidLzReference);
+            }
+            if out.len() + len > expected_size {
+                return Err(AceError::Malformed("LZ match exceeds expected output"));
+            }
             copy_match(&mut out, distance, len);
         }
     }
-    if out.len() != expected_size { return Err(AceError::Malformed("LZ decoded size mismatch")); }
+    if out.len() != expected_size {
+        return Err(AceError::Malformed("LZ decoded size mismatch"));
+    }
     Ok(out)
 }
 
@@ -106,17 +130,34 @@ fn hash4(bytes: &[u8]) -> usize {
 }
 
 /// Searches either one candidate or a bounded previous-position chain for the longest valid match.
-fn find_best(input: &[u8], pos: usize, mut candidate: usize, prev: &[usize], mode: LzMode) -> Option<(usize, usize)> {
-    let max_steps = match mode { LzMode::Fast => 1, LzMode::Balanced => MAX_CHAIN };
+fn find_best(
+    input: &[u8],
+    pos: usize,
+    mut candidate: usize,
+    prev: &[usize],
+    mode: LzMode,
+) -> Option<(usize, usize)> {
+    let max_steps = match mode {
+        LzMode::Fast => 1,
+        LzMode::Balanced => MAX_CHAIN,
+    };
     let mut best = None;
     let mut best_len = 0usize;
     for _ in 0..max_steps {
-        if candidate == usize::MAX || candidate >= pos { break; }
+        if candidate == usize::MAX || candidate >= pos {
+            break;
+        }
         let distance = pos - candidate;
-        if distance > WINDOW { candidate = prev[candidate]; continue; }
+        if distance > WINDOW {
+            candidate = prev[candidate];
+            continue;
+        }
         let max = MAX_MATCH.min(input.len() - pos);
         let len = common_prefix_len(&input[candidate..candidate + max], &input[pos..pos + max]);
-        if len >= MIN_MATCH && len > best_len { best_len = len; best = Some((distance, len)); }
+        if len >= MIN_MATCH && len > best_len {
+            best_len = len;
+            best = Some((distance, len));
+        }
         candidate = prev[candidate];
     }
     best
@@ -128,7 +169,7 @@ fn flush_literals(out: &mut Vec<u8>, literals: &[u8]) {
     while start < literals.len() {
         let len = (literals.len() - start).min(128);
         out.push((len - 1) as u8);
-        out.extend_from_slice(&literals[start..start+len]);
+        out.extend_from_slice(&literals[start..start + len]);
         start += len;
     }
 }
@@ -142,11 +183,16 @@ mod tests {
     fn copy_match_matches_reference() {
         for distance in 1..40usize {
             for len in 1..130usize {
-                let seed: Vec<u8> = (0..64u8).map(|i| i.wrapping_mul(37).wrapping_add(5)).collect();
+                let seed: Vec<u8> = (0..64u8)
+                    .map(|i| i.wrapping_mul(37).wrapping_add(5))
+                    .collect();
                 let mut fast = seed.clone();
                 let mut slow = seed.clone();
                 copy_match(&mut fast, distance, len);
-                for _ in 0..len { let b = slow[slow.len() - distance]; slow.push(b); }
+                for _ in 0..len {
+                    let b = slow[slow.len() - distance];
+                    slow.push(b);
+                }
                 assert_eq!(fast, slow, "distance {distance} len {len}");
             }
         }

@@ -43,15 +43,13 @@ pub(crate) fn build_code_lengths(input: &[u8]) -> AceResult<[u8; 256]> {
         heap.push(Reverse((count, symbol as u16, index)));
     }
     let mut lengths = [0u8; 256];
-    if heap.len() == 1 {
-        let Reverse((_, _, index)) = heap.pop().expect("one entry");
-        lengths[nodes[index].symbol.expect("leaf") as usize] = 1;
-        return Ok(lengths);
-    }
     let mut tie = 256u16;
     while heap.len() > 1 {
-        let Reverse((weight_a, _, a)) = heap.pop().expect("len > 1");
-        let Reverse((weight_b, _, b)) = heap.pop().expect("len > 1");
+        let (Some(Reverse((weight_a, _, a))), Some(Reverse((weight_b, _, b)))) =
+            (heap.pop(), heap.pop())
+        else {
+            break;
+        };
         let index = nodes.len();
         nodes.push(Node {
             left: Some(a),

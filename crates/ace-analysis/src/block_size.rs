@@ -1,5 +1,5 @@
-use ace_core::{AccessHint, CompressionProfile};
 use crate::NumericProfile;
+use ace_core::{AccessHint, CompressionProfile};
 
 /// Explanation category returned by the ACE 0.4 file-level block-size advisor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,13 +32,29 @@ pub fn recommend_block_size(
     numeric: &NumericProfile,
 ) -> BlockSizeRecommendation {
     if matches!(access, AccessHint::RandomAccess) {
-        return BlockSizeRecommendation { block_size: 256 * 1024, confidence: 0.95, reason: BlockSizeReason::RandomAccessCap };
+        return BlockSizeRecommendation {
+            block_size: 256 * 1024,
+            confidence: 0.95,
+            reason: BlockSizeReason::RandomAccessCap,
+        };
     }
     if numeric.detected && numeric.confidence >= 0.85 {
-        return BlockSizeRecommendation { block_size: 1024 * 1024, confidence: numeric.confidence, reason: BlockSizeReason::NumericSequential };
+        return BlockSizeRecommendation {
+            block_size: 1024 * 1024,
+            confidence: numeric.confidence,
+            reason: BlockSizeReason::NumericSequential,
+        };
     }
     if matches!(access, AccessHint::Sequential) || matches!(profile, CompressionProfile::Fast) {
-        return BlockSizeRecommendation { block_size: 512 * 1024, confidence: 0.80, reason: BlockSizeReason::SequentialThroughput };
+        return BlockSizeRecommendation {
+            block_size: 512 * 1024,
+            confidence: 0.80,
+            reason: BlockSizeReason::SequentialThroughput,
+        };
     }
-    BlockSizeRecommendation { block_size: 256 * 1024, confidence: 0.90, reason: BlockSizeReason::BalancedDefault }
+    BlockSizeRecommendation {
+        block_size: 256 * 1024,
+        confidence: 0.90,
+        reason: BlockSizeReason::BalancedDefault,
+    }
 }

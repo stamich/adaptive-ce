@@ -58,7 +58,11 @@ pub struct CompressionStats {
 impl CompressionStats {
     /// Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced.
     pub fn compression_ratio(&self) -> f64 {
-        if self.output_bytes == 0 { 1.0 } else { self.input_bytes as f64 / self.output_bytes as f64 }
+        if self.output_bytes == 0 {
+            1.0
+        } else {
+            self.input_bytes as f64 / self.output_bytes as f64
+        }
     }
 
     /// Counts one selected block plan: codec, entropy coder, delta transform and plan label.
@@ -102,7 +106,15 @@ mod tests {
         plan.decoding.transforms = vec![TransformId::DeltaByte];
         stats.record_selected_plan(&plan);
         stats.record_selected_plan(&PhysicalCompressionPlan::raw());
-        assert_eq!((stats.rle_blocks, stats.raw_blocks, stats.huffman_blocks, stats.delta_blocks), (1, 1, 1, 1));
+        assert_eq!(
+            (
+                stats.rle_blocks,
+                stats.raw_blocks,
+                stats.huffman_blocks,
+                stats.delta_blocks
+            ),
+            (1, 1, 1, 1)
+        );
         assert_eq!(stats.plan_distribution.get("delta+rle+huffman"), Some(&1));
         assert_eq!(stats.plan_distribution.get("raw+none"), Some(&1));
     }

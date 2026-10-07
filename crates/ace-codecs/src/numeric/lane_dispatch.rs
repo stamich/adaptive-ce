@@ -19,6 +19,5 @@ pub(crate) use dispatch_lane;
 
 /// Returns the [`NumericWidth`](ace_core::NumericWidth) describing lane type `T`.
 pub(crate) fn width_of<T: ace_bitpack::Lane>() -> ace_core::NumericWidth {
-    ace_core::NumericWidth::from_byte_width(T::BYTES as u8)
-        .expect("ace-bitpack lanes are exactly the NUM1 widths 2, 4 and 8")
+    T::WIDTH
 }

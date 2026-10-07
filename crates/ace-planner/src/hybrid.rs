@@ -5,7 +5,6 @@
 //! avoids the expensive full-block match analysis introduced experimentally in buildfix7 while
 //! giving the planner direct evidence from the production LZ encoder.
 
-
 use ace_core::{AceResult, CodecId, CompressionProfile};
 use ace_cost::{CostModelV3, EstimatedCandidate};
 
@@ -106,7 +105,8 @@ impl HybridLzEstimator {
         }
 
         let policy = HybridLzPolicy::for_profile(profile, stage);
-        let ranges = ace_cost::stratified_ranges(input.len(), policy.window_bytes, policy.window_count);
+        let ranges =
+            ace_cost::stratified_ranges(input.len(), policy.window_bytes, policy.window_count);
         if ranges.is_empty() {
             return Ok((candidate, HybridLzObservation::default()));
         }
@@ -126,8 +126,7 @@ impl HybridLzEstimator {
             return Ok((candidate, HybridLzObservation::default()));
         }
 
-        let projected_payload = ((payload_bytes as u128)
-            .saturating_mul(input.len() as u128)
+        let projected_payload = ((payload_bytes as u128).saturating_mul(input.len() as u128)
             / sampled_input as u128)
             .min(u64::MAX as u128) as u64;
         let sample_projected = projected_payload.saturating_add(metadata_once as u64);
@@ -158,12 +157,15 @@ impl HybridLzEstimator {
         candidate.cost.metadata_bytes = metadata_once as u64;
         candidate.score = model.score(profile, candidate.cost, input.len());
 
-        Ok((candidate, HybridLzObservation {
-            sample_projected_size_bytes: sample_projected,
-            hybrid_size_bytes: hybrid,
-            sampled_input_bytes: sampled_input,
-            disagreement_ppm,
-        }))
+        Ok((
+            candidate,
+            HybridLzObservation {
+                sample_projected_size_bytes: sample_projected,
+                hybrid_size_bytes: hybrid,
+                sampled_input_bytes: sampled_input,
+                disagreement_ppm,
+            },
+        ))
     }
 }
 
@@ -176,7 +178,10 @@ mod tests {
     fn dense_budget_is_larger_but_bounded() {
         let balanced = HybridLzPolicy::for_profile(CompressionProfile::Balanced, 1);
         let dense = HybridLzPolicy::for_profile(CompressionProfile::Dense, 1);
-        assert!(dense.window_bytes * dense.window_count >= balanced.window_bytes * balanced.window_count);
+        assert!(
+            dense.window_bytes * dense.window_count
+                >= balanced.window_bytes * balanced.window_count
+        );
         assert!(dense.window_bytes * dense.window_count <= 64 * 1024);
     }
 

@@ -327,7 +327,10 @@ mod tests {
         let profile = analyze_numeric(&bytes);
         assert!(profile.detected);
         assert_eq!(profile.width, Some(NumericWidth::U16));
-        assert!(profile.dod_zero_ratio > 0.99, "wrap must not break the fixed step");
+        assert!(
+            profile.dod_zero_ratio > 0.99,
+            "wrap must not break the fixed step"
+        );
     }
 
     /// Existing 32-bit data keeps its u32 verdict after the u16 lane was added.

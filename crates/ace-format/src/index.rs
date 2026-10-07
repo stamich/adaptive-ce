@@ -37,7 +37,10 @@ pub struct BlockIndex {
 impl BlockIndex {
     /// Finds one block by identifier using binary search.
     pub fn by_id(&self, block_id: u64) -> Option<&BlockIndexEntry> {
-        self.entries.binary_search_by_key(&block_id, |entry| entry.block_id).ok().map(|i| &self.entries[i])
+        self.entries
+            .binary_search_by_key(&block_id, |entry| entry.block_id)
+            .ok()
+            .map(|i| &self.entries[i])
     }
 
     /// Returns entries intersecting the logical half-open byte range `[start, end)`.
@@ -57,9 +60,14 @@ impl BlockIndex {
             return 0..0;
         }
         let first = self.entries.partition_point(|entry| {
-            entry.original_offset.saturating_add(entry.original_size as u64) <= start
+            entry
+                .original_offset
+                .saturating_add(entry.original_size as u64)
+                <= start
         });
-        let last = self.entries.partition_point(|entry| entry.original_offset < end);
+        let last = self
+            .entries
+            .partition_point(|entry| entry.original_offset < end);
         first.min(self.entries.len())..last.min(self.entries.len())
     }
 }
@@ -94,27 +102,82 @@ pub fn encode_index(index: &BlockIndex) -> Vec<u8> {
 
 /// Parses and validates a complete block-index section.
 pub fn decode_index(bytes: &[u8], limits: &DecodeLimits) -> AceResult<BlockIndex> {
-    if bytes.len() < 12 || bytes[0..4] != INDEX_MAGIC { return Err(AceError::Malformed("invalid block index header")); }
-    let count = u64::from_le_bytes(bytes[4..12].try_into().map_err(|_| AceError::Malformed("invalid index count"))?) as usize;
-    if count > limits.max_index_entries { return Err(AceError::ResourceLimitExceeded("block index entry count")); }
-    let expected = 12usize.checked_add(count.checked_mul(INDEX_ENTRY_SIZE).ok_or(AceError::Malformed("index size overflow"))?).ok_or(AceError::Malformed("index size overflow"))?;
-    if bytes.len() != expected { return Err(AceError::Malformed("block index size mismatch")); }
+    if bytes.len() < 12 || bytes[0..4] != INDEX_MAGIC {
+        return Err(AceError::Malformed("invalid block index header"));
+    }
+    let count = u64::from_le_bytes(
+        bytes[4..12]
+            .try_into()
+            .map_err(|_| AceError::Malformed("invalid index count"))?,
+    ) as usize;
+    if count > limits.max_index_entries {
+        return Err(AceError::ResourceLimitExceeded("block index entry count"));
+    }
+    let expected = 12usize
+        .checked_add(
+            count
+                .checked_mul(INDEX_ENTRY_SIZE)
+                .ok_or(AceError::Malformed("index size overflow"))?,
+        )
+        .ok_or(AceError::Malformed("index size overflow"))?;
+    if bytes.len() != expected {
+        return Err(AceError::Malformed("block index size mismatch"));
+    }
     let mut entries = Vec::with_capacity(count.min(1_000_000));
     let mut previous_id = None;
     let mut previous_original_end = 0u64;
     for i in 0..count {
         let base = 12 + i * INDEX_ENTRY_SIZE;
-        let block_id = u64::from_le_bytes(bytes[base..base + 8].try_into().map_err(|_| AceError::Malformed("invalid index block id"))?);
-        let original_offset = u64::from_le_bytes(bytes[base + 8..base + 16].try_into().map_err(|_| AceError::Malformed("invalid original offset"))?);
-        let original_size = u32::from_le_bytes(bytes[base + 16..base + 20].try_into().map_err(|_| AceError::Malformed("invalid original size"))?);
-        let file_offset = u64::from_le_bytes(bytes[base + 20..base + 28].try_into().map_err(|_| AceError::Malformed("invalid file offset"))?);
-        let encoded_span = u32::from_le_bytes(bytes[base + 28..base + 32].try_into().map_err(|_| AceError::Malformed("invalid encoded span"))?);
-        let flags = u32::from_le_bytes(bytes[base + 32..base + 36].try_into().map_err(|_| AceError::Malformed("invalid index flags"))?);
-        if previous_id.map(|id| block_id <= id).unwrap_or(false) { return Err(AceError::Malformed("block ids are not strictly increasing")); }
-        if i > 0 && original_offset != previous_original_end { return Err(AceError::Malformed("logical block offsets are not contiguous")); }
+        let block_id = u64::from_le_bytes(
+            bytes[base..base + 8]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid index block id"))?,
+        );
+        let original_offset = u64::from_le_bytes(
+            bytes[base + 8..base + 16]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid original offset"))?,
+        );
+        let original_size = u32::from_le_bytes(
+            bytes[base + 16..base + 20]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid original size"))?,
+        );
+        let file_offset = u64::from_le_bytes(
+            bytes[base + 20..base + 28]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid file offset"))?,
+        );
+        let encoded_span = u32::from_le_bytes(
+            bytes[base + 28..base + 32]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid encoded span"))?,
+        );
+        let flags = u32::from_le_bytes(
+            bytes[base + 32..base + 36]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid index flags"))?,
+        );
+        if previous_id.map(|id| block_id <= id).unwrap_or(false) {
+            return Err(AceError::Malformed("block ids are not strictly increasing"));
+        }
+        if i > 0 && original_offset != previous_original_end {
+            return Err(AceError::Malformed(
+                "logical block offsets are not contiguous",
+            ));
+        }
         previous_id = Some(block_id);
-        previous_original_end = original_offset.checked_add(original_size as u64).ok_or(AceError::Malformed("logical offset overflow"))?;
-        entries.push(BlockIndexEntry { block_id, original_offset, original_size, file_offset, encoded_span, flags });
+        previous_original_end = original_offset
+            .checked_add(original_size as u64)
+            .ok_or(AceError::Malformed("logical offset overflow"))?;
+        entries.push(BlockIndexEntry {
+            block_id,
+            original_offset,
+            original_size,
+            file_offset,
+            encoded_span,
+            flags,
+        });
     }
     Ok(BlockIndex { entries })
 }
@@ -133,13 +196,33 @@ pub fn encode_trailer(trailer: FileTrailer) -> [u8; TRAILER_SIZE] {
 
 /// Parses and validates an end-of-file trailer.
 pub fn decode_trailer(bytes: &[u8]) -> AceResult<FileTrailer> {
-    if bytes.len() != TRAILER_SIZE || bytes[0..4] != TRAILER_MAGIC { return Err(AceError::Malformed("invalid ACE trailer")); }
-    let stored = u32::from_le_bytes(bytes[24..28].try_into().map_err(|_| AceError::Malformed("invalid trailer CRC"))?);
-    if crate::checksum(&bytes[..24]) != stored { return Err(AceError::Malformed("trailer checksum mismatch")); }
+    if bytes.len() != TRAILER_SIZE || bytes[0..4] != TRAILER_MAGIC {
+        return Err(AceError::Malformed("invalid ACE trailer"));
+    }
+    let stored = u32::from_le_bytes(
+        bytes[24..28]
+            .try_into()
+            .map_err(|_| AceError::Malformed("invalid trailer CRC"))?,
+    );
+    if crate::checksum(&bytes[..24]) != stored {
+        return Err(AceError::Malformed("trailer checksum mismatch"));
+    }
     Ok(FileTrailer {
-        index_offset: u64::from_le_bytes(bytes[4..12].try_into().map_err(|_| AceError::Malformed("invalid index offset"))?),
-        index_size: u64::from_le_bytes(bytes[12..20].try_into().map_err(|_| AceError::Malformed("invalid index size"))?),
-        index_crc32c: u32::from_le_bytes(bytes[20..24].try_into().map_err(|_| AceError::Malformed("invalid index checksum"))?),
+        index_offset: u64::from_le_bytes(
+            bytes[4..12]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid index offset"))?,
+        ),
+        index_size: u64::from_le_bytes(
+            bytes[12..20]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid index size"))?,
+        ),
+        index_crc32c: u32::from_le_bytes(
+            bytes[20..24]
+                .try_into()
+                .map_err(|_| AceError::Malformed("invalid index checksum"))?,
+        ),
     })
 }
 
@@ -152,13 +235,38 @@ mod buildfix9_tests {
     fn intersecting_indices_match_entries() {
         let index = BlockIndex {
             entries: vec![
-                BlockIndexEntry { block_id: 0, original_offset: 0, original_size: 100, file_offset: 10, encoded_span: 20, flags: 0 },
-                BlockIndexEntry { block_id: 1, original_offset: 100, original_size: 100, file_offset: 30, encoded_span: 20, flags: 0 },
-                BlockIndexEntry { block_id: 2, original_offset: 200, original_size: 100, file_offset: 50, encoded_span: 20, flags: 0 },
+                BlockIndexEntry {
+                    block_id: 0,
+                    original_offset: 0,
+                    original_size: 100,
+                    file_offset: 10,
+                    encoded_span: 20,
+                    flags: 0,
+                },
+                BlockIndexEntry {
+                    block_id: 1,
+                    original_offset: 100,
+                    original_size: 100,
+                    file_offset: 30,
+                    encoded_span: 20,
+                    flags: 0,
+                },
+                BlockIndexEntry {
+                    block_id: 2,
+                    original_offset: 200,
+                    original_size: 100,
+                    file_offset: 50,
+                    encoded_span: 20,
+                    flags: 0,
+                },
             ],
         };
         assert_eq!(index.intersecting_indices(90, 210), 0..3);
-        let ids = index.intersecting(90, 210).into_iter().map(|entry| entry.block_id).collect::<Vec<_>>();
+        let ids = index
+            .intersecting(90, 210)
+            .into_iter()
+            .map(|entry| entry.block_id)
+            .collect::<Vec<_>>();
         assert_eq!(ids, vec![0, 1, 2]);
         assert_eq!(index.intersecting_indices(100, 200), 1..2);
     }

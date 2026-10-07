@@ -161,10 +161,10 @@ fn validate_lane_ranges(info: &NumericPayloadInfo) -> AceResult<()> {
 
 /// Reads a little-endian `u32` at `offset` (caller guarantees `offset + 4 <= len`).
 fn read_u32_le(input: &[u8], offset: usize) -> usize {
-    u32::from_le_bytes(input[offset..offset + 4].try_into().expect("4-byte slice")) as usize
+    ace_core::read_lane::<4>(&input[offset..]) as usize
 }
 
 /// Reads a little-endian `u64` at `offset` (caller guarantees `offset + 8 <= len`).
 fn read_u64_le(input: &[u8], offset: usize) -> u64 {
-    u64::from_le_bytes(input[offset..offset + 8].try_into().expect("8-byte slice"))
+    ace_core::read_lane::<8>(&input[offset..])
 }

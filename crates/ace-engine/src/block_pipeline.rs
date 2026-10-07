@@ -41,8 +41,10 @@ fn split_entropy_metadata(
         return Err(AceError::Malformed("missing primary-stream length"));
     }
     let (prefix, model) = metadata.split_at(PRIMARY_LENGTH_PREFIX_BYTES);
-    let primary_len = u32::from_le_bytes(prefix.try_into().expect("prefix has exactly 4 bytes"));
-    Ok((model, primary_len as usize))
+    Ok((
+        model,
+        ace_core::read_lane::<PRIMARY_LENGTH_PREFIX_BYTES>(prefix) as usize,
+    ))
 }
 
 /// Decodes one parsed block (entropy → codec → inverse transforms) and verifies its CRC32C.

@@ -1,10 +1,15 @@
 //! Planner V3.6/V4 hot-path evaluator: analytical estimates, adaptive Top-K, sample
 //! verification, quality envelope and final cost selection — without full trial encodes.
 
-use ace_core::{AceConfig, AceError, AceResult, CodecId, CompressionProfile, LzMode, PhysicalCompressionPlan};
+use ace_core::{
+    AceConfig, AceError, AceResult, CodecId, CompressionProfile, LzMode, PhysicalCompressionPlan,
+};
 
 use crate::plan_identity::semantic_family_key;
-use crate::{encode_plan_payload, same_plan_semantics, stable_plan_key, EntropySelectionPolicy, PlannerDecision, PlannerTelemetry};
+use crate::{
+    encode_plan_payload, same_plan_semantics, stable_plan_key, EntropySelectionPolicy,
+    PlannerDecision, PlannerTelemetry,
+};
 
 /// ACE 0.4 Planner V4 compatibility entry point.
 ///
@@ -100,9 +105,12 @@ fn evaluate_candidates_internal(
     numeric_exact_size: Option<u64>,
     route: Option<crate::PlannerRoute>,
 ) -> AceResult<PlannerDecision> {
-    use ace_cost::{adaptive_top_k, CandidateEstimator, CostModelV3, DefaultCandidateEstimator, SamplePolicy};
     use crate::{
-        DefaultPlannerFastPath, EstimateConfidence, PlannerDataClass, PlannerFastPath, PlanningBudget,
+        DefaultPlannerFastPath, EstimateConfidence, PlannerDataClass, PlannerFastPath,
+        PlanningBudget,
+    };
+    use ace_cost::{
+        adaptive_top_k, CandidateEstimator, CostModelV3, DefaultCandidateEstimator, SamplePolicy,
     };
 
     if let Some(plan) = DefaultPlannerFastPath.try_plan(profile, config) {
@@ -137,7 +145,9 @@ fn evaluate_candidates_internal(
             numeric_estimate: None,
         });
     }
-    if candidates.is_empty() { return Err(AceError::Malformed("planner generated no candidates")); }
+    if candidates.is_empty() {
+        return Err(AceError::Malformed("planner generated no candidates"));
+    }
 
     let estimator = DefaultCandidateEstimator;
     let model = CostModelV3;
@@ -148,7 +158,8 @@ fn evaluate_candidates_internal(
                 crate::RoutePolicy::candidate_allowed(route, candidate, profile, config)
             } else {
                 // Frozen V3.6 path never receives the ACE 0.4 Numeric candidate.
-                !matches!(candidate.decoding.codec, CodecId::Numeric) || numeric_exact_size.is_some()
+                !matches!(candidate.decoding.codec, CodecId::Numeric)
+                    || numeric_exact_size.is_some()
             }
         })
         .map(|candidate| estimator.estimate(candidate, profile, config.profile))
@@ -157,9 +168,10 @@ fn evaluate_candidates_internal(
     // Planner V4 numeric specialization has an exact deterministic size estimator. Override only
     // the Numeric candidate; every generic candidate retains the frozen V3.6 analytical model.
     if let Some(exact_size) = numeric_exact_size {
-        for candidate in estimated.iter_mut().filter(|candidate| {
-            matches!(candidate.plan.decoding.codec, CodecId::Numeric)
-        }) {
+        for candidate in estimated
+            .iter_mut()
+            .filter(|candidate| matches!(candidate.plan.decoding.codec, CodecId::Numeric))
+        {
             candidate.analytical_size_bytes = exact_size;
             candidate.sampled_size_bytes = None;
             candidate.blended_size_bytes = exact_size;
@@ -176,7 +188,9 @@ fn evaluate_candidates_internal(
     let mut hybrid_policy = crate::RouteHybridLzPolicy::Full;
     let mut route_budget = route
         .map(|r| crate::RoutePolicy::budget(r, config))
-        .unwrap_or_else(|| crate::RouteBudget::for_route(crate::PlannerRoute::Generic, config.profile));
+        .unwrap_or_else(|| {
+            crate::RouteBudget::for_route(crate::PlannerRoute::Generic, config.profile)
+        });
 
     if matches!(route, Some(crate::PlannerRoute::NumericGeneral)) {
         if let Some(numeric_size) = numeric_exact_size {
@@ -192,16 +206,17 @@ fn evaluate_candidates_internal(
                 _numeric_margin = Some(margin);
             }
         }
-        estimated = reduce_numeric_general_candidates(
-            estimated,
-            route_budget.max_generated_candidates,
-        );
+        estimated =
+            reduce_numeric_general_candidates(estimated, route_budget.max_generated_candidates);
         if matches!(hybrid_policy, crate::RouteHybridLzPolicy::Disabled) {
             route_budget.max_sampled_candidates = route_budget.max_sampled_candidates.min(1);
         }
     }
 
-    let analytical_ranked_plans = estimated.iter().map(|candidate| candidate.plan.clone()).collect::<Vec<_>>();
+    let analytical_ranked_plans = estimated
+        .iter()
+        .map(|candidate| candidate.plan.clone())
+        .collect::<Vec<_>>();
 
     let policy = SamplePolicy::for_profile(config.profile);
     let confidence = estimated.first().map(|c| c.confidence).unwrap_or(0.0);
@@ -214,7 +229,10 @@ fn evaluate_candidates_internal(
             route_budget.max_sampled_candidates,
         );
     }
-    let top_k_plans = stage_one_pool.iter().map(|c| c.plan.clone()).collect::<Vec<_>>();
+    let top_k_plans = stage_one_pool
+        .iter()
+        .map(|c| c.plan.clone())
+        .collect::<Vec<_>>();
     let hybrid = crate::HybridLzEstimator;
     let data_class = PlannerDataClass::classify(profile);
     let planning_budget = PlanningBudget::for_block(config.profile, data_class);
@@ -236,12 +254,15 @@ fn evaluate_candidates_internal(
                 crate::RouteHybridLzPolicy::Full => planning_budget.hybrid_stage1_candidates,
             };
             if stage1_lz_used < stage1_limit {
-                let (refined, observation) = hybrid.refine(input, candidate, config.profile, 1, &model)?;
+                let (refined, observation) =
+                    hybrid.refine(input, candidate, config.profile, 1, &model)?;
                 stage1_lz_used = stage1_lz_used.saturating_add(1);
                 hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
                 hybrid_lz_stage1_candidates = hybrid_lz_stage1_candidates.saturating_add(1);
-                hybrid_lz_sample_bytes = hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
-                hybrid_lz_max_disagreement_ppm = hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
+                hybrid_lz_sample_bytes =
+                    hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
+                hybrid_lz_max_disagreement_ppm =
+                    hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
                 stage_one.push(refined);
             } else {
                 hybrid_lz_skipped_candidates = hybrid_lz_skipped_candidates.saturating_add(1);
@@ -255,22 +276,36 @@ fn evaluate_candidates_internal(
             stage_one.push(candidate);
         } else {
             stage_one.push(verify_candidate_samples(
-                input, candidate, config.profile, policy, 1, &model,
+                input,
+                candidate,
+                config.profile,
+                policy,
+                1,
+                &model,
             )?);
         }
     }
     EntropySelectionPolicy::for_profile(config.profile).penalize_weak_rans(&mut stage_one);
     stage_one.sort_by(estimated_order);
-    let stage_one_ranked_plans = stage_one.iter().map(|candidate| candidate.plan.clone()).collect::<Vec<_>>();
+    let stage_one_ranked_plans = stage_one
+        .iter()
+        .map(|candidate| candidate.plan.clone())
+        .collect::<Vec<_>>();
 
     let stage_two_k = if route_budget.allow_second_stage
-        && !matches!(hybrid_policy, crate::RouteHybridLzPolicy::Disabled | crate::RouteHybridLzPolicy::OneStage)
-    {
+        && !matches!(
+            hybrid_policy,
+            crate::RouteHybridLzPolicy::Disabled | crate::RouteHybridLzPolicy::OneStage
+        ) {
         adaptive_second_stage_k(&stage_one, config.profile, policy.second_stage_top_k)
     } else {
         0
     };
-    let second_stage_plans = stage_one.iter().take(stage_two_k).map(|c| c.plan.clone()).collect::<Vec<_>>();
+    let second_stage_plans = stage_one
+        .iter()
+        .take(stage_two_k)
+        .map(|c| c.plan.clone())
+        .collect::<Vec<_>>();
 
     // Planner V3.6 remains ranking-only: stage two may refine a candidate's score, but it does not
     // remove candidates that survived stage one. This preserves Top-K quality while retaining
@@ -283,15 +318,19 @@ fn evaluate_candidates_internal(
             if matches!(candidate.plan.decoding.codec, CodecId::Lz) {
                 let confidence = EstimateConfidence::from_candidate(&candidate);
                 if !confidence.needs_second_stage() {
-                    hybrid_lz_high_confidence_skips = hybrid_lz_high_confidence_skips.saturating_add(1);
+                    hybrid_lz_high_confidence_skips =
+                        hybrid_lz_high_confidence_skips.saturating_add(1);
                     final_pool.push(candidate);
                 } else if stage2_lz_used < planning_budget.hybrid_stage2_candidates {
-                    let (refined, observation) = hybrid.refine(input, candidate, config.profile, 2, &model)?;
+                    let (refined, observation) =
+                        hybrid.refine(input, candidate, config.profile, 2, &model)?;
                     stage2_lz_used = stage2_lz_used.saturating_add(1);
                     hybrid_lz_candidates = hybrid_lz_candidates.saturating_add(1);
                     hybrid_lz_stage2_candidates = hybrid_lz_stage2_candidates.saturating_add(1);
-                    hybrid_lz_sample_bytes = hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
-                    hybrid_lz_max_disagreement_ppm = hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
+                    hybrid_lz_sample_bytes =
+                        hybrid_lz_sample_bytes.saturating_add(observation.sampled_input_bytes);
+                    hybrid_lz_max_disagreement_ppm =
+                        hybrid_lz_max_disagreement_ppm.max(observation.disagreement_ppm);
                     final_pool.push(refined);
                 } else {
                     hybrid_lz_skipped_candidates = hybrid_lz_skipped_candidates.saturating_add(1);
@@ -299,7 +338,12 @@ fn evaluate_candidates_internal(
                 }
             } else {
                 final_pool.push(verify_candidate_samples(
-                    input, candidate, config.profile, policy, 2, &model,
+                    input,
+                    candidate,
+                    config.profile,
+                    policy,
+                    2,
+                    &model,
                 )?);
             }
         } else {
@@ -309,24 +353,33 @@ fn evaluate_candidates_internal(
     EntropySelectionPolicy::for_profile(config.profile).penalize_weak_rans(&mut final_pool);
     final_pool.sort_by(estimated_order);
 
-    let final_ranked_plans = final_pool.iter().map(|candidate| candidate.plan.clone()).collect::<Vec<_>>();
+    let final_ranked_plans = final_pool
+        .iter()
+        .map(|candidate| candidate.plan.clone())
+        .collect::<Vec<_>>();
     let envelope = ace_cost::QualityEnvelope::for_profile(config.profile);
     let best_blended_size_bytes = final_pool
         .iter()
         .map(|candidate| candidate.blended_size_bytes)
         .min()
-        .ok_or(AceError::Malformed("sample verifier produced no candidates"))?;
+        .ok_or(AceError::Malformed(
+            "sample verifier produced no candidates",
+        ))?;
     let quality_limit_bytes = envelope.limit_bytes(best_blended_size_bytes);
     let mut qualified = envelope.qualify(&final_pool);
     if qualified.is_empty() {
-        return Err(AceError::Malformed("quality envelope produced no candidates"));
+        return Err(AceError::Malformed(
+            "quality envelope produced no candidates",
+        ));
     }
     qualified.sort_by(estimated_order);
-    let quality_qualified_plans = qualified.iter().map(|candidate| candidate.plan.clone()).collect::<Vec<_>>();
-    let selected_candidate = qualified
-        .first()
-        .cloned()
-        .ok_or(AceError::Malformed("quality envelope produced no selected candidate"))?;
+    let quality_qualified_plans = qualified
+        .iter()
+        .map(|candidate| candidate.plan.clone())
+        .collect::<Vec<_>>();
+    let selected_candidate = qualified.first().cloned().ok_or(AceError::Malformed(
+        "quality envelope produced no selected candidate",
+    ))?;
 
     let selected_cost_rank = final_pool
         .iter()
@@ -416,7 +469,9 @@ fn reduce_numeric_general_candidates(
                 have_rle = true;
                 true
             }
-            CodecId::Lz if matches!(candidate.plan.lz_mode, Some(LzMode::Fast)) && !have_lz_fast => {
+            CodecId::Lz
+                if matches!(candidate.plan.lz_mode, Some(LzMode::Fast)) && !have_lz_fast =>
+            {
                 have_lz_fast = true;
                 true
             }
@@ -464,7 +519,10 @@ fn cap_numeric_general_verification_pool(
         if capped.len() >= max_candidates {
             break;
         }
-        if capped.iter().any(|existing| same_plan_semantics(&existing.plan, &candidate.plan)) {
+        if capped
+            .iter()
+            .any(|existing| same_plan_semantics(&existing.plan, &candidate.plan))
+        {
             continue;
         }
         capped.push(candidate);
@@ -474,8 +532,13 @@ fn cap_numeric_general_verification_pool(
 }
 
 /// Deterministically orders analytical/sample estimates.
-fn estimated_order(a: &ace_cost::EstimatedCandidate, b: &ace_cost::EstimatedCandidate) -> std::cmp::Ordering {
-    a.score.cmp(&b.score).then_with(|| stable_plan_key(&a.plan).cmp(&stable_plan_key(&b.plan)))
+fn estimated_order(
+    a: &ace_cost::EstimatedCandidate,
+    b: &ace_cost::EstimatedCandidate,
+) -> std::cmp::Ordering {
+    a.score
+        .cmp(&b.score)
+        .then_with(|| stable_plan_key(&a.plan).cmp(&stable_plan_key(&b.plan)))
 }
 
 /// Builds stage-one verification input from Top-K plus semantic-family quality anchors.
@@ -488,20 +551,36 @@ fn quality_preserving_pool(
     adaptive_k: usize,
     profile: CompressionProfile,
 ) -> Vec<ace_cost::EstimatedCandidate> {
-    let mut pool = estimated.iter().take(adaptive_k).cloned().collect::<Vec<_>>();
-    if matches!(profile, CompressionProfile::Fast) { return pool; }
+    let mut pool = estimated
+        .iter()
+        .take(adaptive_k)
+        .cloned()
+        .collect::<Vec<_>>();
+    if matches!(profile, CompressionProfile::Fast) {
+        return pool;
+    }
 
     let cap = match profile {
         CompressionProfile::Fast => adaptive_k.max(2),
         CompressionProfile::Balanced => 8,
         CompressionProfile::Dense => 10,
-    }.min(estimated.len());
+    }
+    .min(estimated.len());
 
     for candidate in estimated {
-        if pool.len() >= cap { break; }
-        if pool.iter().any(|p| same_plan_semantics(&p.plan, &candidate.plan)) { continue; }
+        if pool.len() >= cap {
+            break;
+        }
+        if pool
+            .iter()
+            .any(|p| same_plan_semantics(&p.plan, &candidate.plan))
+        {
+            continue;
+        }
         let family = semantic_family_key(&candidate.plan);
-        if pool.iter().any(|p| semantic_family_key(&p.plan) == family) { continue; }
+        if pool.iter().any(|p| semantic_family_key(&p.plan) == family) {
+            continue;
+        }
         pool.push(candidate.clone());
     }
 
@@ -521,8 +600,11 @@ fn verify_candidate_samples(
     stage: u8,
     model: &ace_cost::CostModelV3,
 ) -> AceResult<ace_cost::EstimatedCandidate> {
-    let ranges = ace_cost::codec_sample_ranges(input.len(), policy, candidate.plan.decoding.codec, stage);
-    if ranges.is_empty() { return Ok(candidate); }
+    let ranges =
+        ace_cost::codec_sample_ranges(input.len(), policy, candidate.plan.decoding.codec, stage);
+    if ranges.is_empty() {
+        return Ok(candidate);
+    }
 
     let analytical_size = candidate.analytical_size_bytes;
     let mut sample_input = 0usize;
@@ -535,7 +617,11 @@ fn verify_candidate_samples(
         if matches!(candidate.plan.decoding.codec, CodecId::Numeric) {
             // Every independently encoded sample contains its own fixed NUM1 header. Project only
             // the packed body to full-block size and charge the header exactly once.
-            sample_payload = sample_payload.saturating_add(payload.len().saturating_sub(ace_codecs::NUMERIC_HEADER_SIZE));
+            sample_payload = sample_payload.saturating_add(
+                payload
+                    .len()
+                    .saturating_sub(ace_codecs::NUMERIC_HEADER_SIZE),
+            );
             metadata_once = metadata_once.max(ace_codecs::NUMERIC_HEADER_SIZE);
         } else {
             sample_payload = sample_payload.saturating_add(payload.len());
@@ -544,13 +630,15 @@ fn verify_candidate_samples(
     }
 
     if sample_input != 0 {
-        let projected_payload = ((sample_payload as u128)
-            .saturating_mul(input.len() as u128)
+        let projected_payload = ((sample_payload as u128).saturating_mul(input.len() as u128)
             / sample_input as u128)
             .min(u64::MAX as u128) as u64;
         let sample_projected = projected_payload.saturating_add(metadata_once as u64);
         let (sample_weight, analytical_weight) = verification_blend_weights(
-            candidate.plan.decoding.codec, candidate.confidence, stage, profile,
+            candidate.plan.decoding.codec,
+            candidate.confidence,
+            stage,
+            profile,
         );
         let blended = ((sample_projected as u128)
             .saturating_mul(sample_weight as u128)
@@ -582,13 +670,29 @@ fn verification_blend_weights(
     let medium = confidence >= 0.75;
     let sample: u64 = match codec {
         CodecId::Lz => {
-            if high { 20 } else if medium { 25 } else { 30 }
+            if high {
+                20
+            } else if medium {
+                25
+            } else {
+                30
+            }
         }
         _ => {
-            if high { 25 } else if medium { 40 } else { 55 }
+            if high {
+                25
+            } else if medium {
+                40
+            } else {
+                55
+            }
         }
     };
-    let stage_adjusted = if stage >= 2 { sample.saturating_add(5).min(60) } else { sample };
+    let stage_adjusted = if stage >= 2 {
+        sample.saturating_add(5).min(60)
+    } else {
+        sample
+    };
     let profile_adjusted = match profile {
         CompressionProfile::Dense => stage_adjusted.saturating_sub(5),
         CompressionProfile::Balanced => stage_adjusted,
@@ -603,7 +707,9 @@ fn adaptive_second_stage_k(
     profile: CompressionProfile,
     nominal: usize,
 ) -> usize {
-    if candidates.is_empty() { return 0; }
+    if candidates.is_empty() {
+        return 0;
+    }
     let mut k = nominal.max(1).min(candidates.len());
     if candidates.len() >= 2 {
         let best = candidates[0].cost.predicted_size_bytes.max(1) as f64;
@@ -626,9 +732,8 @@ mod buildfix5_tests {
     /// Ensures high-confidence LZ verification trusts full-block statistics more than samples.
     #[test]
     fn high_confidence_lz_prefers_analytical_weight() {
-        let (sample, analytical) = verification_blend_weights(
-            CodecId::Lz, 0.95, 2, CompressionProfile::Dense,
-        );
+        let (sample, analytical) =
+            verification_blend_weights(CodecId::Lz, 0.95, 2, CompressionProfile::Dense);
         assert!(analytical > sample);
         assert_eq!(sample + analytical, 100);
     }
@@ -636,9 +741,8 @@ mod buildfix5_tests {
     /// Ensures low-confidence non-LZ verification still keeps analytical evidence in the blend.
     #[test]
     fn low_confidence_sampling_never_fully_replaces_estimate() {
-        let (sample, analytical) = verification_blend_weights(
-            CodecId::Raw, 0.40, 2, CompressionProfile::Balanced,
-        );
+        let (sample, analytical) =
+            verification_blend_weights(CodecId::Raw, 0.40, 2, CompressionProfile::Balanced);
         assert!(sample < 100);
         assert!(analytical > 0);
         assert_eq!(sample + analytical, 100);

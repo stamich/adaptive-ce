@@ -79,7 +79,9 @@ impl<'a> BitReader<'a> {
     fn refill(&mut self) {
         if let Some(chunk) = self.input.get(self.next_byte..self.next_byte + 8) {
             // Fast path: load 8 bytes at once, keep as many whole bytes as fit.
-            let word = u64::from_be_bytes(chunk.try_into().expect("8-byte slice"));
+            let mut word = [0u8; 8];
+            word.copy_from_slice(chunk);
+            let word = u64::from_be_bytes(word);
             let take = (64 - self.buffered) / 8;
             if take > 0 {
                 let loaded = if take == 8 {

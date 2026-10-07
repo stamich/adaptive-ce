@@ -1,7 +1,5 @@
 //! Private little-endian bit I/O shared by the packers in `scalar`.
 
-use ace_core::{AceError, AceResult};
-
 /// Writes the low `width` bits of `value` at bit offset `bit_pos` (little-endian bit order).
 ///
 /// Works one byte-aligned fragment at a time (at most nine fragments for 64 bits). The caller
@@ -23,29 +21,6 @@ pub(crate) fn write_bits(out: &mut [u8], bit_pos: usize, value: u64, width: u8) 
     }
 }
 
-/// Reads `width` bits starting at bit offset `bit_pos`; mirrors [`write_bits`].
-///
-/// Returns an error (never panics) when the stream ends early.
-#[inline]
-pub(crate) fn read_bits(input: &[u8], bit_pos: usize, width: u8) -> AceResult<u64> {
-    let mut value = 0u64;
-    let mut collected = 0usize;
-    let mut position = bit_pos;
-    let wanted = width as usize;
-    while collected < wanted {
-        let byte = *input
-            .get(position / 8)
-            .ok_or(AceError::Malformed("truncated bitpack payload"))?;
-        let bit_offset = position % 8;
-        let take = (8 - bit_offset).min(wanted - collected);
-        let mask = ((1u16 << take) - 1) as u8;
-        value |= (((byte >> bit_offset) & mask) as u64) << collected;
-        collected += take;
-        position += take;
-    }
-    Ok(value)
-}
-
 /// Reads `width` bits at `bit_pos` from a stream whose length the caller has already
 /// validated (so the read cannot run past the end).
 ///
@@ -57,12 +32,28 @@ pub(crate) fn read_bits_validated(input: &[u8], bit_pos: usize, width: u8) -> u6
     let shift = (bit_pos % 8) as u32;
     if let Some(chunk) = input.get(byte..byte + 8) {
         if width as u32 + shift <= 64 {
-            let word = u64::from_le_bytes(chunk.try_into().expect("8-byte slice"));
+            let mut word = [0u8; 8];
+            word.copy_from_slice(chunk);
+            let word = u64::from_le_bytes(word);
             let mask = u64::MAX >> (64 - width as u32);
             return (word >> shift) & mask;
         }
     }
-    read_bits(input, bit_pos, width).expect("packed length validated by caller")
+    // Tail of the stream: byte-fragment loop. Bytes past the end read as zero, which cannot
+    // happen for a length-validated stream and keeps this path panic-free.
+    let mut value = 0u64;
+    let mut collected = 0usize;
+    let mut position = bit_pos;
+    while collected < width as usize {
+        let byte = input.get(position / 8).copied().unwrap_or(0);
+        let bit_offset = position % 8;
+        let take = (8 - bit_offset).min(width as usize - collected);
+        let mask = ((1u16 << take) - 1) as u8;
+        value |= (((byte >> bit_offset) & mask) as u64) << collected;
+        collected += take;
+        position += take;
+    }
+    value
 }
 
 #[cfg(test)]
@@ -106,7 +97,6 @@ mod tests {
                 write_bits(&mut fast, offset, value, width);
                 reference_write_bits(&mut slow, offset, value, width);
                 assert_eq!(fast, slow, "writer width={width} offset={offset}");
-                assert_eq!(read_bits(&fast, offset, width).unwrap(), value);
                 assert_eq!(read_bits_validated(&fast, offset, width), value);
                 let tight = &fast[..(offset + width as usize).div_ceil(8)];
                 assert_eq!(

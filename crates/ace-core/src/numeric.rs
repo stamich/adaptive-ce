@@ -170,9 +170,18 @@ mod tests {
         assert_eq!(read_lane::<4>(&bytes), 0xEEFF_1234);
         assert_eq!(read_lane::<8>(&bytes), 0xAABB_CCDD_EEFF_1234);
         for (a, b) in [(0u64, 1u64), (65_535, 0), (0, 65_535), (123, 99_999)] {
-            assert_eq!(lane_delta_const::<2>(a, b), NumericWidth::U16.lane_delta(a, b));
-            assert_eq!(lane_delta_const::<4>(a, b), NumericWidth::U32.lane_delta(a, b));
-            assert_eq!(lane_delta_const::<8>(a, b), NumericWidth::U64.lane_delta(a, b));
+            assert_eq!(
+                lane_delta_const::<2>(a, b),
+                NumericWidth::U16.lane_delta(a, b)
+            );
+            assert_eq!(
+                lane_delta_const::<4>(a, b),
+                NumericWidth::U32.lane_delta(a, b)
+            );
+            assert_eq!(
+                lane_delta_const::<8>(a, b),
+                NumericWidth::U64.lane_delta(a, b)
+            );
         }
     }
 

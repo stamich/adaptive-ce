@@ -92,7 +92,10 @@ impl DominancePolicy {
     ) -> (CandidatePreference, DominanceReason) {
         match RoutePolicy::candidate_eligibility(route, plan, profile, config) {
             CandidateEligibility::DiagnosticOnly(_) => {
-                return (CandidatePreference::DiagnosticOnly, DominanceReason::NoDominance)
+                return (
+                    CandidatePreference::DiagnosticOnly,
+                    DominanceReason::NoDominance,
+                )
             }
             CandidateEligibility::Rejected(_) => {
                 return (CandidatePreference::Rejected, DominanceReason::NoDominance)
@@ -100,10 +103,15 @@ impl DominancePolicy {
             CandidateEligibility::Allowed => {}
         }
 
-        if matches!(route, PlannerRoute::NumericFast | PlannerRoute::NumericGeneral)
-            && matches!(plan.decoding.codec, CodecId::Numeric)
+        if matches!(
+            route,
+            PlannerRoute::NumericFast | PlannerRoute::NumericGeneral
+        ) && matches!(plan.decoding.codec, CodecId::Numeric)
         {
-            return (CandidatePreference::Preferred, DominanceReason::NumericDominance);
+            return (
+                CandidatePreference::Preferred,
+                DominanceReason::NumericDominance,
+            );
         }
 
         let run_heavy = profile.zero_ratio >= 0.95 || profile.run_score >= 0.85;
@@ -158,9 +166,7 @@ impl DominancePolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ace_core::{
-        CandidateTier, DecodingPlan, EntropyCodecId, PlanCost,
-    };
+    use ace_core::{CandidateTier, DecodingPlan, EntropyCodecId, PlanCost};
 
     /// Builds a minimal plan used to exercise preference semantics.
     fn plan(codec: CodecId) -> PhysicalCompressionPlan {
