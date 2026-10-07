@@ -89,7 +89,7 @@ fn merge_stripes(state0: u32, state1: u32, state2: u32, stripe: usize) -> u32 {
     mul_mod_poly(mul_mod_poly(state0, shift) ^ state1, shift) ^ state2
 }
 
-/// SSE4.2 kernels (unsafe; callers must check CPU support first).
+/// SSE4.2 kernels (`#[target_feature]`; callers must check CPU support first).
 #[cfg(target_arch = "x86_64")]
 mod sse42 {
     use std::arch::x86_64::{_mm_crc32_u64, _mm_crc32_u8};
@@ -98,10 +98,11 @@ mod sse42 {
 
     /// Updates a raw (pre-/post-inversion free) CRC32C state with `bytes`.
     ///
-    /// # Safety
-    /// The CPU must support SSE4.2.
+    /// A safe `#[target_feature]` function: the CRC intrinsics have no memory operands, so the
+    /// body needs no `unsafe`. Callers without SSE4.2 enabled at compile time must call it
+    /// inside `unsafe` after runtime detection (see [`super::crc32c_hardware`]).
     #[target_feature(enable = "sse4.2")]
-    pub(super) unsafe fn crc32c_raw(state: u32, bytes: &[u8]) -> u32 {
+    pub(super) fn crc32c_raw(state: u32, bytes: &[u8]) -> u32 {
         let stripe = (bytes.len() / 3) & !7;
         let (mut state, rest) = if stripe >= MIN_STRIPE_BYTES {
             let (a, tail) = bytes.split_at(stripe);
@@ -113,12 +114,9 @@ mod sse42 {
                 .zip(b.chunks_exact(8))
                 .zip(c.chunks_exact(8))
             {
-                // SAFETY: SSE4.2 is guaranteed by this function's contract.
-                unsafe {
-                    s0 = crc_u64(s0, word(wa));
-                    s1 = crc_u64(s1, word(wb));
-                    s2 = crc_u64(s2, word(wc));
-                }
+                s0 = _mm_crc32_u64(s0, word(wa));
+                s1 = _mm_crc32_u64(s1, word(wb));
+                s2 = _mm_crc32_u64(s2, word(wc));
             }
             (merge_stripes(s0 as u32, s1 as u32, s2 as u32, stripe), rest)
         } else {
@@ -126,44 +124,12 @@ mod sse42 {
         };
         let mut words = rest.chunks_exact(8);
         for chunk in &mut words {
-            // SAFETY: SSE4.2 is guaranteed by this function's contract.
-            state = unsafe { crc_u64(state as u64, word(chunk)) } as u32;
+            state = _mm_crc32_u64(state as u64, word(chunk)) as u32;
         }
         for &byte in words.remainder() {
-            // SAFETY: SSE4.2 is guaranteed by this function's contract.
-            state = unsafe { crc_u8(state, byte) };
+            state = _mm_crc32_u8(state, byte);
         }
         state
-    }
-
-    /// One 8-byte CRC32C step.
-    ///
-    /// # Safety
-    /// The CPU must support SSE4.2.
-    #[target_feature(enable = "sse4.2")]
-    #[inline]
-    unsafe fn crc_u64(state: u64, value: u64) -> u64 {
-        // SAFETY: SSE4.2 is guaranteed by the caller; the intrinsic has no memory operands.
-        // `unused_unsafe`: the intrinsic is safe inside `#[target_feature]` on newer compilers,
-        // but MSRV 1.75 requires the block.
-        #[allow(unused_unsafe)]
-        unsafe {
-            _mm_crc32_u64(state, value)
-        }
-    }
-
-    /// One 1-byte CRC32C step.
-    ///
-    /// # Safety
-    /// The CPU must support SSE4.2.
-    #[target_feature(enable = "sse4.2")]
-    #[inline]
-    unsafe fn crc_u8(state: u32, value: u8) -> u32 {
-        // SAFETY: as in `crc_u64`.
-        #[allow(unused_unsafe)]
-        unsafe {
-            _mm_crc32_u8(state, value)
-        }
     }
 
     /// Loads 8 little-endian bytes.

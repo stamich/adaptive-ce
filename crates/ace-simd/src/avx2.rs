@@ -13,19 +13,14 @@ use crate::scan::{common_prefix_len_scalar, count_zeroes_scalar};
 pub(crate) unsafe fn count_zeroes(input: &[u8]) -> usize {
     let mut offset = 0usize;
     let mut total = 0usize;
-    // SAFETY: the caller guarantees AVX2; every 32-byte load starts at `offset` with
-    // `offset + 32 <= input.len()`, so it stays inside `input` (unaligned loads are allowed).
-    // `unused_unsafe` is allowed because newer compilers treat some intrinsics as safe inside
-    // `#[target_feature]` functions while the MSRV (1.75) still requires the block.
-    #[allow(unused_unsafe)]
-    unsafe {
-        let zero = _mm256_setzero_si256();
-        while offset + 32 <= input.len() {
-            let vector = _mm256_loadu_si256(input.as_ptr().add(offset) as *const __m256i);
-            let equal = _mm256_cmpeq_epi8(vector, zero);
-            total += (_mm256_movemask_epi8(equal) as u32).count_ones() as usize;
-            offset += 32;
-        }
+    let zero = _mm256_setzero_si256();
+    while offset + 32 <= input.len() {
+        // SAFETY: AVX2 is enabled for this function; the 32-byte load starts at `offset` with
+        // `offset + 32 <= input.len()`, so it stays inside `input` (unaligned loads are allowed).
+        let vector = unsafe { _mm256_loadu_si256(input.as_ptr().add(offset) as *const __m256i) };
+        let equal = _mm256_cmpeq_epi8(vector, zero);
+        total += (_mm256_movemask_epi8(equal) as u32).count_ones() as usize;
+        offset += 32;
     }
     total + count_zeroes_scalar(&input[offset..])
 }
@@ -37,20 +32,20 @@ pub(crate) unsafe fn count_zeroes(input: &[u8]) -> usize {
 #[target_feature(enable = "avx2")]
 pub(crate) unsafe fn common_prefix_len(left: &[u8], right: &[u8], limit: usize) -> usize {
     let mut offset = 0usize;
-    // SAFETY: the caller guarantees AVX2 and `limit <= min(left.len(), right.len())`; every load
-    // covers `offset..offset + 32` with `offset + 32 <= limit`. See `count_zeroes` for the
-    // `unused_unsafe` allowance.
-    #[allow(unused_unsafe)]
-    unsafe {
-        while offset + 32 <= limit {
-            let a = _mm256_loadu_si256(left.as_ptr().add(offset) as *const __m256i);
-            let b = _mm256_loadu_si256(right.as_ptr().add(offset) as *const __m256i);
-            let mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(a, b)) as u32;
-            if mask != u32::MAX {
-                return offset + (!mask).trailing_zeros() as usize;
-            }
-            offset += 32;
+    while offset + 32 <= limit {
+        // SAFETY: the caller guarantees `limit <= min(left.len(), right.len())`, so both loads of
+        // `offset..offset + 32` with `offset + 32 <= limit` stay inside their slices.
+        let (a, b) = unsafe {
+            (
+                _mm256_loadu_si256(left.as_ptr().add(offset) as *const __m256i),
+                _mm256_loadu_si256(right.as_ptr().add(offset) as *const __m256i),
+            )
+        };
+        let mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(a, b)) as u32;
+        if mask != u32::MAX {
+            return offset + (!mask).trailing_zeros() as usize;
         }
+        offset += 32;
     }
     common_prefix_len_scalar(left, right, offset, limit)
 }
