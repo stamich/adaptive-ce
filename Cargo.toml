@@ -40,6 +40,19 @@ license = "Apache-2.0"
 repository = "https://example.invalid/ace"
 rust-version = "1.75"
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
 [workspace.dependencies]
 thiserror = "2"
 crc32c = "0.6"

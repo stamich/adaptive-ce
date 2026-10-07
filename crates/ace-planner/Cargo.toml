@@ -3,6 +3,7 @@ name = "ace-planner"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
@@ -14,3 +15,6 @@ ace-entropy = { path = "../ace-entropy" }
 
 [dev-dependencies]
 proptest.workspace = true
+
+[lints]
+workspace = true

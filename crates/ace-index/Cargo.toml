@@ -3,7 +3,11 @@ name = "ace-index"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
 ace-format = { path = "../ace-format" }
+
+[lints]
+workspace = true

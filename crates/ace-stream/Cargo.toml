@@ -3,6 +3,7 @@ name = "ace-stream"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
@@ -11,3 +12,8 @@ ace-format = { path = "../ace-format" }
 
 [dev-dependencies]
 proptest.workspace = true
+ace-corpus = { path = "../ace-corpus" }
+sha2.workspace = true
+
+[lints]
+workspace = true

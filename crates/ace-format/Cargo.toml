@@ -3,6 +3,7 @@ name = "ace-format"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
@@ -11,3 +12,6 @@ crc32c.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+
+[lints]
+workspace = true

@@ -3,8 +3,12 @@ name = "ace-runtime"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
 rayon.workspace = true
 num_cpus.workspace = true
+
+[lints]
+workspace = true
