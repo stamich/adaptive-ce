@@ -67,8 +67,8 @@ release decision.
   `decompress_into` ≈ 1.3×;
 * SIMD / CRC acceleration only on x86_64 (AVX2, SSE4.2); other architectures use the scalar path;
 * no GPU support;
-* MSRV 1.75 is enforced by `clippy.toml`, the lockfile and `ace-ci0.4.6.sh msrv`; the
-  1.75 toolchain itself was not available in the development environment.
+* MSRV is Rust 1.97 (`rust-version`, `clippy.toml`, `ace-ci0.4.6.sh msrv`); older
+  toolchains are not supported.
 
 ## Upgrade
 

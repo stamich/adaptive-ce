@@ -6,7 +6,7 @@ to `examples/results/release-checklist-0.4.6.md`. Items marked *manual* are run 
 | Area | Gate | Source |
 |---|---|---|
 | Build / fmt / clippy / rustdoc | PASS, 0 warnings | `ace-build0.4.6.sh` |
-| MSRV 1.75 | PASS (Skipped without toolchain) | `ace-ci0.4.6.sh msrv` |
+| MSRV 1.97 | PASS (Skipped without toolchain) | `ace-ci0.4.6.sh msrv` |
 | Unsafe / panic audit | PASS | `tools/ace-code_audit0.4.6.py` |
 | Unit + property tests (release budget 10 000) | PASS | `cargo test --release` with `PROPTEST_CASES` |
 | Fuzz 12 × 10 min (*manual*) | 0 crashes | `ACE_FUZZ_SECONDS=600 ./ace-ci0.4.6.sh fuzz` |

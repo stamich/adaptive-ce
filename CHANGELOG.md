@@ -55,15 +55,18 @@ version 0.4.6. Concept: `AdaptiveCE_0_4_6_Koncepcja.md`; task order: `TASKS-0.4.
   `MILESTONE-0.4.6.json`, `examples/baselines/*/BASELINE.json`.
 
 ### Changed
-- Workspace: `rust-version = "1.75"`, explicit `[profile.release]`, MSRV-aware `Cargo.lock`
-  shipped (lz4_flex 0.11.3), workspace lints (`unsafe_code = forbid`, `missing_docs = deny`,
+- Workspace: MSRV Rust 1.97 (`rust-version = "1.97.0"`, `clippy.toml` msrv 1.97.0; first set to
+  1.75), explicit `[profile.release]`, `Cargo.lock` committed, workspace lints (`unsafe_code = forbid`, `missing_docs = deny`,
   `unsafe_op_in_unsafe_fn = deny`, clippy `unwrap_used / expect_used / panic / todo /
   unimplemented / dbg_macro = deny`; tests exempt via `clippy.toml`).
 - Production code free of `unwrap` / `expect` / `panic!`: `AceEngine::default_engine` builds
   directly, `Lane::WIDTH`, infallible `read_bits_validated`, NUM1 header and Huffman length
   reads via `read_lane`, Huffman code-length construction without `expect`.
 - `ace-simd`: `unsafe` operations wrapped in explicit blocks with `// SAFETY:` comments
-  (`clippy::undocumented_unsafe_blocks = deny`).
+  (`clippy::undocumented_unsafe_blocks = deny`); with the 1.97 MSRV the CRC32C kernel is a safe
+  `#[target_feature]` function and AVX2 kernels keep `unsafe` only around the loads.
+- Rust 1.97 idioms: `AtomicU64::try_update`, `iter::repeat_n`, `usize::is_multiple_of`;
+  lockfile moved to the latest compatible dependency versions.
 - `cargo fmt` applied to the whole workspace (fmt-only change, golden unchanged).
 - README rewritten release-style; `docs/SECURITY.md` updated with 0.4.6 evidence;
   `ROADMAP.md` updated (0.4.x candidates vs 0.5).
@@ -96,7 +99,7 @@ version 0.4.6. Concept: `AdaptiveCE_0_4_6_Koncepcja.md`; task order: `TASKS-0.4.
 | Harness V3 full run (21 families) + interleaved A/B | Regression V3 PASS: correctness 8, quality 13, performance 15, stability 15 (after two `unstable` sessions, as designed) |
 | `ace-release0.4.6.sh --quick` end-to-end | all steps run; verdict "not releasable" by design (quick) |
 | package | reproducible (2 × same SHA-256), tested from the archive |
-| MSRV 1.75 toolchain | not available offline; enforced by `clippy.toml`, lockfile and `ace-ci0.4.6.sh msrv` |
+| MSRV 1.97 (`ace-ci0.4.6.sh msrv`) | check + tests pass |
 
 ## 0.4.5-buildfix2 - 2026-10-05
 

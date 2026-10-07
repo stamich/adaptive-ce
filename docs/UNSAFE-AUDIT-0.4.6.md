@@ -16,10 +16,11 @@
 |---|---|---|---|---|
 | `avx2::count_zeroes` | `ace-simd/src/avx2.rs` | AVX2; loads inside the slice | `scan.rs` calls it only after `is_x86_feature_detected!("avx2")` (cached); loads at `offset` with `offset + 32 <= len` | scalar comparison tests in `ace-simd` |
 | `avx2::common_prefix_len` | same | AVX2; `limit <= min(len)` | caller passes `limit = min(left.len(), right.len(), max)`; loads guarded by `offset + 32 <= limit` | scalar comparison tests |
-| `crc32c::sse42::crc32c_raw` (+ `crc_u64`, `crc_u8`) | `ace-simd/src/crc32c.rs` | SSE4.2 | `crc32c_hardware` returns `None` unless SSE4.2 is detected; kernels have no memory operands beyond the input slice | reference vectors, 3-way merge vs single chain, portable `crc32c` crate |
+| `crc32c::sse42::crc32c_raw` (safe `#[target_feature]` fn; `unsafe` only at the call site) | `ace-simd/src/crc32c.rs` | SSE4.2 | `crc32c_hardware` calls it only when SSE4.2 is detected; the intrinsics have no memory operands | reference vectors, 3-way merge vs single chain, portable `crc32c` crate |
 
-`#[allow(unused_unsafe)]` on the kernel bodies: newer compilers treat some intrinsics as safe
-inside `#[target_feature]` functions, MSRV 1.75 still requires the block.
+With the Rust 1.97 MSRV (target_feature 1.1) value-only intrinsics are safe inside
+`#[target_feature]` functions, so `unsafe` blocks cover only the unaligned AVX2 loads and the
+calls into the kernels after runtime detection.
 
 ## Backend override
 

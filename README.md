@@ -62,7 +62,7 @@ Details: [`docs/ARCHITECTURE-0.4.6.md`](docs/ARCHITECTURE-0.4.6.md),
 ./demo/ace-run-demo0.4.6.sh              # < 1 minute product tour
 ```
 
-Requirements: Rust ≥ 1.75 (MSRV, `Cargo.lock` included), Python 3.9+ for the tools.
+Requirements: Rust ≥ 1.97 (MSRV, `Cargo.lock` included), Python 3.9+ for the tools.
 
 ## Command-line interface
 
@@ -101,7 +101,7 @@ The same example is compiled and executed as a doctest of `ace-engine`.
 | Planner | V4.3 (decisions frozen, golden SHA-256) |
 | Encoded bytes | identical to 0.4.5-buildfix2 (and to 0.4.5-buildfix1) |
 | Public API | additive only: `AceEngine::decompress_into`, `PREALLOCATION_CAP_BYTES` |
-| MSRV | Rust 1.75 |
+| MSRV | Rust 1.97 |
 | Benchmark schema | 2.1 (all 2.0 fields kept) |
 
 ## Performance

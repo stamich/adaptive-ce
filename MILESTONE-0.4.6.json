@@ -17,7 +17,7 @@
   "benchmark_harness": "v3 (adaptive iterations, 3x7 batches, median-of-medians, batch MAD)",
   "baseline": "0.4.5-buildfix2",
   "performance_method": "interleaved A/B (tools/ace-ab0.4.6.py)",
-  "msrv": "1.75",
+  "msrv": "1.97",
   "cargo_lock_shipped": true,
   "new_crates": ["ace-corpus", "ace-bench"],
   "new_public_api": [

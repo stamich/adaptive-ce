@@ -18,7 +18,7 @@ Status: ✅ done in this release · ⏩ executed by the release pipeline on the 
 
 | # | Task | Files / types | Acceptance |
 |---|---|---|---|
-| B1 ✅ | `rust-version = "1.75"`, explicit `[profile.release]`, MSRV-aware `Cargo.lock` (lz4_flex 0.11.3) | `Cargo.toml`, `Cargo.lock` | `--locked` builds |
+| B1 ✅ | `rust-version = "1.97.0"` (initially 1.75), explicit `[profile.release]`, committed `Cargo.lock` | `Cargo.toml`, `Cargo.lock` | `--locked` builds |
 | B2 ✅ | Workspace lints: `unsafe_code = forbid`, `missing_docs = deny`, `unsafe_op_in_unsafe_fn = deny`, clippy `unwrap_used/expect_used/panic/todo/unimplemented/dbg_macro = deny` | `[workspace.lints]`, `clippy.toml` (tests exempt) | clippy -D warnings clean |
 | B3 ✅ | Remove production `unwrap`/`expect`/`panic` | `AceEngine::default_engine`, `Lane::WIDTH`, bit I/O (`read_bits_validated` infallible), NUM1 header, Huffman, error types | 0 panic-lint exceptions (`docs/PANIC-AUDIT-0.4.6.md`) |
 | B4 ✅ | `unsafe` blocks inside `unsafe fn`, `// SAFETY:` everywhere | `ace-simd/src/{avx2,crc32c,scan}.rs` | `undocumented_unsafe_blocks = deny` |
