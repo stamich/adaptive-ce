@@ -45,7 +45,7 @@ fn record_alloc(size: usize) {
 /// memory allocated before enabling may be freed while enabled).
 fn record_dealloc(size: usize) {
     if ENABLED.load(Ordering::Relaxed) {
-        let _ = LIVE_BYTES.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |live| {
+        let _ = LIVE_BYTES.try_update(Ordering::Relaxed, Ordering::Relaxed, |live| {
             Some(live.saturating_sub(size as u64))
         });
     }
