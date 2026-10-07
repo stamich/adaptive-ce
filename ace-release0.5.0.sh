@@ -35,31 +35,36 @@ ace_step "3/11 release tests (proptest budget ${ACE_PROPTEST_CASES:-10000}) + ig
 PROPTEST_CASES="${ACE_PROPTEST_CASES:-10000}" cargo test --release --workspace
 cargo test --release --workspace -- --ignored
 record "Unit + property + hardening tests" PASS "cargo test --release (incl. --ignored)"
-record "Format readers 1.0-1.3 / malformed / limits" PASS "format_1_* / malformed_matrix tests"
+record "Format readers 1.0-1.4 / malformed (incl. TS1) / limits" PASS "format_1_* / malformed_matrix tests"
+record "Float lane end to end (V3 untouched, V4 never larger)" PASS "crates/ace-engine/tests/float_lane.rs"
 
-ace_step "4/11 golden SHA-256 (auto backend and ACE_SIMD=scalar)"
+ace_step "4/11 golden SHA-256: 0.5.0 (Corpus V3 + V4) and frozen 0.4.6 (auto and ACE_SIMD=scalar)"
 cargo test --release -p ace-engine --test golden
 ACE_SIMD=scalar cargo test --release -p ace-engine --test golden
-record "Golden SHA-256 (auto + scalar)" PASS "crates/ace-engine/tests/golden.rs"
+record "Golden SHA-256 0.5.0 + frozen 0.4.6 (auto + scalar)" PASS "crates/ace-engine/tests/golden.rs"
 
 ace_step "5/11 determinism across processes and backends"
 work="$ACE_ROOT/target/release-$ACE_VERSION"; rm -rf "$work"; mkdir -p "$work"
-"$(ace_bin ace-corpus)" mixed 16M "$work/mixed.bin"
-for profile in fast balanced dense; do
-  hashes=()
-  for run in 1 2 3 4 5 6 7 8 9 10; do
-    threads=$(( run % 2 ? 1 : 0 ))
-    "$(ace_bin ace)" compress --profile "$profile" --threads "$threads" "$work/mixed.bin" "$work/out.ace" >/dev/null
+# mixed covers the 0.4 routes; f64-noisy the Float lane (FloatGeneral, Gorilla in FAST).
+for corpus in mixed f64-noisy; do
+  "$(ace_bin ace-corpus)" "$corpus" 16M "$work/$corpus.bin"
+  for profile in fast balanced dense; do
+    hashes=()
+    for run in 1 2 3 4 5 6 7 8 9 10; do
+      threads=$(( run % 2 ? 1 : 0 ))
+      "$(ace_bin ace)" compress --profile "$profile" --threads "$threads" "$work/$corpus.bin" "$work/out.ace" >/dev/null
+      hashes+=("$(sha256sum "$work/out.ace" | cut -d' ' -f1)")
+    done
+    ACE_SIMD=scalar "$(ace_bin ace)" compress --profile "$profile" "$work/$corpus.bin" "$work/out.ace" >/dev/null
     hashes+=("$(sha256sum "$work/out.ace" | cut -d' ' -f1)")
+    [[ "$(printf '%s\n' "${hashes[@]}" | sort -u | wc -l)" == 1 ]] || ace_die "$corpus $profile: non-deterministic output"
   done
-  ACE_SIMD=scalar "$(ace_bin ace)" compress --profile "$profile" "$work/mixed.bin" "$work/out.ace" >/dev/null
-  hashes+=("$(sha256sum "$work/out.ace" | cut -d' ' -f1)")
-  [[ "$(printf '%s\n' "${hashes[@]}" | sort -u | wc -l)" == 1 ]] || ace_die "$profile: non-deterministic output"
 done
-record "Determinism (threads x 10 processes x SIMD backend)" PASS "CLI SHA-256 + determinism_matrix test"
+record "Determinism (threads x 10 processes x SIMD backend, mixed + f64-noisy)" PASS "CLI SHA-256 + determinism_matrix test"
 
 externals=(--external golden_sha256=pass --external determinism_matrix=pass
-           --external format_readers=pass --external malformed_matrix=pass)
+           --external format_readers=pass --external malformed_matrix=pass
+           --external float_lane=pass)
 ab_json="$ACE_RESULTS/ab-${ACE_VERSION}-vs-${ACE_BASELINE}.json"
 
 ace_step "6/11 benchmarks (Harness V3)"

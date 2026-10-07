@@ -19,4 +19,4 @@ ace_step() { printf '\n[ACE %s] ==== %s ====\n' "$ACE_VERSION" "$*"; }
 ace_die()  { printf '[ACE %s] ERROR: %s\n' "$ACE_VERSION" "$*" >&2; exit 1; }
 
 # Path of the release ace-bench / ace / ace-corpus binaries.
-ace_bin() { printf '%s/target/release/%s' "$ACE_ROOT" "$1"; }
+ace_bin() { printf '%s/release/%s' "${CARGO_TARGET_DIR:-$ACE_ROOT/target}" "$1"; }
