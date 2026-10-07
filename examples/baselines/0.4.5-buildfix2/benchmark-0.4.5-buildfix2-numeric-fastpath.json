@@ -1,0 +1,164 @@
+{
+  "schema_version": "2.0",
+  "project": "ace",
+  "milestone": "0.4.5-buildfix2",
+  "base": "0.4.5-buildfix1",
+  "scope": "numeric-fastpath",
+  "benchmark_contract_origin": "ace-0.4.5-buildfix2",
+  "generated_at_utc_epoch_seconds": 1791226915,
+  "environment": {
+    "arch": "x86_64",
+    "build_profile": "release",
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "logical_cpus": 12,
+    "memory_bytes": 33422209024,
+    "os": "linux",
+    "physical_cores": 6,
+    "target_features": "unknown"
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "runs": 7,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 3
+  },
+  "workloads": [
+    {
+      "compressed_bytes": 7240,
+      "compression": {
+        "cv_percent": 4.081406342617213,
+        "max_ns": 3831040,
+        "mean_ns": 3622759.0,
+        "median_mb_s": 4369.143470383351,
+        "median_ns": 3662045.0,
+        "min_ns": 3439718,
+        "p95_ns": 3831040.0,
+        "p99_ns": 3831040.0,
+        "runs": 7,
+        "samples_ns": [
+          3662045,
+          3685241,
+          3496493,
+          3456917,
+          3439718,
+          3787859,
+          3831040
+        ],
+        "stddev_ns": 147859.51560373593,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2317.2950276243096,
+      "decompression": {
+        "cv_percent": 45.008345615190805,
+        "max_ns": 7269551,
+        "mean_ns": 3465097.5714285714,
+        "median_mb_s": 5652.637644376314,
+        "median_ns": 2830537.0,
+        "min_ns": 2565168,
+        "p95_ns": 7269551.0,
+        "p99_ns": 7269551.0,
+        "runs": 7,
+        "samples_ns": [
+          2878977,
+          7269551,
+          2565168,
+          3088259,
+          2808845,
+          2814346,
+          2830537
+        ],
+        "stddev_ns": 1559583.0908521544,
+        "unstable_measurement": true,
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "path": "planner-v4.3-numeric-fast",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "stage_timing": {
+        "analysis_ns": 2700159,
+        "encoding_ns": 7835,
+        "generic_analysis_ns": 0,
+        "planner_estimated_candidates": 64,
+        "planner_fast_path_blocks": 64,
+        "planner_full_trial_encodes": 0,
+        "planner_sampled_candidates": 0,
+        "planning_ns": 0,
+        "route_classify_ns": 2700159
+      },
+      "workload_id": "u32-counter"
+    },
+    {
+      "compressed_bytes": 7240,
+      "compression": {
+        "cv_percent": 2.7032441678472825,
+        "max_ns": 3140676,
+        "mean_ns": 3005513.285714286,
+        "median_mb_s": 5326.311479366369,
+        "median_ns": 3003955.0,
+        "min_ns": 2871175,
+        "p95_ns": 3140676.0,
+        "p99_ns": 3140676.0,
+        "runs": 7,
+        "samples_ns": [
+          3140676,
+          3042325,
+          2932767,
+          3059689,
+          2871175,
+          2988006,
+          3003955
+        ],
+        "stddev_ns": 81246.36260994666,
+        "unstable_measurement": false,
+        "warmup_iterations": 3
+      },
+      "compression_ratio": 2317.2950276243096,
+      "decompression": {
+        "cv_percent": 45.999169656798664,
+        "max_ns": 7386027,
+        "mean_ns": 3485514.4285714286,
+        "median_mb_s": 5824.050343091166,
+        "median_ns": 2747229.0,
+        "min_ns": 2686085,
+        "p95_ns": 7386027.0,
+        "p99_ns": 7386027.0,
+        "runs": 7,
+        "samples_ns": [
+          2718770,
+          7386027,
+          2686085,
+          3265881,
+          2717881,
+          2876728,
+          2747229
+        ],
+        "stddev_ns": 1603307.6954107678,
+        "unstable_measurement": true,
+        "warmup_iterations": 3
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "path": "planner-v4.3-numeric-fast",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "stage_timing": {
+        "analysis_ns": 2118638,
+        "encoding_ns": 7506,
+        "generic_analysis_ns": 0,
+        "planner_estimated_candidates": 64,
+        "planner_fast_path_blocks": 64,
+        "planner_full_trial_encodes": 0,
+        "planner_sampled_candidates": 0,
+        "planning_ns": 0,
+        "route_classify_ns": 2118638
+      },
+      "workload_id": "u64-fixed-step"
+    }
+  ]
+}

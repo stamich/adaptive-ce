@@ -1,0 +1,11 @@
+{
+  "version": "0.4-buildfix2",
+  "accepted": true,
+  "purpose": "0.4 line performance reference",
+  "machine_fingerprint": {
+    "cpu_model": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz",
+    "os": "linux",
+    "arch": "x86_64"
+  },
+  "methodology": "schema 2.0, single median (7 runs, 1 invocation per sample)"
+}
