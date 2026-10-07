@@ -45,7 +45,7 @@ fn record_alloc(size: usize) {
 /// memory allocated before enabling may be freed while enabled).
 fn record_dealloc(size: usize) {
     if ENABLED.load(Ordering::Relaxed) {
-        let _ = LIVE_BYTES.try_update(Ordering::Relaxed, Ordering::Relaxed, |live| {
+        let _ = LIVE_BYTES.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |live| {
             Some(live.saturating_sub(size as u64))
         });
     }
@@ -60,16 +60,16 @@ unsafe impl GlobalAlloc for CountingAllocator {
         unsafe { System.alloc(layout) }
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        record_dealloc(layout.size());
-        // SAFETY: `ptr` was returned by `System` (via this allocator) for `layout`.
-        unsafe { System.dealloc(ptr, layout) }
-    }
-
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         record_alloc(layout.size());
         // SAFETY: the caller upholds `GlobalAlloc::alloc_zeroed`'s contract for `layout`.
         unsafe { System.alloc_zeroed(layout) }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        record_dealloc(layout.size());
+        // SAFETY: `ptr` was returned by `System` (via this allocator) for `layout`.
+        unsafe { System.dealloc(ptr, layout) }
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
