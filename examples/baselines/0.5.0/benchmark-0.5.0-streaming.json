@@ -1,0 +1,223 @@
+{
+  "schema_version": "2.1",
+  "project": "ace",
+  "milestone": "0.5.0",
+  "base": "0.4.6",
+  "scope": "streaming",
+  "benchmark_contract_origin": "ace-0.5.0",
+  "generated_at_utc_epoch_seconds": 1791451539,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": 3820238,
+      "freq_khz_before": 3900480,
+      "governor": "powersave",
+      "logical_cpus": 32,
+      "max_freq_khz": 5084000,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor",
+      "physical_cores": 16
+    },
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      2.08,
+      5.63,
+      8.56
+    ],
+    "loadavg_before": [
+      2.27,
+      5.78,
+      8.64
+    ],
+    "logical_cpus": 32,
+    "memory_bytes": 134959685632,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.12.21-gentoo-dist",
+      "name": "linux"
+    },
+    "physical_cores": 16,
+    "rust": {
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": 36.0,
+    "thermal_c_before": 36.0,
+    "warnings": [
+      "cpu governor is 'powersave', not 'performance'"
+    ]
+  },
+  "configuration": {
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3",
+    "planner_version": "4.3",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workloads": [
+    {
+      "blocks": 64,
+      "compression_ratio": 3.72561427320257,
+      "input_bytes": 16777216,
+      "output_bytes": 4503208,
+      "path": "bounded_stream",
+      "peak_source_buffer_bytes": 262144,
+      "timing": {
+        "cv_percent": 1.7640116707587357,
+        "max_ns": 83246571,
+        "mean_ns": 78872875.8095238,
+        "median_mb_s": 202.75696502172434,
+        "median_ns": 78912209.0,
+        "min_ns": 77026101,
+        "p95_ns": 81104890.0,
+        "p99_ns": 83246571.0,
+        "runs": 21,
+        "samples_ns": [
+          83246571,
+          79722277,
+          80145211,
+          79621586,
+          78397753,
+          78675946,
+          78930319,
+          79107711,
+          78295342,
+          78912209,
+          78384403,
+          81104890,
+          77098311,
+          79191241,
+          77185002,
+          78557305,
+          77254362,
+          78489434,
+          77026101,
+          78688416,
+          78296002
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.7808766321571355,
+          "batch_medians_ns": [
+            79621586.0,
+            78912209.0,
+            78296002.0
+          ],
+          "batches": 3,
+          "global_median_ns": 78675946.0,
+          "harness": "v3",
+          "iterations_per_sample": 1,
+          "mad_ns": 431765.0,
+          "median_of_medians_ns": 78912209.0,
+          "outlier_indices": [
+            0,
+            11
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 1391326.7343430435,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "mixed_16m"
+    },
+    {
+      "blocks": 256,
+      "compression_ratio": 3.725658949260896,
+      "input_bytes": 67108864,
+      "output_bytes": 18012616,
+      "path": "bounded_stream",
+      "peak_source_buffer_bytes": 262144,
+      "timing": {
+        "cv_percent": 1.1388458465567577,
+        "max_ns": 323285390,
+        "mean_ns": 315205350.85714287,
+        "median_mb_s": 203.0591817571631,
+        "median_ns": 315179050.0,
+        "min_ns": 309386152,
+        "p95_ns": 322772144.0,
+        "p99_ns": 323285390.0,
+        "runs": 21,
+        "samples_ns": [
+          322772144,
+          315179050,
+          313516634,
+          315226800,
+          313547963,
+          315467563,
+          314596323,
+          312870008,
+          320704684,
+          323285390,
+          313483643,
+          314705444,
+          316272250,
+          315990358,
+          314844036,
+          311908538,
+          309704025,
+          311640955,
+          309386152,
+          318880907,
+          315329501
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.2574117791141257,
+          "batch_medians_ns": [
+            315179050.0,
+            315990358.0,
+            311908538.0
+          ],
+          "batches": 3,
+          "global_median_ns": 314844036.0,
+          "harness": "v3",
+          "iterations_per_sample": 1,
+          "mad_ns": 1360393.0,
+          "median_of_medians_ns": 315179050.0,
+          "outlier_indices": [
+            0,
+            9
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 3589703.046361227,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "mixed_64m"
+    }
+  ]
+}

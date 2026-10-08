@@ -1,0 +1,35 @@
+{
+  "version": "0.5.0",
+  "accepted": true,
+  "purpose": "baseline of 0.5.x / 0.6 (stored-result diagnostics; release gates use the interleaved A/B against the 0.5.0 source tree)",
+  "machine_fingerprint": {
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "physical_cores": 16,
+    "logical_cpus": 32,
+    "memory": "128 GiB",
+    "os": "linux",
+    "arch": "x86_64",
+    "simd_backend": "Avx2",
+    "crc32c_backend": "sse4.2-3way",
+    "cpu_governor": "powersave",
+    "rustc": "rustc 1.97.1"
+  },
+  "methodology": "schema 2.1, Harness V3 (5 warm-ups, 3 x 7 batches, >= 50 ms per sample, median-of-medians), interleaved A/B vs the 0.4.6 source tree (3 batches per side, alternating order)",
+  "verdict": {
+    "regression_v3": "pass",
+    "gates": {"pass": 73, "diagnostic": 6, "fail": 0, "unstable": 0, "skipped": 0},
+    "ab_vs_0_4_6": "pass, 12 / 12 cases, byte-identical output; speed ratios 0.992 - 1.179"
+  },
+  "float_lane": {
+    "f64_constant_ratio": 2416.07,
+    "f64_smooth_ratio": 2.71,
+    "int_sparse_change_ratio": 235.29,
+    "gorilla_codec_encode_mb_s": 1999.5,
+    "gorilla_codec_decode_mb_s": 1329.4,
+    "float_fast_encode_speedup_vs_disabled": 36.3,
+    "false_positive_blocks": 0,
+    "float_fast_fallbacks": 0
+  },
+  "files": "benchmark-0.5.0-<family>.json (27 families incl. regression) and ab-0.5.0-vs-0.4.6.json, unchanged from the run",
+  "note": "reference run of the 0.5.0 release on the author's workstation; environment.warning (powersave governor) and the lz4 / zstd drift rows are diagnostics against the 0.4.6 baseline recorded on the 2-vCPU development VM"
+}
