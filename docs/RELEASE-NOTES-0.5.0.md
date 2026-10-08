@@ -32,10 +32,13 @@ the hardened 0.4 line.
 
 Ratios are deterministic; speeds are indicative (shared 2-vCPU VM).
 
-Interleaved A/B against the 0.4.6 tree on the same VM: 12 / 12 cases PASS with
-byte-identical output (encode 0.97–1.09×, decode 0.97–1.02×; NumericFast encode 1.32× after
-the grouped fixed-step validation); Regression V3: **PASS** (74 gates, no failure or
-instability).
+**Reference run** (AMD Ryzen 9 5950X, full Harness V3 plan, `examples/baselines/0.5.0/`):
+Regression V3 **PASS** (73 gates pass, 0 fail, 0 unstable); interleaved A/B against the 0.4.6
+source tree 12 / 12 PASS with byte-identical output (speed ratios 0.99–1.18; NumericFast
+encode 1.18× after the grouped fixed-step validation); Gorilla codec 2 000 MB/s encode /
+1 330 MB/s decode; FloatFast encode 36× faster than the disabled lane. The development VM
+also passed; an i7-9850H laptop on the `powersave` governor failed two A/B cases by 5–7 %,
+which the reference run did not reproduce.
 
 Every Corpus V4 workload is at least as small as with the lane off, in every profile; zero
 blocks of Corpus V3 and of the false-positive corpus take a Float route; FloatFast never fell
@@ -87,7 +90,8 @@ clearly). Decimal specialisation (ALP) is the 0.6 answer.
 * no float column-phase detection (data starting at an unaligned offset);
 * the earlier 0.4.6 limitations (scalar rANS, fixed block size, no trained dictionaries,
   decode allocations, x86_64-only acceleration) still apply;
-* indicative Float codec-speed floors become hard gates after the reference-machine run.
+* the Gorilla codec-speed floors (≥ 400 / 600 MB/s) are deliberately below every measured
+  machine (lowest: i7-9850H laptop, 1 240 / 750 MB/s) so they stay portable.
 
 ## Upgrade
 

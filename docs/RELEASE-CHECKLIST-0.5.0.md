@@ -28,6 +28,7 @@
 | Tested from archive | PASS | release step 11 |
 | Documentation | README, RELEASE-NOTES, MIGRATION, FORMAT-1.4, TS1-CODEC, PLANNER-V5, FLOAT-CALIBRATION, METHODOLOGY, audits, CHANGELOG | review |
 
-After acceptance on the reference machine: copy the results to
-`examples/baselines/0.5.0/` with a `BASELINE.json` (`methodology: "schema 2.1, interleaved A/B
-vs 0.4.6"`) and turn the indicative Float codec-speed floors into measured hard values.
+Accepted run: AMD Ryzen 9 5950X, Regression V3 PASS (73 / 0 fail / 0 unstable), A/B vs 0.4.6
+12 / 12 PASS byte-identical — stored in `examples/baselines/0.5.0/` with `BASELINE.json`; the
+Float codec-speed floors are confirmed as hard values (`BENCHMARK-METHODOLOGY-0.5.0.md`).
+Only the 15 × 10 min fuzz campaign remains a manual item.

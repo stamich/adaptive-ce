@@ -148,7 +148,7 @@ fuzz targets. TS1 headers are validated before any output is allocated. See
 | `tools/` | Python benchmark tools (validator, report, compare, Regression V3, A/B, package, audit) |
 | `examples/golden/0.5.0/` | golden SHA-256 of Corpus V3 + V4 (with the declared format version) |
 | `examples/golden/0.4.6/` | frozen: Corpus V3 must still produce these bytes |
-| `examples/baselines/` | accepted reference results (`BASELINE.json` per version; 0.4.6 is the A/B base) |
+| `examples/baselines/` | accepted reference results (`BASELINE.json` per version; 0.4.6 is the A/B base of 0.5.0, 0.5.0 = Ryzen 9 5950X reference run) |
 | `fuzz/` | `cargo-fuzz` project (15 targets) |
 | `integrations/` | Java / Scala CLI-boundary examples |
 | `docs/` | current documentation; `docs/history/` keeps earlier milestones |

@@ -131,9 +131,15 @@ machine drift.
 | `float.gorilla_codec_encode_mb_s`, `…_decode_mb_s` | ≥ 400, ≥ 600 MB/s (timed, batch MAD ≤ 5 %) | float |
 | `float.fast_encode_speedup_vs_disabled` | ≥ 5× (timed, batch MAD ≤ 6 %) | float |
 
-The codec-speed floors are the concept's indicative targets, set below the development-VM
-values (Gorilla f64 decode ≈ 760–830 MB/s there); they become hard values after the first
-reference-machine run.
+The codec-speed floors are hard gates. They were confirmed by the 0.5.0 runs and are kept
+below the slowest measured machine so they stay portable:
+
+| Machine | Gorilla encode MB/s | Gorilla decode MB/s |
+|---|---:|---:|
+| AMD Ryzen 9 5950X (reference, `examples/baselines/0.5.0/`) | 2 000 | 1 329 |
+| 2-vCPU Xeon development VM | 1 446 | 826 |
+| Intel i7-9850H laptop (`powersave`) | 1 242 | 753 |
+| **floor** | **400** | **600** |
 
 ## Good practice
 

@@ -49,7 +49,7 @@ order: `TASKS-0.5.0.md`; migration: `docs/MIGRATION-0.4-TO-0.5.md`.
   `ARCHITECTURE-0.5.0`, `BENCHMARK-METHODOLOGY-0.5.0`, `RELEASE-CHECKLIST-0.5.0`,
   `RELEASE-NOTES-0.5.0`, `MIGRATION-0.4-TO-0.5`, `UNSAFE-AUDIT-0.5.0`, generated
   `PANIC-AUDIT-0.5.0` and `PERFORMANCE-0.5.0`; `TASKS-0.5.0.md`, `MILESTONE-0.5.0.json`;
-  `examples/baselines/0.4.6/`.
+  `examples/baselines/0.4.6/` and the 0.5.0 reference baseline `examples/baselines/0.5.0/`.
 
 ### Changed
 - `ace_stream::compress_reader_known_size` sink is `Write + Seek` (Format 1.4 header rewrite).
@@ -69,8 +69,9 @@ order: `TASKS-0.5.0.md`; migration: `docs/MIGRATION-0.4-TO-0.5.md`.
   faster); int-sparse-change BALANCED 83× → 235×; f64-smooth FAST 1.53× → 1.82×, f64-noisy
   FAST 1.00× → 1.23×; zero Float-route blocks on Corpus V3 and the false-positive corpus;
   zero FloatFast fallbacks.
-- Interleaved A/B vs 0.4.6: 12 / 12 PASS, byte-identical; Regression V3 PASS
-  (`docs/PERFORMANCE-0.5.0.md`).
+- Reference run (AMD Ryzen 9 5950X, `examples/baselines/0.5.0/`): Regression V3 PASS
+  (73 pass, 0 fail, 0 unstable); interleaved A/B vs 0.4.6 12 / 12 PASS, byte-identical, speed
+  ratios 0.99–1.18 (`docs/PERFORMANCE-0.5.0.md`).
 
 ## 0.4.6 - 2026-10-06 — Hardened Release & Benchmark Stabilization
 

@@ -107,7 +107,7 @@ Status: ✅ done in this release · ⏩ executed by the release pipeline on the 
 | 50 ✅ | Layout-robust grouped fixed-step validation (A/B found NumericFast encode at 0.84× with identical instruction counts) | Validates fixed-step blocks in groups of eight values | NumericFast encode 1.32× vs 0.4.6 |
 | — ✅ | Tooling follow-ups found by the full run: per-side A/B target directory, FloatFast stability limit, CI fuzz count | Builds each A/B probe in its own target directory; Sets a 6% stability limit …; Updates the CI script fuzz target count | full pipeline runs |
 | 48 ⏩ | Fuzz campaign 15 × 10 min | `ACE_FUZZ_SECONDS=600 ./ace-ci0.5.0.sh fuzz` | 0 crashes |
-| 49 ⏩ | Full release run on the reference machine; publish `examples/baselines/0.5.0/`; harden the indicative Float speed floors | `./ace-release0.5.0.sh <0.4.6 tree>` | checklist all PASS |
+| 49 ✅ | Full release run on the reference machine (Ryzen 9 5950X); publish `examples/baselines/0.5.0/`; confirm the Float speed floors | Adds the ACE 0.5.0 benchmark baseline; Regenerates the 0.5.0 performance report from the reference run | Regression V3 PASS, A/B 12/12 PASS |
 
 Task numbers follow the concept's phase plan; 13–14 and 24 were merged into neighbouring
 tasks (Corpus V4 generators and float-family workloads; route budgets live with the routes).
