@@ -9,7 +9,7 @@
 | MSRV 1.97 | PASS (Skipped without toolchain) | `ace-ci0.5.0.sh msrv` |
 | Unsafe / panic audit | PASS, no new `unsafe` | `tools/ace-code_audit0.5.0.py` |
 | Unit + property tests (release budget 10 000) | PASS | `cargo test --release` with `PROPTEST_CASES` |
-| Fuzz 15 × 10 min (*manual*) | 0 crashes | `ACE_FUZZ_SECONDS=600 ./ace-ci0.5.0.sh fuzz` |
+| Fuzz 15 × 10 min (*manual*) | 0 crashes — **done**: 15 / 15 clean (`examples/baselines/0.5.0/FUZZ.md`) | `ACE_FUZZ_SECONDS=600 ./ace-ci0.5.0.sh fuzz` |
 | Golden 0.5.0 (Corpus V3 + V4) and frozen golden 0.4.6 (Corpus V3), auto + `ACE_SIMD=scalar` | identical | `tests/golden.rs` |
 | Determinism (threads × processes × backend × API path), incl. Float workloads | identical | release step 5 (mixed + f64-noisy) + `determinism_matrix` |
 | Format readers 1.0–1.4, TS1 only in 1.4, plain TS1 blocks | PASS | `format_1_0_compat`, `format_1_2`, `format_1_3`, `format_1_4` |
@@ -31,4 +31,5 @@
 Accepted run: AMD Ryzen 9 5950X, Regression V3 PASS (73 / 0 fail / 0 unstable), A/B vs 0.4.6
 12 / 12 PASS byte-identical — stored in `examples/baselines/0.5.0/` with `BASELINE.json`; the
 Float codec-speed floors are confirmed as hard values (`BENCHMARK-METHODOLOGY-0.5.0.md`).
-Only the 15 × 10 min fuzz campaign remains a manual item.
+The manual fuzz campaign (15 × 10 min, AddressSanitizer) finished with no crash, OOM or timeout
+(`examples/baselines/0.5.0/FUZZ.md`): every item of the matrix is PASS.

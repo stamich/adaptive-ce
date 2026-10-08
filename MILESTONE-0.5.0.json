@@ -27,7 +27,7 @@
   "benchmark_schema": "2.1",
   "msrv": "1.97.0",
   "concept": "AdaptiveCE_0_5_0_Koncepcja_v2.md",
-  "status": "accepted: Regression V3 PASS and A/B vs 0.4.6 12/12 PASS on the reference machine (AMD Ryzen 9 5950X); fuzz campaign 15 x 10 min pending",
+  "status": "accepted: Regression V3 PASS and A/B vs 0.4.6 12/12 PASS on the reference machine (AMD Ryzen 9 5950X); fuzz campaign 15 x 10 min clean",
   "golden": {
     "0.5.0": "examples/golden/0.5.0/GOLDEN.json (Corpus V3 + V4, 27 workloads x 3 profiles)",
     "0.4.6": "frozen; Corpus V3 must reproduce it"
@@ -56,5 +56,6 @@
     "docs/PERFORMANCE-0.5.0.md"
   ],
   "tasks": "TASKS-0.5.0.md",
-  "baseline": "examples/baselines/0.5.0/BASELINE.json"
+  "baseline": "examples/baselines/0.5.0/BASELINE.json",
+  "fuzz_campaign": "examples/baselines/0.5.0/FUZZ.md (15/15 exit 0, ASan, 600 s each)"
 }

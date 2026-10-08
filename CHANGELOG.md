@@ -72,6 +72,8 @@ order: `TASKS-0.5.0.md`; migration: `docs/MIGRATION-0.4-TO-0.5.md`.
 - Reference run (AMD Ryzen 9 5950X, `examples/baselines/0.5.0/`): Regression V3 PASS
   (73 pass, 0 fail, 0 unstable); interleaved A/B vs 0.4.6 12 / 12 PASS, byte-identical, speed
   ratios 0.99–1.18 (`docs/PERFORMANCE-0.5.0.md`).
+- Fuzz campaign: 15 targets × 10 min with AddressSanitizer, no crashes
+  (`examples/baselines/0.5.0/FUZZ.md`).
 
 ## 0.4.6 - 2026-10-06 — Hardened Release & Benchmark Stabilization
 
