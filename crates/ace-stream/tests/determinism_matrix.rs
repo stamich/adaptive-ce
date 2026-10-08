@@ -1,8 +1,8 @@
-//! Determinism matrix (ACE 0.4.6): workload × profile × worker count × API path must all
-//! produce byte-identical containers.
+//! Determinism matrix (ACE 0.4.6, extended with the Float lane in 0.5.0): workload × profile ×
+//! worker count × API path must all produce byte-identical containers.
 //!
 //! The SIMD axis is covered by running the golden test with `ACE_SIMD=scalar` (the backend
-//! choice is process-wide), and the process axis by `ace-release0.4.6.sh`, which hashes the
+//! choice is process-wide), and the process axis by `ace-release0.5.0.sh`, which hashes the
 //! output of repeated CLI invocations.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
@@ -16,12 +16,16 @@ use ace_stream::{compress_reader_known_size, StreamLimits};
 /// Input size per workload (eight 256 KiB blocks).
 const BYTES: usize = 2 * 1024 * 1024;
 
-/// Workloads spanning the generic, structured and both numeric routes.
-const WORKLOADS: [Workload; 4] = [
+/// Workloads spanning the generic, structured, both numeric and both Float routes plus
+/// RunDelta on integers.
+const WORKLOADS: [Workload; 7] = [
     Workload::Mixed,
     Workload::StructuredJson,
     Workload::U32Counter,
     Workload::U64TimestampsNs,
+    Workload::F64Step,
+    Workload::F64Noisy,
+    Workload::IntSparseChange,
 ];
 
 /// Profiles of the matrix.
@@ -67,7 +71,7 @@ fn byte_identical_across_threads_and_api_paths() {
             let mut streamed = Vec::new();
             compress_reader_known_size(
                 Cursor::new(&data),
-                &mut streamed,
+                Cursor::new(&mut streamed),
                 data.len() as u64,
                 config(profile, 1),
                 StreamLimits::default(),

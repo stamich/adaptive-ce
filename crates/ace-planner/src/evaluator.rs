@@ -40,19 +40,22 @@ pub fn evaluate_candidates_v4_with_route(
         return Ok(decision);
     }
 
+    // Float routes run the V4.3 pipeline of their base route; the TS1 candidate competes
+    // afterwards (`apply_time_series_policy`).
+    let candidate_route = route.candidate_route();
     // Safety net (0.4.5): even when the caller built `candidates` without the route-aware
     // generator, a NumericGeneral block must be able to choose Numeric.
     let injected;
-    let candidates = if crate::needs_numeric_candidate(candidates, route.route, config) {
+    let candidates = if crate::needs_numeric_candidate(candidates, candidate_route, config) {
         let mut with_numeric = candidates.to_vec();
-        crate::ensure_numeric_candidate(&mut with_numeric, route.route, config);
+        crate::ensure_numeric_candidate(&mut with_numeric, candidate_route, config);
         injected = with_numeric;
         &injected[..]
     } else {
         candidates
     };
 
-    let numeric_estimate = if matches!(route.route, crate::PlannerRoute::NumericGeneral) {
+    let numeric_estimate = if matches!(candidate_route, crate::PlannerRoute::NumericGeneral) {
         match (config.profile, route.prefilter.width_hint) {
             // FAST trusts the prefilter's lane width and scans the block once instead of three
             // times (u16/u32/u64). BALANCED/DENSE keep the exhaustive exact search.
@@ -70,7 +73,7 @@ pub fn evaluate_candidates_v4_with_route(
         candidates,
         config,
         numeric_estimate.map(|estimate| estimate.encoded_bytes as u64),
-        Some(route.route),
+        Some(candidate_route),
     )?;
     // Hand the exact estimate to the encoder so it does not repeat the width/mode search.
     decision.numeric_estimate = numeric_estimate;
@@ -135,6 +138,9 @@ fn evaluate_candidates_internal(
                 selected_size_rank: 1,
                 selected_cost_rank: 1,
                 full_trial_encodes: 0,
+                time_series_estimates: 0,
+                float_fast_hit: false,
+                float_fast_fallback: false,
             },
             analytical_ranked_plans: vec![plan.clone()],
             top_k_plans: Vec::new(),
@@ -143,6 +149,7 @@ fn evaluate_candidates_internal(
             final_ranked_plans: vec![plan.clone()],
             quality_qualified_plans: vec![plan.clone()],
             numeric_estimate: None,
+            time_series: None,
         });
     }
     if candidates.is_empty() {
@@ -424,6 +431,9 @@ fn evaluate_candidates_internal(
             selected_size_rank,
             selected_cost_rank,
             full_trial_encodes: 0,
+            time_series_estimates: 0,
+            float_fast_hit: false,
+            float_fast_fallback: false,
         },
         analytical_ranked_plans,
         top_k_plans,
@@ -432,6 +442,7 @@ fn evaluate_candidates_internal(
         final_ranked_plans,
         quality_qualified_plans,
         numeric_estimate: None,
+        time_series: None,
     })
 }
 

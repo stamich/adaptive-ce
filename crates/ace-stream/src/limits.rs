@@ -34,4 +34,6 @@ pub struct StreamingStats {
     pub blocks: u64,
     /// Maximum source block bytes resident at one time.
     pub peak_source_buffer_bytes: usize,
+    /// `true` when a block used the TS1 codec and the header was rewritten as Format 1.4.
+    pub format_1_4: bool,
 }

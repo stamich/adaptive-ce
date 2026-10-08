@@ -11,4 +11,8 @@ ACE_GOLDEN_UPDATE=1 cargo test -p ace-engine --test golden  # regenerate (semant
 ```
 
 A mismatch of `ace_sha256` is a semantic change and is not allowed within 0.4.x
-(`docs/ARCHITECTURE-FREEZE-0.4.6.md`).
+(`docs/history/ARCHITECTURE-FREEZE-0.4.6.md`).
+
+**Since 0.5.0 this file is frozen**: it is never regenerated. `corpus_v3_matches_0_4_6_golden`
+checks that 0.5.0 still produces exactly these bytes for Corpus V3 (the Float lane never
+touches the 0.4.x corpus). `ACE_GOLDEN_UPDATE=1` rewrites only `examples/golden/0.5.0/`.

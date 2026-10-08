@@ -1,5 +1,80 @@
 # Changelog
 
+## 0.5.0 - 2026-10-07 — Lossless Floating-Point & Time-Series Compression
+
+Base: 0.4.6. **Format 1.4** (TS1 codec, written only when a block uses it) and **Planner V5**
+(Float lane). Corpus V3 output is byte-identical to 0.4.6 (frozen golden file); every file
+written with `--disable-float` equals 0.4.6. Concept: `AdaptiveCE_0_5_0_Koncepcja_v2.md`; task
+order: `TASKS-0.5.0.md`; migration: `docs/MIGRATION-0.4-TO-0.5.md`.
+
+### Added
+- TS1 codec (`ace-codecs::time_series`): 28-byte validated header; Gorilla XOR f64 / f32 with
+  window reuse (`M − 1` stored); RunDelta (Elias-gamma runs + ZigZag deltas over 2 / 4 / 8-byte
+  lanes); `ts1_encode_with`, `ts1_encoded_len` / `ts1_stream_bits` (same encoder against a bit
+  counter), `ts1_encode_best`, `ts1_decode`, `ts1_inspect`, `TimeSeriesLayout`,
+  `TimeSeriesMode`.
+- Format 1.4: `CodecId::TimeSeries = 4`, `FORMAT_MINOR = 4`, `FORMAT_MINOR_BASE`,
+  `minimal_minor_version`; TS1 rejected below 1.4 and with transforms / entropy / dictionary;
+  `AceError::InvalidTimeSeries`.
+- `ace_bitpack::{BitWriter, BitReader}`: public LSB-first bitstream (NUM1 moved onto it).
+- `ace-analysis`: `float_prefilter`, `FloatProfile`, `FloatWidth`, `admit_float`,
+  `FloatRejection`, `lane_sample_windows`, `run_prefilter`, `RunProfile`.
+- `ace-cost`: `estimate_gorilla` (sampled, with confidence), `estimate_run_delta` (exact),
+  `TimeSeriesEstimate`.
+- Planner V5: `PlannerRoute::{FloatGeneral, FloatFast}` (+ `label`, `is_float`),
+  `RouteReason::{FloatCandidate, DominantFloat}`, `RouteDecision::{base_route,
+  float_evidence, run_prefilter, candidate_route()}`, `classify_float_lane`,
+  `float_fast_decision`, `apply_time_series_policy`, `ts1_beats_generic`, `FloatEvidence`,
+  `TimeSeriesSelection`, telemetry (`time_series_estimates`, `float_fast_hit`,
+  `float_fast_fallback`).
+- `AceConfig::enable_float_specialization`; `CompressionStats` Float lane / TS1 counters;
+  `StreamingStats::format_1_4`; `BlockExplanation::{route, time_series}`.
+- CLI: `--disable-float` (compress, compress-stream, explain); TS1 lines in `inspect`;
+  route / float evidence / run lanes / TS1 estimate in `explain`; Float counters in
+  `compress`; format version in `compress-stream`.
+- `ace-corpus`: Corpus V4 (12 workloads: f64 constant / step / smooth / sensor / financial /
+  noisy / random / special, f32 smooth / sensor, int sparse-change / counter-reset) and the
+  false-positive corpus (`FalsePositiveCase`, `fp-*` in the CLI).
+- Benchmarks: `float-ablation`, `float`, `float-fastpath`, `float-false-positive`,
+  `float-estimator`; `release-performance` cases `float_fast.f64_step`,
+  `float_general.f64_noisy`, `run_delta.int_sparse_change` (each with a same-run
+  lane-disabled comparison); `memory` Float cases; Regression V3 `float` section; Float table
+  in the generated performance report.
+- Tests: golden 0.5.0 (27 workloads × 3 profiles, declared format version), frozen golden
+  0.4.6 check, `float_lane` (V3 untouched, V4 never larger, FloatFast, explain == compress),
+  `format_1_4`, TS1 unit / property tests, TS1 malformed fixture, streaming header rewrite,
+  Float workloads in the determinism matrix, prefilter corpus tests; fuzz targets
+  `bitstream_roundtrip`, `ts1_decode`, `ts1_roundtrip` (15 in total).
+- Docs: `FORMAT-1.4`, `TS1-CODEC`, `PLANNER-V5`, `FLOAT-CALIBRATION-0.5.0`,
+  `ARCHITECTURE-0.5.0`, `BENCHMARK-METHODOLOGY-0.5.0`, `RELEASE-CHECKLIST-0.5.0`,
+  `RELEASE-NOTES-0.5.0`, `MIGRATION-0.4-TO-0.5`, `UNSAFE-AUDIT-0.5.0`, generated
+  `PANIC-AUDIT-0.5.0` and `PERFORMANCE-0.5.0`; `TASKS-0.5.0.md`, `MILESTONE-0.5.0.json`;
+  `examples/baselines/0.4.6/` and the 0.5.0 reference baseline `examples/baselines/0.5.0/`.
+
+### Changed
+- `ace_stream::compress_reader_known_size` sink is `Write + Seek` (Format 1.4 header rewrite).
+- `encode_file_header` writes `min(minor_version, FORMAT_MINOR)`; in-memory and streaming
+  writers declare the minimal version.
+- Benchmark oracles and the engine drive the V4.3 pipeline with `candidate_route()`.
+- Scripts / tools renamed to `…0.5.0`; A/B baseline 0.4.6; release step 5 also hashes
+  f64-noisy; demo gains a Float lane step; `ace_bin` honours `CARGO_TARGET_DIR`.
+- 0.4.6 versioned documents moved to `docs/history/`.
+- `strong_numeric_evidence` validates fixed-step blocks in groups of eight values (same
+  result, layout-robust, NumericFast encode 1.32× vs 0.4.6 in the interleaved A/B).
+- A/B driver builds each probe in its own target directory (also with `CARGO_TARGET_DIR`);
+  Regression V3 per-case stability limit for the FloatFast encode (6 %).
+
+### Measured (development VM, 4 MiB per workload)
+- f64-constant BALANCED 141× → 2 416×, f64-step 136× → 464× (FloatFast, encode ≈ 35–38×
+  faster); int-sparse-change BALANCED 83× → 235×; f64-smooth FAST 1.53× → 1.82×, f64-noisy
+  FAST 1.00× → 1.23×; zero Float-route blocks on Corpus V3 and the false-positive corpus;
+  zero FloatFast fallbacks.
+- Reference run (AMD Ryzen 9 5950X, `examples/baselines/0.5.0/`): Regression V3 PASS
+  (73 pass, 0 fail, 0 unstable); interleaved A/B vs 0.4.6 12 / 12 PASS, byte-identical, speed
+  ratios 0.99–1.18 (`docs/PERFORMANCE-0.5.0.md`).
+- Fuzz campaign: 15 targets × 10 min with AddressSanitizer, no crashes
+  (`examples/baselines/0.5.0/FUZZ.md`).
+
 ## 0.4.6 - 2026-10-06 — Hardened Release & Benchmark Stabilization
 
 Base: 0.4.5-buildfix2. **Format 1.3, Planner V4.3 and every encoded byte unchanged**

@@ -2,7 +2,7 @@
 
 use ace_core::{AceError, AceResult};
 
-use crate::bit_io::{read_bits_validated, write_bits};
+use crate::bitstream::{read_bits_validated, write_bits};
 use crate::Lane;
 
 /// Packs `values` at a fixed `bit_width` (little-endian bit order).

@@ -1,6 +1,9 @@
+//! Planner explanation types returned by `AceEngine::explain`.
+
 use ace_analysis::NumericProfile;
 use ace_core::{BlockProfile, PhysicalCompressionPlan};
-use ace_planner::PlannerTelemetry;
+use ace_cost::TimeSeriesEstimate;
+use ace_planner::{PlannerTelemetry, RouteDecision};
 
 /// Planner explanation for one input block.
 #[derive(Debug, Clone)]
@@ -17,4 +20,8 @@ pub struct BlockExplanation {
     pub selected: PhysicalCompressionPlan,
     /// ACE 0.4 hot-path planning work performed for this block.
     pub telemetry: PlannerTelemetry,
+    /// Planner V5 route decision (route, base route, Float evidence, run prefilter).
+    pub route: RouteDecision,
+    /// TS1 estimate of the selected plan when the selected codec is TS1.
+    pub time_series: Option<TimeSeriesEstimate>,
 }

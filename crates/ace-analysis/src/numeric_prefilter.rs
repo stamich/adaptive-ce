@@ -14,6 +14,9 @@ use ace_core::{lane_delta_const, read_lane, NumericWidth};
 /// Maximum number of leading values sampled per lane width.
 const PREFILTER_SAMPLE: usize = 1024;
 
+/// Values validated per branch by [`strong_numeric_evidence`].
+const GROUP_VALUES: usize = 8;
+
 /// Minimum prefilter confidence at which a block is considered "likely numeric".
 const LIKELY_CONFIDENCE: f32 = 0.72;
 
@@ -106,9 +109,8 @@ fn strong_evidence_lane<const B: usize>(
 
     let value_count = input.len() / B;
     let tail_bytes = input.len() % B;
-    let mut values = input[..value_count * B].chunks_exact(B);
-    let first_value = read_lane::<B>(values.next()?);
-    let second_value = read_lane::<B>(values.next()?);
+    let first_value = read_lane::<B>(&input[..B]);
+    let second_value = read_lane::<B>(&input[B..2 * B]);
     if second_value < first_value {
         return None;
     }
@@ -118,9 +120,24 @@ fn strong_evidence_lane<const B: usize>(
     if step == 0 || step > i64::MAX as u64 {
         return None;
     }
+    // Validate groups of eight values with one branch per group: the unrolled, branch-free
+    // group body is faster and, unlike a per-value early exit, its speed does not depend on
+    // where the linker happens to place the loop (ACE 0.5.0 A/B: ±13 % between builds).
+    let body = &input[2 * B..value_count * B];
     let mut previous = second_value;
-
-    for chunk in values {
+    let mut groups = body.chunks_exact(GROUP_VALUES * B);
+    for group in groups.by_ref() {
+        let mut broken = false;
+        for chunk in group.chunks_exact(B) {
+            let value = read_lane::<B>(chunk);
+            broken |= (value < previous) | (value.wrapping_sub(previous) != step);
+            previous = value;
+        }
+        if broken {
+            return None;
+        }
+    }
+    for chunk in groups.remainder().chunks_exact(B) {
         let value = read_lane::<B>(chunk);
         if value < previous || value.wrapping_sub(previous) != step {
             return None;
@@ -259,6 +276,30 @@ mod tests {
     /// Serializes values as little-endian u32 bytes.
     fn u32_bytes(values: impl IntoIterator<Item = u32>) -> Vec<u8> {
         values.into_iter().flat_map(u32::to_le_bytes).collect()
+    }
+
+    /// Grouped validation: a single broken step anywhere (inside a group of eight, at a group
+    /// boundary or in the remainder) rejects the block; every length is handled.
+    #[test]
+    fn strong_evidence_checks_every_position() {
+        for count in [16usize, 17, 23, 24, 25, 1000, 1003] {
+            let values: Vec<u32> = (0..count as u32).map(|i| 500 + 7 * i).collect();
+            let evidence = strong_numeric_evidence(&u32_bytes(values.clone()), NumericWidth::U32)
+                .expect("valid fixed-step block");
+            assert_eq!((evidence.value_count, evidence.first_delta), (count, 7));
+            for broken in [2, 3, 9, 10, 17, count - 1]
+                .into_iter()
+                .filter(|&b| b < count)
+            {
+                let mut bad = values.clone();
+                bad[broken] += 1;
+                assert_eq!(
+                    strong_numeric_evidence(&u32_bytes(bad), NumericWidth::U32),
+                    None,
+                    "count {count}, broken {broken}"
+                );
+            }
+        }
     }
 
     /// Monotonic fixed-step counters must qualify for the strong numeric route.

@@ -3,7 +3,7 @@
 use ace_core::{AccessHint, BlockSizePolicy, CompressionProfile};
 use clap::{Parser, Subcommand, ValueEnum};
 
-/// Command-line interface for Adaptive Compression Engine milestone 0.4.
+/// Command-line interface for Adaptive Compression Engine milestone 0.5.
 #[derive(Debug, Parser)]
 #[command(name = "ace", version, about = "Adaptive Compression Engine")]
 pub struct Cli {
@@ -15,7 +15,7 @@ pub struct Cli {
 /// Supported ACE command-line operations.
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Compresses one file into ACE Format 1.3 using Planner V4.
+    /// Compresses one file into ACE Format 1.3 (1.4 when a block uses TS1) using Planner V5.
     Compress {
         /// Source file.
         input: String,
@@ -33,15 +33,21 @@ pub enum Command {
         /// Expected access pattern (used by `--block-policy auto`).
         #[arg(long, value_enum, default_value_t = AccessHintArg::Balanced)]
         access_hint: AccessHintArg,
+        /// Disables the Float lane and TS1 (0.4.6 decisions, always Format 1.3).
+        #[arg(long)]
+        disable_float: bool,
     },
-    /// Compresses a file through the bounded-memory ACE 0.4 streaming path.
+    /// Compresses a file through the bounded-memory streaming path.
     CompressStream {
         input: String,
         output: String,
         #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
         profile: ProfileArg,
+        /// Disables the Float lane and TS1 (0.4.6 decisions, always Format 1.3).
+        #[arg(long)]
+        disable_float: bool,
     },
-    /// Decompresses one ACE 1.0/1.1/1.2/1.3 file.
+    /// Decompresses one ACE 1.0 – 1.4 file.
     Decompress { input: String, output: String },
     /// Prints file and per-block physical metadata without decoding payloads.
     Inspect {
@@ -54,6 +60,9 @@ pub enum Command {
         input: String,
         #[arg(long, value_enum, default_value_t = ProfileArg::Balanced)]
         profile: ProfileArg,
+        /// Disables the Float lane and TS1 (0.4.6 decisions).
+        #[arg(long)]
+        disable_float: bool,
     },
     /// Fully decodes and checks every block checksum while discarding the reconstructed bytes.
     Verify { input: String },

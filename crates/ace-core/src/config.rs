@@ -38,6 +38,10 @@ pub struct AceConfig {
     pub access_hint: AccessHint,
     /// Enables ACE 0.4 schema-free numeric candidate generation.
     pub enable_numeric_specialization: bool,
+    /// Enables the ACE 0.5 Float lane and TS1 candidates (Gorilla, RunDelta).
+    ///
+    /// `false` reproduces the 0.4.6 planner decisions and Format 1.3 output exactly.
+    pub enable_float_specialization: bool,
 }
 
 /// Provides the documented default values of [`AceConfig`].
@@ -57,6 +61,7 @@ impl Default for AceConfig {
             block_size_policy: BlockSizePolicy::Fixed,
             access_hint: AccessHint::Balanced,
             enable_numeric_specialization: true,
+            enable_float_specialization: true,
         }
     }
 }

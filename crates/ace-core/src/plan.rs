@@ -152,6 +152,7 @@ impl PhysicalCompressionPlan {
             (CodecId::Lz, Some(LzMode::Balanced)) => "lz_balanced",
             (CodecId::Lz, _) => "lz_fast",
             (CodecId::Numeric, _) => "numeric",
+            (CodecId::TimeSeries, _) => "timeseries",
         });
         parts.push(self.decoding.entropy.label());
         parts.join("+")

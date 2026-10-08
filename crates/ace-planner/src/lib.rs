@@ -1,4 +1,6 @@
-//! Deterministic candidate generation, evaluation and cost modeling for ACE Planner V4.
+//! Deterministic candidate generation, evaluation and cost modeling for ACE Planner V4 / V5.
+//!
+//! Planner V5 (ACE 0.5.0) is Planner V4.3 plus the Float lane (`float_route`).
 
 mod budget;
 mod confidence;
@@ -8,6 +10,7 @@ mod dominance_policy;
 mod evaluator;
 mod exhaustive;
 mod fastpath;
+mod float_route;
 mod hybrid;
 mod pipeline;
 mod plan_identity;
@@ -26,6 +29,7 @@ pub use dominance_policy::*;
 pub use evaluator::*;
 pub use exhaustive::*;
 pub use fastpath::*;
+pub use float_route::*;
 pub use hybrid::*;
 pub use pipeline::*;
 pub use plan_identity::*;

@@ -5,7 +5,7 @@
 //!
 //! This module contains the only `unsafe` code of the benchmark harness: the
 //! [`GlobalAlloc`] implementation, which forwards verbatim to [`System`]
-//! (audited in `docs/UNSAFE-AUDIT-0.4.6.md`).
+//! (audited in `docs/UNSAFE-AUDIT-0.5.0.md`).
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::fs;

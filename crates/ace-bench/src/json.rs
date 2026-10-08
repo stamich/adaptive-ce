@@ -4,9 +4,9 @@ use crate::prelude::*;
 
 /// Milestone tag written into every document and into result file names
 /// (`benchmark-<MILESTONE>-<family>.json`); the single place to bump per release.
-pub(crate) const MILESTONE: &str = "0.4.6";
+pub(crate) const MILESTONE: &str = "0.5.0";
 /// Milestone whose results are the direct predecessor of this one.
-pub(crate) const BASE_MILESTONE: &str = "0.4.5-buildfix2";
+pub(crate) const BASE_MILESTONE: &str = "0.4.6";
 /// Benchmark document schema version (2.1 = 2.0 + Harness V3 statistics and fingerprint).
 pub(crate) const SCHEMA_VERSION: &str = "2.1";
 /// Environment variable overriding the result directory.

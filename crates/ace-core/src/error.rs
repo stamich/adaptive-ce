@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// Unified error type returned by ACE 0.4 components.
+/// Unified error type returned by ACE components.
 #[derive(Debug, Error)]
 pub enum AceError {
     /// ACE file magic does not match the expected signature.
@@ -50,6 +50,9 @@ pub enum AceError {
     /// rANS metadata or payload is invalid.
     #[error("invalid rANS stream: {0}")]
     InvalidRans(&'static str),
+    /// TS1 time-series header or bitstream is invalid.
+    #[error("invalid TS1 time-series stream: {0}")]
+    InvalidTimeSeries(&'static str),
     /// A requested configuration value is not valid.
     #[error("invalid configuration: {0}")]
     InvalidConfig(&'static str),

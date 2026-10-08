@@ -1,6 +1,6 @@
-//! Malformed-input matrix (ACE 0.4.6 hardening).
+//! Malformed-input matrix (ACE 0.4.6 hardening, TS1 / Format 1.4 fixture since 0.5.0).
 //!
-//! Every hostile mutation of a valid Format 1.3 file must be rejected with an error — never a
+//! Every hostile mutation of a valid Format 1.3 or 1.4 file must be rejected with an error — never a
 //! panic, never silently wrong output, never an allocation driven by an untrusted size field.
 //! The table covers truncation, magic, version, flags, size/count fields (with a re-sealed
 //! header CRC so the size checks themselves are exercised), index/trailer damage and an
@@ -31,6 +31,31 @@ fn fixture() -> (Vec<u8>, Vec<u8>) {
     })
     .unwrap();
     let encoded = engine.compress(&data).unwrap();
+    (data, encoded)
+}
+
+/// Format 1.4 fixture: Gorilla, RunDelta-on-floats and RunDelta-on-integers TS1 blocks.
+fn ts1_fixture() -> (Vec<u8>, Vec<u8>) {
+    let mut data = Workload::F64Noisy.generate(48 * 1024);
+    data.extend(Workload::F64Step.generate(32 * 1024));
+    data.extend(Workload::IntSparseChange.generate(48 * 1024));
+    let engine = AceEngine::new(AceConfig {
+        block_size: BLOCK_SIZE,
+        threads: 1,
+        profile: ace_core::CompressionProfile::Fast,
+        ..AceConfig::default()
+    })
+    .unwrap();
+    let (encoded, stats) = engine.compress_with_stats(&data).unwrap();
+    assert!(
+        stats.ts1_gorilla_f64_blocks > 0,
+        "fixture lacks Gorilla blocks"
+    );
+    assert!(
+        stats.ts1_run_delta_blocks > 0,
+        "fixture lacks RunDelta blocks"
+    );
+    assert_eq!(encoded[5], 4, "fixture must be Format 1.4");
     (data, encoded)
 }
 
@@ -236,6 +261,39 @@ fn single_byte_flip_sweep_never_misdecodes() {
             assert_indexed_safe("flip", &data, &file);
         }
     }
+}
+
+/// Every truncation of the Format 1.4 / TS1 fixture is rejected.
+#[test]
+fn ts1_truncations_are_rejected() {
+    let (data, valid) = ts1_fixture();
+    for length in (0..valid.len()).step_by(3) {
+        assert_rejected(
+            &format!("TS1 truncation to {length}"),
+            &data,
+            &valid[..length],
+        );
+    }
+}
+
+/// Flipping any single byte of the TS1 fixture never produces wrong output or a panic.
+#[test]
+fn ts1_single_byte_flip_sweep_never_misdecodes() {
+    let (data, valid) = ts1_fixture();
+    for position in 0..valid.len() {
+        let mut file = valid.clone();
+        file[position] ^= 0x01 << (position % 8);
+        assert_sequential_safe("TS1 flip", &data, &file);
+    }
+}
+
+/// The TS1 fixture with its header downgraded to Format 1.3 is rejected (TS1 needs 1.4).
+#[test]
+fn ts1_in_format_1_3_is_rejected() {
+    let (data, mut file) = ts1_fixture();
+    file[5] = 3;
+    reseal_header(&mut file);
+    assert_rejected("TS1 in 1.3", &data, &file);
 }
 
 /// A forged `original_size` must not drive a huge up-front allocation in `decompress_into`.

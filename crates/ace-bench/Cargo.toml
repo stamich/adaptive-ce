@@ -28,7 +28,7 @@ zstd.workspace = true
 
 num_cpus.workspace = true
 
-# Benchmark harness: `unsafe` only for the counting global allocator (docs/UNSAFE-AUDIT-0.4.6.md);
+# Benchmark harness: `unsafe` only for the counting global allocator (docs/UNSAFE-AUDIT-0.5.0.md);
 # panics are acceptable in a measurement tool and therefore not denied here.
 [lints.rust]
 missing_docs = "deny"

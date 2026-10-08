@@ -100,3 +100,24 @@ path = "fuzz_targets/engine_roundtrip.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "bitstream_roundtrip"
+path = "fuzz_targets/bitstream_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ts1_decode"
+path = "fuzz_targets/ts1_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ts1_roundtrip"
+path = "fuzz_targets/ts1_roundtrip.rs"
+test = false
+doc = false
+bench = false

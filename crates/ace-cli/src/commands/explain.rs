@@ -1,18 +1,15 @@
 //! `explain`: analyzer features, every candidate's cost and the selected plan per block.
 
-use ace_core::{AceConfig, CompressionProfile};
-use ace_engine::AceEngine;
+use ace_core::AceConfig;
+use ace_engine::{AceEngine, BlockExplanation};
 use anyhow::Result;
 
 use crate::files;
 
 /// Runs analyzer and planner only, printing deterministic candidate scores per block.
-pub fn explain(input: &str, profile: CompressionProfile) -> Result<()> {
+pub fn explain(input: &str, config: AceConfig) -> Result<()> {
     let data = files::read(input)?;
-    let engine = AceEngine::new(AceConfig {
-        profile,
-        ..AceConfig::default()
-    })?;
+    let engine = AceEngine::new(config)?;
     for explanation in engine.explain(&data)? {
         println!(
             "block {} size={} H0={:.3} H1={:.3} run={:.3} delta={:.3} repeat={:.3}",
@@ -35,6 +32,7 @@ pub fn explain(input: &str, profile: CompressionProfile) -> Result<()> {
             explanation.numeric_profile.dod_bit_width_p95,
             explanation.numeric_profile.tail_bytes,
         );
+        print_route(&explanation);
         for candidate in &explanation.candidates {
             let score = display_score(candidate.score);
             println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason);
@@ -65,6 +63,51 @@ pub fn explain(input: &str, profile: CompressionProfile) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// Prints the Planner V5 route, the Float lane evidence and the selected TS1 estimate.
+fn print_route(explanation: &BlockExplanation) {
+    let route = &explanation.route;
+    println!(
+        "  route={} base={} reason={:?} ts1_estimates={} float_fast={} float_fast_fallback={}",
+        route.route.label(),
+        route.base_route.label(),
+        route.reason,
+        explanation.telemetry.time_series_estimates,
+        explanation.telemetry.float_fast_hit,
+        explanation.telemetry.float_fast_fallback,
+    );
+    if let Some(evidence) = route.float_evidence {
+        let p = evidence.profile;
+        println!(
+            "  float width={} xor_zero={:.3} meaningful_bits={:.1} exponents={} non_finite={:.3} estimate={} bytes={} exact={} confidence={:.2}",
+            p.width.label(),
+            p.xor_zero_ratio,
+            p.mean_xor_meaningful_bits,
+            p.exponent_distinct,
+            p.non_finite_ratio,
+            evidence.estimate.layout.label(),
+            evidence.estimate.estimated_bytes,
+            evidence.estimate.exact,
+            evidence.estimate.confidence,
+        );
+    }
+    for lane in route.run_prefilter.admitted() {
+        println!(
+            "  run lane=u{} equal={:.3} splat={:.3}",
+            u32::from(lane.lane_bytes) * 8,
+            lane.equal_ratio,
+            lane.splat_ratio
+        );
+    }
+    if let Some(estimate) = explanation.time_series {
+        println!(
+            "  ts1 selected layout={} bytes={} exact={}",
+            estimate.layout.label(),
+            estimate.estimated_bytes,
+            estimate.exact
+        );
+    }
 }
 
 /// Formats a planner score for human-facing diagnostics.

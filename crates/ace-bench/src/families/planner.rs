@@ -120,7 +120,9 @@ pub(crate) fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>>
 
         let route_oracle = oracle_plans()
             .into_iter()
-            .filter(|plan| RoutePolicy::candidate_allowed(route.route, plan, &profile, &cfg))
+            .filter(|plan| {
+                RoutePolicy::candidate_allowed(route.candidate_route(), plan, &profile, &cfg)
+            })
             .map(|plan| {
                 let size = encoded_plan_size(block, &plan).unwrap_or(usize::MAX);
                 (size, plan)
@@ -142,7 +144,8 @@ pub(crate) fn planner_family() -> Result<Vec<Value>, Box<dyn std::error::Error>>
                 encoded_bytes: *size,
             })
             .collect::<Vec<_>>();
-        let policy_decision = PolicyOracle::choose(route.route, &policy_inputs, &profile, &cfg);
+        let policy_decision =
+            PolicyOracle::choose(route.candidate_route(), &policy_inputs, &profile, &cfg);
         let policy_oracle = policy_decision
             .map(|decision| {
                 (
@@ -810,14 +813,7 @@ pub(crate) fn planner_route_family() -> Result<Vec<Value>, Box<dyn std::error::E
         let mut row = JsonObjectBuilder::new();
         row.field("workload_id", kind)
             .field("path", "planner-v4.3-route")
-            .field(
-                "route",
-                match route.route {
-                    PlannerRoute::Generic => "generic",
-                    PlannerRoute::NumericGeneral => "numeric-general",
-                    PlannerRoute::NumericFast => "numeric-fast",
-                },
-            )
+            .field("route", route.route.label())
             .field("reason", format!("{:?}", route.reason))
             .field("prefilter_confidence", prefilter.confidence)
             .field("prefilter_likely_numeric", prefilter.likely_numeric)
@@ -877,7 +873,9 @@ pub(crate) fn policy_oracle_v2_family() -> Result<Vec<Value>, Box<dyn std::error
             .expect("global oracle");
         let route_oracle = oracle_plans()
             .into_iter()
-            .filter(|plan| RoutePolicy::candidate_allowed(route.route, plan, &profile, &cfg))
+            .filter(|plan| {
+                RoutePolicy::candidate_allowed(route.candidate_route(), plan, &profile, &cfg)
+            })
             .map(|plan| (encoded_plan_size(block, &plan).unwrap_or(usize::MAX), plan))
             .min_by_key(|(size, _)| *size)
             .expect("route oracle");
@@ -895,7 +893,7 @@ pub(crate) fn policy_oracle_v2_family() -> Result<Vec<Value>, Box<dyn std::error
                 encoded_bytes: *size,
             })
             .collect::<Vec<_>>();
-        let policy = PolicyOracle::choose(route.route, &policy_inputs, &profile, &cfg)
+        let policy = PolicyOracle::choose(route.candidate_route(), &policy_inputs, &profile, &cfg)
             .expect("policy oracle");
         let selected_size = encoded_plan_size(block, &decision.plan)?;
 
@@ -903,7 +901,12 @@ pub(crate) fn policy_oracle_v2_family() -> Result<Vec<Value>, Box<dyn std::error
             .iter()
             .filter(|plan| {
                 matches!(
-                    RoutePolicy::candidate_eligibility(route.route, plan, &profile, &cfg),
+                    RoutePolicy::candidate_eligibility(
+                        route.candidate_route(),
+                        plan,
+                        &profile,
+                        &cfg
+                    ),
                     CandidateEligibility::Allowed
                 )
             })

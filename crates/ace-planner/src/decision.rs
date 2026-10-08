@@ -1,6 +1,7 @@
 //! Planner output types: [`PlannerDecision`] and its work counters [`PlannerTelemetry`].
 
 use ace_core::PhysicalCompressionPlan;
+use ace_cost::TimeSeriesEstimate;
 
 /// Planner V4 telemetry used by engine statistics, `ace explain` and benchmarks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -41,9 +42,17 @@ pub struct PlannerTelemetry {
     pub selected_cost_rank: usize,
     /// Number of full candidate trial encodes performed by the hot-path planner.
     pub full_trial_encodes: usize,
+    /// Number of TS1 size estimates computed for this block (Planner V5).
+    pub time_series_estimates: usize,
+    /// True when the FloatFast route selected TS1 without generic analysis (Planner V5).
+    pub float_fast_hit: bool,
+    /// True when a FloatFast encode missed its bound and the block was re-planned (Planner V5).
+    ///
+    /// A release gate requires zero fallbacks on Corpus V4.
+    pub float_fast_fallback: bool,
 }
 
-/// Result returned by the ACE 0.4 Planner V4 hot path.
+/// Result returned by the Planner V4 / V5 hot path.
 #[derive(Debug, Clone)]
 pub struct PlannerDecision {
     /// Selected physical compression plan.
@@ -70,4 +79,16 @@ pub struct PlannerDecision {
     /// the exhaustive search, so the bytes equal `numeric_encode`; FAST estimates only the
     /// prefilter's lane width, which may pick a different (still self-describing) NUM1 layout.
     pub numeric_estimate: Option<ace_codecs::NumericEstimate>,
+    /// TS1 selection (Planner V5): layout, estimate and, for FloatFast, the payload already
+    /// encoded while validating the route — the engine stores it instead of encoding again.
+    pub time_series: Option<TimeSeriesSelection>,
+}
+
+/// TS1 plan chosen by Planner V5.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimeSeriesSelection {
+    /// Estimate that won the comparison (its `layout` is the layout to encode).
+    pub estimate: TimeSeriesEstimate,
+    /// Payload encoded by the FloatFast route, if any.
+    pub payload: Option<Vec<u8>>,
 }

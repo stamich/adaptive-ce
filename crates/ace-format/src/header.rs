@@ -7,8 +7,11 @@ use ace_core::{
 pub const MAGIC: [u8; 4] = *b"ACE1";
 /// Current major format version.
 pub const FORMAT_MAJOR: u8 = 1;
-/// Current minor format version written by ACE 0.4.
-pub const FORMAT_MINOR: u8 = 3;
+/// Highest minor format version this crate reads and writes (1.4 adds the TS1 codec).
+pub const FORMAT_MINOR: u8 = 4;
+/// Minor version written for files that use no Format 1.4 feature, so they stay readable by
+/// ACE 0.4.x and byte-identical to its output.
+pub const FORMAT_MINOR_BASE: u8 = 3;
 /// Serialized file-header size in bytes.
 pub const FILE_HEADER_SIZE: usize = 32;
 /// Fixed serialized block-header size before variable descriptors and metadata.
@@ -17,15 +20,16 @@ pub const BLOCK_HEADER_SIZE: usize = 32;
 pub const FILE_FLAG_HAS_INDEX: u16 = 0x0001;
 /// File flag indicating that one or more block dictionary references may be present.
 pub const FILE_FLAG_HAS_DICTIONARIES: u16 = 0x0002;
-/// Set of format-1.1/1.2/1.3 flags understood by ACE 0.4.
+/// Set of format-1.1…1.4 flags understood by ACE.
 pub const SUPPORTED_FILE_FLAGS: u16 = FILE_FLAG_HAS_INDEX | FILE_FLAG_HAS_DICTIONARIES;
 /// Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors.
 pub const BLOCK_FLAG_HAS_DICTIONARY: u8 = 0x01;
 
-/// Fixed ACE file header shared by format 1.0, 1.1, 1.2 and 1.3.
+/// Fixed ACE file header shared by formats 1.0 – 1.4.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileHeader {
-    /// Minor format version read from disk; writers emit [`FORMAT_MINOR`].
+    /// Minor format version: read from disk, or chosen by the writer (`FORMAT_MINOR_BASE`, or
+    /// [`FORMAT_MINOR`] when a block uses a 1.4 feature).
     pub minor_version: u8,
     /// File-level feature flags.
     pub flags: u16,
@@ -62,12 +66,30 @@ pub struct BlockHeader {
     pub payload_crc32c: u32,
 }
 
+/// Minor version a writer must declare for a file whose blocks use `codecs`.
+///
+/// This is the *minimal-version* rule of Format 1.4: only files that contain a TS1 block are
+/// written as 1.4; all others stay Format 1.3, byte-identical to ACE 0.4.x output and readable
+/// by 0.4.x decoders.
+pub fn minimal_minor_version(codecs: impl IntoIterator<Item = CodecId>) -> u8 {
+    if codecs
+        .into_iter()
+        .any(|codec| matches!(codec, CodecId::TimeSeries))
+    {
+        FORMAT_MINOR
+    } else {
+        FORMAT_MINOR_BASE
+    }
+}
+
 /// Serializes a file header, including a CRC32C over its first 28 bytes.
+///
+/// The minor version byte is `header.minor_version` capped at [`FORMAT_MINOR`].
 pub fn encode_file_header(header: &FileHeader) -> [u8; FILE_HEADER_SIZE] {
     let mut bytes = [0u8; FILE_HEADER_SIZE];
     bytes[0..4].copy_from_slice(&MAGIC);
     bytes[4] = FORMAT_MAJOR;
-    bytes[5] = FORMAT_MINOR;
+    bytes[5] = header.minor_version.min(FORMAT_MINOR);
     bytes[6..8].copy_from_slice(&header.flags.to_le_bytes());
     bytes[8..12].copy_from_slice(&header.default_block_size.to_le_bytes());
     bytes[12..20].copy_from_slice(&header.original_size.to_le_bytes());
@@ -77,7 +99,7 @@ pub fn encode_file_header(header: &FileHeader) -> [u8; FILE_HEADER_SIZE] {
     bytes
 }
 
-/// Parses and validates a format-1.0, format-1.1, format-1.2 or format-1.3 file header.
+/// Parses and validates a format 1.0 – 1.4 file header.
 pub fn decode_file_header(bytes: &[u8]) -> AceResult<FileHeader> {
     if bytes.len() != FILE_HEADER_SIZE {
         return Err(AceError::Malformed("truncated file header"));
@@ -220,6 +242,24 @@ pub fn decode_block_header(
             major: FORMAT_MAJOR,
             minor: minor_version,
         });
+    }
+    // TS1 blocks only exist in Format 1.4 files (the minimal-version writer guarantees it).
+    if minor_version < 4 && matches!(codec, CodecId::TimeSeries) {
+        return Err(AceError::UnsupportedVersion {
+            major: FORMAT_MAJOR,
+            minor: minor_version,
+        });
+    }
+    // A TS1 payload is a complete bitstream: Format 1.4 defines it without transforms, entropy
+    // stage or dictionary, so any of them is rejected rather than given ad-hoc semantics.
+    if matches!(codec, CodecId::TimeSeries)
+        && (!transforms.is_empty()
+            || !matches!(entropy, EntropyCodecId::None)
+            || dictionary.is_some())
+    {
+        return Err(AceError::Malformed(
+            "TS1 block with transforms, entropy stage or dictionary",
+        ));
     }
     Ok(BlockHeader {
         block_id: u64::from_le_bytes(

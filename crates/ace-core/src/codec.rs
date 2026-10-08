@@ -10,6 +10,9 @@ pub enum CodecId {
     Lz = 2,
     /// Self-describing integer codec introduced by ACE Format 1.3.
     Numeric = 3,
+    /// Self-describing TS1 time-series codec (Gorilla XOR floats, RunDelta integers)
+    /// introduced by ACE Format 1.4.
+    TimeSeries = 4,
 }
 
 /// Parses the serialized one-byte identifier of [`CodecId`], rejecting unknown values.
@@ -24,6 +27,7 @@ impl TryFrom<u8> for CodecId {
             1 => Ok(Self::Rle),
             2 => Ok(Self::Lz),
             3 => Ok(Self::Numeric),
+            4 => Ok(Self::TimeSeries),
             other => Err(crate::AceError::UnsupportedCodec(other)),
         }
     }
