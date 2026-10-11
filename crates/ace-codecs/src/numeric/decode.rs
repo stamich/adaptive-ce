@@ -1,5 +1,9 @@
 //! NUM1 decoder.
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a payload is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_bitpack::{
     undelta_iter, undelta_of_delta_iter, unframe_iter, unpack_iter, write_lanes_from_iter, Lane,
 };
@@ -22,8 +26,11 @@ pub fn numeric_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> 
     if info.decoded_len()? != expected_size {
         return Err(AceError::Malformed("numeric decoded size mismatch"));
     }
-    let packed = &input[NUMERIC_HEADER_SIZE..NUMERIC_HEADER_SIZE + info.packed_bytes];
-    let tail = &input[NUMERIC_HEADER_SIZE + info.packed_bytes..];
+    // `numeric_inspect` proved `header + packed + tail == input.len()`.
+    let (packed, tail) = input
+        .get(NUMERIC_HEADER_SIZE..)
+        .and_then(|body| body.split_at_checked(info.packed_bytes))
+        .ok_or(AceError::Malformed("numeric payload length mismatch"))?;
 
     let mut out = if info.bit_width == 0 {
         if !packed.is_empty() {
