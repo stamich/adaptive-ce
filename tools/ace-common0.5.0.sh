@@ -9,8 +9,8 @@
 #   ace_die       error line + exit 1
 
 ACE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ACE_VERSION="0.5.0"
-ACE_BASELINE="0.4.6"
+ACE_VERSION="0.5.1"
+ACE_BASELINE="0.5.0"
 ACE_RESULTS="${ACE_BENCH_OUT_DIR:-$ACE_ROOT/examples/results}"
 export ACE_BENCH_OUT_DIR="$ACE_RESULTS"
 

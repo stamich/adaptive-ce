@@ -152,7 +152,7 @@ fuzz targets. TS1 headers are validated before any output is allocated. See
 | `fuzz/` | `cargo-fuzz` project (15 targets) |
 | `integrations/` | Java / Scala CLI-boundary examples |
 | `docs/` | current documentation; `docs/history/` keeps earlier milestones |
-| `TASKS-0.5.0.md`, `MILESTONE-0.5.0.json` | implementation order and machine-readable summary |
+| `TASKS-0.5.1.md`, `MILESTONE-0.5.1.json` | implementation order and machine-readable summary (earlier ones in `docs/history/`) |
 
 ## Roadmap
 
