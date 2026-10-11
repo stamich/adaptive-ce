@@ -26,7 +26,7 @@ toolchain and `cargo install cargo-fuzz`).
 ```bash
 cargo +nightly fuzz run <target> -- -max_total_time=600     # release: 15 x 10 min
 cargo +nightly fuzz run <target> -- -max_total_time=60      # nightly CI: 15 x 60 s
-./ace-ci0.5.0.sh fuzz                                       # all targets, ACE_FUZZ_SECONDS each
+./ace-ci0.5.1.sh fuzz                                       # all targets, ACE_FUZZ_SECONDS each
 ```
 
 Crashes land in `fuzz/artifacts/<target>/`; a minimised corpus may be kept in

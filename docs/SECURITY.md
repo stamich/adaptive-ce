@@ -39,7 +39,7 @@ size, so a forged value cannot change what is decoded (tested).
 | 15 fuzz targets (0.5.0: `ts1_decode`, `ts1_roundtrip`, `bitstream_roundtrip`) | `fuzz/README.md` |
 | 10 000 random ranges, concurrent readers, out-of-bounds ranges | `ace-engine/tests/random_access_stress.rs` |
 | 1 GiB streaming and 256 MiB indexed files (`--ignored`) | `ace-stream/tests/large_files.rs` |
-| `unsafe` confined to audited kernels | `docs/UNSAFE-AUDIT-0.5.0.md`, `tools/ace-code_audit0.5.0.py` |
+| `unsafe` confined to audited kernels | `docs/UNSAFE-AUDIT-0.5.0.md`, `tools/ace-code_audit0.5.1.py` |
 | no `unwrap` / `expect` / `panic!` in production code | `docs/PANIC-AUDIT-0.5.0.md`, workspace clippy lints |
 
 A malformed file must be rejected by at least one reader and misdecoded by none: the

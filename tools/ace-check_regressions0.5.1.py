@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ACE 0.5.0 Regression V3: release gates with Pass / Fail / Unstable / Skipped statuses.
+"""ACE 0.5.1 Regression V3: release gates with Pass / Fail / Unstable / Skipped statuses.
 
 Sections:
 
@@ -18,7 +18,7 @@ Sections:
 
 Exit codes: 0 pass, 1 fail, 3 unstable (release script retries), 4 incomplete.
 
-usage: ace-check_regressions0.5.0.py --results DIR [--baselines DIR] [--ab FILE]
+usage: ace-check_regressions0.5.1.py --results DIR [--baselines DIR] [--ab FILE]
                                      [--external NAME=STATUS ...] [--output FILE]
 """
 from __future__ import annotations
@@ -32,8 +32,8 @@ from typing import Any
 
 
 def _benchlib():
-    """Load the shared ``ace-benchlib0.5.0.py`` module that sits next to this script."""
-    path = pathlib.Path(__file__).with_name("ace-benchlib0.5.0.py")
+    """Load the shared ``ace-benchlib0.5.1.py`` module that sits next to this script."""
+    path = pathlib.Path(__file__).with_name("ace-benchlib0.5.1.py")
     spec = importlib.util.spec_from_file_location("ace_benchlib", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -59,7 +59,7 @@ class Inputs:
     """All benchmark documents the gates read."""
 
     def __init__(self, results: pathlib.Path, baselines: pathlib.Path) -> None:
-        """Load the 0.5.0 results and the stored baselines."""
+        """Load the 0.5.1 results and the stored baselines."""
         def ours(family: str) -> Row:
             return lib.load_doc(lib.result_file(results, lib.MILESTONE, family))
 
@@ -105,7 +105,7 @@ def correctness_gates(data: Inputs, external: dict[str, str]) -> list[Row]:
     for name in ("golden_sha256", "determinism_matrix", "format_readers", "malformed_matrix"):
         status = external.get(name, lib.SKIPPED)
         gates.append(lib.gate(f"external.{name}", "correctness", status, None, None,
-                              "checked by ace-release0.5.0.sh / cargo test"))
+                              "checked by ace-release0.5.1.sh / cargo test"))
     for name, status in sorted(external.items()):
         if name not in ("golden_sha256", "determinism_matrix", "format_readers", "malformed_matrix"):
             gates.append(lib.gate(f"external.{name}", "correctness", status, None, None, "external check"))
