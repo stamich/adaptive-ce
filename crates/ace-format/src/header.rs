@@ -1,3 +1,8 @@
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a file is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`); a proven-safe site carries a local
+// `allow` with its proof.
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_core::{
     AceError, AceResult, CodecId, DecodingPlan, DictionaryId, DictionaryRef, DictionaryScope,
     EntropyCodecId, TransformId,
@@ -16,6 +21,8 @@ pub const FORMAT_MINOR_BASE: u8 = 3;
 pub const FILE_HEADER_SIZE: usize = 32;
 /// Fixed serialized block-header size before variable descriptors and metadata.
 pub const BLOCK_HEADER_SIZE: usize = 32;
+/// Serialized size of a dictionary descriptor (8-byte identifier + 1-byte scope).
+const DICTIONARY_DESCRIPTOR_SIZE: usize = 9;
 /// File flag indicating that a serialized block index and trailer are present.
 pub const FILE_FLAG_HAS_INDEX: u16 = 0x0001;
 /// File flag indicating that one or more block dictionary references may be present.
@@ -158,18 +165,29 @@ pub fn decode_file_header(bytes: &[u8]) -> AceResult<FileHeader> {
 
 /// Returns the variable descriptor byte count implied by a fixed block header.
 pub fn block_descriptor_size(fixed: &[u8; BLOCK_HEADER_SIZE], minor_version: u8) -> usize {
-    let transforms = fixed[22] as usize;
+    let transforms = usize::from(fixed[22]);
     let dictionary = if minor_version >= 1 && fixed[23] & BLOCK_FLAG_HAS_DICTIONARY != 0 {
-        9
+        DICTIONARY_DESCRIPTOR_SIZE
     } else {
         0
     };
-    transforms + dictionary
+    // At most 255 + 9 bytes: cannot overflow.
+    transforms.saturating_add(dictionary)
 }
 
 /// Serializes one block header and its variable transform/dictionary descriptors.
+///
+/// # Invariants
+///
+/// `header.transforms.len() <= 255`; [`crate::AceWriter::write_block`] rejects longer lists
+/// before calling this function, so the count byte never truncates.
+#[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // encoder: see Invariants
 pub fn encode_block_header(header: &BlockHeader) -> Vec<u8> {
-    let dictionary_bytes = if header.dictionary.is_some() { 9 } else { 0 };
+    let dictionary_bytes = if header.dictionary.is_some() {
+        DICTIONARY_DESCRIPTOR_SIZE
+    } else {
+        0
+    };
     let mut bytes = vec![0u8; BLOCK_HEADER_SIZE + header.transforms.len() + dictionary_bytes];
     bytes[0..8].copy_from_slice(&header.block_id.to_le_bytes());
     bytes[8..12].copy_from_slice(&header.original_size.to_le_bytes());
@@ -220,24 +238,32 @@ pub fn decode_block_header(
     if crate::checksum(&fixed[..28]) != stored {
         return Err(AceError::Malformed("block header checksum mismatch"));
     }
-    let transform_count = fixed[22] as usize;
     let dictionary_present = minor_version >= 1 && fixed[23] & BLOCK_FLAG_HAS_DICTIONARY != 0;
-    let expected = transform_count + if dictionary_present { 9 } else { 0 };
-    if descriptors.len() != expected {
+    // The caller sized `descriptors` with `block_descriptor_size`; anything else is malformed.
+    let fixed_array: &[u8; BLOCK_HEADER_SIZE] = fixed
+        .try_into()
+        .map_err(|_| AceError::Malformed("truncated block header"))?;
+    if descriptors.len() != block_descriptor_size(fixed_array, minor_version) {
         return Err(AceError::Malformed("block descriptor count mismatch"));
     }
-    let transforms = descriptors[..transform_count]
+    let (transform_bytes, dictionary_bytes) = descriptors
+        .split_at_checked(usize::from(fixed[22]))
+        .ok_or(AceError::Malformed("block descriptor count mismatch"))?;
+    let transforms = transform_bytes
         .iter()
         .map(|&v| TransformId::try_from(v))
         .collect::<AceResult<Vec<_>>>()?;
     let dictionary = if dictionary_present {
-        let id = DictionaryId(u64::from_le_bytes(
-            descriptors[transform_count..transform_count + 8]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid dictionary id"))?,
-        ));
-        let scope = scope_from_u8(descriptors[transform_count + 8])?;
-        Some(DictionaryRef { id, scope })
+        let (id, scope) = dictionary_bytes
+            .split_first_chunk::<8>()
+            .ok_or(AceError::Malformed("invalid dictionary id"))?;
+        let scope = scope
+            .first()
+            .ok_or(AceError::Malformed("invalid dictionary scope"))?;
+        Some(DictionaryRef {
+            id: DictionaryId(u64::from_le_bytes(*id)),
+            scope: scope_from_u8(*scope)?,
+        })
     } else {
         None
     };
