@@ -98,6 +98,10 @@ impl LaneStats {
 ///
 /// Deltas live in the lane ring, so a wrapping 16-bit counter has delta `+1` at the wrap. The
 /// bit widths are accumulated with OR (same highest bit as a running maximum, fewer branches).
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn lane_stats<T: Lane>(input: &[u8]) -> LaneStats {
     let mut lanes = input.chunks_exact(T::BYTES).map(T::read_le);
     let Some(first) = lanes.next() else {

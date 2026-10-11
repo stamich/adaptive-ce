@@ -107,6 +107,10 @@ fn sample_values(input: &[u8], width: NumericWidth) -> Vec<u64> {
 }
 
 /// Width-monomorphized body of [`sample_values`] (`B` is the lane width in bytes).
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn sample_lane<const B: usize>(input: &[u8]) -> Vec<u64> {
     input
         .chunks_exact(B)

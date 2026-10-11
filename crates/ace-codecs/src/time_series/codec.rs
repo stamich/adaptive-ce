@@ -58,6 +58,10 @@ impl TimeSeriesLayout {
 }
 
 /// Little-endian lanes of `B` bytes of `input` (the incomplete tail is not included).
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn lanes<const B: usize>(input: &[u8]) -> impl Iterator<Item = u64> + '_ {
     input.chunks_exact(B).map(read_lane::<B>)
 }

@@ -82,10 +82,10 @@ pub(crate) fn f64_noisy(bytes: usize) -> Vec<u8> {
     let mut rng = XorShift64::new(0x0015_E0F6);
     let smooth = f64_smooth(bytes.div_ceil(8) * 8);
     let mut out: Vec<u8> = smooth
-        .chunks_exact(8)
-        .flat_map(|chunk| {
-            let mut raw = [0u8; 8];
-            raw.copy_from_slice(chunk);
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .flat_map(|&raw| {
             let bits = u64::from_le_bytes(raw) ^ (rng.next_u64() & 0xF_FFFF);
             bits.to_le_bytes()
         })
@@ -197,7 +197,9 @@ mod tests {
         assert_eq!(first(f64_step(8)), 100.0);
         assert_eq!(first(f64_special(8)).to_bits(), 0);
         assert!(f64_random(1 << 16)
-            .chunks_exact(8)
-            .all(|c| { (u64::from_le_bytes(c.try_into().unwrap()) >> 52) & 0x7FF != 0x7FF }));
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .all(|&c| (u64::from_le_bytes(c) >> 52) & 0x7FF != 0x7FF));
     }
 }

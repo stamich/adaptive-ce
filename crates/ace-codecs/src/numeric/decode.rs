@@ -69,6 +69,10 @@ fn decode_lane<T: Lane>(info: &NumericPayloadInfo, packed: &[u8]) -> AceResult<V
 /// With `bit_width == 0` every stored value is zero, so the sequence is implied by the header:
 /// FOR/Delta give a constant `first`; DoD gives `first + i * first_delta` in the lane ring. The
 /// output is written in place without a bit reader or temporary vector (memory speed).
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn decode_zero_width<T: Lane>(info: &NumericPayloadInfo) -> Vec<u8> {
     let step = match info.mode {
         NumericMode::DeltaOfDelta => T::from_u64_truncating(info.first_delta as u64),
