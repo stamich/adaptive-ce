@@ -131,6 +131,10 @@ fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> 
 }
 
 /// FloatFast: encodes the evidence layout once and keeps it if it meets the fallback bound.
+///
+/// # Errors
+///
+/// Propagates the TS1 encoder's error for the evidence layout.
 pub fn float_fast_decision(input: &[u8], route: &RouteDecision) -> AceResult<FloatFastOutcome> {
     let (PlannerRoute::FloatFast, Some(evidence)) = (route.route, route.float_evidence) else {
         return Ok(FloatFastOutcome::NotFloatFast);
@@ -199,6 +203,10 @@ pub fn generic_decision_bytes(decision: &PlannerDecision) -> u64 {
 /// Skipped when specialization is off, when a planner fast path decided the block (trivial
 /// data), and when the generic plan already needs at most `input / 32` bytes — no TS1 plan
 /// could pass the absolute-saving rule then, so RunDelta is not even counted.
+///
+/// # Errors
+///
+/// Propagates TS1 RunDelta estimation errors.
 pub fn apply_time_series_policy(
     input: &[u8],
     decision: PlannerDecision,

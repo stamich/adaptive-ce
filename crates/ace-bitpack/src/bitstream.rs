@@ -163,6 +163,10 @@ pub struct BitReader<'a> {
 impl<'a> BitReader<'a> {
     /// Creates a reader; fails when `bit_len` exceeds the bits available in `input` or when
     /// `input` has more than one byte of padding (`input.len() != ceil(bit_len / 8)`).
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Malformed`] when `input.len() != ceil(bit_len / 8)`.
     pub fn new(input: &'a [u8], bit_len: u64) -> AceResult<Self> {
         if bit_len.div_ceil(8) != input.len() as u64 {
             return Err(AceError::Malformed("bitstream length mismatch"));

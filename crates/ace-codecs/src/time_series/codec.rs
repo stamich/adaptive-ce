@@ -126,6 +126,10 @@ fn payload_info(
 }
 
 /// Encodes `input` as a TS1 payload with `layout`.
+///
+/// # Errors
+///
+/// [`AceError::InvalidTimeSeries`] when the layout's lane width is not valid for its mode.
 pub fn ts1_encode_with(input: &[u8], layout: TimeSeriesLayout) -> AceResult<Vec<u8>> {
     let mut writer = BitWriter::with_capacity(input.len() * 8 + 64);
     encode_stream(input, layout, &mut writer);
@@ -138,6 +142,10 @@ pub fn ts1_encode_with(input: &[u8], layout: TimeSeriesLayout) -> AceResult<Vec<
 /// Exact byte length of `ts1_encode_with(input, layout)`, computed without writing a stream.
 ///
 /// Runs the same encoder against a bit counter, so it can never disagree with the encoder.
+///
+/// # Errors
+///
+/// Same conditions as [`ts1_encode_with`].
 pub fn ts1_encoded_len(input: &[u8], layout: TimeSeriesLayout) -> AceResult<usize> {
     let mut counter = BitCounter::default();
     encode_stream(input, layout, &mut counter);
@@ -147,6 +155,10 @@ pub fn ts1_encoded_len(input: &[u8], layout: TimeSeriesLayout) -> AceResult<usiz
 
 /// Exact number of stream bits `ts1_encode_with(input, layout)` would write (header and tail
 /// excluded); used by the planner's sample estimator, which needs sub-byte precision.
+///
+/// # Errors
+///
+/// Same conditions as [`ts1_encode_with`].
 pub fn ts1_stream_bits(input: &[u8], layout: TimeSeriesLayout) -> AceResult<u64> {
     let mut counter = BitCounter::default();
     encode_stream(input, layout, &mut counter);
@@ -154,6 +166,11 @@ pub fn ts1_stream_bits(input: &[u8], layout: TimeSeriesLayout) -> AceResult<u64>
 }
 
 /// Encodes `input` with the smallest of the given layouts (ties: earlier layout wins).
+///
+/// # Errors
+///
+/// [`AceError::InvalidTimeSeries`] when `layouts` is empty; otherwise the conditions of
+/// [`ts1_encode_with`].
 pub fn ts1_encode_best(input: &[u8], layouts: &[TimeSeriesLayout]) -> AceResult<Vec<u8>> {
     let mut best: Option<(usize, TimeSeriesLayout)> = None;
     for &layout in layouts {
@@ -167,6 +184,10 @@ pub fn ts1_encode_best(input: &[u8], layouts: &[TimeSeriesLayout]) -> AceResult<
 }
 
 /// Encodes `input` with the smallest TS1 layout (used by the generic codec dispatcher).
+///
+/// # Errors
+///
+/// Same conditions as [`ts1_encode_with`].
 pub fn ts1_encode(input: &[u8]) -> AceResult<Vec<u8>> {
     ts1_encode_best(input, &TimeSeriesLayout::ALL)
 }
@@ -175,6 +196,12 @@ pub fn ts1_encode(input: &[u8]) -> AceResult<Vec<u8>> {
 ///
 /// The header is validated (including `decoded_len == expected_size`) before the output buffer
 /// is allocated; the stream is read through a bounds-checked [`BitReader`].
+///
+/// # Errors
+///
+/// [`AceError::InvalidTimeSeries`] when the header is invalid (see [`ts1_inspect`]), when the
+/// declared size differs from `expected_size`, or when the bitstream is truncated or encodes an
+/// impossible value.
 pub fn ts1_decode(payload: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let info = ts1_inspect(payload)?;
     if info.decoded_len()? != expected_size {

@@ -7,6 +7,11 @@ use super::canonical::canonical_codes;
 use super::code_lengths::build_code_lengths;
 
 /// Encodes bytes with canonical Huffman coding; returns `(256-byte length table, payload)`.
+///
+/// # Errors
+///
+/// Propagates [`ace_core::AceError::InvalidHuffman`] from code-length or canonical-code construction
+/// (an internal invariant; every input, including an empty one, is encodable).
 pub fn huffman_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
     if input.is_empty() {
         return Ok((vec![0u8; 256], Vec::new()));

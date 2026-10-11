@@ -9,6 +9,11 @@ use crate::Lane;
 ///
 /// Fails when `bit_width` exceeds the lane or a value does not fit. A zero bit width is legal
 /// only for an all-zero slice and yields an empty vector.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `bit_width` exceeds the lane width, when a value needs more
+/// than `bit_width` bits, or when the packed length overflows `usize`.
 pub fn pack<T: Lane>(values: &[T], bit_width: u8) -> AceResult<Vec<u8>> {
     if bit_width > T::BITS {
         return Err(AceError::Malformed(T::WIDTH_TOO_LARGE));
@@ -36,11 +41,20 @@ pub fn pack<T: Lane>(values: &[T], bit_width: u8) -> AceResult<Vec<u8>> {
 ///
 /// The input length must equal `ceil(count * bit_width / 8)` exactly, so corrupted metadata
 /// can neither read out of bounds nor be silently truncated.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `bit_width` exceeds the lane width, when
+/// `count * bit_width` overflows, or when `input.len()` is not exactly the packed length.
 pub fn unpack<T: Lane>(input: &[u8], count: usize, bit_width: u8) -> AceResult<Vec<T>> {
     Ok(unpack_iter(input, count, bit_width)?.collect())
 }
 
 /// Validates like [`unpack`] and then yields the values lazily (no intermediate vector).
+///
+/// # Errors
+///
+/// Same validation as [`unpack`]; nothing is yielded when it fails.
 pub fn unpack_iter<T: Lane>(
     input: &[u8],
     count: usize,
@@ -63,6 +77,11 @@ pub fn unpack_iter<T: Lane>(
 }
 
 /// Exact byte length of `count` packed values of `bit_width` bits (checked for overflow).
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `count * bit_width` (or the rounding to bytes) overflows
+/// `usize`.
 pub fn packed_len(count: usize, bit_width: u8) -> AceResult<usize> {
     count
         .checked_mul(bit_width as usize)

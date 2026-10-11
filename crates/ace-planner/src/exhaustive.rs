@@ -8,6 +8,10 @@ use ace_core::{AceConfig, AceError, AceResult, PhysicalCompressionPlan};
 use crate::{encode_plan_payload, stable_plan_key, DeterministicCostModel, EntropySelectionPolicy};
 
 /// Deterministically executes candidate pipelines and chooses the lowest cost without wall-clock timing.
+///
+/// # Errors
+///
+/// Propagates pipeline encoding errors; [`AceError::Malformed`] when `candidates` is empty.
 pub fn evaluate_candidates(
     input: &[u8],
     candidates: &[PhysicalCompressionPlan],
@@ -24,6 +28,10 @@ pub fn evaluate_candidates(
 }
 
 /// Deterministically evaluates every candidate and returns populated cost/score fields in stable input order.
+///
+/// # Errors
+///
+/// Propagates pipeline encoding errors.
 pub fn evaluate_all_candidates(
     input: &[u8],
     candidates: &[PhysicalCompressionPlan],

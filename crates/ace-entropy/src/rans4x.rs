@@ -11,6 +11,11 @@ pub const RANS4X_METADATA_BYTES: usize = RANS4X_LANES * 512 + RANS4X_LANES * 4;
 /// This milestone keeps each lane wire-compatible with the proven scalar rANS coder while
 /// removing the single long state dependency chain.  A later SIMD implementation can replace
 /// lane execution without changing the surrounding entropy identifier or metadata contract.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] when a lane fails to encode or a lane payload exceeds `u32::MAX`
+/// bytes.
 pub fn rans4x_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
     let mut lanes = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
     for (index, &byte) in input.iter().enumerate() {
@@ -38,6 +43,11 @@ pub fn rans4x_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
 }
 
 /// Decodes four round-robin rANS lanes and restores the original byte order.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] for metadata of the wrong length, lane lengths that do not add up
+/// to the payload, or any lane error of [`crate::rans_decode`].
 pub fn rans4x_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     if metadata.len() != RANS4X_METADATA_BYTES {
         return Err(AceError::InvalidRans("invalid rANS4x metadata size"));

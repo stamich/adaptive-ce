@@ -101,6 +101,12 @@ pub fn encode_index(index: &BlockIndex) -> Vec<u8> {
 }
 
 /// Parses and validates a complete block-index section.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a wrong magic, length or entry layout,
+/// [`AceError::IndexChecksumMismatch`], and [`AceError::ResourceLimitExceeded`] when the
+/// entry count exceeds `limits.max_index_entries`.
 pub fn decode_index(bytes: &[u8], limits: &DecodeLimits) -> AceResult<BlockIndex> {
     if bytes.len() < 12 || bytes[0..4] != INDEX_MAGIC {
         return Err(AceError::Malformed("invalid block index header"));
@@ -195,6 +201,11 @@ pub fn encode_trailer(trailer: FileTrailer) -> [u8; TRAILER_SIZE] {
 }
 
 /// Parses and validates an end-of-file trailer.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a wrong length or magic and
+/// [`AceError::IndexChecksumMismatch`] for a wrong CRC.
 pub fn decode_trailer(bytes: &[u8]) -> AceResult<FileTrailer> {
     if bytes.len() != TRAILER_SIZE || bytes[0..4] != TRAILER_MAGIC {
         return Err(AceError::Malformed("invalid ACE trailer"));

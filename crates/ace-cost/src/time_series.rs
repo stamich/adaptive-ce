@@ -52,6 +52,11 @@ pub const fn gorilla_layout(width: FloatWidth) -> TimeSeriesLayout {
 /// Each window is encoded (counted) on its own; the mean bits per transition are scaled to the
 /// block's `value_count − 1` transitions. Confidence is `1 − spread / mean` of the per-window
 /// costs, clamped to `0..=1`, so uniform data is trusted and phase changes are not.
+///
+/// # Errors
+///
+/// Propagates [`ace_core::AceError::InvalidTimeSeries`] from the TS1 bit counter; it cannot occur for
+/// the Gorilla layouts of a [`FloatWidth`].
 pub fn estimate_gorilla(input: &[u8], width: FloatWidth) -> AceResult<TimeSeriesEstimate> {
     let layout = gorilla_layout(width);
     let lane = width.lane_bytes();
@@ -95,6 +100,10 @@ pub fn estimate_gorilla(input: &[u8], width: FloatWidth) -> AceResult<TimeSeries
 }
 
 /// Exact RunDelta payload size of `input` read as `lane_bytes` lanes.
+///
+/// # Errors
+///
+/// [`ace_core::AceError::InvalidTimeSeries`] when `lane_bytes` is not a RunDelta lane width (2, 4, 8).
 pub fn estimate_run_delta(input: &[u8], lane_bytes: u8) -> AceResult<TimeSeriesEstimate> {
     let layout = TimeSeriesLayout::run_delta(lane_bytes);
     Ok(TimeSeriesEstimate {

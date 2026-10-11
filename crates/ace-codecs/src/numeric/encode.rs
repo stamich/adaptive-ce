@@ -14,6 +14,10 @@ const TOO_SHORT: AceError =
     AceError::Malformed("numeric codec requires at least two integer values");
 
 /// Encodes bytes with the smallest deterministic FOR/Delta/DoD+BitPack representation.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `input` holds fewer than two complete integer values.
 pub fn numeric_encode(input: &[u8]) -> AceResult<Vec<u8>> {
     let estimate = estimate_numeric(input).ok_or(TOO_SHORT)?;
     numeric_encode_with(input, estimate.width, estimate.mode)
@@ -23,6 +27,11 @@ pub fn numeric_encode(input: &[u8]) -> AceResult<Vec<u8>> {
 ///
 /// Used by the engine to reuse the planner's estimate, by the ablation benchmark and by tests
 /// that must exercise every `(width, mode)` pair.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `input` holds fewer than two complete values of `width`;
+/// bit-packing errors are propagated (an internal invariant).
 pub fn numeric_encode_with(
     input: &[u8],
     width: NumericWidth,
@@ -39,6 +48,12 @@ pub fn numeric_encode_with(
 /// The caller supplies evidence from ACE's strict full-block NumericFast validator; no mode
 /// search, delta allocation or bit packing happens. Output is byte-identical to
 /// `numeric_encode_with(input, width, DeltaOfDelta)` for such input.
+///
+/// # Errors
+///
+/// [`AceError::ResourceLimitExceeded`] when `value_count * width + tail_bytes` overflows;
+/// [`AceError::Malformed`] when that size differs from `input.len()` or fewer than two values
+/// are declared.
 pub fn numeric_encode_fixed_step(
     input: &[u8],
     width: NumericWidth,

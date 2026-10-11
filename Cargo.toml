@@ -50,6 +50,8 @@ todo = "deny"
 unimplemented = "deny"
 unreachable = "deny"
 dbg_macro = "deny"
+missing_errors_doc = "deny"
+missing_safety_doc = "deny"
 
 [workspace.dependencies]
 thiserror = "2"

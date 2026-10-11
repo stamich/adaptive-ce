@@ -354,6 +354,11 @@ impl SampleCounts {
 }
 
 /// Applies the float admission rules to one profile.
+///
+/// # Errors
+///
+/// Returns the first [`FloatRejection`] rule the profile fails (too short, too many
+/// special values, no smoothness evidence, ...); `Ok(())` admits the block to the Float lane.
 pub fn admit_float(profile: &FloatProfile) -> Result<(), FloatRejection> {
     if profile.value_count < LANE_WINDOW_VALUES {
         return Err(FloatRejection::TooShort);

@@ -11,6 +11,12 @@ use super::canonical::{DecodeTables, LOOKUP_BITS, MAX_CODE_LEN};
 /// and the last few bits of the stream fall back to the per-length canonical walk, which also
 /// produces the error results (truncated stream, invalid code), so the observable behaviour is
 /// identical to a pure bit-by-bit decoder.
+///
+/// # Errors
+///
+/// [`AceError::InvalidHuffman`] for a length table that is not exactly 256 bytes or not a
+/// valid canonical code, an invalid code, or a stream that ends before `expected_size`
+/// symbols.
 pub fn huffman_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let lengths: &[u8; 256] = metadata
         .try_into()

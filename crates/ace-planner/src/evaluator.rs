@@ -15,6 +15,11 @@ use crate::{
 ///
 /// Callers that already own a `PlanningContext` should use
 /// `evaluate_candidates_v4_with_route` to avoid a duplicate route-classification pass.
+///
+/// # Errors
+///
+/// Propagates candidate encoding and estimation errors; [`AceError::Malformed`] when no
+/// candidate survives (an internal invariant).
 pub fn evaluate_candidates_v4(
     input: &[u8],
     profile: &ace_core::BlockProfile,
@@ -29,6 +34,10 @@ pub fn evaluate_candidates_v4(
 ///
 /// NumericFast returns directly from reusable validation evidence. NumericGeneral performs one
 /// exact Numeric estimate; Generic never performs a full Numeric estimate.
+///
+/// # Errors
+///
+/// The conditions of [`evaluate_candidates_v4`].
 pub fn evaluate_candidates_v4_with_route(
     input: &[u8],
     profile: &ace_core::BlockProfile,
@@ -86,6 +95,10 @@ pub fn evaluate_candidates_v4_with_route(
 /// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
 /// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
 /// blended compressed size, then the cost model selects the cheapest quality-safe plan.
+///
+/// # Errors
+///
+/// The conditions of [`evaluate_candidates_v4`].
 pub fn evaluate_candidates_v3(
     input: &[u8],
     profile: &ace_core::BlockProfile,

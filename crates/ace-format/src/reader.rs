@@ -30,6 +30,10 @@ impl<R: Read> AceReader<R> {
     }
 
     /// Reads and validates the fixed file header and records its minor format version.
+    ///
+    /// # Errors
+    ///
+    /// The conditions of [`crate::decode_file_header`] and [`AceError::Io`].
     pub fn read_file_header(&mut self) -> AceResult<FileHeader> {
         let mut bytes = [0u8; FILE_HEADER_SIZE];
         self.inner.read_exact(&mut bytes)?;
@@ -42,6 +46,10 @@ impl<R: Read> AceReader<R> {
     }
 
     /// Reads one block and returns header, entropy metadata and encoded payload.
+    ///
+    /// # Errors
+    ///
+    /// The conditions of [`crate::read_serialized_block`].
     pub fn read_block(&mut self) -> AceResult<SerializedBlock> {
         read_serialized_block(&mut self.inner, self.minor_version, &self.limits)
     }

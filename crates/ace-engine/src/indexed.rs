@@ -43,18 +43,33 @@ pub struct AceIndexedDecoder<R: Read + Seek> {
 /// Inherent methods of [`AceIndexedDecoder`].
 impl<R: Read + Seek> AceIndexedDecoder<R> {
     /// Opens and validates an indexed ACE stream.
+    ///
+    /// # Errors
+    ///
+    /// Header, trailer and index validation errors ([`AceError::Malformed`],
+    /// [`AceError::IndexChecksumMismatch`], [`AceError::ResourceLimitExceeded`]) and
+    /// [`AceError::Io`]; files without an index (Format 1.0) are rejected.
     pub fn open(reader: R, limits: DecodeLimits) -> AceResult<Self> {
         let indexed = AceIndexReader::open(reader, limits.clone())?;
         Ok(Self { indexed, limits })
     }
 
     /// Decodes exactly one independent block by stable block identifier.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::BlockNotFound`] for an unknown `block_id`; otherwise the block decoding errors of
+    /// [`crate::AceEngine::decompress_into`].
     pub fn decode_block(&mut self, block_id: u64) -> AceResult<Vec<u8>> {
         let (header, metadata, payload) = self.indexed.read_encoded_block(block_id)?;
         decode_encoded_block(&header, &metadata, &payload, &self.limits)
     }
 
     /// Returns physical-read diagnostics for a logical range without decoding it.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Malformed`] when the range is reversed or ends past the original size.
     pub fn range_metrics(&self, range: Range<u64>) -> AceResult<RangeAccessMetrics> {
         if range.start > range.end || range.end > self.indexed.file_header.original_size {
             return Err(AceError::Malformed(
@@ -79,6 +94,10 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
     }
 
     /// Decodes only blocks intersecting the requested logical byte range and trims boundary blocks.
+    ///
+    /// # Errors
+    ///
+    /// The conditions of [`AceIndexedDecoder::read_range_with_metrics`].
     pub fn read_range(&mut self, range: Range<u64>) -> AceResult<Vec<u8>> {
         self.read_range_with_metrics(range).map(|(bytes, _)| bytes)
     }
@@ -89,6 +108,11 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
     /// metrics and a second identical lookup for the actual range read. The method does not
     /// reopen or revalidate the container; callers that need open latency should measure
     /// [`AceIndexedDecoder::open`] separately.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Malformed`] for an invalid range; block decoding errors and
+    /// [`AceError::Io`] for every intersecting block.
     pub fn read_range_with_metrics(
         &mut self,
         range: Range<u64>,
