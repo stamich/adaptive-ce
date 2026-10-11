@@ -36,4 +36,5 @@ unsafe_op_in_unsafe_fn = "deny"
 
 [lints.clippy]
 dbg_macro = "deny"
+unreachable = "deny"
 undocumented_unsafe_blocks = "deny"
