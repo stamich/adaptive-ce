@@ -17,7 +17,7 @@ cd "$ACE_ROOT"
 (( $# >= 1 )) || ace_die "usage: $0 <baseline-source-tree> [--quick]"
 baseline_tree="$(cd "$1" && pwd)"; shift
 quick=0; [[ "${1:-}" == "--quick" ]] && quick=1
-bench_flags=(); ab_flags=()
+bench_flags=(--repeat 3); ab_flags=()   # release baseline = median of three runs
 if (( quick )); then bench_flags=(--quick); ab_flags=(--quick); fi
 
 checklist=()
@@ -67,7 +67,7 @@ externals=(--external golden_sha256=pass --external determinism_matrix=pass
            --external float_lane=pass)
 ab_json="$ACE_RESULTS/ab-${ACE_VERSION}-vs-${ACE_BASELINE}.json"
 
-ace_step "6/11 benchmarks (Harness V3)"
+ace_step "6/11 benchmarks (Harness V3, three runs + repeatability unless --quick)"
 ./ace-benchmark0.5.1.sh all "${bench_flags[@]}" || true
 
 ace_step "7/11 interleaved A/B vs $ACE_BASELINE + Regression V3"
@@ -82,13 +82,13 @@ for attempt in 1 2 3; do
   tail -n +1 "$work/regression.log" | head -n 1
   (( status == 3 )) || break
   ace_log "measurement UNSTABLE (attempt $attempt/3): re-running release-performance"
-  ./ace-benchmark0.5.1.sh release-performance "${bench_flags[@]}"
+  ./ace-benchmark0.5.1.sh release-performance "${bench_flags[@]}" || true
 done
 cat "$work/regression.log"
 case "$status" in
   0) record "Quality / performance (A/B) / stability" PASS "Regression V3" ;;
   3) record "Quality / performance (A/B) / stability" UNSTABLE "re-run on a quiet machine" ;;
-  4) record "Quality / performance (A/B) / stability" INCOMPLETE "quick plan or missing input" ;;
+  4) record "Quality / performance (A/B) / stability" INCOMPLETE "quick plan, missing input or non-performance governor (diagnostic)" ;;
   *) record "Quality / performance (A/B) / stability" FAIL "see regression log" ;;
 esac
 

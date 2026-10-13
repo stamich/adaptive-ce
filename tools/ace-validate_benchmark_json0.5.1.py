@@ -135,7 +135,7 @@ def validate(path: pathlib.Path) -> str:
     schema = str(data["schema_version"])
     if schema not in ("2.0", "2.1", "2.2"):
         raise ValidationError(f"{path}: unsupported schema_version {schema!r}")
-    if scope not in ("regression", "ab"):
+    if scope not in ("regression", "ab", "repeatability"):
         _validate_environment(path, data, ENVIRONMENT_20)
         if schema in ("2.1", "2.2"):
             _validate_21(path, data)
