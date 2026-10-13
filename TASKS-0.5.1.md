@@ -19,3 +19,4 @@ Status: ✅ done in this release · ⏩ executed by the release pipeline on the 
 | # | Task | Commit | Acceptance |
 |---|---|---|---|
 | 4 ✅ | `clippy::unreachable = deny` (workspace, `ace-simd`, `ace-bench`); the one use replaced by a closed table | Denies unreachable! in every crate | clippy clean |
+| 5 ✅ | CI keeps the job log and re-emits errors / failed tests / panics as check-run annotations | Reports CI failures as check-run annotations | failure visible in the check run |
