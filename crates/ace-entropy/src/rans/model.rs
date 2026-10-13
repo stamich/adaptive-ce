@@ -21,6 +21,11 @@ pub struct NormalizedFrequencyTable {
 /// Inherent methods of [`NormalizedFrequencyTable`].
 impl NormalizedFrequencyTable {
     /// Builds a deterministic normalized model from raw input bytes.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidRans`] when normalization does not sum to `RANS_SCALE` (an internal
+    /// invariant; an empty input yields the empty model).
     pub fn from_input(input: &[u8]) -> AceResult<Self> {
         if input.is_empty() {
             return Ok(Self {
@@ -80,6 +85,10 @@ impl NormalizedFrequencyTable {
     }
 
     /// Validates an already normalized frequency array and computes cumulative prefixes.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidRans`] when the frequencies do not sum to `RANS_SCALE`.
     pub fn from_frequencies(frequencies: [u16; 256]) -> AceResult<Self> {
         let sum: u32 = frequencies.iter().map(|&v| v as u32).sum();
         if sum != 0 && sum != RANS_SCALE {
@@ -101,6 +110,10 @@ impl NormalizedFrequencyTable {
     }
 
     /// Returns the symbol whose cumulative range contains the supplied rANS slot.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidRans`] when `slot >= RANS_SCALE`.
     pub fn symbol_for_slot(&self, slot: u32) -> AceResult<u8> {
         if slot >= RANS_SCALE {
             return Err(AceError::InvalidRans("slot outside normalized scale"));
@@ -141,6 +154,11 @@ impl NormalizedFrequencyTable {
     }
 
     /// Parses and validates the fixed 512-byte normalized-frequency metadata.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidRans`] when `metadata` is not 512 bytes or the frequencies do not sum to
+    /// `RANS_SCALE`.
     pub fn decode_metadata(metadata: &[u8]) -> AceResult<Self> {
         if metadata.len() != 512 {
             return Err(AceError::InvalidRans(

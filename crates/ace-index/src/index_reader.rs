@@ -22,7 +22,12 @@ pub struct AceIndexReader<R: Read + Seek> {
 
 /// Inherent methods of [`AceIndexReader`].
 impl<R: Read + Seek> AceIndexReader<R> {
-    /// Opens a seekable ACE file, loads its format-1.1/1.2 trailer and validates the block index.
+    /// Opens a seekable ACE file, loads its trailer (Format 1.1 and later) and validates the block index.
+    ///
+    /// # Errors
+    ///
+    /// Header, trailer and index validation errors and [`AceError::Io`]; a file without a
+    /// trailer is [`AceError::Malformed`].
     pub fn open(mut reader: R, limits: DecodeLimits) -> AceResult<Self> {
         reader.seek(SeekFrom::Start(0))?;
         let mut header_bytes = [0u8; FILE_HEADER_SIZE];
@@ -88,6 +93,11 @@ impl<R: Read + Seek> AceIndexReader<R> {
     }
 
     /// Reads one indexed encoded block without decoding its compression pipeline.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::BlockNotFound`] for an unknown `block_id`; block read errors and
+    /// [`AceError::Io`].
     pub fn read_encoded_block(&mut self, block_id: u64) -> AceResult<SerializedBlock> {
         let file_offset = self
             .index

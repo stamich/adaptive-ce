@@ -19,6 +19,12 @@ const TRANSFORM_COUNT_OFFSET: usize = 22;
 ///
 /// Every size declared by the header is checked against `limits` before the corresponding
 /// buffer is allocated, so hostile headers cannot trigger large allocations.
+///
+/// # Errors
+///
+/// [`AceError::ResourceLimitExceeded`] when a declared size exceeds `limits`,
+/// [`AceError::Malformed`] / unsupported-identifier errors from the header, and
+/// [`AceError::Io`] (including an unexpected end of file).
 pub fn read_serialized_block<R: Read>(
     reader: &mut R,
     minor_version: u8,

@@ -61,6 +61,10 @@ impl NumericPayloadInfo {
     }
 
     /// Number of bytes the payload decodes to (`value_count * width + tail`), overflow-checked.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Malformed`] when `value_count * width + tail` overflows `usize`.
     pub fn decoded_len(&self) -> AceResult<usize> {
         self.value_count
             .checked_mul(self.width.bytes())
@@ -73,6 +77,12 @@ impl NumericPayloadInfo {
 ///
 /// Every check of [`crate::numeric_decode`] that does not need the expected output size is
 /// performed here, so `ace inspect` reports exactly what the decoder would accept.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a truncated header, a wrong magic or version, an unknown mode
+/// or width, a bit width above the lane width, or section lengths that do not add up to the
+/// payload length.
 pub fn numeric_inspect(payload: &[u8]) -> AceResult<NumericPayloadInfo> {
     if payload.len() < NUMERIC_HEADER_SIZE {
         return Err(AceError::Malformed("truncated numeric header"));

@@ -12,6 +12,11 @@ use crate::{numeric_inspect, NumericMode, NumericPayloadInfo, NUMERIC_HEADER_SIZ
 ///
 /// The declared value/tail sizes must add up to `expected_size`; this bounds every allocation
 /// by a caller-controlled limit (`DecodeLimits::max_block_size`) before any value is decoded.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when the header is invalid (see [`numeric_inspect`]), when the
+/// declared size differs from `expected_size`, or when the packed stream is inconsistent.
 pub fn numeric_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let info = numeric_inspect(input)?;
     if info.decoded_len()? != expected_size {

@@ -5,6 +5,11 @@ use ace_core::{AceError, AceResult};
 use super::model::{NormalizedFrequencyTable, RANS_L, RANS_SCALE, RANS_SCALE_BITS};
 
 /// Encodes bytes using a scalar 32-bit range Asymmetric Numeral System.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] when the normalized model gives a present symbol a zero frequency
+/// (an internal invariant; every input, including an empty one, is encodable).
 pub fn rans_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
     if input.is_empty() {
         return Ok((vec![0u8; 512], Vec::new()));
@@ -32,6 +37,11 @@ pub fn rans_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
 }
 
 /// Decodes a scalar rANS payload into exactly `expected_size` bytes.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] for invalid metadata, a truncated payload, an invalid final state
+/// or trailing bytes.
 pub fn rans_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     if expected_size == 0 {
         return Ok(Vec::new());

@@ -9,6 +9,11 @@ use crate::{
 };
 
 /// Encodes a primary-codec byte stream; returns `(entropy metadata, payload)`.
+///
+/// # Errors
+///
+/// Propagates the encoder's error (internal invariants only; every input, including an empty
+/// one, is encodable).
 pub fn encode_entropy(id: EntropyCodecId, input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
     match id {
         EntropyCodecId::None => Ok((Vec::new(), input.to_vec())),
@@ -19,6 +24,11 @@ pub fn encode_entropy(id: EntropyCodecId, input: &[u8]) -> AceResult<(Vec<u8>, V
 }
 
 /// Decodes an entropy-coded stream into exactly `expected_size` primary-codec bytes.
+///
+/// # Errors
+///
+/// [`AceError::InvalidHuffman`] or [`AceError::InvalidRans`] for invalid metadata or payload,
+/// including output that does not end at exactly `expected_size` bytes.
 pub fn decode_entropy(
     id: EntropyCodecId,
     metadata: &[u8],
@@ -30,6 +40,10 @@ pub fn decode_entropy(
 
 /// Like [`decode_entropy`], but borrows the input for [`EntropyCodecId::None`] instead of
 /// copying it (the decode hot path then copies a RAW block once instead of twice).
+///
+/// # Errors
+///
+/// The conditions of [`decode_entropy`].
 pub fn decode_entropy_cow<'a>(
     id: EntropyCodecId,
     metadata: &[u8],

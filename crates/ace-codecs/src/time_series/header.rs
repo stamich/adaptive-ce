@@ -54,6 +54,11 @@ pub struct TimeSeriesPayloadInfo {
 /// Inherent methods of [`TimeSeriesPayloadInfo`].
 impl TimeSeriesPayloadInfo {
     /// Number of bytes the payload decodes to (`value_count * lane_bytes + tail_len`).
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidTimeSeries`] when `value_count * lane_bytes + tail_len` overflows
+    /// `usize`.
     pub fn decoded_len(&self) -> AceResult<usize> {
         self.value_count
             .checked_mul(self.lane_bytes as usize)
@@ -80,6 +85,12 @@ impl TimeSeriesPayloadInfo {
 ///
 /// Every structural check of the decoder that does not need the expected output size happens
 /// here, so `ace inspect` reports exactly what the decoder would accept.
+///
+/// # Errors
+///
+/// [`AceError::InvalidTimeSeries`] for a truncated header, a wrong magic or version, a
+/// reserved mode or flag, an invalid lane width, or stream / tail lengths that do not match
+/// the payload length.
 pub fn ts1_inspect(payload: &[u8]) -> AceResult<TimeSeriesPayloadInfo> {
     let header = payload
         .get(..TIME_SERIES_HEADER_SIZE)

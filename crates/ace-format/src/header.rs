@@ -100,6 +100,12 @@ pub fn encode_file_header(header: &FileHeader) -> [u8; FILE_HEADER_SIZE] {
 }
 
 /// Parses and validates a format 1.0 – 1.4 file header.
+///
+/// # Errors
+///
+/// [`AceError::InvalidMagic`], [`AceError::UnsupportedVersion`],
+/// [`AceError::UnsupportedFeature`] or [`AceError::Malformed`] (wrong length, CRC or field
+/// value).
 pub fn decode_file_header(bytes: &[u8]) -> AceResult<FileHeader> {
     if bytes.len() != FILE_HEADER_SIZE {
         return Err(AceError::Malformed("truncated file header"));
@@ -192,6 +198,12 @@ pub fn encode_block_header(header: &BlockHeader) -> Vec<u8> {
 }
 
 /// Parses one fixed block header and its caller-supplied variable descriptors.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a wrong length, CRC, size or flag combination; unsupported
+/// codec, entropy-codec or transform identifiers; features newer than `minor_version` (for
+/// example TS1 below Format 1.4).
 pub fn decode_block_header(
     fixed: &[u8],
     descriptors: &[u8],

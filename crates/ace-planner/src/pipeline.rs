@@ -6,6 +6,10 @@ use ace_entropy::encode_entropy;
 use ace_transforms::apply_transform;
 
 /// Executes only the reversible payload pipeline of one plan and returns entropy metadata, payload and primary-stream size.
+///
+/// # Errors
+///
+/// Propagates transform, codec and entropy encoding errors.
 pub fn encode_plan_payload(
     input: &[u8],
     plan: &PhysicalCompressionPlan,

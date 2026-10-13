@@ -36,6 +36,11 @@ pub fn rle_encode(input: &[u8]) -> Vec<u8> {
 }
 
 /// Decodes packet RLE while enforcing the caller-provided output size bound.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a truncated packet or output that does not end at exactly
+/// `expected_size` bytes.
 pub fn rle_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let mut out = Vec::with_capacity(expected_size.min(1024 * 1024));
     let mut i = 0usize;
