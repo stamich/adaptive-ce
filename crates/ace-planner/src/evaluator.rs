@@ -20,6 +20,11 @@ use crate::{
 ///
 /// Propagates candidate encoding and estimation errors; [`AceError::Malformed`] when no
 /// candidate survives (an internal invariant).
+#[deprecated(
+    since = "0.5.1",
+    note = "classifies the route a second time; use `evaluate_candidates_v4_with_route` with the \
+            block's `PlanningContext` (removed with the 0.6 API facade)"
+)]
 pub fn evaluate_candidates_v4(
     input: &[u8],
     profile: &ace_core::BlockProfile,
@@ -99,6 +104,11 @@ pub fn evaluate_candidates_v4_with_route(
 /// # Errors
 ///
 /// The conditions of [`evaluate_candidates_v4`].
+#[deprecated(
+    since = "0.5.1",
+    note = "Planner V3.6 entry point without route evidence; use \
+            `evaluate_candidates_v4_with_route` (removed with the 0.6 API facade)"
+)]
 pub fn evaluate_candidates_v3(
     input: &[u8],
     profile: &ace_core::BlockProfile,
