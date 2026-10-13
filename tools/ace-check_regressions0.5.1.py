@@ -16,7 +16,11 @@ Sections:
 * ``environment`` -- diagnostics only (fingerprint warnings, machine-speed drift vs the
   stored baseline lz4/zstd numbers, stored-baseline comparison).
 
-Exit codes: 0 pass, 1 fail, 3 unstable (release script retries), 4 incomplete.
+Exit codes: 0 pass, 1 fail, 3 unstable (release script retries), 4 incomplete or diagnostic.
+
+Governor gate (0.5.1): when the measured run recorded a CPU governor other than
+``performance`` (for example ``powersave``), a verdict that would be ``pass`` becomes
+``diagnostic`` (exit 4) — such a run documents the machine but never qualifies a release.
 
 usage: ace-check_regressions0.5.1.py --results DIR [--baselines DIR] [--ab FILE]
                                      [--external NAME=STATUS ...] [--output FILE]
@@ -293,6 +297,12 @@ def main(argv: list[str]) -> int:
              + performance_gates(data, ab)
              + stability_gates(data) + environment_rows(data))
     status = lib.overall_status(gates)
+    governor = (data.release["environment"].get("cpu") or {}).get("governor")
+    gates.append(lib.gate("environment.governor", "environment", lib.DIAGNOSTIC, None, None,
+                          f"cpu governor: {governor or 'unknown'} (a pass requires 'performance' "
+                          "when the governor is known)"))
+    if status == lib.PASS and governor not in (None, "performance"):
+        status = lib.DIAGNOSTIC
     doc = {
         "schema_version": lib.SCHEMA, "project": "ace", "milestone": lib.MILESTONE, "base": lib.BASELINE,
         "scope": "regression", "benchmark_contract_origin": f"ace-{lib.MILESTONE}",
