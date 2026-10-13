@@ -120,7 +120,7 @@ The same example is compiled and executed as a doctest of `ace-engine`.
 Generated tables: [`docs/PERFORMANCE-0.5.0.md`](docs/PERFORMANCE-0.5.0.md). Methodology
 (adaptive iterations, 3 × 7 batches, median-of-medians, MAD, interleaved A/B, Float lane
 families and same-run gates):
-[`docs/BENCHMARK-METHODOLOGY-0.5.0.md`](docs/BENCHMARK-METHODOLOGY-0.5.0.md).
+[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ```bash
 ./ace-benchmark0.5.1.sh all [--quick] [--isolated]   # Harness V3 + Regression V3
