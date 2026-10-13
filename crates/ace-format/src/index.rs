@@ -12,7 +12,7 @@ pub const TRAILER_MAGIC: [u8; 4] = *b"ACET";
 /// Fixed serialized size of one block-index entry.
 pub const INDEX_ENTRY_SIZE: usize = 40;
 /// Size of the index section header (magic + little-endian `u64` entry count).
-const INDEX_HEADER_SIZE: usize = 12;
+pub const INDEX_HEADER_SIZE: usize = 12;
 /// Fixed serialized trailer size.
 pub const TRAILER_SIZE: usize = 28;
 
