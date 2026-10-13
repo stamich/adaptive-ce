@@ -40,11 +40,17 @@ pub fn rans_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
 ///
 /// # Errors
 ///
-/// [`AceError::InvalidRans`] for invalid metadata, a truncated payload, an invalid final state
-/// or trailing bytes.
+/// [`AceError::InvalidRans`] for invalid metadata, a truncated payload, trailing bytes, a
+/// final state other than the encoder's initial state, or a non-empty payload for an empty
+/// output.
 pub fn rans_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     if expected_size == 0 {
-        return Ok(Vec::new());
+        // The encoder writes no state for an empty output.
+        return if input.is_empty() {
+            Ok(Vec::new())
+        } else {
+            Err(AceError::InvalidRans("payload for an empty output"))
+        };
     }
     if input.len() < 4 {
         return Err(AceError::InvalidRans("truncated initial state"));
@@ -87,6 +93,12 @@ pub fn rans_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceRe
     }
     if cursor != input.len() {
         return Err(AceError::InvalidRans("trailing rANS payload bytes"));
+    }
+    // Decoding runs the encoder backwards, so a stream that really encodes `expected_size`
+    // symbols ends in the encoder's initial state; anything else (a forged size, a damaged
+    // state) is rejected here instead of relying on the block CRC alone.
+    if state != RANS_L {
+        return Err(AceError::InvalidRans("final rANS state mismatch"));
     }
     Ok(out)
 }
