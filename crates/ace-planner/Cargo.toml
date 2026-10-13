@@ -15,6 +15,7 @@ ace-entropy = { path = "../ace-entropy" }
 
 [dev-dependencies]
 proptest.workspace = true
+ace-corpus = { path = "../ace-corpus" }
 
 [lints]
 workspace = true
