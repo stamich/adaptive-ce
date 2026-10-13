@@ -26,8 +26,13 @@ cargo test --workspace
 ace_step "release build"
 cargo build --workspace --release
 
-ace_step "rustdoc (-D warnings)"
+ace_step "rustdoc (-D warnings): public API"
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
+# Private items too: broken links or malformed docs on internal code fail the build as well.
+# (Separate run: the public run also rejects public docs that link to private items.)
+ace_step "rustdoc (-D warnings): private items"
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
 
 if (( run_demo )); then
   ace_step "demo"
