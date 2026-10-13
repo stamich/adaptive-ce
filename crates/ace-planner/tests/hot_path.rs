@@ -1,5 +1,6 @@
 //! Planner hot path: zero full trials and deterministic decisions.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
+#![allow(deprecated)] // keeps the deprecated 0.4 entry points covered until they are removed
 
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, CompressionProfile};
