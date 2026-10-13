@@ -8,3 +8,4 @@ examples/data/**
 __pycache__/
 fuzz/artifacts/
 fuzz/corpus/
+dist/
