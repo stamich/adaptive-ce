@@ -136,8 +136,8 @@ dictionary size, index entries) before allocating; every block carries a CRC32C;
 index and trailer are checksummed. Malformed input is rejected with an error, never a panic —
 covered by the malformed matrix (incl. a Format 1.4 / TS1 fixture), property tests and 15
 fuzz targets. TS1 headers are validated before any output is allocated. See
-[`docs/SECURITY.md`](docs/SECURITY.md), [`docs/UNSAFE-AUDIT-0.5.0.md`](docs/UNSAFE-AUDIT-0.5.0.md),
-[`docs/PANIC-AUDIT-0.5.0.md`](docs/PANIC-AUDIT-0.5.0.md).
+[`docs/SECURITY.md`](docs/SECURITY.md), [`docs/UNSAFE-AUDIT.md`](docs/UNSAFE-AUDIT.md),
+[`docs/PANIC-AUDIT.md`](docs/PANIC-AUDIT.md).
 
 ## Repository map
 
