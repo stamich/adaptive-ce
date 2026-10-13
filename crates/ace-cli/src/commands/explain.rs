@@ -1,5 +1,7 @@
 //! `explain`: analyzer features, every candidate's cost and the selected plan per block.
 
+use std::io::Write;
+
 use ace_core::AceConfig;
 use ace_engine::{AceEngine, BlockExplanation};
 use anyhow::Result;
@@ -8,10 +10,12 @@ use crate::files;
 
 /// Runs analyzer and planner only, printing deterministic candidate scores per block.
 pub fn explain(input: &str, config: AceConfig) -> Result<()> {
+    let mut out = std::io::stdout().lock();
     let data = files::read(input)?;
     let engine = AceEngine::new(config)?;
     for explanation in engine.explain(&data)? {
-        println!(
+        writeln!(
+            out,
             "block {} size={} H0={:.3} H1={:.3} run={:.3} delta={:.3} repeat={:.3}",
             explanation.block_id,
             explanation.profile.size,
@@ -20,8 +24,8 @@ pub fn explain(input: &str, config: AceConfig) -> Result<()> {
             explanation.profile.run_score,
             explanation.profile.delta_score,
             explanation.profile.repetition_score
-        );
-        println!(
+        )?;
+        writeln!(out,
             "  numeric detected={} width={:?} confidence={:.3} monotonic={:.3} delta_p95_bits={} dod_zero={:.3} dod_p95_bits={} tail={}",
             explanation.numeric_profile.detected,
             explanation.numeric_profile.width,
@@ -31,13 +35,13 @@ pub fn explain(input: &str, config: AceConfig) -> Result<()> {
             explanation.numeric_profile.dod_zero_ratio,
             explanation.numeric_profile.dod_bit_width_p95,
             explanation.numeric_profile.tail_bytes,
-        );
-        print_route(&explanation);
+        )?;
+        print_route(&mut out, &explanation)?;
         for candidate in &explanation.candidates {
             let score = display_score(candidate.score);
-            println!("  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason);
+            writeln!(out, "  candidate tier={:?} {:?}/{:?} transforms={:?} score={} predicted={} metadata={} reason={}", candidate.tier, candidate.decoding.codec, candidate.decoding.entropy, candidate.decoding.transforms, score, candidate.cost.predicted_size_bytes, candidate.cost.metadata_bytes, candidate.reason)?;
         }
-        println!(
+        writeln!(out,
             "  selected {:?}/{:?} transforms={:?} fast_path={} estimated={} sampled={} stage2={} hybrid_lz={} hybrid_stage1={} hybrid_stage2={} hybrid_skipped={} hybrid_high_conf_skips={} hybrid_bytes={} hybrid_disagreement_ppm={} quality={} best_blended={} quality_limit={} selected_blended={} size_rank={} cost_rank={} full_trials={}\n",
             explanation.selected.decoding.codec,
             explanation.selected.decoding.entropy,
@@ -60,15 +64,16 @@ pub fn explain(input: &str, config: AceConfig) -> Result<()> {
             explanation.telemetry.selected_size_rank,
             explanation.telemetry.selected_cost_rank,
             explanation.telemetry.full_trial_encodes,
-        );
+        )?;
     }
     Ok(())
 }
 
 /// Prints the Planner V5 route, the Float lane evidence and the selected TS1 estimate.
-fn print_route(explanation: &BlockExplanation) {
+fn print_route(out: &mut impl Write, explanation: &BlockExplanation) -> std::io::Result<()> {
     let route = &explanation.route;
-    println!(
+    writeln!(
+        out,
         "  route={} base={} reason={:?} ts1_estimates={} float_fast={} float_fast_fallback={}",
         route.route.label(),
         route.base_route.label(),
@@ -76,10 +81,10 @@ fn print_route(explanation: &BlockExplanation) {
         explanation.telemetry.time_series_estimates,
         explanation.telemetry.float_fast_hit,
         explanation.telemetry.float_fast_fallback,
-    );
+    )?;
     if let Some(evidence) = route.float_evidence {
         let p = evidence.profile;
-        println!(
+        writeln!(out,
             "  float width={} xor_zero={:.3} meaningful_bits={:.1} exponents={} non_finite={:.3} estimate={} bytes={} exact={} confidence={:.2}",
             p.width.label(),
             p.xor_zero_ratio,
@@ -90,24 +95,27 @@ fn print_route(explanation: &BlockExplanation) {
             evidence.estimate.estimated_bytes,
             evidence.estimate.exact,
             evidence.estimate.confidence,
-        );
+        )?;
     }
     for lane in route.run_prefilter.admitted() {
-        println!(
+        writeln!(
+            out,
             "  run lane=u{} equal={:.3} splat={:.3}",
             u32::from(lane.lane_bytes) * 8,
             lane.equal_ratio,
             lane.splat_ratio
-        );
+        )?;
     }
     if let Some(estimate) = explanation.time_series {
-        println!(
+        writeln!(
+            out,
             "  ts1 selected layout={} bytes={} exact={}",
             estimate.layout.label(),
             estimate.estimated_bytes,
             estimate.exact
-        );
+        )?;
     }
+    Ok(())
 }
 
 /// Formats a planner score for human-facing diagnostics.
