@@ -8,6 +8,8 @@ Concept: `AdaptiveCE_0_5_1_Koncepcja_v2.md`; task order: `TASKS-0.5.1.md`; notes
 `docs/RELEASE-NOTES-0.5.1.md`.
 
 ### Added
+- SonarQube Cloud analysis: `sonar-project.properties` and the `ace-sonarcloud0.5.1.yml`
+  workflow (LCOV from `cargo llvm-cov`, clippy JSON report; skipped without `SONAR_TOKEN`).
 - Decoder audit: `clippy::arithmetic_side_effects` + `cast_possible_truncation` in every parser
   module (`ace-format` header / index / block I/O, `ace-index`, NUM1 / TS1 headers and NUM1
   decode, rANS model, rANS4x, bit unpacking, block pipeline); generated, tool-verified
