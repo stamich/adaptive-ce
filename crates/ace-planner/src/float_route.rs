@@ -135,6 +135,16 @@ fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> 
 /// # Errors
 ///
 /// Propagates the TS1 encoder's error for the evidence layout.
+///
+/// # Invariants
+///
+/// `Selected` ⇒ the payload is the evidence layout encoded once (no other candidate is
+/// encoded) and `payload.len() * 16 <= input.len()`; otherwise `Fallback` or `NotFloatFast`,
+/// and the caller continues with the generic route unchanged.
+///
+/// # Determinism
+///
+/// A pure function of `input` and `route`.
 pub fn float_fast_decision(input: &[u8], route: &RouteDecision) -> AceResult<FloatFastOutcome> {
     let (PlannerRoute::FloatFast, Some(evidence)) = (route.route, route.float_evidence) else {
         return Ok(FloatFastOutcome::NotFloatFast);
@@ -207,6 +217,18 @@ pub fn generic_decision_bytes(decision: &PlannerDecision) -> u64 {
 /// # Errors
 ///
 /// Propagates TS1 RunDelta estimation errors.
+///
+/// # Invariants
+///
+/// A TS1 decision is returned only when [`ts1_beats_generic`] holds (≤ 90 % of the generic
+/// size for an exact estimate, ≤ 75 % for a sampled one, and at least `input / 32` bytes saved);
+/// otherwise the generic plan is returned unchanged (only the telemetry gains the TS1
+/// estimates). No full trial encode is performed.
+///
+/// # Determinism
+///
+/// A pure function of its arguments; the RunDelta candidate is the smallest exact estimate,
+/// and on equal sizes the first admitted width (prefilter order) wins.
 pub fn apply_time_series_policy(
     input: &[u8],
     decision: PlannerDecision,

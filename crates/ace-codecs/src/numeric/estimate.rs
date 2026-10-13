@@ -26,6 +26,11 @@ pub struct NumericEstimate {
 ///
 /// Ties are broken by smaller payload, then width rank (u32, u64, u16 — preserving pre-0.4.5
 /// decisions), then mode id.
+///
+/// # Determinism
+///
+/// Exact sizes from integer arithmetic; ties are broken by the fixed key (size, width rank,
+/// mode id), never by evaluation order.
 pub fn estimate_numeric(input: &[u8]) -> Option<NumericEstimate> {
     [NumericWidth::U32, NumericWidth::U64, NumericWidth::U16]
         .into_iter()

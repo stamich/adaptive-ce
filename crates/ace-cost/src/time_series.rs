@@ -57,6 +57,16 @@ pub const fn gorilla_layout(width: FloatWidth) -> TimeSeriesLayout {
 ///
 /// Propagates [`ace_core::AceError::InvalidTimeSeries`] from the TS1 bit counter; it cannot occur for
 /// the Gorilla layouts of a [`FloatWidth`].
+///
+/// # Determinism
+///
+/// Fixed sample windows and exact bit counting; the floating-point scaling is evaluated
+/// in a fixed order, so the estimate is identical on every platform.
+///
+/// # Invariants
+///
+/// `exact == false` unless the block is too short to sample, in which case the estimate is
+/// the exact encoded length (`exact == true`, `confidence == 1.0`).
 pub fn estimate_gorilla(input: &[u8], width: FloatWidth) -> AceResult<TimeSeriesEstimate> {
     let layout = gorilla_layout(width);
     let lane = width.lane_bytes();
@@ -104,6 +114,14 @@ pub fn estimate_gorilla(input: &[u8], width: FloatWidth) -> AceResult<TimeSeries
 /// # Errors
 ///
 /// [`ace_core::AceError::InvalidTimeSeries`] when `lane_bytes` is not a RunDelta lane width (2, 4, 8).
+///
+/// # Determinism
+///
+/// Runs the TS1 encoder against a bit counter, so it is exact and platform independent.
+///
+/// # Invariants
+///
+/// `estimated_bytes == ts1_encode_with(input, layout).len()` and `exact == true`.
 pub fn estimate_run_delta(input: &[u8], lane_bytes: u8) -> AceResult<TimeSeriesEstimate> {
     let layout = TimeSeriesLayout::run_delta(lane_bytes);
     Ok(TimeSeriesEstimate {

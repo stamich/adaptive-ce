@@ -115,6 +115,11 @@ impl RouteDecision {
 ///
 /// Planner V5 production code uses `RoutePolicy::classify`, which runs this first and then the
 /// Float / run prefilters.
+///
+/// # Determinism
+///
+/// Depends only on `input` and `config` — never on the thread count, the block id,
+/// timing or the SIMD backend.
 pub fn classify_planner_route(input: &[u8], config: &AceConfig) -> RouteDecision {
     if !config.enable_numeric_specialization {
         return RouteDecision::v4(

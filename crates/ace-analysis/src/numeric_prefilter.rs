@@ -72,6 +72,11 @@ pub struct NumericFastEvidence {
 ///
 /// All three lane widths are scored; the one with the highest confidence wins. Ties keep the
 /// historical preference u32 → u64 → u16, so the new 16-bit lane only wins when strictly better.
+///
+/// # Determinism
+///
+/// A pure function of `input` (integer arithmetic only); ties between widths follow the
+/// fixed order u32 → u64 → u16.
 pub fn numeric_prefilter(input: &[u8]) -> NumericPrefilter {
     let mut best = prefilter_width(input, NumericWidth::U32);
     for width in [NumericWidth::U64, NumericWidth::U16] {
