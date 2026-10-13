@@ -3,6 +3,10 @@
 //! Both the sequential [`crate::AceReader`] and the seekable index reader (`ace-index`) use
 //! this function, so limit checks and parsing exist exactly once.
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a file is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use std::io::Read;
 
 use ace_core::{AceError, AceResult, DecodeLimits};

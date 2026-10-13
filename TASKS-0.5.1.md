@@ -21,3 +21,9 @@ Status: ✅ done in this release · ⏩ executed by the release pipeline on the 
 | 4 ✅ | `clippy::unreachable = deny` (workspace, `ace-simd`, `ace-bench`); the one use replaced by a closed table | Denies unreachable! in every crate | clippy clean |
 | 5 ✅ | CI keeps the job log and re-emits errors / failed tests / panics as check-run annotations | Reports CI failures as check-run annotations | failure visible in the check run |
 | 6 ✅ | `missing_errors_doc` / `missing_safety_doc` = deny; `# Errors` on all 81 public fallible functions; stale "1.0–1.3" docs corrected to 1.0–1.4 | Requires Errors and Safety sections in public docs | clippy + rustdoc clean |
+
+## Phase C — decoder audit and resource limits
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 7 ✅ | `ace-format`: `arithmetic_side_effects` + `cast_possible_truncation` in the parser modules; index count checked with `try_from` before any arithmetic; descriptors split without index arithmetic; writer rejects > 255 transforms | Checks arithmetic in the ace-format parsers | per-field tests (count 0 / `u32::MAX` / `u64::MAX` / overflow) |
