@@ -42,6 +42,7 @@ DECODER_MODULES = (
     "crates/ace-format/src/index.rs",
     "crates/ace-format/src/block_io.rs",
     "crates/ace-index/src/index_reader.rs",
+    "crates/ace-engine/src/block_pipeline.rs",
     "crates/ace-codecs/src/numeric/header.rs",
     "crates/ace-codecs/src/numeric/decode.rs",
     "crates/ace-codecs/src/time_series/header.rs",
@@ -122,6 +123,10 @@ DECODER_FIELDS = (
     ("Block header", "header CRC, payload CRC-32C",
      "header CRC before any field is used; payload CRC over the decoded block", "-",
      ("crates/ace-engine/tests/malformed_matrix.rs::single_byte_flip_sweep_never_misdecodes",)),
+    ("Entropy metadata", "primary (codec) stream length (u32)",
+     "`try_from`; <= 2 x block original size + 1 KiB before the entropy decoder runs (a "
+     "probability-one rANS model decodes any length from four bytes)", "`max_block_size` (derived)",
+     ("crates/ace-bench/tests/limits_before_allocation.rs::forged_primary_stream_length_fails_before_allocation",)),
     ("Index (AIDX)", "entry count (u64)",
      "`try_from` to `usize`, <= limit, then `checked_mul` — all before allocation",
      "`max_index_entries`",

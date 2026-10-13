@@ -193,3 +193,65 @@ fn forged_original_size_fails_before_allocation() {
     );
     assert!(peak < BUDGET, "limited decode allocated {peak} bytes");
 }
+
+/// A one-block indexed file whose block is RAW + scalar rANS with a probability-one model
+/// (frequency 4096 for byte 0) and the given primary-stream length: four payload bytes decode
+/// to any number of zero bytes.
+fn probability_one_rans_file(primary_len: u32, original_size: u32) -> Vec<u8> {
+    use ace_core::{CodecId, EntropyCodecId};
+    use ace_format::{AceWriter, BlockHeader, FileHeader, FILE_FLAG_HAS_INDEX, FORMAT_MINOR_BASE};
+    let mut metadata = primary_len.to_le_bytes().to_vec();
+    let mut model = [0u8; 512];
+    model[..2].copy_from_slice(&4096u16.to_le_bytes());
+    metadata.extend_from_slice(&model);
+    let payload = (1u32 << 23).to_le_bytes(); // rANS state == L: never renormalizes
+    let mut writer = AceWriter::new(Vec::new());
+    writer
+        .write_file_header(&FileHeader {
+            minor_version: FORMAT_MINOR_BASE,
+            flags: FILE_FLAG_HAS_INDEX,
+            default_block_size: original_size,
+            original_size: u64::from(original_size),
+            block_count: 1,
+        })
+        .unwrap();
+    let header = BlockHeader {
+        block_id: 0,
+        original_size,
+        encoded_size: payload.len() as u32,
+        metadata_size: metadata.len() as u32,
+        codec: CodecId::Raw,
+        entropy: EntropyCodecId::Rans,
+        transforms: Vec::new(),
+        dictionary: None,
+        flags: 0,
+        payload_crc32c: checksum(&vec![0u8; original_size as usize]),
+    };
+    writer.write_block(&header, &metadata, &payload).unwrap();
+    writer.finish(true).unwrap().0
+}
+
+/// The primary (pre-codec) stream length is bounded by the block size before the entropy
+/// decoder runs: a 4 GiB primary length on a 16-byte block fails at once instead of making
+/// the rANS decoder materialize 4 GiB of zeros.
+#[test]
+fn forged_primary_stream_length_fails_before_allocation() {
+    // Sanity: the same construction with the honest length is a valid file.
+    let honest = probability_one_rans_file(16, 16);
+    assert_eq!(
+        AceEngine::default_engine().decompress(&honest).unwrap(),
+        vec![0u8; 16]
+    );
+    for primary in [u32::MAX, 1 << 30, 16 * 2 + 1024 + 1] {
+        let file = probability_one_rans_file(primary, 16);
+        let mut outcome = Ok(());
+        let peak = peak_during(|| {
+            outcome = AceEngine::default_engine().decompress(&file).map(drop);
+        });
+        assert!(
+            matches!(outcome, Err(AceError::ResourceLimitExceeded(_))),
+            "primary {primary}: {outcome:?}"
+        );
+        assert!(peak < BUDGET, "primary {primary}: allocated {peak} bytes");
+    }
+}
