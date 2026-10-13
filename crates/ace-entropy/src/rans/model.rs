@@ -1,5 +1,10 @@
 //! Normalized frequency model shared by the scalar rANS encoder and decoder.
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a payload is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`); a proven-safe site carries a local
+// `allow` with its proof.
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_core::{AceError, AceResult};
 
 /// Number of probability bits used by the ACE 0.2/0.2.1 scalar rANS implementation.
@@ -26,6 +31,10 @@ impl NormalizedFrequencyTable {
     ///
     /// [`AceError::InvalidRans`] when normalization does not sum to `RANS_SCALE` (an internal
     /// invariant; an empty input yields the empty model).
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+    // Encoder only: `count <= input.len()`, so `count * RANS_SCALE` fits `u64` for any input
+    // that fits in memory, `floor <= RANS_SCALE` fits `u16`, and `sum` stays within
+    // `256 * RANS_SCALE`.
     pub fn from_input(input: &[u8]) -> AceResult<Self> {
         if input.is_empty() {
             return Ok(Self {
@@ -90,19 +99,23 @@ impl NormalizedFrequencyTable {
     ///
     /// [`AceError::InvalidRans`] when the frequencies do not sum to `RANS_SCALE`.
     pub fn from_frequencies(frequencies: [u16; 256]) -> AceResult<Self> {
-        let sum: u32 = frequencies.iter().map(|&v| v as u32).sum();
+        // 256 * u16::MAX fits `u32`; the sum is validated before any prefix is computed.
+        let sum: u32 = frequencies.iter().map(|&v| u32::from(v)).sum();
         if sum != 0 && sum != RANS_SCALE {
             return Err(AceError::InvalidRans(
                 "normalized frequencies do not sum to scale",
             ));
         }
+        // Every prefix is at most `RANS_SCALE` (4096), so it fits `u16`.
         let mut cumulative = [0u16; 257];
-        let mut running = 0u32;
-        for i in 0..256usize {
-            cumulative[i] = running as u16;
-            running += frequencies[i] as u32;
+        let mut running = 0u16;
+        for (prefix, &frequency) in cumulative.iter_mut().zip(&frequencies) {
+            *prefix = running;
+            running = running
+                .checked_add(frequency)
+                .ok_or(AceError::InvalidRans("cumulative frequency overflow"))?;
         }
-        cumulative[256] = running as u16;
+        cumulative[256] = running;
         Ok(Self {
             frequencies,
             cumulative,
@@ -118,11 +131,13 @@ impl NormalizedFrequencyTable {
         if slot >= RANS_SCALE {
             return Err(AceError::InvalidRans("slot outside normalized scale"));
         }
-        for symbol in 0..256usize {
-            let start = self.cumulative[symbol] as u32;
-            let end = start + self.frequencies[symbol] as u32;
-            if self.frequencies[symbol] != 0 && slot >= start && slot < end {
-                return Ok(symbol as u8);
+        for symbol in 0..=u8::MAX {
+            let index = usize::from(symbol);
+            let start = u32::from(self.cumulative[index]);
+            // `start <= RANS_SCALE` and the frequency is a `u16`: no overflow.
+            let end = start.saturating_add(u32::from(self.frequencies[index]));
+            if self.frequencies[index] != 0 && slot >= start && slot < end {
+                return Ok(symbol);
             }
         }
         Err(AceError::InvalidRans("slot does not map to a symbol"))
@@ -135,11 +150,15 @@ impl NormalizedFrequencyTable {
     /// only from the already-validated frequency table, so the wire format is unchanged.
     pub fn slot_lookup_table(&self) -> Vec<u8> {
         let mut table = vec![0u8; RANS_SCALE as usize];
-        for symbol in 0..256usize {
-            let start = self.cumulative[symbol] as usize;
-            let end = start + self.frequencies[symbol] as usize;
+        for symbol in 0..=u8::MAX {
+            let index = usize::from(symbol);
+            let start = usize::from(self.cumulative[index]);
+            // Validated model: `start + frequency <= RANS_SCALE`, no overflow.
+            let end = start.saturating_add(usize::from(self.frequencies[index]));
             // A zero frequency yields an empty range, so absent symbols never claim a slot.
-            table[start..end].fill(symbol as u8);
+            if let Some(range) = table.get_mut(start..end) {
+                range.fill(symbol);
+            }
         }
         table
     }
