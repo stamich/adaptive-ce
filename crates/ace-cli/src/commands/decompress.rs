@@ -11,6 +11,7 @@ use crate::files;
 
 /// Decompresses an ACE file and writes the reconstructed bytes.
 pub fn decompress(input: &str, output: &str) -> Result<()> {
+    files::ensure_distinct(input, output)?;
     let decoded = AceEngine::default_engine().decompress(&files::read(input)?)?;
     files::write(output, &decoded)
 }
@@ -35,6 +36,7 @@ pub fn verify(input: &str) -> Result<()> {
 
 /// Decodes one indexed block and writes its reconstructed bytes.
 pub fn decode_block(input: &str, block_id: u64, output: &str) -> Result<()> {
+    files::ensure_distinct(input, output)?;
     let mut out = std::io::stdout().lock();
     let mut decoder = AceIndexedDecoder::open(files::open(input)?, DecodeLimits::default())?;
     let block = decoder.decode_block(block_id)?;
@@ -45,6 +47,7 @@ pub fn decode_block(input: &str, block_id: u64, output: &str) -> Result<()> {
 
 /// Decodes only the blocks intersecting `[offset, offset + length)` and writes that range.
 pub fn read_range(input: &str, offset: u64, length: u64, output: &str) -> Result<()> {
+    files::ensure_distinct(input, output)?;
     let mut out = std::io::stdout().lock();
     let end = offset.checked_add(length).context("range overflow")?;
     let mut decoder = AceIndexedDecoder::open(files::open(input)?, DecodeLimits::default())?;
