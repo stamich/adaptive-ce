@@ -72,7 +72,7 @@ Details: [`docs/ARCHITECTURE-0.5.0.md`](docs/ARCHITECTURE-0.5.0.md),
 ./demo/ace-run-demo0.5.1.sh              # < 1 minute product tour (incl. the Float lane)
 ```
 
-Requirements: Rust 1.97.0 (MSRV, pinned by `rust-toolchain.toml`; `Cargo.lock` included), Python 3.9+ for the tools.
+Requirements: Rust 1.97.0 or newer (MSRV); builds use the toolchain pinned by `rust-toolchain.toml` (1.98.1; never 1.98.0); `Cargo.lock` included, Python 3.9+ for the tools.
 
 ## Command-line interface
 
@@ -112,7 +112,7 @@ The same example is compiled and executed as a doctest of `ace-engine`.
 | Planner | V5 = V4.3 + Float lane (golden 0.5.0; Corpus V3 = frozen golden 0.4.6) |
 | Encoded bytes | Corpus V3 and every file written with `--disable-float`: identical to 0.4.6 |
 | Public API | streaming sink `Write + Seek`; new `AceConfig` field; new enum variants ([migration](docs/MIGRATION-0.4-TO-0.5.md)) |
-| MSRV | Rust 1.97 |
+| MSRV | Rust 1.97 (build toolchain 1.98.1) |
 | Benchmark schema | 2.1 (all 2.0 fields kept) |
 
 ## Performance

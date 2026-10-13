@@ -32,7 +32,8 @@ case "${1:-}" in
     done
     ;;
   msrv)
-    # Use a pinned 1.97.0 / 1.97 toolchain when installed, otherwise the default one if it is 1.97.x.
+    # The MSRV (1.97.0) is selected explicitly: rust-toolchain.toml pins the newer build
+    # toolchain, so a plain `cargo` would not test the MSRV at all.
     toolchain=()
     if cargo +1.97.0 --version >/dev/null 2>&1; then
       toolchain=(+1.97.0)

@@ -12,3 +12,4 @@ Status: ✅ done in this release · ⏩ executed by the release pipeline on the 
 |---|---|---|---|
 | 1 ✅ | Version 0.5.1, `MILESTONE-0.5.1.json`, this file; 0.5.0 summaries → `docs/history/` | Bumps version to 0.5.1 | `ace --version` = 0.5.1 |
 | 2 ✅ | Scripts / tools renamed to 0.5.1; A/B and stored baseline = 0.5.0; package audit rejects 0.5.0 names | Renames scripts and tools to 0.5.1 | package name audit |
+| 3 ✅ | Build toolchain pinned to 1.98.1 (vtable fix of 1.98.0), MSRV stays 1.97.0 with an explicit `+1.97.0` CI job | Pins the build toolchain to Rust 1.98.1 | CI `pr` + `msrv` green |

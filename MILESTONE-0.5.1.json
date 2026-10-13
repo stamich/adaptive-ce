@@ -20,7 +20,7 @@
   },
   "benchmark_schema": "2.1",
   "msrv": "1.97.0",
-  "toolchain": "1.97.0",
+  "toolchain": "1.98.1 (rust-toolchain.toml; 1.98.0 must not be used)",
   "concept": "AdaptiveCE_0_5_1_Koncepcja_v2.md",
   "status": "in progress",
   "golden": {
