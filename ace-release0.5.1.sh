@@ -29,9 +29,9 @@ ace_step "1/12 build, fmt, clippy, rustdoc"
 ./ace-build0.5.1.sh --no-demo
 record "Build / fmt / clippy / doc" PASS "ace-build0.5.1.sh"
 
-ace_step "2/12 code audit (unsafe placement, panic policy)"
+ace_step "2/12 code audit (unsafe placement, panic policy, decoder audit)"
 python3 tools/ace-code_audit0.5.1.py
-record "Unsafe / panic audit" PASS "tools/ace-code_audit0.5.1.py"
+record "Unsafe / panic / decoder audit" PASS "tools/ace-code_audit0.5.1.py"
 
 ace_step "3/12 release tests (proptest budget ${ACE_PROPTEST_CASES:-10000}) + ignored large-file tests"
 PROPTEST_CASES="${ACE_PROPTEST_CASES:-10000}" cargo test --release --workspace
@@ -39,6 +39,11 @@ cargo test --release --workspace -- --ignored
 record "Unit + property + hardening tests" PASS "cargo test --release (incl. --ignored)"
 record "Format readers 1.0-1.4 / malformed (incl. TS1) / limits" PASS "format_1_* / malformed_matrix tests"
 record "Float lane end to end (V3 untouched, V4 never larger)" PASS "crates/ace-engine/tests/float_lane.rs"
+record "Compatibility fixtures 0.2.1 - 0.5.0 decode byte for byte" PASS "crates/ace-engine/tests/compat_fixtures.rs"
+record "Decoder fields / limits fail before allocation" PASS "header_fields, metadata_fields, decode_limits, limits_before_allocation"
+record "Planner V5 invariants and fixed tie-breaks" PASS "crates/ace-planner/tests/v5_invariants.rs, tie_break.rs"
+record "Determinism up to 32 workers" PASS "crates/ace-stream/tests/determinism_matrix.rs"
+record "CLI end to end (invalid input, closed pipe, version)" PASS "crates/ace-cli/tests/cli.rs"
 
 ace_step "4/12 golden SHA-256: 0.5.0 (Corpus V3 + V4) and frozen 0.4.6 (auto and ACE_SIMD=scalar)"
 cargo test --release -p ace-engine --test golden
