@@ -24,3 +24,26 @@ jobs:
       - run: set -o pipefail; ./ace-ci0.5.1.sh msrv 2>&1 | tee ci.log
       - if: failure()
         run: tools/ace-ci-annotate0.5.1.sh ci.log
+  fuzz-smoke:
+    # 15 targets x 25 s on every push / PR. The corpus is kept between runs as a CI cache and
+    # published as an artifact; it is never committed (fuzz/README.md, "Corpus policy").
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install nightly --profile minimal && cargo install cargo-fuzz --locked
+      - uses: actions/cache@v4
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+      - run: set -o pipefail; ACE_FUZZ_REQUIRED=1 ./ace-ci0.5.1.sh fuzz-smoke 2>&1 | tee ci.log
+      - if: failure()
+        run: tools/ace-ci-annotate0.5.1.sh ci.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus-and-artifacts
+          path: |
+            fuzz/corpus
+            fuzz/artifacts
+          if-no-files-found: ignore
