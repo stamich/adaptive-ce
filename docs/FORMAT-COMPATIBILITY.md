@@ -13,8 +13,8 @@ file contains a TS1 block, then 1.4 ([`FORMAT-1.4.md`](FORMAT-1.4.md)).
 
 | Version | Adds |
 |---|---|
-| 1.1 | dictionary descriptors |
-| 1.2 | rANS4x entropy coder, block index (AIDX) and trailer (ACET) |
+| 1.1 | scalar rANS, dictionary descriptors, block index (AIDX) and trailer (ACET) |
+| 1.2 | rANS4x entropy coder |
 | 1.3 | primary codec 3 `Numeric` (NUM1 payload; u16 lanes since 0.4.5) |
 | 1.4 | primary codec 4 `TimeSeries` (TS1 payload: Gorilla f64 / f32, RunDelta) |
 
