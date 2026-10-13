@@ -22,6 +22,7 @@ ace-runtime = { path = "../ace-runtime" }
 ace-corpus = { path = "../ace-corpus" }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 flate2.workspace = true
 lz4_flex.workspace = true
 zstd.workspace = true
