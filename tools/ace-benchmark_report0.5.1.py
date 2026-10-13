@@ -149,6 +149,19 @@ def float_section(doc: Row) -> str:
                                "FloatFast", "TS1 blocks", "Compress MB/s", "Decompress MB/s"], rows)
 
 
+def allocation_profile_section(doc: Row) -> str:
+    """Markdown table of ``allocation-profile``: allocated bytes per input byte by stage."""
+    stages = ("classify", "numeric_fast", "float_fast", "analysis", "candidates", "evaluate",
+              "ts1_policy", "encode")
+    rows = []
+    for row in doc["workloads"]:
+        routes = ", ".join(f"{name} {count}" for name, count in sorted(row["routes"].items()))
+        cells = [lib.fmt(row["stages"][stage]["allocated_bytes_per_input_byte"], 2) for stage in stages]
+        rows.append([row["path"].removeprefix("allocation_profile_"), row["profile"], routes, *cells,
+                     lib.fmt(row["engine_bytes_per_input_byte"], 1)])
+    return lib.markdown_table(["Case", "Profile", "Routes (blocks)", *stages, "Engine total"], rows)
+
+
 def markdown_report(args: argparse.Namespace) -> str:
     """Build the full PERFORMANCE document."""
     release = lib.load_doc(lib.result_file(args.results, lib.MILESTONE, "release-performance"))
@@ -176,6 +189,10 @@ def markdown_report(args: argparse.Namespace) -> str:
     if float_doc.exists():
         parts += ["## Float lane (4 MiB per workload, 1 thread; gain = bytes with the lane off / on)", "",
                   float_section(lib.load_doc(float_doc)), ""]
+    allocation = lib.result_file(args.results, lib.MILESTONE, "allocation-profile")
+    if allocation.exists():
+        parts += ["## Allocation profile (allocated bytes per input byte, by block-encoder stage)", "",
+                  allocation_profile_section(lib.load_doc(allocation)), ""]
     if args.ab:
         parts += ["## Interleaved A/B", "", ab_section(lib.load_doc(args.ab)), ""]
     if args.regression:

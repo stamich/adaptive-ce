@@ -38,6 +38,7 @@ const FAMILIES: &[(&str, FamilyFn)] = &[
     ("random-access", random_access_family),
     ("streaming", streaming_family),
     ("memory", memory_family),
+    ("allocation-profile", allocation_profile_family),
     ("corpus", corpus_family),
     ("block-matrix", block_matrix_family),
     ("random-access-extended", random_access_extended_family),
