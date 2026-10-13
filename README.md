@@ -8,7 +8,7 @@ container, which carries a block index for random access.
 **0.5.0 adds lossless floating-point and time-series compression**: the TS1 codec (Gorilla
 XOR for f64 / f32, RunDelta for rarely changing values) and Planner V5 with its Float lane.
 Data the 0.4 pipeline already handles is written byte-for-byte as in 0.4.6 (Format 1.3); only
-files with a TS1 block are Format 1.4. See [`docs/RELEASE-NOTES-0.5.0.md`](docs/RELEASE-NOTES-0.5.0.md)
+files with a TS1 block are Format 1.4. See [`docs/history/RELEASE-NOTES-0.5.0.md`](docs/history/RELEASE-NOTES-0.5.0.md)
 and [`docs/MIGRATION-0.4-TO-0.5.md`](docs/MIGRATION-0.4-TO-0.5.md).
 
 ## Features
