@@ -1,4 +1,22 @@
 /// Hard decoder limits used before any attacker-controlled allocation is performed.
+///
+/// Every size, count and length read from a file is compared with these limits *before* the
+/// buffer it describes is allocated (`docs/DECODER-AUDIT.md`). Which reader applies which
+/// limit:
+///
+/// | Limit | Sequential (`decompress*`, streaming) | Indexed (`AceIndexedDecoder`) |
+/// |---|---|---|
+/// | [`max_output_size`](Self::max_output_size) | file header + running total | file header + range length |
+/// | [`max_block_size`](Self::max_block_size) | every block header and decoder | every block header and decoder |
+/// | [`max_encoded_block_size`](Self::max_encoded_block_size) | every block header | every block header |
+/// | [`max_transforms`](Self::max_transforms) | every block header | every block header |
+/// | [`max_index_entries`](Self::max_index_entries) | block count of the file header ([`max_block_count`](Self::max_block_count)) | index entry count, index byte size, block count |
+/// | [`max_dictionary_size`](Self::max_dictionary_size) | reserved: Format 1.x embeds no dictionary bytes | reserved |
+///
+/// # Invariants
+///
+/// A limit only ever rejects input; it never changes decoded bytes. Raising a limit cannot make
+/// a valid file decode differently.
 #[derive(Debug, Clone)]
 pub struct DecodeLimits {
     /// Maximum total reconstructed output accepted by the decoder.
@@ -9,10 +27,25 @@ pub struct DecodeLimits {
     pub max_encoded_block_size: usize,
     /// Maximum number of transforms attached to one block.
     pub max_transforms: usize,
-    /// Maximum embedded dictionary size accepted by the parser.
+    /// Maximum embedded dictionary size accepted by the parser (reserved: Format 1.x stores
+    /// dictionary references, never dictionary bytes).
     pub max_dictionary_size: usize,
-    /// Maximum number of serialized block-index entries.
+    /// Maximum number of serialized block-index entries; also the maximum number of blocks
+    /// any reader accepts (see [`Self::max_block_count`]).
     pub max_index_entries: usize,
+}
+
+/// Derived limits of [`DecodeLimits`].
+impl DecodeLimits {
+    /// Maximum number of blocks a file may declare, enforced by every reader before the first
+    /// block is read.
+    ///
+    /// It equals [`Self::max_index_entries`], so the sequential and the indexed reader accept
+    /// exactly the same files. (A separate field would be a breaking change of this public
+    /// struct; it is planned with the 0.6 API facade.)
+    pub fn max_block_count(&self) -> u64 {
+        u64::try_from(self.max_index_entries).unwrap_or(u64::MAX)
+    }
 }
 
 /// Provides the documented default values of [`DecodeLimits`].
@@ -27,5 +60,21 @@ impl Default for DecodeLimits {
             max_dictionary_size: 16 * 1024 * 1024,
             max_index_entries: 16_000_000,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The block-count limit follows the index-entry limit.
+    #[test]
+    fn block_count_limit_follows_index_entries() {
+        let limits = DecodeLimits {
+            max_index_entries: 7,
+            ..DecodeLimits::default()
+        };
+        assert_eq!(limits.max_block_count(), 7);
+        assert_eq!(DecodeLimits::default().max_block_count(), 16_000_000);
     }
 }
