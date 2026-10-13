@@ -5,6 +5,10 @@
 //! ([`ace_core::PRIMARY_LENGTH_PREFIX_BYTES`]). The wrap and split functions below are the only
 //! code that knows this layout.
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a file is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_codecs::decode_codec;
 use ace_core::{AceError, AceResult, DecodeLimits, EntropyCodecId, PRIMARY_LENGTH_PREFIX_BYTES};
 use ace_entropy::decode_entropy_cow;
@@ -22,7 +26,8 @@ pub(crate) fn wrap_entropy_metadata(
     }
     let primary_len = u32::try_from(primary_len)
         .map_err(|_| AceError::ResourceLimitExceeded("primary codec stream size"))?;
-    let mut wrapped = Vec::with_capacity(PRIMARY_LENGTH_PREFIX_BYTES + metadata.len());
+    let mut wrapped =
+        Vec::with_capacity(PRIMARY_LENGTH_PREFIX_BYTES.saturating_add(metadata.len()));
     wrapped.extend_from_slice(&primary_len.to_le_bytes());
     wrapped.extend_from_slice(&metadata);
     Ok(wrapped)
@@ -41,10 +46,21 @@ fn split_entropy_metadata(
         return Err(AceError::Malformed("missing primary-stream length"));
     }
     let (prefix, model) = metadata.split_at(PRIMARY_LENGTH_PREFIX_BYTES);
-    Ok((
-        model,
-        ace_core::read_lane::<PRIMARY_LENGTH_PREFIX_BYTES>(prefix) as usize,
-    ))
+    let primary_len = usize::try_from(ace_core::read_lane::<PRIMARY_LENGTH_PREFIX_BYTES>(prefix))
+        .map_err(|_| AceError::ResourceLimitExceeded("primary stream size"))?;
+    Ok((model, primary_len))
+}
+
+/// Largest primary (codec) stream a block of `original_size` bytes can have.
+///
+/// Every codec's worst case is a small expansion of its input (LZ and RLE add one header byte
+/// per 128 literals, NUM1 and TS1 a fixed header), so twice the block plus 1 KiB is never
+/// reached by an encoder. The bound matters for entropy-coded blocks: their primary length is
+/// a 32-bit field, and a rANS model with a probability-one symbol decodes any number of
+/// symbols from four bytes — without the bound a 50-byte block could make the decoder produce
+/// 4 GiB before the codec stage rejects it.
+fn max_primary_len(original_size: usize) -> usize {
+    original_size.saturating_mul(2).saturating_add(1024)
 }
 
 /// Decodes one parsed block (entropy → codec → inverse transforms) and verifies its CRC32C.
@@ -63,6 +79,9 @@ pub(crate) fn decode_encoded_block(
     }
     let (entropy_metadata, primary_size) =
         split_entropy_metadata(header.entropy, metadata, payload.len())?;
+    if primary_size > max_primary_len(original_size) {
+        return Err(AceError::ResourceLimitExceeded("primary stream size"));
+    }
     // `None` entropy borrows the payload, so a RAW block is copied once, not twice.
     let primary = decode_entropy_cow(header.entropy, entropy_metadata, payload, primary_size)?;
     let mut stage = decode_codec(header.codec, &primary, original_size)?;

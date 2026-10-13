@@ -59,6 +59,8 @@ compatibility fixture still decodes):
   or a non-empty payload for an empty output;
 * a Huffman stream with more than the zero padding of its last byte left after the declared
   number of symbols, or a non-empty payload for an empty output;
+* an entropy-coded block whose primary (codec) stream length exceeds twice the block size plus
+  1 KiB (no codec expands its input that much);
 * a file declaring more blocks than `DecodeLimits::max_block_count()` (= `max_index_entries`),
   also in the sequential reader;
 * an index section larger than `max_index_entries` admits (refused before it is read).

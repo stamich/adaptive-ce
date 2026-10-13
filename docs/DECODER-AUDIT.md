@@ -26,6 +26,7 @@ wrap-around or an allocation of the forged size
 | Block header | transform count (u8) | <= limit before the descriptors are allocated; descriptors split with `split_at_checked` | `max_transforms` | `malformed_matrix.rs::resource_limits_are_enforced`<br>`index_hardening.rs::writer_rejects_more_than_255_transforms` |
 | Block header | codec / entropy / transform ids | `TryFrom` (unknown = error); rANS4x >= 1.2, NUM1 >= 1.3, TS1 >= 1.4 and plain | - | `format_1_3.rs::numeric_codec_requires_format_1_3`<br>`format_1_4.rs::time_series_codec_requires_format_1_4`<br>`format_1_4.rs::time_series_block_must_be_plain` |
 | Block header | header CRC, payload CRC-32C | header CRC before any field is used; payload CRC over the decoded block | - | `malformed_matrix.rs::single_byte_flip_sweep_never_misdecodes` |
+| Entropy metadata | primary (codec) stream length (u32) | `try_from`; <= 2 x block original size + 1 KiB before the entropy decoder runs (a probability-one rANS model decodes any length from four bytes) | `max_block_size` (derived) | `limits_before_allocation.rs::forged_primary_stream_length_fails_before_allocation` |
 | Index (AIDX) | entry count (u64) | `try_from` to `usize`, <= limit, then `checked_mul` — all before allocation | `max_index_entries` | `index_hardening.rs::extreme_entry_counts_are_rejected_before_allocation`<br>`index_hardening.rs::index_entry_limit_is_enforced` |
 | Index (AIDX) | entries | fixed 40-byte records via `as_chunks`; ids strictly increasing; offsets contiguous (`checked_add`); spans inside the block region | - | `index_hardening.rs::non_contiguous_logical_offsets_are_rejected`<br>`index_hardening.rs::duplicate_block_ids_are_rejected` |
 | Trailer (ACET) | index_offset, index_size (u64) | CRC; `checked_add`; inside the file; size `try_from` and <= 12 + 40 x limit before allocation | `max_index_entries` | `trailer_limits.rs::index_size_above_the_entry_limit_is_refused`<br>`trailer_limits.rs::forged_index_sizes_are_rejected`<br>`index_hardening.rs::trailer_crc_corruption_is_rejected` |
@@ -49,6 +50,7 @@ arithmetic or narrowing cast into a build failure. Proven-safe sites:
 | `crates/ace-format/src/index.rs` | none |
 | `crates/ace-format/src/block_io.rs` | none |
 | `crates/ace-index/src/index_reader.rs` | `:18` constant: -28 |
+| `crates/ace-engine/src/block_pipeline.rs` | none |
 | `crates/ace-codecs/src/numeric/header.rs` | none |
 | `crates/ace-codecs/src/numeric/decode.rs` | none |
 | `crates/ace-codecs/src/time_series/header.rs` | none |
