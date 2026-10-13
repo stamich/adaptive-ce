@@ -211,6 +211,9 @@ impl AceEngine {
         file: &FileHeader,
         mut writer: W,
     ) -> AceResult<()> {
+        if file.block_count > self.limits.max_block_count() {
+            return Err(AceError::ResourceLimitExceeded("block count"));
+        }
         let mut total = 0u64;
         for expected_id in 0..file.block_count {
             let (header, metadata, payload) = ace.read_block()?;

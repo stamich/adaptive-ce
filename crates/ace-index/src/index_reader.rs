@@ -59,6 +59,9 @@ impl<R: Read + Seek> AceIndexReader<R> {
         if file_header.original_size > limits.max_output_size {
             return Err(AceError::ResourceLimitExceeded("file output size"));
         }
+        if file_header.block_count > limits.max_block_count() {
+            return Err(AceError::ResourceLimitExceeded("block count"));
+        }
         let file_len = reader.seek(SeekFrom::End(0))?;
         if file_len < (FILE_HEADER_SIZE + TRAILER_SIZE) as u64 {
             return Err(AceError::Malformed(
