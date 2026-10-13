@@ -1,4 +1,8 @@
-# ACE format compatibility
+# ACE compatibility
+
+What each ACE release promises about files, APIs, toolchains and benchmark documents.
+
+## Format
 
 ACE 0.5.x reads Format 1.0 – 1.4 and writes the **minimal** version a file needs: 1.3 unless the
 file contains a TS1 block, then 1.4 ([`FORMAT-1.4.md`](FORMAT-1.4.md)).
@@ -27,7 +31,7 @@ To produce files for ACE 0.4.x readers with ACE 0.5, compress with `--disable-fl
 (`AceConfig::enable_float_specialization = false`): the output is byte-identical to ACE 0.4.6.
 Without the flag, data that no TS1 block helps (all of Corpus V3) is also written as 1.3.
 
-## Compatibility rules
+### Rules
 
 1. **Readers never drop a format version.** Every reader decodes every earlier minor version
    byte for byte. `examples/compat/` holds files written by the released encoders of 0.2.1,
@@ -40,7 +44,9 @@ Without the flag, data that no TS1 block helps (all of Corpus V3) is also writte
    older minor version. An older reader must fail at the file header (`UnsupportedVersion`),
    never inside a block. (TS1 modes are self-describing, so a new mode inside 1.4 would decode
    as "invalid TS1 stream" on a 0.5 reader instead of failing cleanly — therefore Chimp or any
-   other mode planned for 0.6 means Format 1.5.)
+   other mode planned for 0.6 means Format 1.5.) One historical exception predates this rule:
+   0.4.5 added u16 NUM1 lanes inside Format 1.3, so 0.4.0 – 0.4.4 readers reject such blocks
+   as malformed numeric headers.
 3. **The writer declares the minimal version.** A file is written as the lowest minor version
    whose features it uses, so data that needs no new feature stays readable by older readers.
 4. **Patch releases never change bytes.** 0.5.1 writes exactly the bytes of 0.5.0
@@ -50,7 +56,7 @@ Without the flag, data that no TS1 block helps (all of Corpus V3) is also writte
 5. **Two guards, two directions.** The golden SHA-256 files guard the *writer* (same input →
    same bytes); the compatibility fixtures guard the *reader* (old bytes → same input).
 
-## Decoder strictness added in 0.5.1
+### Decoder strictness added in 0.5.1
 
 0.5.1 rejects streams that 0.5.0 accepted but that no ACE encoder can produce (every
 compatibility fixture still decodes):
@@ -66,3 +72,31 @@ compatibility fixture still decodes):
 * an index section larger than `max_index_entries` admits (refused before it is read).
 
 Details per field: [`DECODER-AUDIT.md`](DECODER-AUDIT.md).
+
+## API
+
+* ACE is 0.x: a minor release (0.5 → 0.6) may break the Rust API; a patch release (0.5.0 →
+  0.5.1) does not. 0.5.1 removed nothing and narrowed no visibility; it only added items
+  (`DecodeLimits::max_block_count`, `INDEX_HEADER_SIZE`, the `ace version` command) and
+  marked superseded entry points `#[deprecated]` (`evaluate_candidates_v3`,
+  `evaluate_candidates_v4`).
+* The public API is `ace-core`, `ace-engine` and `ace-stream`; every other crate is internal
+  and may change in any 0.x release ([`API-INVENTORY.md`](API-INVENTORY.md)). 0.6 replaces
+  the three public crates by one `ace` facade; deprecated items are removed then.
+* The `ace` CLI keeps its commands and options within a minor series; new commands are
+  additive. Exit status: 0 success (also when stdout is closed early), 1 error, 2 usage error.
+
+## Toolchain
+
+* MSRV (`rust-version`): **1.97.0**, checked by the CI `msrv` job with an explicit
+  `cargo +1.97.0`. Raising it is a minor-release change.
+* Build toolchain (`rust-toolchain.toml`): **1.98.1** — every build, CI run and benchmark
+  fingerprint uses the same compiler and clippy. Rust 1.98.0 must not be used (vtable
+  miscompilation fixed in 1.98.1).
+
+## Benchmark documents
+
+Schema changes are additive within 2.x: the validator and the tools read 2.0, 2.1 and 2.2.
+2.2 (0.5.1) adds the build's git revision and dirty flag, the configuration fingerprint,
+threads, block size and the SHA-256 of every generated input. Results are compared only when
+the configuration fingerprints match ([`BENCHMARKS.md`](BENCHMARKS.md)).
