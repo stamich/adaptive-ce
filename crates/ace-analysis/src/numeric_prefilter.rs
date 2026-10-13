@@ -98,6 +98,10 @@ pub fn strong_numeric_evidence(input: &[u8], width: NumericWidth) -> Option<Nume
 }
 
 /// Width-monomorphized body of [`strong_numeric_evidence`] (`B` is the lane width in bytes).
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn strong_evidence_lane<const B: usize>(
     input: &[u8],
     width: NumericWidth,
@@ -172,6 +176,10 @@ fn prefilter_width(input: &[u8], width: NumericWidth) -> NumericPrefilter {
 }
 
 /// Width-monomorphized body of [`prefilter_width`] (`B` is the lane width in bytes).
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn prefilter_lane<const B: usize>(input: &[u8], width: NumericWidth) -> NumericPrefilter {
     let small_limit = width.small_delta_bits();
     let mut values = input.chunks_exact(B).take(PREFILTER_SAMPLE);
