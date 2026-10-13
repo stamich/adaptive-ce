@@ -22,8 +22,9 @@ struct PeakAllocator;
 static LIVE: AtomicU64 = AtomicU64::new(0);
 /// High-water mark of [`LIVE`] since the last [`reset_peak`].
 static PEAK: AtomicU64 = AtomicU64::new(0);
-/// Serializes the measurements (the test harness runs tests on several threads).
-static MEASURE: Mutex<()> = Mutex::new(());
+/// Serializes the tests of this binary: the allocator counts every thread, so a test
+/// allocating concurrently (building its fixture, say) would inflate another test's peak.
+static SERIAL: Mutex<()> = Mutex::new(());
 
 #[global_allocator]
 static GLOBAL: PeakAllocator = PeakAllocator;
@@ -69,11 +70,15 @@ unsafe impl GlobalAlloc for PeakAllocator {
     }
 }
 
-/// Peak live bytes above the starting level while `run` executes.
-fn peak_during(run: impl FnOnce()) -> u64 {
-    let _guard = MEASURE
+/// Runs one test body alone (see [`SERIAL`]).
+fn serial() -> std::sync::MutexGuard<'static, ()> {
+    SERIAL
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Peak live bytes above the starting level while `run` executes (call under [`serial`]).
+fn peak_during(run: impl FnOnce()) -> u64 {
     let start = LIVE.load(Ordering::Relaxed);
     PEAK.store(start, Ordering::Relaxed);
     run();
@@ -153,6 +158,7 @@ fn assert_rejected_within_budget(file: &[u8], what: &str) {
 /// The unforged fixture decodes, and its decode stays within the budget too.
 #[test]
 fn fixture_decodes_within_budget() {
+    let _serial = serial();
     let file = fixture();
     let peak = peak_during(|| {
         AceEngine::default_engine().decompress(&file).unwrap();
@@ -163,6 +169,7 @@ fn fixture_decodes_within_budget() {
 /// Block original size (offset 8), encoded size (12) and metadata size (16) at `u32::MAX`.
 #[test]
 fn forged_block_sizes_fail_before_allocation() {
+    let _serial = serial();
     let file = fixture();
     for (offset, what) in [
         (8, "original_size"),
@@ -177,6 +184,7 @@ fn forged_block_sizes_fail_before_allocation() {
 /// limit below the declared size rejects the file before any block is decoded.
 #[test]
 fn forged_original_size_fails_before_allocation() {
+    let _serial = serial();
     let file = forge_original_size(&fixture(), 1 << 40);
     assert_rejected_within_budget(&file, "file original_size");
     let limits = DecodeLimits {
@@ -236,6 +244,7 @@ fn probability_one_rans_file(primary_len: u32, original_size: u32) -> Vec<u8> {
 /// the rANS decoder materialize 4 GiB of zeros.
 #[test]
 fn forged_primary_stream_length_fails_before_allocation() {
+    let _serial = serial();
     // Sanity: the same construction with the honest length is a valid file.
     let honest = probability_one_rans_file(16, 16);
     assert_eq!(

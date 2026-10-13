@@ -37,7 +37,7 @@ machine.
 | 14 ✅ | Bit unpacking under the lints | Checks arithmetic in the bit-unpacking parser | clippy clean |
 | 15 ✅ | Index allocation bounded by `max_index_entries`; trailer offset constant | Bounds the index allocation by the index entry limit | `trailer_limits.rs` |
 | 16 ✅ | `DecodeLimits::max_block_count()` in every reader; limit table on `DecodeLimits` | Applies the block-count limit in every reader and documents each limit | `decode_limits.rs` |
-| 17 ✅ | "Limit ⇒ error before allocation" with a counting allocator | Tests that forged sizes fail before allocation | peak < 1 MiB |
+| 17 ✅ | "Limit ⇒ error before allocation" with a counting allocator (tests serialized: the allocator counts every thread) | Tests that forged sizes fail before allocation; Runs the allocation-measuring tests one at a time | peak < 1 MiB |
 | 18 ✅ | Generated `docs/DECODER-AUDIT.md`; the audit fails when a referenced test / fuzz target / lint disappears | Generates and verifies the decoder audit | `tools/ace-code_audit0.5.1.py` |
 | 19 ✅ | Primary stream of entropy-coded blocks ≤ 2 × block + 1 KiB (closes probability-one rANS amplification); block pipeline under the lints | Bounds the primary stream length of entropy-coded blocks | `forged_primary_stream_length_fails_before_allocation` |
 
