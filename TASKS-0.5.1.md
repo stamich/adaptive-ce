@@ -11,3 +11,4 @@ Status: ✅ done in this release · ⏩ executed by the release pipeline on the 
 | # | Task | Commit | Acceptance |
 |---|---|---|---|
 | 1 ✅ | Version 0.5.1, `MILESTONE-0.5.1.json`, this file; 0.5.0 summaries → `docs/history/` | Bumps version to 0.5.1 | `ace --version` = 0.5.1 |
+| 2 ✅ | Scripts / tools renamed to 0.5.1; A/B and stored baseline = 0.5.0; package audit rejects 0.5.0 names | Renames scripts and tools to 0.5.1 | package name audit |

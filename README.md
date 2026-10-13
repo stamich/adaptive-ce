@@ -68,8 +68,8 @@ Details: [`docs/ARCHITECTURE-0.5.0.md`](docs/ARCHITECTURE-0.5.0.md),
 ## Quick start
 
 ```bash
-./ace-build0.5.0.sh                      # fmt, clippy, tests, release build, rustdoc, demo
-./demo/ace-run-demo0.5.0.sh              # < 1 minute product tour (incl. the Float lane)
+./ace-build0.5.1.sh                      # fmt, clippy, tests, release build, rustdoc, demo
+./demo/ace-run-demo0.5.1.sh              # < 1 minute product tour (incl. the Float lane)
 ```
 
 Requirements: Rust 1.97.0 (MSRV, pinned by `rust-toolchain.toml`; `Cargo.lock` included), Python 3.9+ for the tools.
@@ -123,10 +123,10 @@ families and same-run gates):
 [`docs/BENCHMARK-METHODOLOGY-0.5.0.md`](docs/BENCHMARK-METHODOLOGY-0.5.0.md).
 
 ```bash
-./ace-benchmark0.5.0.sh all [--quick] [--isolated]   # Harness V3 + Regression V3
-./ace-ab0.5.0.sh /path/to/ace-0.4.6                  # interleaved A/B vs the baseline tree
-./ace-benchmark-compare0.5.0.sh OLD NEW              # any two result files or directories
-./ace-release0.5.0.sh /path/to/ace-0.4.6             # full release pipeline
+./ace-benchmark0.5.1.sh all [--quick] [--isolated]   # Harness V3 + Regression V3
+./ace-ab0.5.1.sh /path/to/ace-0.4.6                  # interleaved A/B vs the baseline tree
+./ace-benchmark-compare0.5.1.sh OLD NEW              # any two result files or directories
+./ace-release0.5.1.sh /path/to/ace-0.4.6             # full release pipeline
 ```
 
 ## Security limits
