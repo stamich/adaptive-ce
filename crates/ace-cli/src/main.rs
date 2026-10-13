@@ -112,5 +112,6 @@ fn run(command: Command) -> Result<()> {
             length,
             output,
         } => commands::read_range(&input, offset, length, &output),
+        Command::Version => commands::version(),
     }
 }

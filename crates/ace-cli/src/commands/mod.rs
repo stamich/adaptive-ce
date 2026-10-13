@@ -4,8 +4,10 @@ mod compress;
 mod decompress;
 mod explain;
 mod inspect;
+mod version;
 
 pub use compress::*;
 pub use decompress::*;
 pub use explain::*;
 pub use inspect::*;
+pub use version::*;

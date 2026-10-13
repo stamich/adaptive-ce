@@ -53,6 +53,7 @@ dependencies = [
  "ace-engine",
  "ace-format",
  "ace-index",
+ "ace-simd",
  "ace-stream",
  "anyhow",
  "clap",
