@@ -1,5 +1,71 @@
 # Changelog
 
+## 0.5.1 - 2026-10-13 — Hardened Release Candidate
+
+Base: 0.5.0. **No byte changes**: golden 0.5.0 is reproduced exactly (auto and
+`ACE_SIMD=scalar`) and the 0.4.6 golden stays frozen; no codec, mode, route or format change.
+Concept: `AdaptiveCE_0_5_1_Koncepcja_v2.md`; task order: `TASKS-0.5.1.md`; notes:
+`docs/RELEASE-NOTES-0.5.1.md`.
+
+### Added
+- Decoder audit: `clippy::arithmetic_side_effects` + `cast_possible_truncation` in every parser
+  module (`ace-format` header / index / block I/O, `ace-index`, NUM1 / TS1 headers and NUM1
+  decode, rANS model, rANS4x, bit unpacking, block pipeline); generated, tool-verified
+  `docs/DECODER-AUDIT.md` (field → validation → limit → tests).
+- `DecodeLimits::max_block_count()` (= `max_index_entries`) enforced by the sequential,
+  streamed and indexed readers; the limit table on `DecodeLimits`; `ace_format::INDEX_HEADER_SIZE`.
+- Tests: per-field extremes (`ace-format/tests/index_hardening.rs`,
+  `ace-codecs/tests/header_fields.rs`, `ace-entropy/tests/metadata_fields.rs`,
+  `ace-index/tests/trailer_limits.rs`), every limit through every reader
+  (`ace-engine/tests/decode_limits.rs`), forged sizes fail before allocation with a counting
+  allocator (`ace-bench/tests/limits_before_allocation.rs`), frozen compatibility fixtures
+  (`examples/compat/`, 48 files from 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0;
+  `ace-engine/tests/compat_fixtures.rs`), determinism at 12 / 16 / 32 workers and streaming at
+  32, fixed tie-breaks (`ace-planner/tests/tie_break.rs`), Planner V5 invariant properties
+  (`ace-planner/tests/v5_invariants.rs`), CLI end to end (`ace-cli/tests/cli.rs`).
+- `ace version` (version, git revision, formats, codecs, SIMD / CRC backends, toolchain).
+- Benchmark schema 2.2 (git revision + dirty flag, `config_fingerprint`, threads, block size,
+  `workload_fingerprints`); `tools/ace-repeatability0.5.1.py`; `ace-benchmark0.5.1.sh --repeat N`;
+  `allocation-profile` family and report table; release distribution (`dist/`: source and
+  benchmark archives, `RELEASE-REPORT.md`, `MANIFEST.sha256`).
+- CI: `fuzz-smoke` job (15 × 25 s, corpus as cache + artifact), failure annotations,
+  explicit `cargo +1.97.0` MSRV job; `ace-ci0.5.1.sh fuzz-smoke`, `ACE_FUZZ_REQUIRED`,
+  `ACE_FUZZ_CMIN`.
+- Docs: canonical `ARCHITECTURE`, `FORMAT`, `COMPATIBILITY`, `SECURITY`, `BENCHMARKS`,
+  `RELEASE`, `UNSAFE-AUDIT`, generated `PANIC-AUDIT` and `API-INVENTORY`;
+  `RELEASE-NOTES-0.5.1`; README rewritten as a product document; roadmap 0.6 – 1.0 and the
+  ACE + AdaptiveDB + GraphNet platform phases.
+
+### Changed
+- Decoders are stricter for streams no encoder produces: rANS final state must equal the
+  encoder's initial state, Huffman may leave only zero padding, an empty output needs an empty
+  entropy payload, the primary stream of an entropy-coded block is bounded by
+  2 × block size + 1 KiB (closes a decompression amplification through probability-one rANS
+  models), the index allocation is bounded by `max_index_entries`, header counts are converted
+  with `try_from` instead of `as`.
+- CLI: closed stdout ends the command quietly with status 0 (was a panic on `EPIPE`); errors
+  are printed as `Error: …` with status 1; an output path naming the input is refused.
+- Lints: `clippy::unreachable`, `missing_errors_doc`, `missing_safety_doc` denied; rustdoc
+  built for private items with `-D warnings`; `# Errors` on all 81 public fallible
+  functions, `# Determinism` / `# Invariants` on planner policies, estimators and encoders.
+- Build toolchain pinned to Rust 1.98.1 (MSRV stays 1.97.0); constant-size `chunks_exact`
+  replaced by `as_chunks` outside hot kernels (hot kernels keep their code and allow clippy
+  1.98's `chunks_exact_to_as_chunks`).
+- Regression V3 and the repeatability tool report `diagnostic` (exit 4) instead of `pass`
+  on a known non-`performance` governor; the release pipeline runs benchmarks three times.
+- Scripts / tools renamed to `…0.5.1`; A/B and stored baseline 0.5.0; versioned documents
+  of 0.5.0 moved to `docs/history/`; `FORMAT-1.1.md` title and the 1.1 / 1.2 feature table
+  corrected (the block index arrived with 1.1).
+
+### Deprecated
+- `ace_planner::evaluate_candidates_v3`, `evaluate_candidates_v4` (use
+  `evaluate_candidates_v4_with_route`); removed with the 0.6 facade.
+
+### Release qualification (manual, reference machine)
+- `./ace-release0.5.1.sh ../ace-0.5.0` (three benchmark runs), fuzz campaign
+  `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.5.1.sh fuzz`, baseline
+  `examples/baselines/0.5.1/`, tag `v0.5.1` (`docs/RELEASE.md`).
+
 ## 0.5.0 - 2026-10-07 — Lossless Floating-Point & Time-Series Compression
 
 Base: 0.4.6. **Format 1.4** (TS1 codec, written only when a block uses it) and **Planner V5**
