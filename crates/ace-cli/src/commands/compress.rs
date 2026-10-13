@@ -11,6 +11,7 @@ use crate::files;
 
 /// Compresses a file in memory and prints the most important telemetry.
 pub fn compress(input: &str, output: &str, config: AceConfig) -> Result<()> {
+    files::ensure_distinct(input, output)?;
     let mut out = std::io::stdout().lock();
     let data = files::read(input)?;
     let (encoded, stats) = AceEngine::new(config)?.compress_with_stats(&data)?;
@@ -49,6 +50,7 @@ pub fn compress(input: &str, output: &str, config: AceConfig) -> Result<()> {
 /// The output is byte-identical to `compress` with the same configuration, including the
 /// Format 1.4 header when a block uses TS1 (the header is rewritten in place at the end).
 pub fn compress_stream(input: &str, output: &str, config: AceConfig) -> Result<()> {
+    files::ensure_distinct(input, output)?;
     let mut out = std::io::stdout().lock();
     let source = files::open(input)?;
     let size = source
