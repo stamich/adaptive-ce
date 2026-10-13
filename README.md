@@ -60,7 +60,7 @@ input ─► chunker ─► route (NumericFast | FloatFast | FloatGeneral | Nume
 | `ace-corpus` | deterministic synthetic workloads: Corpus V3 + V4 and the Float false-positive corpus |
 | `ace-bench` | Benchmark Harness V3 (`benchmark-0.5.0-<family>.json`, schema 2.1) |
 
-Details: [`docs/ARCHITECTURE-0.5.0.md`](docs/ARCHITECTURE-0.5.0.md),
+Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
 [`docs/PLANNER-V5.md`](docs/PLANNER-V5.md), [`docs/TS1-CODEC.md`](docs/TS1-CODEC.md),
 [`docs/FORMAT-1.4.md`](docs/FORMAT-1.4.md),
 [`docs/FLOAT-CALIBRATION-0.5.0.md`](docs/FLOAT-CALIBRATION-0.5.0.md).
