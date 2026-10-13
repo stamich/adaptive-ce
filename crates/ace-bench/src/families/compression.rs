@@ -111,6 +111,17 @@ pub(crate) fn compression_family() -> Result<Vec<Value>, Box<dyn std::error::Err
     Ok(results)
 }
 
+/// Entropy encoder under test: `(metadata, payload)` of one input.
+type EntropyEncode = fn(&[u8]) -> AceResult<(Vec<u8>, Vec<u8>)>;
+
+/// Entropy paths of [`entropy_family`]: result-row name and encoder (a closed table, so no
+/// unmatched-name arm can exist).
+const ENTROPY_PATHS: [(&str, EntropyEncode); 3] = [
+    ("huffman", huffman_encode),
+    ("rans", rans_encode),
+    ("rans4x", rans4x_encode),
+];
+
 /// Benchmarks Huffman and scalar rANS independently on representative symbol distributions.
 pub(crate) fn entropy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut workloads = Vec::new();
@@ -119,13 +130,8 @@ pub(crate) fn entropy_family() -> Result<Vec<Value>, Box<dyn std::error::Error>>
         ("mixed", mixed_data(4)),
     ];
     for (id, data) in datasets {
-        for path in ["huffman", "rans", "rans4x"] {
-            let (stats, (metadata, payload)) = match path {
-                "huffman" => measure(|| Ok(huffman_encode(&data)?))?,
-                "rans" => measure(|| Ok(rans_encode(&data)?))?,
-                "rans4x" => measure(|| Ok(rans4x_encode(&data)?))?,
-                _ => unreachable!(),
-            };
+        for (path, encode) in ENTROPY_PATHS {
+            let (stats, (metadata, payload)) = measure(|| Ok(encode(&data)?))?;
             let encoded_bytes = metadata.len() + payload.len();
             let mut row = JsonObjectBuilder::new();
             row.field("workload_id", id)
