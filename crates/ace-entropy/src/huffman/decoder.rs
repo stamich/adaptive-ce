@@ -15,14 +15,20 @@ use super::canonical::{DecodeTables, LOOKUP_BITS, MAX_CODE_LEN};
 /// # Errors
 ///
 /// [`AceError::InvalidHuffman`] for a length table that is not exactly 256 bytes or not a
-/// valid canonical code, an invalid code, or a stream that ends before `expected_size`
-/// symbols.
+/// valid canonical code, an invalid code, a stream that ends before `expected_size` symbols,
+/// more than the zero padding of the last byte left after them, or a non-empty payload for an
+/// empty output.
 pub fn huffman_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let lengths: &[u8; 256] = metadata
         .try_into()
         .map_err(|_| AceError::InvalidHuffman("length table must contain 256 bytes"))?;
     if expected_size == 0 {
-        return Ok(Vec::new());
+        // The encoder writes no bits for an empty output.
+        return if input.is_empty() {
+            Ok(Vec::new())
+        } else {
+            Err(AceError::InvalidHuffman("payload for an empty output"))
+        };
     }
     let tables = DecodeTables::new(lengths)?;
     let mut reader = BitReader::new(input);
@@ -35,6 +41,11 @@ pub fn huffman_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> Ac
             }
             _ => out.push(decode_slow(&tables, &mut reader)?),
         }
+    }
+    // Only the zero padding of the last byte may remain (the encoder pads with zero bits).
+    let padding = reader.remaining();
+    if padding >= 8 || (padding > 0 && reader.peek(padding as u8) != 0) {
+        return Err(AceError::InvalidHuffman("trailing Huffman payload bits"));
     }
     Ok(out)
 }

@@ -1,6 +1,7 @@
 //! Per-field hardening of the entropy metadata (ACE 0.5.1 decoder audit): rANS frequency
 //! tables, rANS4x lane lengths and Huffman length tables forged to 0, `u16::MAX` /
-//! `u32::MAX` and sizes whose arithmetic would overflow are rejected without a panic.
+//! `u32::MAX` and sizes whose arithmetic would overflow are rejected without a panic, and
+//! streams must end exactly where the encoder stopped (final rANS state, Huffman padding).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use ace_entropy::{
@@ -54,7 +55,7 @@ fn rans4x_lane_lengths_reject_zero_max_and_overflow() {
             );
         }
     }
-    for expected in [data.len() + 1, usize::MAX] {
+    for expected in [0, data.len() - 1, data.len() + 1, usize::MAX] {
         assert!(rans4x_decode(&metadata, &payload, expected).is_err());
     }
 }
@@ -64,15 +65,19 @@ fn rans4x_lane_lengths_reject_zero_max_and_overflow() {
 fn scalar_coders_reject_extreme_output_sizes() {
     let data = sample();
     let (metadata, payload) = rans_encode(&data).unwrap();
-    for expected in [data.len() + 1, usize::MAX] {
+    // The final-state check rejects every size but the encoded one.
+    for expected in [0, 1, data.len() - 1, data.len() + 1, usize::MAX] {
         assert!(rans_decode(&metadata, &payload, expected).is_err());
     }
     let (lengths, bits) = huffman_encode(&data).unwrap();
     // Huffman stores no bit count: up to 7 padding bits may decode as extra symbols, which the
     // block CRC-32C rejects one layer up. Far larger sizes always fail.
-    for expected in [data.len() + 64, usize::MAX] {
+    for expected in [0, 1, data.len() / 2, data.len() + 64, usize::MAX] {
         assert!(huffman_decode(&lengths, &bits, expected).is_err());
     }
+    let mut padded = bits.clone();
+    padded.push(0);
+    assert!(huffman_decode(&lengths, &padded, data.len()).is_err());
     let mut forged = lengths.clone();
     forged.fill(u8::MAX); // code lengths beyond any canonical code
     assert!(huffman_decode(&forged, &bits, data.len()).is_err());
