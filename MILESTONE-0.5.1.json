@@ -1,0 +1,34 @@
+{
+  "project": "ACE",
+  "version": "0.5.1",
+  "milestone": "0.5.1",
+  "title": "Hardened Release Candidate",
+  "release_kind": "hardened-rc",
+  "base": "0.5.0",
+  "workspace_version": "0.5.1",
+  "planner": "V5 (unchanged: every 0.5.0 decision and byte is preserved)",
+  "format": {
+    "writer": "1.3 | 1.4 (minimal version: 1.4 only when the file contains a TS1 block)",
+    "readers": [
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.3",
+      "1.4"
+    ],
+    "changes": "none"
+  },
+  "benchmark_schema": "2.1",
+  "msrv": "1.97.0",
+  "toolchain": "1.97.0",
+  "concept": "AdaptiveCE_0_5_1_Koncepcja_v2.md",
+  "status": "in progress",
+  "golden": {
+    "0.5.0": "examples/golden/0.5.0/GOLDEN.json must be reproduced byte for byte (auto and ACE_SIMD=scalar)",
+    "0.4.6": "frozen; Corpus V3 must reproduce it"
+  },
+  "tasks": "TASKS-0.5.1.md",
+  "history": {
+    "0.5.0": "docs/history/MILESTONE-0.5.0.json"
+  }
+}
