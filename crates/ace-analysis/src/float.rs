@@ -390,6 +390,12 @@ pub fn admit_float(profile: &FloatProfile) -> Result<(), FloatRejection> {
 /// f64 data read as f32 has random mantissas in every other value, and f32 data read as f64
 /// has unstable exponents, so the wrong width normally fails admission on its own; the cost
 /// comparison only breaks the remaining ties.
+///
+/// # Determinism
+///
+/// A pure function of `input`: fixed sample positions and a fixed evaluation order of
+/// IEEE-754 operations (no fused multiply-add), so every platform and SIMD backend admits the
+/// same blocks with the same width.
 pub fn float_prefilter(input: &[u8]) -> FloatPrefilter {
     let mut admitted: Option<FloatProfile> = None;
     let mut rejection = None;

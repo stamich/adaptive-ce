@@ -27,6 +27,11 @@ use crate::{StreamLimits, StreamingStats};
 /// size, [`AceError::ResourceLimitExceeded`] when `size` or the block count exceeds the
 /// stream limits, [`AceError::Malformed`] when `reader` ends before `size` bytes or yields
 /// more, [`AceError::Io`] from `reader` or `writer`, and block encoding errors.
+///
+/// # Determinism
+///
+/// Produces exactly the bytes of `AceEngine::compress` with the same configuration
+/// (including the 1.3 → 1.4 header rewrite), for every thread count.
 pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
     mut reader: R,
     writer: W,

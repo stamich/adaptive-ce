@@ -111,6 +111,11 @@ fn run_profile_lane<const B: usize>(input: &[u8]) -> Option<RunProfile> {
 }
 
 /// Keeps every lane width whose profile is [`RunProfile::admitted`].
+///
+/// # Determinism
+///
+/// A pure function of `input` (integer counts, ratios evaluated in a fixed order); widths
+/// are reported in the fixed order of `RUN_LANE_BYTES`.
 pub fn run_prefilter(input: &[u8]) -> RunPrefilter {
     let mut prefilter = RunPrefilter::default();
     for (slot, lane_bytes) in prefilter.lanes.iter_mut().zip(RUN_LANE_BYTES) {

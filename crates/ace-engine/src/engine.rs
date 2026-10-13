@@ -95,6 +95,12 @@ impl AceEngine {
     ///
     /// [`AceError::InvalidConfig`] when the thread pool cannot be built; encoder errors are
     /// propagated (they indicate a bug, since every block has a RAW fallback).
+    ///
+    /// # Determinism
+    ///
+    /// The output bytes depend only on `input` and the encoder configuration — not on
+    /// `threads`, `max_in_flight_blocks`, the SIMD backend or the host. The golden SHA-256 files
+    /// (`examples/golden/`) and the determinism matrix enforce this.
     pub fn compress_with_stats(&self, input: &[u8]) -> AceResult<(Vec<u8>, CompressionStats)> {
         let block_size = self.resolved_block_size(input);
         let chunker =
