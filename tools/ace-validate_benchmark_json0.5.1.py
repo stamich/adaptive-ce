@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Validate ACE benchmark JSON documents (schema 2.0 and 2.1).
+"""Validate ACE benchmark JSON documents (schema 2.0, 2.1 and 2.2).
 
 Schema 2.0 checks the version-independent contract (identity fields, result file naming,
 environment keys). Schema 2.1 additionally requires the ``benchmark_methodology`` block and a
 complete ``stable_timing`` object next to every timing object (any dict with ``median_ns``).
+Schema 2.2 (additive) also requires the git revision / dirty flag of the measured build, the
+configuration fingerprint, threads and block size, and a SHA-256 for every generated input.
 
 usage: ace-validate_benchmark_json0.5.1.py FILE...
 """
@@ -22,6 +24,8 @@ REQUIRED = {
 ENVIRONMENT_20 = ("os", "arch", "logical_cpus", "build_profile")
 ENVIRONMENT_21 = ("cpu", "rust", "build", "simd_backend", "crc32c_backend", "warnings")
 METHODOLOGY_21 = ("harness", "warmups", "batches", "samples_per_batch", "min_sample_time_ms", "aggregation")
+BUILD_22 = ("git_revision", "git_dirty")
+CONFIGURATION_22 = ("config_fingerprint", "threads", "block_size")
 STABLE_TIMING_21 = (
     "harness", "batches", "samples_per_batch", "iterations_per_sample", "batch_medians_ns",
     "median_of_medians_ns", "mad_ns", "batch_mad_percent", "outlier_indices", "stability",
@@ -105,17 +109,38 @@ def _validate_21(path: pathlib.Path, data: dict) -> None:
             raise ValidationError(f"{path}: {where} median_ns must equal median_of_medians_ns")
 
 
+def _validate_22(path: pathlib.Path, data: dict) -> None:
+    """Schema-2.2 additions: build revision, configuration fingerprint, input fingerprints."""
+    build = data["environment"].get("build")
+    if not isinstance(build, dict) or any(key not in build for key in BUILD_22):
+        raise ValidationError(f"{path}: schema 2.2 requires environment.build.{BUILD_22}")
+    if build["git_dirty"] not in ("true", "false", "unknown"):
+        raise ValidationError(f"{path}: git_dirty must be 'true', 'false' or 'unknown'")
+    configuration = data.get("configuration")
+    if not isinstance(configuration, dict) or any(key not in configuration for key in CONFIGURATION_22):
+        raise ValidationError(f"{path}: schema 2.2 requires configuration.{CONFIGURATION_22}")
+    fingerprints = data.get("workload_fingerprints")
+    if not isinstance(fingerprints, dict):
+        raise ValidationError(f"{path}: schema 2.2 requires workload_fingerprints")
+    for key, digest in fingerprints.items():
+        if "@" not in key or not isinstance(digest, str) or len(digest) != 64 \
+                or any(c not in "0123456789abcdef" for c in digest):
+            raise ValidationError(f"{path}: invalid workload fingerprint {key!r}")
+
+
 def validate(path: pathlib.Path) -> str:
     """Validate one document and return its schema version."""
     data = json.loads(path.read_text())
     scope = _validate_identity(path, data)
     schema = str(data["schema_version"])
-    if schema not in ("2.0", "2.1"):
+    if schema not in ("2.0", "2.1", "2.2"):
         raise ValidationError(f"{path}: unsupported schema_version {schema!r}")
     if scope not in ("regression", "ab"):
         _validate_environment(path, data, ENVIRONMENT_20)
-        if schema == "2.1":
+        if schema in ("2.1", "2.2"):
             _validate_21(path, data)
+        if schema == "2.2":
+            _validate_22(path, data)
     return schema
 
 

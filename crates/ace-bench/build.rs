@@ -28,6 +28,11 @@ fn main() {
         "ACE_BUILD_RUSTFLAGS",
         &env_or_unknown("CARGO_ENCODED_RUSTFLAGS").replace('\u{1f}', " "),
     );
+    let (revision, dirty) = git_state();
+    emit("ACE_BUILD_GIT_REVISION", &revision);
+    emit("ACE_BUILD_GIT_DIRTY", &dirty);
+    println!("cargo:rerun-if-changed=../../.git/HEAD");
+    println!("cargo:rerun-if-changed=../../.git/index");
     let profile = profile_settings(&env_or_unknown("PROFILE"));
     emit("ACE_BUILD_LTO", &profile.lto);
     emit("ACE_BUILD_CODEGEN_UNITS", &profile.codegen_units);
@@ -35,6 +40,28 @@ fn main() {
     println!("cargo:rerun-if-env-changed=RUSTFLAGS");
     println!("cargo:rerun-if-env-changed=CARGO_ENCODED_RUSTFLAGS");
     println!("cargo:rerun-if-changed=build.rs");
+}
+
+/// `(revision, dirty)` of the source tree at build time: the full `git rev-parse HEAD` and
+/// `"true"` / `"false"` from `git status --porcelain` (both `"unknown"` outside a git
+/// checkout, for example in the release package).
+fn git_state() -> (String, String) {
+    let git = |args: &[&str]| {
+        Command::new("git")
+            .args(args)
+            .current_dir("../..")
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+    };
+    let revision = git(&["rev-parse", "HEAD"]).map(|text| text.trim().to_string());
+    let dirty = git(&["status", "--porcelain", "--untracked-files=no"])
+        .map(|text| (!text.trim().is_empty()).to_string());
+    match (revision, dirty) {
+        (Some(revision), Some(dirty)) if !revision.is_empty() => (revision, dirty),
+        _ => ("unknown".to_string(), "unknown".to_string()),
+    }
 }
 
 /// Reads a build-script environment variable, defaulting to `"unknown"`.

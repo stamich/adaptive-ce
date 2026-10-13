@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers of the ACE 0.5.1 benchmark tools (schema 2.0 and 2.1).
+"""Shared helpers of the ACE 0.5.1 benchmark tools (schema 2.0 – 2.2).
 
 Loaded by every ``tools/ace-*0.5.1.py`` script through :func:`load_benchlib`-style
 ``importlib`` boilerplate (the hyphenated, versioned file name cannot be imported directly).
@@ -23,8 +23,8 @@ from typing import Any, Iterable
 MILESTONE = "0.5.1"
 #: Predecessor used as the A/B and stored-baseline reference.
 BASELINE = "0.5.0"
-#: Schema version written by Harness V3.
-SCHEMA = "2.1"
+#: Schema version written by Harness V3 (2.2 = 2.1 + build revision and input fingerprints).
+SCHEMA = "2.2"
 
 #: Gate requirement met with a stable measurement.
 PASS = "pass"

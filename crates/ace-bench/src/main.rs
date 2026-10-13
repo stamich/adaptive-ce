@@ -86,6 +86,7 @@ fn run_family(name: &str, runner: FamilyFn) -> Result<PathBuf, Box<dyn std::erro
         environment: environment_json(&before, &after),
         configuration: benchmark_configuration_json(),
         benchmark_methodology: benchmark_methodology_json(),
+        workload_fingerprints: take_workload_fingerprints(),
         workloads,
     };
     let path = result_path(name);
