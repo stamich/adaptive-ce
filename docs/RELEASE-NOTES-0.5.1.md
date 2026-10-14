@@ -113,7 +113,15 @@ produce up to 4 GiB of intermediate output before the codec stage rejected it.
 
 The automatic pipeline and the manual steps (three benchmark runs and the 15 × 10 min fuzz
 campaign on the reference machine, baseline publication in `examples/baselines/0.5.1/`, tag
-`v0.5.1`) are described in [`RELEASE.md`](RELEASE.md). Until that run, the latest measured
-performance report is [`PERFORMANCE-0.5.0.md`](PERFORMANCE-0.5.0.md): 0.5.1 changes no
-encoder, and the decoders only gained validation (an ad-hoc rANS4x decode comparison on the
-development VM was within noise).
+`v0.5.1`) are described in [`RELEASE.md`](RELEASE.md). Results on the reference machine
+(Ryzen 9 5950X, `performance` governor, Rust 1.98.1), published as
+[`PERFORMANCE-0.5.1.md`](PERFORMANCE-0.5.1.md) and `examples/baselines/0.5.1/`:
+
+* Regression V3 pass (73 gates, 0 failed), repeatability pass (3 runs), interleaved A/B against
+  0.5.0 pass 12 / 12 with byte-identical output;
+* fuzz campaign 15 × 600 s, 4.87 billion executions, no crash (`FUZZ.md`);
+* speed against 0.5.0: decode within ±1 % except dense decode (0.961); encode 0.964 – 1.000 for
+  FAST, BALANCED, DENSE and u64 timestamps. The 2 – 4 % are attributed to the stricter decoder
+  checks and the allocation bound and are not yet profiled; every case is inside the 5 % gate.
+* the repeatability gate allows a 15 % spread for decompression timings (observed maximum
+  13.5 %), see [`BENCHMARKS.md`](BENCHMARKS.md).

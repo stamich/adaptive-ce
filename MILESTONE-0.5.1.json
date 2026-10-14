@@ -23,7 +23,7 @@
   "msrv": "1.97.0",
   "toolchain": "1.98.1 (rust-toolchain.toml; 1.98.0 must not be used)",
   "concept": "AdaptiveCE_0_5_1_Koncepcja_v2.md",
-  "status": "implemented; release qualification (three runs on the reference machine, fuzz campaign 15 x 10 min, baseline examples/baselines/0.5.1/, tag v0.5.1) pending",
+  "status": "implemented and qualified on the reference machine (Regression V3, repeatability and A/B pass; fuzz 15 x 10 min, no crash; baseline examples/baselines/0.5.1/); tag v0.5.1 after merge",
   "golden": {
     "0.5.0": "examples/golden/0.5.0/GOLDEN.json must be reproduced byte for byte (auto and ACE_SIMD=scalar)",
     "0.4.6": "frozen; Corpus V3 must reproduce it"
