@@ -54,9 +54,12 @@ RUN_SPECIFIC = {"generated_at_utc_epoch_seconds", "environment"}
 MEASURED_KEY = re.compile(
     r"(_ns|_ms|_us|_s|_seconds|mb_s|mib_s|gb_s|throughput|speed|speedup|latency|elapsed|"
     r"duration|time|cv_percent|mad|outlier|stability|unstable|iterations|rss|peak|alloc|"
-    r"freq|loadavg|thermal|samples)",
+    r"freq|loadavg|thermal|samples|efficiency)",
     re.IGNORECASE,
 )
+#: Containers of measurements named with a unit suffix (``stage_timing_ns`` holds one number per
+#: stage, none of whose own keys looks like a measurement).
+MEASURED_CONTAINER = re.compile(r"_(ns|ms|us)$")
 #: Release-performance cases that measure latency, not macro throughput.
 MICRO_CASE_PREFIXES = ("random_access.",)
 #: Default macro-throughput spread limit (percent).
@@ -78,6 +81,8 @@ def deterministic_leaves(value: Any, where: str = "") -> Iterator[tuple[str, Any
                 continue
             nested = value[key]
             if not isinstance(nested, (dict, list)) and MEASURED_KEY.search(key):
+                continue
+            if isinstance(nested, dict) and MEASURED_CONTAINER.search(key):
                 continue
             yield from deterministic_leaves(nested, f"{where}.{key}" if where else key)
     elif isinstance(value, list):
