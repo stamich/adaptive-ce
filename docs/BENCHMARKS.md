@@ -125,8 +125,14 @@ A release baseline is the **median of three complete runs** on the reference mac
   planner decisions, recall / regret, counters, input fingerprints) must be identical in all
   runs;
 * `macro` gate: for every whole-input throughput case of `release-performance`,
-  `(max − min) / median ≤ 5 %` across the runs (random-access latencies are diagnostics;
-  quick runs cannot qualify);
+  `(max − min) / median` across the runs is ≤ 5 % for compression and ≤ 15 % for
+  decompression timings (`decompression*`, `full_decompress.*`; `--max-decode-spread`).
+  Whole-input decodes take 3 – 10 ms and follow the CPU boost clock: the Ryzen 9 5950X
+  reference machine spread by 5 – 13 % between three runs with the `performance` governor, so
+  a 5 % limit rejected every run. Decode speed itself is bounded by the interleaved A/B
+  (≥ 95 % of the previous release) and the batch-MAD stability gates of Regression V3; this
+  gate only detects an unusable machine. Random-access latencies are diagnostics; quick runs
+  cannot qualify;
 * exit codes as Regression V3; a failed repeatability check fails the benchmark script.
 
 ## Governor gate (0.5.1)

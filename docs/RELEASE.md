@@ -48,7 +48,7 @@ release.
 | Fuzz smoke 15 × 25 s | 0 crashes | CI `fuzz-smoke` job |
 | Fuzz campaign 15 × 10 min (*manual*) | 0 crashes | `examples/baselines/<version>/FUZZ.md` |
 | Quality, Float lane, stability, performance vs the previous release | PASS | Regression V3 + A/B |
-| Repeatability (3 runs) | deterministic values identical, macro spread ≤ 5 % | `benchmark-<version>-repeatability.json` |
+| Repeatability (3 runs) | deterministic values identical, macro spread ≤ 5 % (decompression ≤ 15 %) | `benchmark-<version>-repeatability.json` |
 | Reproducible package, tested from the archive | PASS | steps 10 – 11 |
 | Documentation | README, RELEASE-NOTES, COMPATIBILITY, SECURITY, BENCHMARKS, audits, CHANGELOG, ROADMAP | review |
 

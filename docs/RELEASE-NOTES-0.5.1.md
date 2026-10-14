@@ -91,7 +91,7 @@ produce up to 4 GiB of intermediate output before the codec stage rejected it.
 * Schema 2.2: git revision and dirty flag, configuration fingerprint, threads, block size, the
   SHA-256 of every generated input.
 * `--repeat 3` and `tools/ace-repeatability0.5.1.py`: deterministic values identical across
-  runs, macro throughput spread ≤ 5 %, median documents as the release baseline.
+  runs, macro throughput spread ≤ 5 % (decompression ≤ 15 %), median documents as the release baseline.
 * Governor gate: a run on a known non-`performance` governor is `diagnostic`, never `pass`.
 * `allocation-profile` family: allocations per block-encoder stage — the 0.5.0 churn on
   `int-sparse-change` BALANCED (~36 bytes per input byte) comes ~94 % from the generic
