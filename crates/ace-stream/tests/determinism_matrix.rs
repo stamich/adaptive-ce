@@ -1,14 +1,15 @@
-//! Determinism matrix (ACE 0.4.6, extended with the Float lane in 0.5.0): workload × profile ×
-//! worker count × API path must all produce byte-identical containers.
+//! Determinism matrix (ACE 0.4.6, extended with the Float lane in 0.5.0 and with 12 / 16 / 32
+//! workers in 0.5.1): workload × profile × worker count × API path must all produce
+//! byte-identical containers.
 //!
 //! The SIMD axis is covered by running the golden test with `ACE_SIMD=scalar` (the backend
-//! choice is process-wide), and the process axis by `ace-release0.5.0.sh`, which hashes the
+//! choice is process-wide), and the process axis by `ace-release0.5.1.sh`, which hashes the
 //! output of repeated CLI invocations.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use std::io::Cursor;
 
-use ace_core::{AceConfig, CompressionProfile};
+use ace_core::{AceConfig, BlockSizePolicy, CompressionProfile};
 use ace_corpus::Workload;
 use ace_engine::AceEngine;
 use ace_stream::{compress_reader_known_size, StreamLimits};
@@ -78,6 +79,53 @@ fn byte_identical_across_threads_and_api_paths() {
             )
             .unwrap();
             assert_eq!(streamed, reference, "{workload} {profile:?} streaming");
+        }
+    }
+}
+
+/// Worker counts above 8 (rayon splits work differently there; 12 / 16 / 32 match the
+/// reference Ryzen 9 5950X), on 64 KiB blocks so that 32 blocks are really in flight.
+const HIGH_THREADS: [usize; 3] = [12, 16, 32];
+
+/// Many small blocks and in-flight batch sizes from 1 to all, at 12 / 16 / 32 workers; the
+/// streaming encoder is run with the 32-worker configuration on the mixed workload.
+#[test]
+fn byte_identical_at_high_worker_counts() {
+    let small_blocks = |profile, threads, in_flight| AceConfig {
+        block_size: 64 * 1024,
+        block_size_policy: BlockSizePolicy::Fixed,
+        max_in_flight_blocks: in_flight,
+        ..config(profile, threads)
+    };
+    for workload in WORKLOADS {
+        let data = workload.generate(BYTES);
+        for profile in PROFILES {
+            let reference = AceEngine::new(small_blocks(profile, 1, 64))
+                .unwrap()
+                .compress(&data)
+                .unwrap();
+            for threads in HIGH_THREADS {
+                for in_flight in [1, 7, 64] {
+                    let engine = AceEngine::new(small_blocks(profile, threads, in_flight)).unwrap();
+                    assert_eq!(
+                        engine.compress(&data).unwrap(),
+                        reference,
+                        "{workload} {profile:?} {threads}T in-flight {in_flight}"
+                    );
+                }
+            }
+            if workload == Workload::Mixed {
+                let mut streamed = Vec::new();
+                compress_reader_known_size(
+                    Cursor::new(&data),
+                    Cursor::new(&mut streamed),
+                    data.len() as u64,
+                    small_blocks(profile, 32, 64),
+                    StreamLimits::default(),
+                )
+                .unwrap();
+                assert_eq!(streamed, reference, "{workload} {profile:?} streaming 32T");
+            }
         }
     }
 }

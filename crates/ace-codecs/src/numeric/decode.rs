@@ -1,5 +1,9 @@
 //! NUM1 decoder.
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a payload is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_bitpack::{
     undelta_iter, undelta_of_delta_iter, unframe_iter, unpack_iter, write_lanes_from_iter, Lane,
 };
@@ -12,13 +16,21 @@ use crate::{numeric_inspect, NumericMode, NumericPayloadInfo, NUMERIC_HEADER_SIZ
 ///
 /// The declared value/tail sizes must add up to `expected_size`; this bounds every allocation
 /// by a caller-controlled limit (`DecodeLimits::max_block_size`) before any value is decoded.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when the header is invalid (see [`numeric_inspect`]), when the
+/// declared size differs from `expected_size`, or when the packed stream is inconsistent.
 pub fn numeric_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let info = numeric_inspect(input)?;
     if info.decoded_len()? != expected_size {
         return Err(AceError::Malformed("numeric decoded size mismatch"));
     }
-    let packed = &input[NUMERIC_HEADER_SIZE..NUMERIC_HEADER_SIZE + info.packed_bytes];
-    let tail = &input[NUMERIC_HEADER_SIZE + info.packed_bytes..];
+    // `numeric_inspect` proved `header + packed + tail == input.len()`.
+    let (packed, tail) = input
+        .get(NUMERIC_HEADER_SIZE..)
+        .and_then(|body| body.split_at_checked(info.packed_bytes))
+        .ok_or(AceError::Malformed("numeric payload length mismatch"))?;
 
     let mut out = if info.bit_width == 0 {
         if !packed.is_empty() {
@@ -69,6 +81,10 @@ fn decode_lane<T: Lane>(info: &NumericPayloadInfo, packed: &[u8]) -> AceResult<V
 /// With `bit_width == 0` every stored value is zero, so the sequence is implied by the header:
 /// FOR/Delta give a constant `first`; DoD gives `first + i * first_delta` in the lane ring. The
 /// output is written in place without a bit reader or temporary vector (memory speed).
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn decode_zero_width<T: Lane>(info: &NumericPayloadInfo) -> Vec<u8> {
     let step = match info.mode {
         NumericMode::DeltaOfDelta => T::from_u64_truncating(info.first_delta as u64),

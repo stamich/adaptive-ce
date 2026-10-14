@@ -6,6 +6,10 @@ pub fn raw_encode(input: &[u8]) -> Vec<u8> {
 }
 
 /// Validates and reconstructs a RAW payload.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `input.len() != expected_size`.
 pub fn raw_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     if input.len() != expected_size {
         return Err(AceError::Malformed(

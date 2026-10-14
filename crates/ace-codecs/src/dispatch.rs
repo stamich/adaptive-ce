@@ -11,6 +11,11 @@ use crate::{
 ///
 /// `lz_mode` is only consulted for [`CodecId::Lz`] and defaults to [`LzMode::Fast`];
 /// [`CodecId::TimeSeries`] picks the smallest TS1 layout.
+///
+/// # Errors
+///
+/// Propagates the codec's error; the Numeric and TS1 encoders reject input that has no
+/// valid layout (for example fewer than two values).
 pub fn encode_codec(id: CodecId, lz_mode: Option<LzMode>, input: &[u8]) -> AceResult<Vec<u8>> {
     match id {
         CodecId::Raw => Ok(raw_encode(input)),
@@ -22,6 +27,12 @@ pub fn encode_codec(id: CodecId, lz_mode: Option<LzMode>, input: &[u8]) -> AceRe
 }
 
 /// Decodes a primary codec stream to exactly `expected_size` bytes.
+///
+/// # Errors
+///
+/// Propagates the codec's validation error ([`ace_core::AceError::Malformed`],
+/// [`ace_core::AceError::InvalidLzReference`], [`ace_core::AceError::InvalidTimeSeries`]) when the payload is
+/// corrupt or does not decode to exactly `expected_size` bytes.
 pub fn decode_codec(id: CodecId, input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     match id {
         CodecId::Raw => raw_decode(input, expected_size),

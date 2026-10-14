@@ -20,6 +20,18 @@ use crate::{StreamLimits, StreamingStats};
 /// The sink must be seekable: the header is written first as Format 1.3 and rewritten in place
 /// as Format 1.4 only if a block selected the TS1 codec (the minimal-version rule), which keeps
 /// streaming and in-memory output identical without buffering the whole stream.
+///
+/// # Errors
+///
+/// [`AceError::InvalidConfig`] for an automatic block-size policy or an invalid fixed block
+/// size, [`AceError::ResourceLimitExceeded`] when `size` or the block count exceeds the
+/// stream limits, [`AceError::Malformed`] when `reader` ends before `size` bytes or yields
+/// more, [`AceError::Io`] from `reader` or `writer`, and block encoding errors.
+///
+/// # Determinism
+///
+/// Produces exactly the bytes of `AceEngine::compress` with the same configuration
+/// (including the 1.3 → 1.4 header rewrite), for every thread count.
 pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
     mut reader: R,
     writer: W,

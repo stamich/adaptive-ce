@@ -5,7 +5,7 @@ pub(crate) use ace_analysis::{
 };
 pub(crate) use ace_codecs::{estimate_numeric, numeric_encode};
 pub(crate) use ace_core::{
-    AccessHint, AceConfig, BlockSizePolicy, CandidateTier, CodecId, CompressionProfile,
+    AccessHint, AceConfig, AceResult, BlockSizePolicy, CandidateTier, CodecId, CompressionProfile,
     DecodingPlan, EntropyCodecId, LzMode, PhysicalCompressionPlan, TransformId,
 };
 pub(crate) use ace_cost::{CandidateEstimator, DefaultCandidateEstimator};

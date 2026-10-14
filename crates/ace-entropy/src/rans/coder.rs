@@ -5,6 +5,11 @@ use ace_core::{AceError, AceResult};
 use super::model::{NormalizedFrequencyTable, RANS_L, RANS_SCALE, RANS_SCALE_BITS};
 
 /// Encodes bytes using a scalar 32-bit range Asymmetric Numeral System.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] when the normalized model gives a present symbol a zero frequency
+/// (an internal invariant; every input, including an empty one, is encodable).
 pub fn rans_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
     if input.is_empty() {
         return Ok((vec![0u8; 512], Vec::new()));
@@ -32,9 +37,20 @@ pub fn rans_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
 }
 
 /// Decodes a scalar rANS payload into exactly `expected_size` bytes.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] for invalid metadata, a truncated payload, trailing bytes, a
+/// final state other than the encoder's initial state, or a non-empty payload for an empty
+/// output.
 pub fn rans_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     if expected_size == 0 {
-        return Ok(Vec::new());
+        // The encoder writes no state for an empty output.
+        return if input.is_empty() {
+            Ok(Vec::new())
+        } else {
+            Err(AceError::InvalidRans("payload for an empty output"))
+        };
     }
     if input.len() < 4 {
         return Err(AceError::InvalidRans("truncated initial state"));
@@ -77,6 +93,12 @@ pub fn rans_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceRe
     }
     if cursor != input.len() {
         return Err(AceError::InvalidRans("trailing rANS payload bytes"));
+    }
+    // Decoding runs the encoder backwards, so a stream that really encodes `expected_size`
+    // symbols ends in the encoder's initial state; anything else (a forged size, a damaged
+    // state) is rejected here instead of relying on the block CRC alone.
+    if state != RANS_L {
+        return Err(AceError::InvalidRans("final rANS state mismatch"));
     }
     Ok(out)
 }

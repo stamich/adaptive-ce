@@ -9,8 +9,9 @@ use crate::prelude::*;
 /// Input size of every allocation case.
 const INPUT_BYTES: usize = 16 * 1024 * 1024;
 
-/// `(path, workload, profile)` of every allocation case.
-const ALLOCATION_CASES: [(&str, &str, CompressionProfile); 8] = [
+/// `(path, workload, profile)` of every allocation case (also replayed by
+/// `allocation-profile`).
+pub(crate) const ALLOCATION_CASES: [(&str, &str, CompressionProfile); 8] = [
     ("fast", "mixed", CompressionProfile::Fast),
     ("balanced", "mixed", CompressionProfile::Balanced),
     ("dense", "mixed", CompressionProfile::Dense),

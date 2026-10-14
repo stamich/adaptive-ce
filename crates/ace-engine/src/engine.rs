@@ -36,6 +36,11 @@ pub struct AceEngine {
 /// Inherent methods of [`AceEngine`].
 impl AceEngine {
     /// Creates an engine with explicit encoder configuration and default decoder limits.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidConfig`] when the block size is zero or exceeds `u32::MAX`, or when the
+    /// runtime configuration (threads, memory budget) is invalid.
     pub fn new(config: AceConfig) -> AceResult<Self> {
         if config.block_size == 0 || config.block_size > u32::MAX as usize {
             return Err(AceError::InvalidConfig(
@@ -71,7 +76,12 @@ impl AceEngine {
         &self.config
     }
 
-    /// Compresses an in-memory byte slice into a complete ACE Format 1.3 file.
+    /// Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a
+    /// block uses TS1: the minimal-version rule).
+    ///
+    /// # Errors
+    ///
+    /// The conditions of [`AceEngine::compress_with_stats`].
     pub fn compress(&self, input: &[u8]) -> AceResult<Vec<u8>> {
         self.compress_with_stats(input).map(|(bytes, _)| bytes)
     }
@@ -80,6 +90,17 @@ impl AceEngine {
     ///
     /// Blocks are encoded in parallel in batches of at most `max_in_flight_blocks`, then
     /// serialized in block-id order, so the output never depends on the thread count.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidConfig`] when the thread pool cannot be built; encoder errors are
+    /// propagated (they indicate a bug, since every block has a RAW fallback).
+    ///
+    /// # Determinism
+    ///
+    /// The output bytes depend only on `input` and the encoder configuration — not on
+    /// `threads`, `max_in_flight_blocks`, the SIMD backend or the host. The golden SHA-256 files
+    /// (`examples/golden/`) and the determinism matrix enforce this.
     pub fn compress_with_stats(&self, input: &[u8]) -> AceResult<(Vec<u8>, CompressionStats)> {
         let block_size = self.resolved_block_size(input);
         let chunker =
@@ -123,6 +144,11 @@ impl AceEngine {
     }
 
     /// Compresses source bytes and writes the finished ACE file to an arbitrary sink.
+    ///
+    /// # Errors
+    ///
+    /// The conditions of [`AceEngine::compress_with_stats`] and [`AceError::Io`] when the sink
+    /// fails.
     pub fn compress_to<W: Write>(
         &self,
         input: &[u8],
@@ -133,7 +159,11 @@ impl AceEngine {
         Ok(stats)
     }
 
-    /// Decompresses an in-memory ACE 1.0, 1.1, 1.2 or 1.3 file into reconstructed bytes.
+    /// Decompresses an in-memory ACE 1.0 – 1.4 file into reconstructed bytes.
+    ///
+    /// # Errors
+    ///
+    /// The conditions of [`AceEngine::decompress_into`].
     pub fn decompress(&self, input: &[u8]) -> AceResult<Vec<u8>> {
         let mut out = Vec::new();
         self.decompress_into(input, &mut out)?;
@@ -147,6 +177,13 @@ impl AceEngine {
     /// buffer avoid re-allocating the output. The reservation made from the (untrusted)
     /// header is capped by [`DecodeLimits::max_output_size`] and [`PREALLOCATION_CAP_BYTES`];
     /// on error `out` holds an unspecified prefix and must not be used.
+    ///
+    /// # Errors
+    ///
+    /// Any format error ([`AceError::InvalidMagic`], [`AceError::UnsupportedVersion`],
+    /// [`AceError::Malformed`], codec-specific errors), [`AceError::ChecksumMismatch`] when a
+    /// block does not reproduce its CRC-32C, and [`AceError::ResourceLimitExceeded`] when a
+    /// declared size exceeds the engine's [`DecodeLimits`].
     pub fn decompress_into(&self, input: &[u8], out: &mut Vec<u8>) -> AceResult<usize> {
         out.clear();
         let mut ace = AceReader::new(Cursor::new(input), self.limits.clone());
@@ -160,7 +197,12 @@ impl AceEngine {
         Ok(out.len())
     }
 
-    /// Reads, validates and sequentially decompresses ACE 1.0–1.3 blocks to a writer.
+    /// Reads, validates and sequentially decompresses ACE 1.0–1.4 blocks to a writer.
+    ///
+    /// # Errors
+    ///
+    /// The conditions of [`AceEngine::decompress_into`] plus [`AceError::Io`] from `reader` or
+    /// `writer`.
     pub fn decompress_from<R: Read, W: Write>(&self, reader: R, writer: W) -> AceResult<()> {
         let mut ace = AceReader::new(reader, self.limits.clone());
         let file = ace.read_file_header()?;
@@ -175,6 +217,9 @@ impl AceEngine {
         file: &FileHeader,
         mut writer: W,
     ) -> AceResult<()> {
+        if file.block_count > self.limits.max_block_count() {
+            return Err(AceError::ResourceLimitExceeded("block count"));
+        }
         let mut total = 0u64;
         for expected_id in 0..file.block_count {
             let (header, metadata, payload) = ace.read_block()?;
@@ -200,6 +245,10 @@ impl AceEngine {
 
     /// Produces deterministic planner explanations (every candidate fully evaluated) without
     /// writing an ACE stream.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidConfig`] for a zero block size; planner errors are propagated.
     pub fn explain(&self, input: &[u8]) -> AceResult<Vec<BlockExplanation>> {
         let chunker = FixedBlockChunker::new(self.resolved_block_size(input))
             .ok_or(AceError::InvalidConfig("zero block size"))?;

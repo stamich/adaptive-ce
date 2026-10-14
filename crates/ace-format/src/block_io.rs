@@ -3,6 +3,10 @@
 //! Both the sequential [`crate::AceReader`] and the seekable index reader (`ace-index`) use
 //! this function, so limit checks and parsing exist exactly once.
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a file is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use std::io::Read;
 
 use ace_core::{AceError, AceResult, DecodeLimits};
@@ -19,6 +23,12 @@ const TRANSFORM_COUNT_OFFSET: usize = 22;
 ///
 /// Every size declared by the header is checked against `limits` before the corresponding
 /// buffer is allocated, so hostile headers cannot trigger large allocations.
+///
+/// # Errors
+///
+/// [`AceError::ResourceLimitExceeded`] when a declared size exceeds `limits`,
+/// [`AceError::Malformed`] / unsupported-identifier errors from the header, and
+/// [`AceError::Io`] (including an unexpected end of file).
 pub fn read_serialized_block<R: Read>(
     reader: &mut R,
     minor_version: u8,

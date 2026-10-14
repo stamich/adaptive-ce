@@ -1,94 +1,63 @@
-# Adaptive Compression Engine (ACE) 0.5.0
+# Adaptive Compression Engine (ACE)
 
-ACE is a schema-free, adaptive block compressor written in Rust. Every block of the input is
-analysed, routed (Generic / NumericGeneral / NumericFast / FloatGeneral / FloatFast), planned
-by a deterministic cost model and stored in the self-describing **ACE Format 1.3 / 1.4**
-container, which carries a block index for random access.
+ACE is a lossless, schema-free, adaptive block compressor written in Rust. It looks at every
+block of the input — text, structured records, integer counters and timestamps, floating-point
+series — chooses the cheapest reversible pipeline for it with a deterministic cost model, and
+stores the result in a self-describing container with a block index for random access.
 
-**0.5.0 adds lossless floating-point and time-series compression**: the TS1 codec (Gorilla
-XOR for f64 / f32, RunDelta for rarely changing values) and Planner V5 with its Float lane.
-Data the 0.4 pipeline already handles is written byte-for-byte as in 0.4.6 (Format 1.3); only
-files with a TS1 block are Format 1.4. See [`docs/RELEASE-NOTES-0.5.0.md`](docs/RELEASE-NOTES-0.5.0.md)
-and [`docs/MIGRATION-0.4-TO-0.5.md`](docs/MIGRATION-0.4-TO-0.5.md).
+The same input and configuration always produce the same bytes, on every machine, thread count
+and SIMD backend. Every byte read from a file is validated before it is trusted.
 
-## Features
+**Current release: 0.5.1 — Hardened Release Candidate.** It writes exactly the bytes of 0.5.0
+and qualifies them for long-term use: audited decoder arithmetic and resource limits, frozen
+compatibility files from every earlier release, determinism up to 32 threads, fuzzing in CI and
+repeatable benchmarks. See [`docs/RELEASE-NOTES-0.5.1.md`](docs/RELEASE-NOTES-0.5.1.md).
 
-- **Adaptive planning** — Planner V5 (= V4.3 + Float lane) evaluates RAW, RLE, LZ, NUM1, TS1 and
-  delta pipelines with Huffman / rANS / rANS4x entropy coding per block; quality is gated
-  against a policy oracle.
-- **Numeric compression** — NUM1 (frame-of-reference, delta, delta-of-delta + bit packing) for
-  u16 / u32 / u64 lanes, with a validated fixed-step fast path.
-- **Floating-point & time series (0.5)** — TS1: Gorilla XOR (bit-exact f64 / f32, incl. NaN
-  payloads and −0.0) and RunDelta (Elias-gamma runs + ZigZag deltas); a float prefilter with
-  zero false positives on the 0.4 corpus; FloatFast for dominant series (constant f64:
-  2 416× vs 141× in 0.4.6, ~35× faster encode).
-- **Random access** — `AceIndexedDecoder` decodes only the blocks that intersect a byte range.
-- **Streaming** — bounded-memory encoder whose output is byte-identical to in-memory compression.
-- **Determinism** — identical bytes for every thread count, process and SIMD backend.
-- **Safety** — `unsafe` only in audited SIMD/CRC kernels, no `unwrap`/`expect`/`panic` in
-  production code, decoder resource limits, fuzzed parsers.
-- **Hardware acceleration** — AVX2 scans and 3-way SSE4.2 CRC32C, runtime-detected; portable
-  scalar fallback (`ACE_SIMD=scalar` forces it).
+## What it does well
 
-## Architecture
+| Data | How ACE stores it | Example (BALANCED) |
+|---|---|---|
+| text, logs, JSON, mixed binary | LZ / RLE / delta + Huffman, rANS or 4-lane rANS, chosen per block | mixed corpus 16 MiB: ≈ 3.7× |
+| integer counters, timestamps, IDs | NUM1: frame-of-reference, delta or delta-of-delta + bit packing (u16 / u32 / u64) | u32 counter: ≈ 2 300×; u64 timestamps: ≈ 32× |
+| floating-point series | TS1 Gorilla XOR, bit-exact for f64 / f32 (NaN payloads, −0.0, subnormals) | constant f64: ≈ 2 400× |
+| rarely changing values | TS1 RunDelta (Elias-gamma runs + ZigZag deltas) | sparse-change integers: ≈ 235× |
+| incompressible data | stored RAW (never larger than the input plus framing) | random: 1.0× |
 
-```text
-input ─► chunker ─► route (NumericFast | FloatFast | FloatGeneral | NumericGeneral | Generic)
-                                   │
-                                   ▼
-          Planner V5 = V4.3 (analysis, cost model, sampling, policies) + TS1 policy
-                                   │
-     transforms ─► codec (RAW/RLE/LZ/NUM1/TS1) ─► entropy (Huffman/rANS/rANS4x; none for TS1)
-                                   │
-                                   ▼
-   Format 1.3 | 1.4 container: header · blocks (CRC32C) · index · trailer
-   (1.4 only when a block is TS1)
-```
-
-| Crate | Role |
-|---|---|
-| `ace-core` | shared model: ids, plans, configuration, limits, errors, statistics |
-| `ace-simd` | runtime-dispatched SIMD scans and hardware CRC32C (the only `unsafe` crate) |
-| `ace-bitpack` | generic `Lane` integer transforms, bit packing, public LSB-first bitstream |
-| `ace-analysis` | block statistics, numeric detection, float / run prefilters, block-size advisor |
-| `ace-transforms`, `ace-codecs`, `ace-entropy` | reversible stages: delta; RAW/RLE/LZ/NUM1/TS1; Huffman/rANS/rANS4x |
-| `ace-cost`, `ace-planner` | estimation, sampling, routing, evaluation and policies |
-| `ace-format`, `ace-index` | container format, checksums, block I/O, index |
-| `ace-engine`, `ace-stream`, `ace-runtime` | façade, block pipeline, random access, streaming, worker pool |
-| `ace-dictionary` | dictionary registry seam |
-| `ace-cli` | the `ace` command-line tool |
-| `ace-corpus` | deterministic synthetic workloads: Corpus V3 + V4 and the Float false-positive corpus |
-| `ace-bench` | Benchmark Harness V3 (`benchmark-0.5.0-<family>.json`, schema 2.1) |
-
-Details: [`docs/ARCHITECTURE-0.5.0.md`](docs/ARCHITECTURE-0.5.0.md),
-[`docs/PLANNER-V5.md`](docs/PLANNER-V5.md), [`docs/TS1-CODEC.md`](docs/TS1-CODEC.md),
-[`docs/FORMAT-1.4.md`](docs/FORMAT-1.4.md),
-[`docs/FLOAT-CALIBRATION-0.5.0.md`](docs/FLOAT-CALIBRATION-0.5.0.md).
+Measured numbers and methodology: [`docs/PERFORMANCE-0.5.0.md`](docs/PERFORMANCE-0.5.0.md)
+(reference machine AMD Ryzen 9 5950X), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start
 
 ```bash
-./ace-build0.5.0.sh                      # fmt, clippy, tests, release build, rustdoc, demo
-./demo/ace-run-demo0.5.0.sh              # < 1 minute product tour (incl. the Float lane)
+cargo build --release                                  # builds the `ace` binary
+./target/release/ace compress data.bin data.ace        # --profile fast | balanced | dense
+./target/release/ace decompress data.ace restored.bin
+./target/release/ace version                           # version, formats, backends, git revision
+./demo/ace-run-demo0.5.1.sh                            # one-minute product tour
 ```
 
-Requirements: Rust 1.97.0 (MSRV, pinned by `rust-toolchain.toml`; `Cargo.lock` included), Python 3.9+ for the tools.
+Requirements: Rust 1.97.0 or newer (MSRV); the repository pins the build toolchain to 1.98.1
+in `rust-toolchain.toml` (never use 1.98.0). Python 3.9+ for the benchmark and release tools.
 
-## Command-line interface
+## Command line
 
 ```bash
-ace compress in.bin out.ace --profile balanced --threads 0   # fast | balanced | dense
+ace compress in.bin out.ace --profile balanced --threads 0   # 0 = all CPUs; output is identical for any count
 ace compress in.bin out.ace --disable-float                  # 0.4.6 decisions, always Format 1.3
-ace compress-stream in.bin out.ace                           # bounded memory
+ace compress-stream in.bin out.ace                           # bounded memory, same bytes
 ace decompress out.ace restored.bin
-ace verify out.ace                                           # decode + check every CRC
-ace inspect out.ace --blocks                                 # format version, per-block codec / NUM1 / TS1 telemetry
-ace explain in.bin                                           # route, float evidence, planner decisions
-ace read-range out.ace 1000000 65536 part.bin                # random access
+ace verify out.ace                                           # decode everything, check every CRC
+ace inspect out.ace --blocks                                 # format version, per-block codecs
+ace explain in.bin                                           # routes and planner decisions per block
+ace read-range out.ace 1000000 65536 part.bin                # random access: decodes only the touched blocks
 ace decode-block out.ace 7 block.bin
+ace version
 ```
 
-## Library API
+Exit status: 0 success (also when the output pipe is closed early, e.g. `ace explain … | head`),
+1 error (message on stderr), 2 usage error. An output path that names the input file is refused.
+
+## Library
 
 ```rust
 use std::io::Cursor;
@@ -102,63 +71,69 @@ let mut reader = AceIndexedDecoder::open(Cursor::new(&packed), DecodeLimits::def
 let slice = reader.read_range(4_000..4_100)?;
 ```
 
-The same example is compiled and executed as a doctest of `ace-engine`.
+The public API is `ace-core`, `ace-engine` and `ace-stream` (bounded-memory streaming); the
+other crates are internal ([`docs/API-INVENTORY.md`](docs/API-INVENTORY.md)). The example is
+compiled and run as a doctest of `ace-engine`. JVM users can call the CLI today
+(`integrations/`); a C ABI with Java (Panama) and Scala bindings is planned for 0.7.
 
-## Compatibility
+## How it works
 
-| Item | 0.5.0 |
-|---|---|
-| Writer / readers | Format 1.3, or 1.4 when a block is TS1 / 1.0 – 1.4 |
-| Planner | V5 = V4.3 + Float lane (golden 0.5.0; Corpus V3 = frozen golden 0.4.6) |
-| Encoded bytes | Corpus V3 and every file written with `--disable-float`: identical to 0.4.6 |
-| Public API | streaming sink `Write + Seek`; new `AceConfig` field; new enum variants ([migration](docs/MIGRATION-0.4-TO-0.5.md)) |
-| MSRV | Rust 1.97 |
-| Benchmark schema | 2.1 (all 2.0 fields kept) |
-
-## Performance
-
-Generated tables: [`docs/PERFORMANCE-0.5.0.md`](docs/PERFORMANCE-0.5.0.md). Methodology
-(adaptive iterations, 3 × 7 batches, median-of-medians, MAD, interleaved A/B, Float lane
-families and same-run gates):
-[`docs/BENCHMARK-METHODOLOGY-0.5.0.md`](docs/BENCHMARK-METHODOLOGY-0.5.0.md).
-
-```bash
-./ace-benchmark0.5.0.sh all [--quick] [--isolated]   # Harness V3 + Regression V3
-./ace-ab0.5.0.sh /path/to/ace-0.4.6                  # interleaved A/B vs the baseline tree
-./ace-benchmark-compare0.5.0.sh OLD NEW              # any two result files or directories
-./ace-release0.5.0.sh /path/to/ace-0.4.6             # full release pipeline
+```text
+input ─► blocks ─► route (NumericFast | FloatFast | FloatGeneral | NumericGeneral | Generic)
+                                   │
+          Planner V5: analysis, analytical estimates, sampled verification, cost model,
+          TS1 dominance policy — deterministic, no wall clock, fixed tie-breaks
+                                   │
+     transforms ─► codec (RAW / RLE / LZ / NUM1 / TS1) ─► entropy (Huffman / rANS / rANS4x)
+                                   │
+   container: header · blocks (each with CRC-32C) · block index · trailer
+   Format 1.3, or 1.4 when a block uses TS1 (the minimal version the file needs)
 ```
 
-## Security limits
+Blocks are independent, so compression runs in parallel and any byte range can be decoded
+without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
+[`docs/PLANNER-V5.md`](docs/PLANNER-V5.md), [`docs/FORMAT.md`](docs/FORMAT.md),
+[`docs/TS1-CODEC.md`](docs/TS1-CODEC.md).
 
-Decoding enforces `DecodeLimits` (output size, block size, encoded block size, transforms,
-dictionary size, index entries) before allocating; every block carries a CRC32C; header,
-index and trailer are checksummed. Malformed input is rejected with an error, never a panic —
-covered by the malformed matrix (incl. a Format 1.4 / TS1 fixture), property tests and 15
-fuzz targets. TS1 headers are validated before any output is allocated. See
-[`docs/SECURITY.md`](docs/SECURITY.md), [`docs/UNSAFE-AUDIT-0.5.0.md`](docs/UNSAFE-AUDIT-0.5.0.md),
-[`docs/PANIC-AUDIT-0.5.0.md`](docs/PANIC-AUDIT-0.5.0.md).
+## Guarantees
 
-## Repository map
+| Guarantee | How it is enforced |
+|---|---|
+| Lossless, bit-exact | every block carries the CRC-32C of its bytes; property tests over arbitrary inputs and float bit patterns |
+| Deterministic output | golden SHA-256 files (auto and scalar SIMD), determinism matrix (1 – 32 threads, API paths, processes) |
+| Old files stay readable | frozen files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6 and 0.5.0 decode on every build ([`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)) |
+| Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code, 15 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
+| Minimal `unsafe` | only audited SIMD / CRC kernels ([`docs/UNSAFE-AUDIT.md`](docs/UNSAFE-AUDIT.md), [`docs/PANIC-AUDIT.md`](docs/PANIC-AUDIT.md)) |
+
+## Development
+
+```bash
+./ace-build0.5.1.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
+./ace-ci0.5.1.sh pr | msrv | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
+./ace-benchmark0.5.1.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
+./ace-ab0.5.1.sh /path/to/ace-0.5.0                  # interleaved A/B against the previous release
+./ace-benchmark-compare0.5.1.sh OLD NEW              # any two result files or directories
+./ace-release0.5.1.sh /path/to/ace-0.5.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+```
 
 | Path | Content |
 |---|---|
-| `ace-*0.5.0.sh` | build, benchmark, compare, A/B, release and CI entry points |
-| `demo/` | product demo |
-| `tools/` | Python benchmark tools (validator, report, compare, Regression V3, A/B, package, audit) |
-| `examples/golden/0.5.0/` | golden SHA-256 of Corpus V3 + V4 (with the declared format version) |
-| `examples/golden/0.4.6/` | frozen: Corpus V3 must still produce these bytes |
-| `examples/baselines/` | accepted reference results (`BASELINE.json` per version; 0.4.6 is the A/B base of 0.5.0, 0.5.0 = Ryzen 9 5950X reference run) |
-| `fuzz/` | `cargo-fuzz` project (15 targets) |
-| `integrations/` | Java / Scala CLI-boundary examples |
-| `docs/` | current documentation; `docs/history/` keeps earlier milestones |
-| `TASKS-0.5.0.md`, `MILESTONE-0.5.0.json` | implementation order and machine-readable summary |
+| `crates/` | 18 crates ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
+| `ace-*0.5.1.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
+| `examples/golden/` | golden SHA-256 (0.5.0; frozen 0.4.6) |
+| `examples/compat/` | frozen compatibility files of earlier releases |
+| `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
+| `fuzz/` | `cargo-fuzz` project, 15 targets ([`fuzz/README.md`](fuzz/README.md)) |
+| `integrations/` | Java / Scala CLI examples |
+| `docs/` | current documentation; `docs/history/` keeps earlier versions |
+| `TASKS-0.5.1.md`, `MILESTONE-0.5.1.json` | implementation order and machine-readable summary of this release |
 
 ## Roadmap
 
-Next: ACE 0.6 — decimal floats (ALP), small-delta RunDelta admission and Patched FOR,
-SIMD bit packing / Gorilla. See [`ROADMAP.md`](ROADMAP.md); history of all builds:
-[`CHANGELOG.md`](CHANGELOG.md).
+0.6 — one `ace` API facade, decimal floats (ALP), more numeric modes and Format 1.5;
+0.7 — C ABI, Java (Panama FFM) and Scala SDK; 0.8 — adaptive segmentation and columnar blocks
+(Format 2.0); 0.9 — integration with AdaptiveDB and GraphNet; 1.0 — stable API and format.
+See [`ROADMAP.md`](ROADMAP.md) and [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License
 

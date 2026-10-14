@@ -1,3 +1,8 @@
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a payload is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`); a proven-safe site carries a local
+// `allow` with its proof.
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use crate::{rans_decode, rans_encode};
 use ace_core::{AceError, AceResult};
 
@@ -6,11 +11,29 @@ pub const RANS4X_LANES: usize = 4;
 /// Metadata bytes used to store four normalized models and four payload lengths.
 pub const RANS4X_METADATA_BYTES: usize = RANS4X_LANES * 512 + RANS4X_LANES * 4;
 
+/// Metadata bytes of one lane's normalized model.
+const MODEL_BYTES_PER_LANE: usize = 512;
+/// Metadata bytes of the four lane models (the four `u32` payload lengths follow).
+const MODEL_BYTES: usize = RANS4X_LANES * MODEL_BYTES_PER_LANE;
+
+/// Number of the `total` round-robin bytes that belong to `lane` (`ceil((total - lane) / 4)`,
+/// computed without the `total + 3` overflow of the textbook formula).
+fn lane_output_len(total: usize, lane: usize) -> usize {
+    // `total / 4 + 1 <= usize::MAX`, so the addition cannot overflow.
+    (total / RANS4X_LANES).saturating_add(usize::from(lane < total % RANS4X_LANES))
+}
+
 /// Encodes input into four deterministic round-robin rANS lanes.
 ///
 /// This milestone keeps each lane wire-compatible with the proven scalar rANS coder while
 /// removing the single long state dependency chain.  A later SIMD implementation can replace
 /// lane execution without changing the surrounding entropy identifier or metadata contract.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] when a lane fails to encode or a lane payload exceeds `u32::MAX`
+/// bytes.
+#[allow(clippy::arithmetic_side_effects)] // encoder: only `index & 3` and slice lengths
 pub fn rans4x_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
     let mut lanes = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
     for (index, &byte) in input.iter().enumerate() {
@@ -38,19 +61,23 @@ pub fn rans4x_encode(input: &[u8]) -> AceResult<(Vec<u8>, Vec<u8>)> {
 }
 
 /// Decodes four round-robin rANS lanes and restores the original byte order.
+///
+/// # Errors
+///
+/// [`AceError::InvalidRans`] for metadata of the wrong length, lane lengths that do not add up
+/// to the payload, or any lane error of [`crate::rans_decode`].
 pub fn rans4x_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     if metadata.len() != RANS4X_METADATA_BYTES {
         return Err(AceError::InvalidRans("invalid rANS4x metadata size"));
     }
-    let model_bytes = RANS4X_LANES * 512;
+    let (models, lengths) = metadata
+        .split_at_checked(MODEL_BYTES)
+        .ok_or(AceError::InvalidRans("invalid rANS4x metadata size"))?;
+    let models = models.as_chunks::<MODEL_BYTES_PER_LANE>().0;
     let mut payload_lengths = [0usize; RANS4X_LANES];
-    for (lane, length) in payload_lengths.iter_mut().enumerate() {
-        let start = model_bytes + lane * 4;
-        *length = u32::from_le_bytes(
-            metadata[start..start + 4]
-                .try_into()
-                .map_err(|_| AceError::InvalidRans("invalid rANS4x lane length"))?,
-        ) as usize;
+    for (length, bytes) in payload_lengths.iter_mut().zip(lengths.as_chunks::<4>().0) {
+        *length = usize::try_from(u32::from_le_bytes(*bytes))
+            .map_err(|_| AceError::InvalidRans("invalid rANS4x lane length"))?;
     }
     let total_payload = payload_lengths.iter().try_fold(0usize, |acc, &n| {
         acc.checked_add(n)
@@ -63,25 +90,32 @@ pub fn rans4x_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> Ace
     }
 
     let mut decoded = Vec::with_capacity(RANS4X_LANES);
-    let mut cursor = 0usize;
-    for lane in 0..RANS4X_LANES {
-        let model = &metadata[lane * 512..(lane + 1) * 512];
-        let end = cursor + payload_lengths[lane];
-        let lane_expected = (expected_size + (RANS4X_LANES - 1 - lane)) / RANS4X_LANES;
-        decoded.push(rans_decode(model, &input[cursor..end], lane_expected)?);
-        cursor = end;
+    let mut remaining = input;
+    for (lane, (model, &length)) in models.iter().zip(&payload_lengths).enumerate() {
+        let (lane_input, rest) =
+            remaining
+                .split_at_checked(length)
+                .ok_or(AceError::InvalidRans(
+                    "rANS4x payload lengths do not match payload",
+                ))?;
+        remaining = rest;
+        decoded.push(rans_decode(
+            model,
+            lane_input,
+            lane_output_len(expected_size, lane),
+        )?);
     }
 
-    let mut positions = [0usize; RANS4X_LANES];
+    // Round-robin interleave; every lane is a slice iterator, so a short lane is an error
+    // instead of an out-of-bounds read.
+    let mut lanes: Vec<std::slice::Iter<'_, u8>> = decoded.iter().map(|lane| lane.iter()).collect();
     let mut output = Vec::with_capacity(expected_size);
     for index in 0..expected_size {
-        let lane = index & 3;
-        let pos = positions[lane];
-        let byte = *decoded[lane]
-            .get(pos)
+        let byte = lanes
+            .get_mut(index & (RANS4X_LANES - 1))
+            .and_then(Iterator::next)
             .ok_or(AceError::InvalidRans("rANS4x lane underflow"))?;
-        positions[lane] += 1;
-        output.push(byte);
+        output.push(*byte);
     }
     Ok(output)
 }

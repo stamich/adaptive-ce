@@ -1,5 +1,10 @@
 //! Fixed-width bit packing of unsigned lanes in little-endian bit order.
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a file is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`); a proven-safe site carries a local
+// `allow` with its proof.
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_core::{AceError, AceResult};
 
 use crate::bitstream::{read_bits_validated, write_bits};
@@ -9,6 +14,13 @@ use crate::Lane;
 ///
 /// Fails when `bit_width` exceeds the lane or a value does not fit. A zero bit width is legal
 /// only for an all-zero slice and yields an empty vector.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `bit_width` exceeds the lane width, when a value needs more
+/// than `bit_width` bits, or when the packed length overflows `usize`.
+// `index * bit_width <= values.len() * bit_width`, which `packed_len` proved fits `usize`.
+#[allow(clippy::arithmetic_side_effects)]
 pub fn pack<T: Lane>(values: &[T], bit_width: u8) -> AceResult<Vec<u8>> {
     if bit_width > T::BITS {
         return Err(AceError::Malformed(T::WIDTH_TOO_LARGE));
@@ -36,11 +48,20 @@ pub fn pack<T: Lane>(values: &[T], bit_width: u8) -> AceResult<Vec<u8>> {
 ///
 /// The input length must equal `ceil(count * bit_width / 8)` exactly, so corrupted metadata
 /// can neither read out of bounds nor be silently truncated.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `bit_width` exceeds the lane width, when
+/// `count * bit_width` overflows, or when `input.len()` is not exactly the packed length.
 pub fn unpack<T: Lane>(input: &[u8], count: usize, bit_width: u8) -> AceResult<Vec<T>> {
     Ok(unpack_iter(input, count, bit_width)?.collect())
 }
 
 /// Validates like [`unpack`] and then yields the values lazily (no intermediate vector).
+///
+/// # Errors
+///
+/// Same validation as [`unpack`]; nothing is yielded when it fails.
 pub fn unpack_iter<T: Lane>(
     input: &[u8],
     count: usize,
@@ -52,7 +73,9 @@ pub fn unpack_iter<T: Lane>(
     if input.len() != packed_len(count, bit_width)? {
         return Err(AceError::Malformed("bitpack payload length mismatch"));
     }
-    let width = bit_width as usize;
+    let width = usize::from(bit_width);
+    // `index * width < count * width`, which `packed_len` proved fits `usize`.
+    #[allow(clippy::arithmetic_side_effects)]
     Ok((0..count).map(move |index| {
         if width == 0 {
             T::default()
@@ -63,19 +86,26 @@ pub fn unpack_iter<T: Lane>(
 }
 
 /// Exact byte length of `count` packed values of `bit_width` bits (checked for overflow).
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when `count * bit_width` (or the rounding to bytes) overflows
+/// `usize`.
 pub fn packed_len(count: usize, bit_width: u8) -> AceResult<usize> {
     count
-        .checked_mul(bit_width as usize)
+        .checked_mul(usize::from(bit_width))
         .map(|bits| bits.div_ceil(8))
         .ok_or(AceError::Malformed("bitpack size overflow"))
 }
 
 /// Mask with the low `bit_width` bits set (`bit_width` in `1..=64`).
 fn low_bits_mask(bit_width: u8) -> u64 {
-    u64::MAX >> (64 - bit_width as u32)
+    // Callers pass `1..=64`, so the shift is `0..=63`.
+    u64::MAX >> 64u32.saturating_sub(u32::from(bit_width))
 }
 
 #[cfg(test)]
+#[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // test fixtures
 mod tests {
     use super::*;
 

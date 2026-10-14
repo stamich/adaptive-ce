@@ -4,11 +4,13 @@ use crate::prelude::*;
 
 /// Milestone tag written into every document and into result file names
 /// (`benchmark-<MILESTONE>-<family>.json`); the single place to bump per release.
-pub(crate) const MILESTONE: &str = "0.5.0";
+pub(crate) const MILESTONE: &str = "0.5.1";
 /// Milestone whose results are the direct predecessor of this one.
-pub(crate) const BASE_MILESTONE: &str = "0.4.6";
-/// Benchmark document schema version (2.1 = 2.0 + Harness V3 statistics and fingerprint).
-pub(crate) const SCHEMA_VERSION: &str = "2.1";
+pub(crate) const BASE_MILESTONE: &str = "0.5.0";
+/// Benchmark document schema version (2.1 = 2.0 + Harness V3 statistics and fingerprint;
+/// 2.2 = 2.1 + git revision / dirty flag, configuration fingerprint, threads, block size and
+/// the SHA-256 of every generated workload input — additive, 2.0 / 2.1 readers ignore it).
+pub(crate) const SCHEMA_VERSION: &str = "2.2";
 /// Environment variable overriding the result directory.
 pub(crate) const OUT_DIR_ENV: &str = "ACE_BENCH_OUT_DIR";
 
@@ -79,24 +81,77 @@ pub(crate) struct BenchmarkDocument {
     pub(crate) configuration: Value,
     /// Harness V3 methodology (schema 2.1).
     pub(crate) benchmark_methodology: Value,
+    /// `"<workload>@<bytes>"` → SHA-256 of every input the family generated (schema 2.2).
+    pub(crate) workload_fingerprints: BTreeMap<String, String>,
     /// One object per measured workload/case.
     pub(crate) workloads: Vec<Value>,
 }
 
 /// Returns static benchmark configuration metadata shared by every benchmark family.
+///
+/// Schema 2.2 adds the default engine `threads` / `block_size` and `config_fingerprint`, the
+/// SHA-256 (first 16 hex digits) of the default `AceConfig` and the measurement plan, so two
+/// documents are comparable only when their fingerprints match.
 pub(crate) fn benchmark_configuration_json() -> Value {
     let plan = MeasurementPlan::current();
+    let config = AceConfig::default();
     let mut row = JsonObjectBuilder::new();
     row.field("warmup_iterations", plan.warmups)
         .field("runs", plan.total_samples())
-        .field("default_block_size_bytes", 262_144usize)
-        .field("format_version", "1.3")
-        .field("planner_version", "4.3")
+        .field("default_block_size_bytes", config.block_size)
+        .field("block_size", config.block_size)
+        .field("threads", config.threads)
+        .field("threads_resolved", resolved_threads(config.threads))
+        .field("format_version", "1.3 | 1.4 (minimal version)")
+        .field("planner_version", "V5")
+        .field("config_fingerprint", config_fingerprint(&config, &plan))
         .field(
             "simd_backend",
             format!("{:?}", ace_simd::selected_backend()),
         );
     row.build()
+}
+
+/// Worker count `threads` resolves to (`0` = every logical CPU, like `RuntimeConfig`).
+fn resolved_threads(threads: usize) -> usize {
+    if threads == 0 {
+        num_cpus::get().max(1)
+    } else {
+        threads
+    }
+}
+
+/// First 16 hex digits of the SHA-256 of the default engine configuration and the
+/// measurement plan (field by field, so it does not depend on `Debug` formatting).
+fn config_fingerprint(config: &AceConfig, plan: &MeasurementPlan) -> String {
+    let canonical = format!(
+        "profile={:?};block_size={};policy={:?};threads={};in_flight={};memory={};\
+         min_gain={};numeric={};float={};quick={};warmups={};batches={};samples={};min_ns={}",
+        config.profile,
+        config.block_size,
+        config.block_size_policy,
+        config.threads,
+        config.max_in_flight_blocks,
+        config.memory_budget_bytes,
+        config.min_gain_bytes,
+        config.enable_numeric_specialization,
+        config.enable_float_specialization,
+        plan.quick,
+        plan.warmups,
+        plan.batches,
+        plan.samples_per_batch,
+        plan.min_sample_ns,
+    );
+    sha256_hex(canonical.as_bytes())[..16].to_string()
+}
+
+/// Lower-case hex SHA-256 of `bytes`.
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 /// Returns the schema-2.1 `benchmark_methodology` block describing Harness V3.

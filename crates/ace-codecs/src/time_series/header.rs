@@ -16,6 +16,10 @@
 //! 28+n   t    tail (tail_len verbatim bytes)
 //! ```
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a payload is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_core::{AceError, AceResult};
 
 use super::TimeSeriesMode;
@@ -54,6 +58,11 @@ pub struct TimeSeriesPayloadInfo {
 /// Inherent methods of [`TimeSeriesPayloadInfo`].
 impl TimeSeriesPayloadInfo {
     /// Number of bytes the payload decodes to (`value_count * lane_bytes + tail_len`).
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidTimeSeries`] when `value_count * lane_bytes + tail_len` overflows
+    /// `usize`.
     pub fn decoded_len(&self) -> AceResult<usize> {
         self.value_count
             .checked_mul(self.lane_bytes as usize)
@@ -61,9 +70,10 @@ impl TimeSeriesPayloadInfo {
             .ok_or(AceError::InvalidTimeSeries("decoded length overflow"))
     }
 
-    /// Bytes occupied by the encoded stream.
+    /// Bytes occupied by the encoded stream (saturates at `usize::MAX` on hosts whose `usize`
+    /// cannot hold it, so every length check against a real payload fails instead of wrapping).
     pub fn stream_bytes(&self) -> usize {
-        self.stream_bits.div_ceil(8) as usize
+        usize::try_from(self.stream_bits.div_ceil(8)).unwrap_or(usize::MAX)
     }
 
     /// Average stored stream bits per value (header and tail excluded).
@@ -80,6 +90,12 @@ impl TimeSeriesPayloadInfo {
 ///
 /// Every structural check of the decoder that does not need the expected output size happens
 /// here, so `ace inspect` reports exactly what the decoder would accept.
+///
+/// # Errors
+///
+/// [`AceError::InvalidTimeSeries`] for a truncated header, a wrong magic or version, a
+/// reserved mode or flag, an invalid lane width, or stream / tail lengths that do not match
+/// the payload length.
 pub fn ts1_inspect(payload: &[u8]) -> AceResult<TimeSeriesPayloadInfo> {
     let header = payload
         .get(..TIME_SERIES_HEADER_SIZE)
@@ -114,15 +130,17 @@ pub fn ts1_inspect(payload: &[u8]) -> AceResult<TimeSeriesPayloadInfo> {
         mode,
         lane_bytes,
         flags,
-        value_count: ace_core::read_lane::<4>(&header[8..]) as usize,
-        tail_len: header[12] as usize,
+        value_count: usize::try_from(ace_core::read_lane::<4>(&header[8..]))
+            .map_err(|_| AceError::ResourceLimitExceeded("TS1 value count"))?,
+        tail_len: usize::from(header[12]),
         first_bits: ace_core::read_lane::<8>(&header[16..]),
         stream_bits: ace_core::read_lane::<4>(&header[24..]),
     };
     if info.tail_len >= lane_bytes as usize {
         return Err(AceError::InvalidTimeSeries("TS1 tail longer than one lane"));
     }
-    let lane_bits = lane_bytes as u32 * 8;
+    // `accepts_lane_bytes` admitted 2, 4 or 8 bytes: at most 64 bits.
+    let lane_bits = u32::from(lane_bytes).saturating_mul(8);
     if lane_bits < 64 && info.first_bits >> lane_bits != 0 {
         return Err(AceError::InvalidTimeSeries(
             "TS1 first value exceeds lane width",
@@ -159,7 +177,11 @@ pub(crate) fn serialize_payload(
     if stream.len() != info.stream_bytes() {
         return Err(AceError::InvalidTimeSeries("TS1 stream length mismatch"));
     }
-    let mut out = Vec::with_capacity(TIME_SERIES_HEADER_SIZE + stream.len() + tail.len());
+    // Capacity hint only.
+    let capacity = TIME_SERIES_HEADER_SIZE
+        .saturating_add(stream.len())
+        .saturating_add(tail.len());
+    let mut out = Vec::with_capacity(capacity);
     out.extend_from_slice(&MAGIC);
     out.extend_from_slice(&[VERSION, info.mode as u8, info.lane_bytes, info.flags]);
     out.extend_from_slice(&value_count.to_le_bytes());

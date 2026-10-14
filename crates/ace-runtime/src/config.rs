@@ -16,6 +16,10 @@ pub struct RuntimeConfig {
 /// Inherent methods of [`RuntimeConfig`].
 impl RuntimeConfig {
     /// Resolves zero/automatic values and validates memory/in-flight limits against block size.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidConfig`] for a zero block size.
     pub fn from_ace(config: &AceConfig) -> AceResult<Self> {
         if config.block_size == 0 {
             return Err(AceError::InvalidConfig("block size must be non-zero"));
@@ -36,6 +40,10 @@ impl RuntimeConfig {
     }
 
     /// Builds an isolated Rayon thread pool so ACE does not mutate the process-global pool.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidConfig`] when the thread pool cannot be created.
     pub fn build_pool(&self) -> AceResult<rayon::ThreadPool> {
         rayon::ThreadPoolBuilder::new()
             .num_threads(self.threads)

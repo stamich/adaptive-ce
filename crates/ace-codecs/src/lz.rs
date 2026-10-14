@@ -60,6 +60,12 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
 }
 
 /// Decodes a simple LZ token stream with strict reference and output validation.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for truncated tokens or output that does not end at exactly
+/// `expected_size` bytes; [`AceError::InvalidLzReference`] for a zero or out-of-range match
+/// distance.
 pub fn lz_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
     let mut out = Vec::with_capacity(expected_size.min(1024 * 1024));
     let mut i = 0usize;

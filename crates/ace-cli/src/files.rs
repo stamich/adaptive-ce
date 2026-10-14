@@ -2,7 +2,7 @@
 
 use std::fs;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 /// Reads a whole file.
 pub fn read(path: &str) -> Result<Vec<u8>> {
@@ -22,4 +22,18 @@ pub fn open(path: &str) -> Result<fs::File> {
 /// Creates (or truncates) a file for writing.
 pub fn create(path: &str) -> Result<fs::File> {
     fs::File::create(path).with_context(|| format!("creating {path}"))
+}
+
+/// Refuses an `output` that names the same file as `input` (after resolving `.` / `..` and
+/// symbolic links): writing it would destroy the input before it is fully processed.
+pub fn ensure_distinct(input: &str, output: &str) -> Result<()> {
+    let (Ok(input_path), Ok(output_path)) = (fs::canonicalize(input), fs::canonicalize(output))
+    else {
+        // `output` does not exist yet (or `input` does not, which the read reports).
+        return Ok(());
+    };
+    if input_path == output_path {
+        bail!("refusing to overwrite the input file {input} (output names the same file)");
+    }
+    Ok(())
 }

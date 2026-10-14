@@ -154,6 +154,10 @@ impl_lane!(u32, i32, U32);
 impl_lane!(u64, i64, U64);
 
 /// Decodes every complete little-endian lane of `input`; trailing bytes are ignored.
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 pub fn read_lanes<T: Lane>(input: &[u8]) -> Vec<T> {
     input.chunks_exact(T::BYTES).map(T::read_le).collect()
 }
@@ -168,6 +172,10 @@ pub fn write_lanes<T: Lane>(values: &[T]) -> Vec<u8> {
 ///
 /// Returns the buffer (always `count * BYTES` long, zero-filled past the last value) and the
 /// number of values actually written, so callers can detect a short iterator.
+// `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+// hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+// lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 pub fn write_lanes_from_iter<T: Lane>(
     count: usize,
     values: impl Iterator<Item = T>,

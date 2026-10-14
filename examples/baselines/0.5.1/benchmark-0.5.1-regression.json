@@ -1,0 +1,856 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.5.1",
+  "base": "0.5.0",
+  "scope": "regression",
+  "benchmark_contract_origin": "ace-0.5.1",
+  "generated_at_utc_epoch_seconds": 1791977882,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "false",
+      "git_revision": "d81e172694d0e862e83fd944545403ffa0af862c",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": 4798813,
+      "freq_khz_before": 4275351,
+      "governor": "performance",
+      "logical_cpus": 32,
+      "max_freq_khz": 5084000,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor",
+      "physical_cores": 16
+    },
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      3.07,
+      1.83,
+      2.1
+    ],
+    "loadavg_before": [
+      4.91,
+      1.79,
+      2.11
+    ],
+    "logical_cpus": 32,
+    "memory_bytes": 134959689728,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.12.21-gentoo-dist",
+      "name": "linux"
+    },
+    "physical_cores": 16,
+    "rust": {
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": 37.0,
+    "thermal_c_before": 37.0,
+    "warnings": []
+  },
+  "configuration": {
+    "regression": "v3",
+    "quick_measurements": false,
+    "ab_document": "/home/michal/RustroverProjects/adaptive-ce/examples/results/ab-0.5.1-vs-0.5.0.json"
+  },
+  "status": "pass",
+  "workloads": [
+    {
+      "workload_id": "release_gates",
+      "path": "0.5.1-release-gates",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "determinism.repeated_output",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 1.0,
+          "required": 1.0,
+          "rule": "== true"
+        },
+        {
+          "name": "planner.full_trial_encodes_per_block",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 0.0,
+          "required": 0.0,
+          "rule": "== 0"
+        },
+        {
+          "name": "numeric.fast_false_positive_count",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 0.0,
+          "required": 0.0,
+          "rule": "== 0"
+        },
+        {
+          "name": "roundtrip.release_performance",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 1.0,
+          "required": 1.0,
+          "rule": "every release-performance case verified its roundtrip"
+        },
+        {
+          "name": "external.golden_sha256",
+          "section": "correctness",
+          "status": "pass",
+          "measured": null,
+          "required": null,
+          "rule": "checked by ace-release0.5.1.sh / cargo test"
+        },
+        {
+          "name": "external.determinism_matrix",
+          "section": "correctness",
+          "status": "pass",
+          "measured": null,
+          "required": null,
+          "rule": "checked by ace-release0.5.1.sh / cargo test"
+        },
+        {
+          "name": "external.format_readers",
+          "section": "correctness",
+          "status": "pass",
+          "measured": null,
+          "required": null,
+          "rule": "checked by ace-release0.5.1.sh / cargo test"
+        },
+        {
+          "name": "external.malformed_matrix",
+          "section": "correctness",
+          "status": "pass",
+          "measured": null,
+          "required": null,
+          "rule": "checked by ace-release0.5.1.sh / cargo test"
+        },
+        {
+          "name": "external.float_lane",
+          "section": "correctness",
+          "status": "pass",
+          "measured": null,
+          "required": null,
+          "rule": "external check"
+        },
+        {
+          "name": "planner.policy_candidate_recall",
+          "section": "quality",
+          "status": "pass",
+          "measured": 1.0,
+          "required": 0.99,
+          "rule": ">= 0.99"
+        },
+        {
+          "name": "planner.policy_top_k_recall",
+          "section": "quality",
+          "status": "pass",
+          "measured": 1.0,
+          "required": 0.98,
+          "rule": ">= 0.98"
+        },
+        {
+          "name": "planner.regret_bytes_per_block",
+          "section": "quality",
+          "status": "pass",
+          "measured": 2.5,
+          "required": 16.0,
+          "rule": "<= 16"
+        },
+        {
+          "name": "planner.p95_regret_bytes_per_block",
+          "section": "quality",
+          "status": "pass",
+          "measured": 10.0,
+          "required": 64.0,
+          "rule": "<= 64"
+        },
+        {
+          "name": "planner.p99_regret_bytes_per_block",
+          "section": "quality",
+          "status": "pass",
+          "measured": 10.0,
+          "required": 256.0,
+          "rule": "<= 256"
+        },
+        {
+          "name": "compression.balanced_ratio",
+          "section": "quality",
+          "status": "pass",
+          "measured": 3.72561427320257,
+          "required": 3.7,
+          "rule": ">= 3.70x"
+        },
+        {
+          "name": "compression.dense_ratio",
+          "section": "quality",
+          "status": "pass",
+          "measured": 3.7223079121265314,
+          "required": 3.7,
+          "rule": ">= 3.70x"
+        },
+        {
+          "name": "compression.dense_vs_hardened_0_2_1",
+          "section": "quality",
+          "status": "pass",
+          "measured": 3.7223079121265314,
+          "required": 3.4621210666929922,
+          "rule": ">= 99.5% of 0.2.1-buildfix1"
+        },
+        {
+          "name": "numeric.u32_counter_ratio",
+          "section": "quality",
+          "status": "pass",
+          "measured": 2317.2950276243096,
+          "required": 3.0,
+          "rule": ">= 3.0x"
+        },
+        {
+          "name": "numeric.u64_timestamp_ratio",
+          "section": "quality",
+          "status": "pass",
+          "measured": 31.564124561641155,
+          "required": 4.0,
+          "rule": ">= 4.0x"
+        },
+        {
+          "name": "numeric.delta_variable_ratio",
+          "section": "quality",
+          "status": "pass",
+          "measured": 6.382528296259324,
+          "required": 3.0,
+          "rule": ">= 3.0x"
+        },
+        {
+          "name": "numeric.u32_selected_blocks",
+          "section": "quality",
+          "status": "pass",
+          "measured": 64.0,
+          "required": 1.0,
+          "rule": "> 0"
+        },
+        {
+          "name": "numeric.u64_selected_blocks",
+          "section": "quality",
+          "status": "pass",
+          "measured": 64.0,
+          "required": 1.0,
+          "rule": "> 0"
+        },
+        {
+          "name": "float.false_positive_blocks",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 0.0,
+          "required": 0.0,
+          "rule": "== 0 Float-route blocks on Corpus V3 + false-positive corpus"
+        },
+        {
+          "name": "float.corpus_v3_identical",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 1.0,
+          "required": 1.0,
+          "rule": "Corpus V3 bytes equal with the lane on and off"
+        },
+        {
+          "name": "float.fast_fallbacks",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 0.0,
+          "required": 0.0,
+          "rule": "== 0 (Corpus V4)"
+        },
+        {
+          "name": "float.full_trial_encodes",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 0.0,
+          "required": 0.0,
+          "rule": "== 0"
+        },
+        {
+          "name": "float.fastpath_generic_analysis_ns",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 0.0,
+          "required": 0.0,
+          "rule": "FloatFast blocks skip generic analysis"
+        },
+        {
+          "name": "float.fastpath_all_blocks",
+          "section": "correctness",
+          "status": "pass",
+          "measured": 1.0,
+          "required": 1.0,
+          "rule": "every f64-constant / f64-step block is FloatFast"
+        },
+        {
+          "name": "float.min_ratio_gain_vs_disabled",
+          "section": "float",
+          "status": "pass",
+          "measured": 1.0,
+          "required": 1.0,
+          "rule": ">= 1.0 (never larger than the 0.4.6 pipeline)"
+        },
+        {
+          "name": "float.f64_constant_ratio",
+          "section": "float",
+          "status": "pass",
+          "measured": 2416.073732718894,
+          "required": 50.0,
+          "rule": ">= 50x"
+        },
+        {
+          "name": "float.f64_smooth_ratio",
+          "section": "float",
+          "status": "pass",
+          "measured": 2.706044480688733,
+          "required": 2.5,
+          "rule": ">= 2.5x"
+        },
+        {
+          "name": "float.int_sparse_change_ratio",
+          "section": "float",
+          "status": "pass",
+          "measured": 235.2913721530349,
+          "required": 5.0,
+          "rule": ">= 5x"
+        },
+        {
+          "name": "float.int_sparse_change_vs_num1",
+          "section": "float",
+          "status": "pass",
+          "measured": 235.31291372153035,
+          "required": 1.5,
+          "rule": ">= 1.5x the NUM1 codec ratio"
+        },
+        {
+          "name": "float.gorilla_estimate_p95_error",
+          "section": "float",
+          "status": "pass",
+          "measured": 0.17866730298872516,
+          "required": 0.25,
+          "rule": "<= 25% relative error (p95)"
+        },
+        {
+          "name": "float.gorilla_codec_encode_mb_s",
+          "section": "float",
+          "status": "pass",
+          "measured": 2064.55768658053,
+          "required": 400.0,
+          "rule": ">= 400 MB/s",
+          "method": "absolute",
+          "batch_mad_percent": 0.04634932006373289,
+          "cv_percent": 0.36321875671978826
+        },
+        {
+          "name": "float.gorilla_codec_decode_mb_s",
+          "section": "float",
+          "status": "pass",
+          "measured": 1379.156735301551,
+          "required": 600.0,
+          "rule": ">= 600 MB/s",
+          "method": "absolute",
+          "batch_mad_percent": 0.469533910533413,
+          "cv_percent": 0.9912879793881293
+        },
+        {
+          "name": "float.fast_encode_speedup_vs_disabled",
+          "section": "float",
+          "status": "pass",
+          "measured": 36.43018799825145,
+          "required": 5.0,
+          "rule": ">= 5x the disabled lane (same run)",
+          "method": "absolute",
+          "batch_mad_percent": 0.17069198073231526,
+          "cv_percent": 0.8608929339885012
+        },
+        {
+          "name": "numeric.u64_timestamps_encode_mb_s",
+          "section": "performance",
+          "status": "pass",
+          "measured": 289.35943435005015,
+          "required": 90.0,
+          "rule": ">= 90 MB/s",
+          "method": "absolute",
+          "batch_mad_percent": 0.12970717494387465,
+          "cv_percent": 1.5990308750020887
+        },
+        {
+          "name": "numeric.delta_variable_encode_mb_s",
+          "section": "performance",
+          "status": "pass",
+          "measured": 249.04727354641184,
+          "required": 75.0,
+          "rule": ">= 75 MB/s",
+          "method": "absolute",
+          "batch_mad_percent": 0.22252529545917868,
+          "cv_percent": 1.4251678443426068
+        },
+        {
+          "name": "random_access.warm_64k_us",
+          "section": "performance",
+          "status": "pass",
+          "measured": 22.584,
+          "required": 71.7,
+          "rule": "<= 71.7 us",
+          "method": "absolute",
+          "batch_mad_percent": 0.039851222104144525,
+          "cv_percent": 0.23658617848903518
+        },
+        {
+          "name": "ab.compression.fast.encode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.9644351841719768,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9565599031504802,
+          "speed_ratio_upper": 0.9761956175988326,
+          "per_batch_speed_ratios": [
+            0.9761956175988326,
+            0.9565599031504802,
+            0.9602861568303309
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 3.0
+        },
+        {
+          "name": "ab.compression.balanced.encode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.9666307019827525,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9633089880169644,
+          "speed_ratio_upper": 0.9751737150461808,
+          "per_batch_speed_ratios": [
+            0.9633089880169644,
+            0.9649100615447442,
+            0.9751737150461808
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 3.0
+        },
+        {
+          "name": "ab.compression.dense.encode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.9783404558936792,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9764161402219614,
+          "speed_ratio_upper": 0.9933191081203567,
+          "per_batch_speed_ratios": [
+            0.9868075254434518,
+            0.9933191081203567,
+            0.9764161402219614
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 3.0
+        },
+        {
+          "name": "ab.compression.fast.decode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.9973606013206313,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9966513561246569,
+          "speed_ratio_upper": 1.0017433342827198,
+          "per_batch_speed_ratios": [
+            1.0017433342827198,
+            0.9966513561246569,
+            0.9983915864921876
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 5.0
+        },
+        {
+          "name": "ab.compression.balanced.decode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 1.0027604876109162,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.999744643223529,
+          "speed_ratio_upper": 1.0060338153793251,
+          "per_batch_speed_ratios": [
+            1.0060338153793251,
+            0.999744643223529,
+            1.0031444653844417
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 5.0
+        },
+        {
+          "name": "ab.compression.dense.decode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.9605970035417888,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9605970035417888,
+          "speed_ratio_upper": 0.9705313686698304,
+          "per_batch_speed_ratios": [
+            0.9605970035417888,
+            0.9705313686698304,
+            0.9645551368231874
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 5.0
+        },
+        {
+          "name": "ab.numeric_fast.u32_counter.encode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 1.003539794522925,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9991782385962452,
+          "speed_ratio_upper": 1.0115285339458886,
+          "per_batch_speed_ratios": [
+            1.0115285339458886,
+            0.9991782385962452,
+            1.0037329290919506
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 3.0
+        },
+        {
+          "name": "ab.numeric_fast.u32_counter.decode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 1.0112857145583523,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 1.0026804407030026,
+          "speed_ratio_upper": 1.011449791561684,
+          "per_batch_speed_ratios": [
+            1.0026804407030026,
+            1.011449791561684,
+            1.0112163371541645
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 5.0
+        },
+        {
+          "name": "ab.numeric_general.u64_timestamps.encode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 1.0004427042193773,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9899525696253343,
+          "speed_ratio_upper": 1.0017396853559934,
+          "per_batch_speed_ratios": [
+            0.9899525696253343,
+            1.000418304079486,
+            1.0017396853559934
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 3.0
+        },
+        {
+          "name": "ab.numeric_general.delta_variable.encode",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.9896861867834287,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9805573879433578,
+          "speed_ratio_upper": 1.0020262087271254,
+          "per_batch_speed_ratios": [
+            1.0020262087271254,
+            0.9976517044148743,
+            0.9805573879433578
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 3.0
+        },
+        {
+          "name": "ab.full_decompress.mixed",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.9982669849467949,
+          "required": 0.95,
+          "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.9976245100310043,
+          "speed_ratio_upper": 1.0044920619297228,
+          "per_batch_speed_ratios": [
+            0.9976319716848199,
+            0.9976245100310043,
+            1.0044920619297228
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 5.0
+        },
+        {
+          "name": "ab.random_access.warm_64k",
+          "section": "performance",
+          "status": "pass",
+          "measured": 0.977895392278954,
+          "required": 0.9090909090909091,
+          "rule": "speed ratio >= 0.909 (upper bound < 0.929 confirms)",
+          "method": "interleaved-ab",
+          "speed_ratio_lower": 0.968272053990096,
+          "speed_ratio_upper": 0.977895392278954,
+          "per_batch_speed_ratios": [
+            0.9716131907308377,
+            0.968272053990096,
+            0.977895392278954
+          ],
+          "identical_output": true,
+          "stability_limit_percent": 5.0
+        },
+        {
+          "name": "stability.compression.fast.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.5746325540724253,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.compression.fast.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.03948821550478333,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.compression.balanced.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.18084925830389925,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.compression.balanced.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.01205033158985609,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.compression.dense.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.050259834724807516,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.compression.dense.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.0825386211419735,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.numeric_fast.u32_counter.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.0766344975528585,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.numeric_fast.u32_counter.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.055833939301340105,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.numeric_general.u64_timestamps.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.12970717494387465,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.numeric_general.u64_timestamps.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.0844867684800869,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.numeric_general.delta_variable.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.22252529545917868,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.numeric_general.delta_variable.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.03177663662131147,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.float_fast.f64_step.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.17069198073231526,
+          "required": 6.0,
+          "rule": "batch MAD <= 6.0%"
+        },
+        {
+          "name": "stability.float_fast.f64_step.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.5136111308440632,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.float_general.f64_noisy.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.46977120205297895,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.float_general.f64_noisy.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.3904336569089765,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.run_delta.int_sparse_change.compression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.048622255614800956,
+          "required": 3.0,
+          "rule": "batch MAD <= 3.0%"
+        },
+        {
+          "name": "stability.run_delta.int_sparse_change.decompression",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.160796140000091,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.full_decompress.mixed.timing",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.1104476049819167,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.random_access.warm_64k.timing",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.039851222104144525,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "stability.random_access.range_4k.timing",
+          "section": "stability",
+          "status": "pass",
+          "measured": 0.04832403461758116,
+          "required": 5.0,
+          "rule": "batch MAD <= 5.0%"
+        },
+        {
+          "name": "environment.lz4_drift",
+          "section": "environment",
+          "status": "diagnostic",
+          "measured": -0.01829044320746409,
+          "required": 0.08,
+          "rule": "within 8%",
+          "stored_mb_s": 3397.570779362391,
+          "measured_mb_s": 3335.4277039791236
+        },
+        {
+          "name": "environment.zstd-3_drift",
+          "section": "environment",
+          "status": "diagnostic",
+          "measured": -0.015013788673164719,
+          "required": 0.08,
+          "rule": "within 8%",
+          "stored_mb_s": 2040.4626289907146,
+          "measured_mb_s": 2009.827554283558
+        },
+        {
+          "name": "stored_baseline.compression.fast_mb_s",
+          "section": "environment",
+          "status": "diagnostic",
+          "measured": 334.437471678633,
+          "required": 344.25223981265106,
+          "rule": "stored 0.5.0 value (other machine/run: diagnostic only)"
+        },
+        {
+          "name": "stored_baseline.compression.balanced_mb_s",
+          "section": "environment",
+          "status": "diagnostic",
+          "measured": 221.76487836161772,
+          "required": 229.0218196101336,
+          "rule": "stored 0.5.0 value (other machine/run: diagnostic only)"
+        },
+        {
+          "name": "stored_baseline.compression.dense_mb_s",
+          "section": "environment",
+          "status": "diagnostic",
+          "measured": 166.18254920374463,
+          "required": 171.06683898942137,
+          "rule": "stored 0.5.0 value (other machine/run: diagnostic only)"
+        },
+        {
+          "name": "environment.governor",
+          "section": "environment",
+          "status": "diagnostic",
+          "measured": null,
+          "required": null,
+          "rule": "cpu governor: performance (a pass requires 'performance' when the governor is known)"
+        }
+      ]
+    }
+  ]
+}

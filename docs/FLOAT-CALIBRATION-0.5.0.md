@@ -1,7 +1,7 @@
 # ACE 0.5.0 — Float lane calibration
 
 This document records the measurements the Planner V5 Float lane thresholds were derived
-from (tasks 16 and 19 of [`TASKS-0.5.0.md`](../TASKS-0.5.0.md)). Every number can be
+from (tasks 16 and 19 of [`TASKS-0.5.0.md`](history/TASKS-0.5.0.md)). Every number can be
 regenerated:
 
 ```bash

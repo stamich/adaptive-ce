@@ -3,7 +3,7 @@
 use ace_core::{AccessHint, BlockSizePolicy, CompressionProfile};
 use clap::{Parser, Subcommand, ValueEnum};
 
-/// Command-line interface for Adaptive Compression Engine milestone 0.5.
+/// Command-line interface of the Adaptive Compression Engine.
 #[derive(Debug, Parser)]
 #[command(name = "ace", version, about = "Adaptive Compression Engine")]
 pub struct Cli {
@@ -79,6 +79,8 @@ pub enum Command {
         length: u64,
         output: String,
     },
+    /// Prints the version, git revision, supported formats, SIMD / CRC backends and toolchain.
+    Version,
 }
 
 /// CLI representation of the three deterministic ACE cost profiles.

@@ -166,7 +166,11 @@ fn gorilla_decoder_honours_window_flag() {
     let mut writer = ace_bitpack::BitWriter::default();
     gorilla::encode_xors(
         gorilla::GORILLA_F64,
-        input.chunks_exact(8).map(ace_core::read_lane::<8>),
+        input
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .map(|lane| ace_core::read_lane::<8>(lane)),
         false,
         &mut writer,
     );

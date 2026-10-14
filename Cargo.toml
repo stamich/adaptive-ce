@@ -31,7 +31,7 @@ debug = false
 panic = "unwind"
 
 [workspace.package]
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://example.invalid/ace"
@@ -48,7 +48,10 @@ expect_used = "deny"
 panic = "deny"
 todo = "deny"
 unimplemented = "deny"
+unreachable = "deny"
 dbg_macro = "deny"
+missing_errors_doc = "deny"
+missing_safety_doc = "deny"
 
 [workspace.dependencies]
 thiserror = "2"

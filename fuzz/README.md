@@ -1,4 +1,4 @@
-# ACE fuzzing (0.5.0)
+# ACE fuzzing
 
 `fuzz/` is a separate `cargo-fuzz` project (not a workspace member; requires a nightly
 toolchain and `cargo install cargo-fuzz`).
@@ -21,15 +21,35 @@ toolchain and `cargo install cargo-fuzz`).
 | `ts1_decode` | TS1 decoder (`ts1_decode`, `ts1_inspect`) | arbitrary payloads rejected or decoded to the declared size, never panic |
 | `ts1_roundtrip` | TS1 encode → decode, every layout | bit-exact (`to_bits`), `ts1_encoded_len` equals the payload size |
 
-## Campaigns
+## Policy
+
+| When | What | Command | Gate |
+|---|---|---|---|
+| every push / PR (CI job `fuzz-smoke`) | 15 targets x 25 s | `ACE_FUZZ_REQUIRED=1 ./ace-ci0.5.1.sh fuzz-smoke` | no crash, no timeout, no OOM |
+| before every release (reference machine) | 15 targets x 10 min, then `cmin` | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.5.1.sh fuzz` | no crash; result recorded in `examples/baselines/<version>/FUZZ.md` |
+| any time | one target | `cargo +nightly fuzz run --fuzz-dir fuzz <target> -- -max_total_time=600` | — |
+
+* `fuzz-smoke` / `fuzz` skip with a log line when nightly or `cargo-fuzz` is missing; CI sets
+  `ACE_FUZZ_REQUIRED=1`, so there a missing toolchain fails the job. Both modes also fail when
+  the number of targets differs from 15 (a target cannot silently disappear).
+* Every crash becomes a regular regression test (for example in
+  `crates/ace-engine/tests/malformed_matrix.rs` or the per-field tests listed in
+  `docs/DECODER-AUDIT.md`) before it is fixed; the fix lands in the same pull request.
+
+## Corpus policy
+
+* The corpus is **not committed**. `fuzz/corpus/` and `fuzz/artifacts/` are ignored by git
+  and excluded from the release package.
+* CI keeps the corpus between runs as a cache (`fuzz-corpus-<run>`, restored from the newest
+  entry) and publishes corpus and crash artifacts of every run as the artifact
+  `fuzz-corpus-and-artifacts`, so a crash can be reproduced from the run that found it.
+* The release campaign minimises every corpus with `cargo fuzz cmin` (`ACE_FUZZ_CMIN=1`);
+  a minimised corpus can seed the CI cache by uploading it as a new cache entry.
+
+Example (local):
 
 ```bash
-cargo +nightly fuzz run <target> -- -max_total_time=600     # release: 15 x 10 min
-cargo +nightly fuzz run <target> -- -max_total_time=60      # nightly CI: 15 x 60 s
-./ace-ci0.5.0.sh fuzz                                       # all targets, ACE_FUZZ_SECONDS each
+rustup toolchain install nightly && cargo install cargo-fuzz
+./ace-ci0.5.1.sh fuzz-smoke                                  # 15 x 25 s
+ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.5.1.sh fuzz   # release campaign
 ```
-
-Crashes land in `fuzz/artifacts/<target>/`; a minimised corpus may be kept in
-`fuzz/corpus/<target>/` (`cargo fuzz cmin <target>`). Neither directory is packaged.
-Every crash becomes a regular regression test (for example in
-`crates/ace-engine/tests/malformed_matrix.rs`) before it is fixed.

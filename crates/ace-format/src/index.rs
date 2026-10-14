@@ -1,3 +1,8 @@
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a file is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`); a proven-safe site carries a local
+// `allow` with its proof.
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_core::{AceError, AceResult, DecodeLimits};
 
 /// Four-byte serialized block-index section magic.
@@ -6,6 +11,8 @@ pub const INDEX_MAGIC: [u8; 4] = *b"AIDX";
 pub const TRAILER_MAGIC: [u8; 4] = *b"ACET";
 /// Fixed serialized size of one block-index entry.
 pub const INDEX_ENTRY_SIZE: usize = 40;
+/// Size of the index section header (magic + little-endian `u64` entry count).
+pub const INDEX_HEADER_SIZE: usize = 12;
 /// Fixed serialized trailer size.
 pub const TRAILER_SIZE: usize = 28;
 
@@ -85,7 +92,13 @@ pub struct FileTrailer {
 
 /// Serializes a complete block index section including its magic and entry count.
 pub fn encode_index(index: &BlockIndex) -> Vec<u8> {
-    let mut out = Vec::with_capacity(12 + index.entries.len() * INDEX_ENTRY_SIZE);
+    // Capacity hint only (an in-memory index cannot approach `usize::MAX` bytes).
+    let capacity = index
+        .entries
+        .len()
+        .saturating_mul(INDEX_ENTRY_SIZE)
+        .saturating_add(INDEX_HEADER_SIZE);
+    let mut out = Vec::with_capacity(capacity);
     out.extend_from_slice(&INDEX_MAGIC);
     out.extend_from_slice(&(index.entries.len() as u64).to_le_bytes());
     for entry in &index.entries {
@@ -101,63 +114,48 @@ pub fn encode_index(index: &BlockIndex) -> Vec<u8> {
 }
 
 /// Parses and validates a complete block-index section.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a wrong magic, length or entry layout,
+/// [`AceError::IndexChecksumMismatch`], and [`AceError::ResourceLimitExceeded`] when the
+/// entry count exceeds `limits.max_index_entries`.
 pub fn decode_index(bytes: &[u8], limits: &DecodeLimits) -> AceResult<BlockIndex> {
-    if bytes.len() < 12 || bytes[0..4] != INDEX_MAGIC {
+    let (header, body) = bytes
+        .split_first_chunk::<INDEX_HEADER_SIZE>()
+        .ok_or(AceError::Malformed("invalid block index header"))?;
+    let (magic, count) = header.split_at(4);
+    if magic != INDEX_MAGIC {
         return Err(AceError::Malformed("invalid block index header"));
     }
     let count = u64::from_le_bytes(
-        bytes[4..12]
+        count
             .try_into()
             .map_err(|_| AceError::Malformed("invalid index count"))?,
-    ) as usize;
-    if count > limits.max_index_entries {
-        return Err(AceError::ResourceLimitExceeded("block index entry count"));
-    }
-    let expected = 12usize
-        .checked_add(
-            count
-                .checked_mul(INDEX_ENTRY_SIZE)
-                .ok_or(AceError::Malformed("index size overflow"))?,
-        )
+    );
+    // Checked before any size arithmetic or allocation: a count that does not fit `usize`
+    // (32-bit hosts) or exceeds the limit is rejected, never truncated.
+    let count = usize::try_from(count)
+        .ok()
+        .filter(|&count| count <= limits.max_index_entries)
+        .ok_or(AceError::ResourceLimitExceeded("block index entry count"))?;
+    let expected = count
+        .checked_mul(INDEX_ENTRY_SIZE)
         .ok_or(AceError::Malformed("index size overflow"))?;
-    if bytes.len() != expected {
+    let (records, rest) = body.as_chunks::<INDEX_ENTRY_SIZE>();
+    if body.len() != expected || !rest.is_empty() {
         return Err(AceError::Malformed("block index size mismatch"));
     }
     let mut entries = Vec::with_capacity(count.min(1_000_000));
     let mut previous_id = None;
     let mut previous_original_end = 0u64;
-    for i in 0..count {
-        let base = 12 + i * INDEX_ENTRY_SIZE;
-        let block_id = u64::from_le_bytes(
-            bytes[base..base + 8]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid index block id"))?,
-        );
-        let original_offset = u64::from_le_bytes(
-            bytes[base + 8..base + 16]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid original offset"))?,
-        );
-        let original_size = u32::from_le_bytes(
-            bytes[base + 16..base + 20]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid original size"))?,
-        );
-        let file_offset = u64::from_le_bytes(
-            bytes[base + 20..base + 28]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid file offset"))?,
-        );
-        let encoded_span = u32::from_le_bytes(
-            bytes[base + 28..base + 32]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid encoded span"))?,
-        );
-        let flags = u32::from_le_bytes(
-            bytes[base + 32..base + 36]
-                .try_into()
-                .map_err(|_| AceError::Malformed("invalid index flags"))?,
-        );
+    for (i, record) in records.iter().enumerate() {
+        let block_id = u64::from_le_bytes(field(record, 0)?);
+        let original_offset = u64::from_le_bytes(field(record, 8)?);
+        let original_size = u32::from_le_bytes(field(record, 16)?);
+        let file_offset = u64::from_le_bytes(field(record, 20)?);
+        let encoded_span = u32::from_le_bytes(field(record, 28)?);
+        let flags = u32::from_le_bytes(field(record, 32)?);
         if previous_id.map(|id| block_id <= id).unwrap_or(false) {
             return Err(AceError::Malformed("block ids are not strictly increasing"));
         }
@@ -182,6 +180,15 @@ pub fn decode_index(bytes: &[u8], limits: &DecodeLimits) -> AceResult<BlockIndex
     Ok(BlockIndex { entries })
 }
 
+/// The `N`-byte field at `offset` of one serialized index entry.
+fn field<const N: usize>(record: &[u8; INDEX_ENTRY_SIZE], offset: usize) -> AceResult<[u8; N]> {
+    record
+        .get(offset..)
+        .and_then(<[u8]>::first_chunk::<N>)
+        .copied()
+        .ok_or(AceError::Malformed("invalid index entry layout"))
+}
+
 /// Serializes an end-of-file trailer and protects its first 24 bytes with CRC32C.
 pub fn encode_trailer(trailer: FileTrailer) -> [u8; TRAILER_SIZE] {
     let mut out = [0u8; TRAILER_SIZE];
@@ -195,6 +202,11 @@ pub fn encode_trailer(trailer: FileTrailer) -> [u8; TRAILER_SIZE] {
 }
 
 /// Parses and validates an end-of-file trailer.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a wrong length or magic and
+/// [`AceError::IndexChecksumMismatch`] for a wrong CRC.
 pub fn decode_trailer(bytes: &[u8]) -> AceResult<FileTrailer> {
     if bytes.len() != TRAILER_SIZE || bytes[0..4] != TRAILER_MAGIC {
         return Err(AceError::Malformed("invalid ACE trailer"));

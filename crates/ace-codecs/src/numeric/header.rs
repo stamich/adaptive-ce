@@ -15,6 +15,10 @@
 //! 40  .. packed stream, then tail bytes
 //! ```
 
+// Decoder hardening (ACE 0.5.1): arithmetic on values read from a payload is checked and every
+// narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
+#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use ace_core::{AceError, AceResult, NumericWidth};
 
 use crate::NumericMode;
@@ -61,6 +65,10 @@ impl NumericPayloadInfo {
     }
 
     /// Number of bytes the payload decodes to (`value_count * width + tail`), overflow-checked.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Malformed`] when `value_count * width + tail` overflows `usize`.
     pub fn decoded_len(&self) -> AceResult<usize> {
         self.value_count
             .checked_mul(self.width.bytes())
@@ -73,6 +81,12 @@ impl NumericPayloadInfo {
 ///
 /// Every check of [`crate::numeric_decode`] that does not need the expected output size is
 /// performed here, so `ace inspect` reports exactly what the decoder would accept.
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] for a truncated header, a wrong magic or version, an unknown mode
+/// or width, a bit width above the lane width, or section lengths that do not add up to the
+/// payload length.
 pub fn numeric_inspect(payload: &[u8]) -> AceResult<NumericPayloadInfo> {
     if payload.len() < NUMERIC_HEADER_SIZE {
         return Err(AceError::Malformed("truncated numeric header"));
@@ -91,11 +105,11 @@ pub fn numeric_inspect(payload: &[u8]) -> AceResult<NumericPayloadInfo> {
         width,
         mode,
         bit_width,
-        value_count: read_u32_le(payload, 8),
-        tail_bytes: read_u32_le(payload, 12),
+        value_count: read_u32_le(payload, 8)?,
+        tail_bytes: read_u32_le(payload, 12)?,
         first_value: read_u64_le(payload, 16),
-        first_delta: read_u64_le(payload, 24) as i64,
-        packed_bytes: read_u32_le(payload, 32),
+        first_delta: i64::from_le_bytes(read_u64_le(payload, 24).to_le_bytes()),
+        packed_bytes: read_u32_le(payload, 32)?,
     };
     validate_lane_ranges(&info)?;
 
@@ -122,9 +136,15 @@ pub(crate) fn serialize_payload(
         u32::try_from(value)
             .map_err(|_| AceError::ResourceLimitExceeded("numeric payload metadata"))
     };
-    let mut out = Vec::with_capacity(NUMERIC_HEADER_SIZE + packed.len() + tail.len());
+    // Capacity hint only.
+    let capacity = NUMERIC_HEADER_SIZE
+        .saturating_add(packed.len())
+        .saturating_add(tail.len());
+    let mut out = Vec::with_capacity(capacity);
     out.extend_from_slice(&MAGIC);
-    out.extend_from_slice(&[info.width.bytes() as u8, info.mode as u8, info.bit_width, 0]);
+    let width = u8::try_from(info.width.bytes())
+        .map_err(|_| AceError::Malformed("unsupported numeric width"))?;
+    out.extend_from_slice(&[width, info.mode as u8, info.bit_width, 0]);
     out.extend_from_slice(&as_u32(info.value_count)?.to_le_bytes());
     out.extend_from_slice(&as_u32(tail.len())?.to_le_bytes());
     out.extend_from_slice(&info.first_value.to_le_bytes());
@@ -148,20 +168,20 @@ fn validate_lane_ranges(info: &NumericPayloadInfo) -> AceResult<()> {
     }
     // Deltas are signed lane values; one extra bit of slack is allowed because the fixed-step
     // encoder stores the unsigned step of a monotonic sequence.
-    if bits < 63 {
-        let limit = 1i64 << bits;
-        if info.first_delta <= -limit || info.first_delta >= limit {
-            return Err(AceError::Malformed(
-                "numeric first delta exceeds lane width",
-            ));
-        }
+    // `|first_delta| >= 2^bits` without negating (i64::MIN has no positive counterpart).
+    if bits < 63 && info.first_delta.unsigned_abs() >= 1u64 << bits {
+        return Err(AceError::Malformed(
+            "numeric first delta exceeds lane width",
+        ));
     }
     Ok(())
 }
 
-/// Reads a little-endian `u32` at `offset` (caller guarantees `offset + 4 <= len`).
-fn read_u32_le(input: &[u8], offset: usize) -> usize {
-    ace_core::read_lane::<4>(&input[offset..]) as usize
+/// Reads a little-endian `u32` field at `offset` as a `usize` (caller guarantees
+/// `offset + 4 <= len`; a value that does not fit `usize` is rejected, never truncated).
+fn read_u32_le(input: &[u8], offset: usize) -> AceResult<usize> {
+    usize::try_from(ace_core::read_lane::<4>(&input[offset..]))
+        .map_err(|_| AceError::ResourceLimitExceeded("numeric header field"))
 }
 
 /// Reads a little-endian `u64` at `offset` (caller guarantees `offset + 8 <= len`).

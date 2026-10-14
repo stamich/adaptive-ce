@@ -1,4 +1,4 @@
-//! Golden-file checks: the semantic guards of ACE 0.5.0.
+//! Golden-file checks: the semantic guards of ACE 0.5.x (0.5.1 must reproduce 0.5.0 exactly).
 //!
 //! For every `ace-corpus` workload and every profile, the SHA-256 of the input, of the
 //! compressed container and of the decoded bytes must equal the committed golden file.
@@ -6,7 +6,7 @@
 //!
 //! * `examples/golden/0.5.0/GOLDEN.json` — Corpus V3 + V4 (27 workloads) with the container's
 //!   format version (1.3, or 1.4 when a block uses TS1).
-//! * `examples/golden/0.4.6/GOLDEN.json` — frozen: Corpus V3 compressed by 0.5.0 must still
+//! * `examples/golden/0.4.6/GOLDEN.json` — frozen: Corpus V3 compressed by 0.5.x must still
 //!   produce the 0.4.6 bytes (the Float lane never touches the 0.4.x corpus). Never updated.
 //! * `ACE_GOLDEN_UPDATE=1 cargo test -p ace-engine --test golden` rewrites the 0.5.0 file
 //!   (only for intentional, documented semantic changes).

@@ -38,6 +38,10 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! **Stability:** part of the public ACE API (with `ace-engine`, `ace-stream` and `ace-core`).
+//! 0.5.x releases change it only additively; the 0.6 `ace` facade will re-export it (see
+//! `docs/API-INVENTORY.md`).
 
 mod block_encoder;
 mod block_pipeline;

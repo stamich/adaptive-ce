@@ -1,0 +1,73 @@
+{
+  "project": "ACE",
+  "version": "0.5.1",
+  "milestone": "0.5.1",
+  "title": "Hardened Release Candidate",
+  "release_kind": "hardened-rc",
+  "base": "0.5.0",
+  "workspace_version": "0.5.1",
+  "planner": "V5 (unchanged: every 0.5.0 decision and byte is preserved)",
+  "format": {
+    "writer": "1.3 | 1.4 (minimal version: 1.4 only when the file contains a TS1 block)",
+    "readers": [
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.3",
+      "1.4"
+    ],
+    "changes": "none",
+    "compatibility_fixtures": "examples/compat/ (48 files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0; never regenerated)"
+  },
+  "benchmark_schema": "2.2 (additive over 2.1: git revision + dirty flag, config fingerprint, threads, block size, input SHA-256)",
+  "msrv": "1.97.0",
+  "toolchain": "1.98.1 (rust-toolchain.toml; 1.98.0 must not be used)",
+  "concept": "AdaptiveCE_0_5_1_Koncepcja_v2.md",
+  "status": "implemented and qualified on the reference machine (Regression V3, repeatability and A/B pass; fuzz 15 x 10 min, no crash; baseline examples/baselines/0.5.1/); tag v0.5.1 after merge",
+  "golden": {
+    "0.5.0": "examples/golden/0.5.0/GOLDEN.json must be reproduced byte for byte (auto and ACE_SIMD=scalar)",
+    "0.4.6": "frozen; Corpus V3 must reproduce it"
+  },
+  "decoder_strictness": [
+    "rANS final state must equal the encoder's initial state",
+    "Huffman may leave only the zero padding of its last byte",
+    "an empty output requires an empty entropy payload",
+    "primary stream of entropy-coded blocks <= 2 x block size + 1 KiB",
+    "block count <= DecodeLimits::max_block_count() in every reader",
+    "index size <= 12 + 40 x max_index_entries before allocation"
+  ],
+  "deprecated": [
+    "ace_planner::evaluate_candidates_v3",
+    "ace_planner::evaluate_candidates_v4"
+  ],
+  "new_benchmark_families": [
+    "allocation-profile"
+  ],
+  "new_tools": [
+    "tools/ace-repeatability0.5.1.py",
+    "tools/ace-ci-annotate0.5.1.sh"
+  ],
+  "ci_jobs": [
+    "pr",
+    "msrv",
+    "fuzz-smoke"
+  ],
+  "fuzz_targets": 15,
+  "docs": [
+    "docs/RELEASE-NOTES-0.5.1.md",
+    "docs/ARCHITECTURE.md",
+    "docs/FORMAT.md",
+    "docs/COMPATIBILITY.md",
+    "docs/SECURITY.md",
+    "docs/BENCHMARKS.md",
+    "docs/RELEASE.md",
+    "docs/DECODER-AUDIT.md",
+    "docs/API-INVENTORY.md",
+    "docs/UNSAFE-AUDIT.md",
+    "docs/PANIC-AUDIT.md"
+  ],
+  "tasks": "TASKS-0.5.1.md",
+  "history": {
+    "0.5.0": "docs/history/MILESTONE-0.5.0.json"
+  }
+}

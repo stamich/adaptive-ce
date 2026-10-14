@@ -37,17 +37,31 @@ impl<W: Write> AceWriter<W> {
     }
 
     /// Writes the global file header.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Io`] when the sink fails.
     pub fn write_file_header(&mut self, header: &FileHeader) -> AceResult<()> {
         self.write_all(&encode_file_header(header))
     }
 
     /// Writes one block (header, entropy metadata, payload) and records its index entry.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Malformed`] for more than 255 transforms (the header's count byte),
+    /// [`AceError::ResourceLimitExceeded`] when the serialized block span does not fit in
+    /// `u32`, [`AceError::Malformed`] when the logical output offset overflows, and
+    /// [`AceError::Io`] when the sink fails.
     pub fn write_block(
         &mut self,
         header: &BlockHeader,
         metadata: &[u8],
         payload: &[u8],
     ) -> AceResult<()> {
+        if header.transforms.len() > usize::from(u8::MAX) {
+            return Err(AceError::Malformed("more than 255 transforms in one block"));
+        }
         let file_offset = self.bytes_written;
         self.write_all(&encode_block_header(header))?;
         self.write_all(metadata)?;
@@ -76,6 +90,10 @@ impl<W: Write> AceWriter<W> {
 
     /// Appends the block index and trailer when `write_index` is set, flushes and returns the
     /// sink together with the total container size.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::Io`] when the sink fails.
     pub fn finish(mut self, write_index: bool) -> AceResult<(W, u64)> {
         if write_index {
             let index_bytes = encode_index(&self.index);

@@ -1,0 +1,37 @@
+{
+  "version": "0.5.1",
+  "accepted": true,
+  "purpose": "baseline of 0.5.x / 0.6 (stored-result diagnostics; release gates use the interleaved A/B against the 0.5.0 source tree)",
+  "machine_fingerprint": {
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "physical_cores": 16,
+    "logical_cpus": 32,
+    "memory": "128 GiB",
+    "os": "linux",
+    "arch": "x86_64",
+    "simd_backend": "Avx2",
+    "crc32c_backend": "sse4.2-3way",
+    "cpu_governor": "performance",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)"
+  },
+  "git_revision": "d81e172",
+  "methodology": "schema 2.2, Harness V3 (5 warm-ups, 3 x 7 batches, >= 50 ms per sample, median-of-medians), median of three complete runs (tools/ace-repeatability0.5.1.py), interleaved A/B vs the 0.5.0 source tree (3 batches per side, alternating order)",
+  "verdict": {
+    "regression_v3": "pass",
+    "gates": {"pass": 73, "diagnostic": 6, "fail": 0, "unstable": 0, "skipped": 0},
+    "repeatability": "pass, deterministic values identical; macro spread <= 5 % (compression) / <= 15 % (decompression, observed maximum 13.5 %)",
+    "ab_vs_0_5_0": "pass, 12 / 12 cases, byte-identical output; speed ratios 0.961 - 1.011 (dense decode 0.961, fast / balanced encode 0.964 - 0.967, all others >= 0.978)"
+  },
+  "float_lane": {
+    "f64_constant_ratio": 2416.07,
+    "f64_smooth_ratio": 2.71,
+    "int_sparse_change_ratio": 235.29,
+    "gorilla_codec_encode_mb_s": 2064.6,
+    "gorilla_codec_decode_mb_s": 1379.2,
+    "float_fast_encode_speedup_vs_disabled": 36.4,
+    "false_positive_blocks": 0,
+    "float_fast_fallbacks": 0
+  },
+  "files": "benchmark-0.5.1-<family>.json (27 families incl. regression and repeatability) and ab-0.5.1-vs-0.5.0.json, unchanged from the run",
+  "note": "reference run of the 0.5.1 release on the author's workstation (performance governor, 35 - 37 C); the stored_baseline and lz4 / zstd drift rows are diagnostics against the 0.5.0 results. Known: dense decode and the fast / balanced / dense encode are 2 - 4 % slower than 0.5.0 (inside the 5 % gate), attributed to the stricter decoder checks and not yet profiled."
+}

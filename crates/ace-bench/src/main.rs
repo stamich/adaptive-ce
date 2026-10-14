@@ -38,6 +38,7 @@ const FAMILIES: &[(&str, FamilyFn)] = &[
     ("random-access", random_access_family),
     ("streaming", streaming_family),
     ("memory", memory_family),
+    ("allocation-profile", allocation_profile_family),
     ("corpus", corpus_family),
     ("block-matrix", block_matrix_family),
     ("random-access-extended", random_access_extended_family),
@@ -86,6 +87,7 @@ fn run_family(name: &str, runner: FamilyFn) -> Result<PathBuf, Box<dyn std::erro
         environment: environment_json(&before, &after),
         configuration: benchmark_configuration_json(),
         benchmark_methodology: benchmark_methodology_json(),
+        workload_fingerprints: take_workload_fingerprints(),
         workloads,
     };
     let path = result_path(name);

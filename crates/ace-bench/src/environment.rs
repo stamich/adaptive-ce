@@ -123,7 +123,9 @@ fn build_json() -> Value {
         .field("codegen_units", env!("ACE_BUILD_CODEGEN_UNITS"))
         .field("target_features", env!("ACE_BUILD_TARGET_FEATURES"))
         .field("rustflags", env!("ACE_BUILD_RUSTFLAGS"))
-        .field("debug_assertions", cfg!(debug_assertions));
+        .field("debug_assertions", cfg!(debug_assertions))
+        .field("git_revision", env!("ACE_BUILD_GIT_REVISION"))
+        .field("git_dirty", env!("ACE_BUILD_GIT_DIRTY"));
     row.build()
 }
 

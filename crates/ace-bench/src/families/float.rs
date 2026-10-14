@@ -139,7 +139,7 @@ fn best_ts1_timing(
 pub(crate) fn float_ablation_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut rows = Vec::new();
     for workload in float_family_workloads() {
-        let data = workload.generate(INPUT_BYTES);
+        let data = generate(workload, INPUT_BYTES);
         let sizes = candidate_sizes(&data);
         let best = sizes
             .iter()
@@ -218,7 +218,7 @@ fn float_stats_json(stats: &CompressionStats) -> Value {
 pub(crate) fn float_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut rows = Vec::new();
     for workload in float_family_workloads() {
-        let data = workload.generate(FLOAT_BYTES);
+        let data = generate(workload, FLOAT_BYTES);
         for profile in PROFILES {
             let (timed, stats) = engine_row(&data, float_config(profile, true))?;
             let encoded = AceEngine::new(float_config(profile, true))?.compress(&data)?;
@@ -247,7 +247,7 @@ pub(crate) fn float_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 pub(crate) fn float_fastpath_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut rows = Vec::new();
     for workload in [Workload::F64Constant, Workload::F64Step] {
-        let data = workload.generate(FLOAT_BYTES);
+        let data = generate(workload, FLOAT_BYTES);
         for profile in PROFILES {
             let enabled = AceEngine::new(float_config(profile, true))?;
             let disabled = AceEngine::new(float_config(profile, false))?;
@@ -293,7 +293,7 @@ pub(crate) fn float_fastpath_family() -> Result<Vec<Value>, Box<dyn std::error::
 pub(crate) fn float_false_positive_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut cases: Vec<(String, Vec<u8>, bool)> = Workload::CORPUS_V3
         .iter()
-        .map(|w| (w.name().to_string(), w.generate(FLOAT_BYTES), true))
+        .map(|w| (w.name().to_string(), generate(*w, FLOAT_BYTES), true))
         .collect();
     for workload in [
         Workload::F64Random,
@@ -302,12 +302,16 @@ pub(crate) fn float_false_positive_family() -> Result<Vec<Value>, Box<dyn std::e
     ] {
         cases.push((
             workload.name().into(),
-            workload.generate(FLOAT_BYTES),
+            generate(workload, FLOAT_BYTES),
             false,
         ));
     }
     for case in FalsePositiveCase::ALL {
-        cases.push((case.name().into(), case.generate(FLOAT_BYTES), false));
+        cases.push((
+            case.name().into(),
+            fingerprinted(case.name(), case.generate(FLOAT_BYTES)),
+            false,
+        ));
     }
     let mut rows = Vec::new();
     let (mut total_blocks, mut total_float_routes, mut v3_identical) = (0u64, 0u64, true);
@@ -368,7 +372,7 @@ pub(crate) fn float_estimator_family() -> Result<Vec<Value>, Box<dyn std::error:
     let mut rows = Vec::new();
     let mut all_errors = Vec::new();
     for workload in float_family_workloads() {
-        let data = workload.generate(INPUT_BYTES);
+        let data = generate(workload, INPUT_BYTES);
         let mut errors = Vec::new();
         let (mut regret_bytes, mut recalled, mut blocks) = (0u64, 0usize, 0usize);
         for profile in PROFILES {

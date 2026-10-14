@@ -1,5 +1,47 @@
 # ACE Roadmap
 
+| Version | Theme | Content | Format |
+|---|---|---|---|
+| **0.5.1** (done) | Hardened RC | decoder audit, limits contract, compat fixtures, determinism to 32 threads, fuzz smoke in CI, repeatable benchmarks, CLI hardening, canonical docs | 1.3 / 1.4, bytes = 0.5.0 |
+| 0.5.x | maintenance | defects only: decoder, security, compatibility, critical regressions | unchanged |
+| **0.6.0** | Numeric & Float II + API | one `ace` facade crate (`Engine`, `Config`, `DecodeLimits` with a builder, `Reader` / `RangeReader`, `Stats`, `Error`), internal crates hidden, deprecated items removed; ALP decimal floats; RunDelta / NUM1 for small non-zero deltas; Patched FOR; Chimp as a TS1 mode; earlier TS1 decision (less allocation churn, measured by `allocation-profile`) | **1.5** (new modes) |
+| **0.7.0** | Embedding | `ace-ffi` (C ABI v1, opaque handles, error codes, `catch_unwind` at the boundary, generated `include/ace.h`), Java SDK on Panama FFM (JDK 25 LTS), Scala 3 wrapper, native packaging, multi-platform CI (aarch64: NEON / scalar) | unchanged |
+| **0.8.0** | Storage-engine features | adaptive segmentation (codec per segment inside a block), columnar blocks (several streams per block, optional schema hints), `WorkerScratch` reuse, trained dictionaries, context shared between blocks of a segment (random access kept) | **2.0** (consider the major version then) |
+| **0.9.0** | Platform integration | page / segment codec API for AdaptiveDB, profiles per storage tier, async / streaming API, metrics (`tracing` / OpenTelemetry), deterministic mode for GraphNet | unchanged |
+| **1.0.0** | Stable | frozen Rust API, C ABI v1 and format; LTS policy for 1.x; crates.io / Maven Central | stable |
+
+## Platform: ACE + AdaptiveDB + GraphNet
+
+Principles: the three projects integrate **in Rust** as crates and traits in one process (FFI
+only for JVM clients), and dependencies stay acyclic — a shared `platform-contracts` crate
+(errors, identifiers, versioning, telemetry) at the bottom, ACE as a leaf that knows neither
+AdaptiveDB nor GraphNet, AdaptiveDB on top (AdaptiveDB → ACE for pages / segments and tiering,
+AdaptiveDB → GraphNet for CDC / lineage / audit, optionally GraphNet → ACE for closed ledger
+segments, which needs ACE's deterministic bytes).
+
+| Phase | Content | When (ACE) |
+|---|---|---|
+| P0 conventions | `platform-contracts`, shared "Native Interop Conventions" (error codes, handles, ABI versioning, library loading, JAR packaging), common release style (tags, baselines, golden files) | alongside 0.6 |
+| P1 storage | AdaptiveDB stores remote / cold-tier pages and segments with ACE | after 0.7 (stable API), fully after 0.8 |
+| P2 lineage | AdaptiveDB CDC → GraphNet causal events | after GraphNet v0.10 (security) |
+| P3 ledger storage | GraphNet compresses ledger segments with ACE | after 0.8 |
+| P4 JVM SDK | one Java / Scala SDK over the three C ABIs | after 0.7 and the GraphNet FFI |
+| P5 platform 1.0 | common release train, end-to-end tests, platform benchmark | ACE 1.0 |
+
+The integration concept itself (module boundaries, existing APIs, CDC format) is a separate
+document written after reviewing the AdaptiveDB and GraphNet repositories.
+
+## 0.5.1 - Hardened Release Candidate (done)
+
+Every 0.5.0 byte and planner decision preserved (golden 0.5.0 with auto and scalar SIMD).
+Decoder audit (checked arithmetic and explicit narrowing in every parser module, generated
+`DECODER-AUDIT.md`, per-field and before-allocation tests, block-count limit in every reader,
+bounded primary streams, strict stream ends), frozen compatibility fixtures of 0.2.1 – 0.5.0,
+determinism matrix to 32 workers, Planner V5 invariant properties, private-item rustdoc and
+`unreachable` / `missing_errors_doc` / `missing_safety_doc` lints, toolchain 1.98.1 (MSRV 1.97),
+fuzz smoke in CI, benchmark schema 2.2, three-run repeatability, governor gate,
+`allocation-profile`, `ace version`, quiet `EPIPE`, release report, canonical documentation.
+
 ## 0.5.0 - Lossless Floating-Point & Time-Series Compression (done)
 
 Format 1.4 with the TS1 codec (Gorilla f64 / f32, RunDelta), minimal-version writer (1.3 unless
@@ -9,7 +51,7 @@ RunDelta estimators, Corpus V4 + false-positive corpus, golden 0.5.0 with the 0.
 frozen, Float lane benchmark families and gates. Calibration showed that Gorilla rarely beats
 LZ + entropy on decimal-like data, which sets the 0.6 priorities below.
 
-## Next: ACE 0.6 candidates
+## ACE 0.6 candidates as listed at 0.5.0 (folded into the table above)
 
 - **decimal floats (ALP-style)**: prices and quantized sensors, where Gorilla loses today;
 - **RunDelta / NUM1 for small non-zero deltas** (`int-counter-reset`: RunDelta 12× at codec

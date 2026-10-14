@@ -102,6 +102,10 @@ mod sse42 {
     /// body needs no `unsafe`. Callers without SSE4.2 enabled at compile time must call it
     /// inside `unsafe` after runtime detection (see [`super::crc32c_hardware`]).
     #[target_feature(enable = "sse4.2")]
+    // `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1
+    // hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks`
+    // lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint.
+    #[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
     pub(super) fn crc32c_raw(state: u32, bytes: &[u8]) -> u32 {
         let stripe = (bytes.len() / 3) & !7;
         let (mut state, rest) = if stripe >= MIN_STRIPE_BYTES {

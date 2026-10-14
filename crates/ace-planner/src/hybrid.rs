@@ -92,6 +92,10 @@ impl HybridLzEstimator {
     /// Every micro-trial is encoded independently, so no artificial matches are introduced
     /// between disjoint windows. When reset-window sampling is worse than the analytical model,
     /// the hybrid deliberately trusts the buildfix6 full-block analytical estimate more strongly.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the encoding errors of the LZ micro-trials.
     pub fn refine(
         &self,
         input: &[u8],

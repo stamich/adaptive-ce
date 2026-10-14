@@ -22,13 +22,14 @@ ace-runtime = { path = "../ace-runtime" }
 ace-corpus = { path = "../ace-corpus" }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 flate2.workspace = true
 lz4_flex.workspace = true
 zstd.workspace = true
 
 num_cpus.workspace = true
 
-# Benchmark harness: `unsafe` only for the counting global allocator (docs/UNSAFE-AUDIT-0.5.0.md);
+# Benchmark harness: `unsafe` only for the counting global allocator (docs/UNSAFE-AUDIT.md);
 # panics are acceptable in a measurement tool and therefore not denied here.
 [lints.rust]
 missing_docs = "deny"
@@ -36,4 +37,7 @@ unsafe_op_in_unsafe_fn = "deny"
 
 [lints.clippy]
 dbg_macro = "deny"
+missing_errors_doc = "deny"
+missing_safety_doc = "deny"
+unreachable = "deny"
 undocumented_unsafe_blocks = "deny"
