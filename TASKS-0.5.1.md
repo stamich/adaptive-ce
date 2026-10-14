@@ -73,7 +73,7 @@ machine.
 | # | Task | Commit | Acceptance |
 |---|---|---|---|
 | 27 ✅ | Schema 2.2 (git revision + dirty, config fingerprint, threads, block size, input SHA-256); validator 2.0 – 2.2 | Adds benchmark schema 2.2 with build revision, configuration and input fingerprints | validator |
-| 28 ✅ | `tools/ace-repeatability0.5.1.py` (deterministic values identical, macro spread ≤ 5 %, median documents) | Adds the benchmark repeatability tool | detects a forged mismatch |
+| 28 ✅ | `tools/ace-repeatability0.5.1.py` (deterministic values identical, macro spread ≤ 5 % / decompression ≤ 15 %, median documents) | Adds the benchmark repeatability tool | detects a forged mismatch |
 | 29 ✅ | `--repeat N`, release runs three times, governor gate (`diagnostic` instead of `pass`) | Runs benchmarks three times for a release and refuses a pass on a non-performance governor | scripts |
 | 30 ✅ | `allocation-profile` family + report table | Adds the allocation-profile benchmark family | evaluator = 94 % of the int-sparse-change churn |
 | 31 ⏩ | Three runs on the Ryzen 9 5950X → `examples/baselines/0.5.1/` | `./ace-release0.5.1.sh ../ace-0.5.0` | checklist all PASS |

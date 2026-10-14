@@ -48,7 +48,7 @@ release.
 | Fuzz smoke 15 × 25 s | 0 crashes | CI `fuzz-smoke` job |
 | Fuzz campaign 15 × 10 min (*manual*) | 0 crashes | `examples/baselines/<version>/FUZZ.md` |
 | Quality, Float lane, stability, performance vs the previous release | PASS | Regression V3 + A/B |
-| Repeatability (3 runs) | deterministic values identical, macro spread ≤ 5 % | `benchmark-<version>-repeatability.json` |
+| Repeatability (3 runs) | deterministic values identical, macro spread ≤ 5 % (decompression ≤ 15 %) | `benchmark-<version>-repeatability.json` |
 | Reproducible package, tested from the archive | PASS | steps 10 – 11 |
 | Documentation | README, RELEASE-NOTES, COMPATIBILITY, SECURITY, BENCHMARKS, audits, CHANGELOG, ROADMAP | review |
 
@@ -77,3 +77,17 @@ package audit rejects stale names — update `ACE_VERSION` / `ACE_BASELINE`
 (`tools/ace-common<version>.sh`), `MILESTONE` / `BASELINE` (`tools/ace-benchlib<version>.py`),
 `MILESTONE` / `BASE_MILESTONE` (`crates/ace-bench/src/json.rs`), the workspace version, and
 add `TASKS-<version>.md` / `MILESTONE-<version>.json` (earlier ones move to `docs/history/`).
+
+## 5. SonarQube Cloud (static analysis and coverage)
+
+Configuration: `sonar-project.properties`; workflow: `.github/workflows/ace-sonarcloud0.5.1.yml`
+(separate from `ace-ci`, so it never gates the build). One-time setup:
+
+1. In SonarQube Cloud import `stamich/adaptive-ce` (organization `stamich`, project key
+   `stamich_adaptive-ce`; change both in the properties file if yours differ).
+2. Administration > Analysis Method: switch **Automatic Analysis off** (CI-based analysis).
+3. Add the repository secret `SONAR_TOKEN` (GitHub > Settings > Secrets > Actions).
+
+The workflow runs on pushes to `main` and on pull requests from the same repository, produces
+`lcov.info` (`cargo llvm-cov --workspace`) and `clippy-report.json`, and scans. Without the secret
+it is skipped with a notice.
