@@ -1,5 +1,14 @@
 # Adaptive Compression Engine (ACE)
 
+[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.5.1.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.5.1.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=coverage)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 ACE is a lossless, schema-free, adaptive block compressor written in Rust. It looks at every
 block of the input — text, structured records, integer counters and timestamps, floating-point
 series — chooses the cheapest reversible pipeline for it with a deterministic cost model, and
@@ -23,7 +32,7 @@ repeatable benchmarks. See [`docs/RELEASE-NOTES-0.5.1.md`](docs/RELEASE-NOTES-0.
 | rarely changing values | TS1 RunDelta (Elias-gamma runs + ZigZag deltas) | sparse-change integers: ≈ 235× |
 | incompressible data | stored RAW (never larger than the input plus framing) | random: 1.0× |
 
-Measured numbers and methodology: [`docs/PERFORMANCE-0.5.0.md`](docs/PERFORMANCE-0.5.0.md)
+Measured numbers and methodology: [`docs/PERFORMANCE-0.5.1.md`](docs/PERFORMANCE-0.5.1.md)
 (reference machine AMD Ryzen 9 5950X), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start
