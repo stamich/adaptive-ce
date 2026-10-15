@@ -1,0 +1,474 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.5.1",
+  "base": "0.5.0",
+  "scope": "repeatability",
+  "benchmark_contract_origin": "ace-0.5.1",
+  "generated_at_utc_epoch_seconds": 1791977825,
+  "environment": {},
+  "configuration": {
+    "runs": [
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-1",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-2",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-3"
+    ],
+    "max_spread_percent": 5.0
+  },
+  "status": "pass",
+  "workloads": [
+    {
+      "workload_id": "repeatability",
+      "path": "repeatability",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "deterministic.values",
+          "section": "deterministic",
+          "status": "pass",
+          "measured": 0.0,
+          "required": 0.0,
+          "rule": "non-timing values identical in 3 runs x 27 families",
+          "mismatches": []
+        },
+        {
+          "name": "macro.compression.fast.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.45258586948590207,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            47838658.0,
+            48055182.0,
+            47841529.0
+          ]
+        },
+        {
+          "name": "macro.compression.fast.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 7.6241164742436265,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            3478013.0,
+            3230107.0,
+            3251603.0
+          ]
+        },
+        {
+          "name": "macro.compression.fast.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 6.595267700741521,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            3508970.0,
+            3305370.0,
+            3290972.0
+          ]
+        },
+        {
+          "name": "macro.compression.balanced.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.49125771663812484,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            72148485.0,
+            71820408.0,
+            72174843.0
+          ]
+        },
+        {
+          "name": "macro.compression.balanced.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 6.452599873736038,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            3588628.0,
+            3369085.0,
+            3402396.0
+          ]
+        },
+        {
+          "name": "macro.compression.balanced.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 8.293636036119794,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            3711599.0,
+            3441880.0,
+            3426142.0
+          ]
+        },
+        {
+          "name": "macro.compression.dense.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.20929341838999355,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            96252001.0,
+            96453508.0,
+            96279664.0
+          ]
+        },
+        {
+          "name": "macro.compression.dense.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 6.7338434246281125,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            4044173.0,
+            3786775.0,
+            3822453.0
+          ]
+        },
+        {
+          "name": "macro.compression.dense.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 8.840541698223308,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            4182486.0,
+            3840705.0,
+            3866064.0
+          ]
+        },
+        {
+          "name": "macro.numeric_fast.u32_counter.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 2.4343607234416855,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            1948161.0,
+            1996731.0,
+            1995185.0
+          ]
+        },
+        {
+          "name": "macro.numeric_fast.u32_counter.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 4.062673596865754,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            1097794.0,
+            1054718.0,
+            1060287.0
+          ]
+        },
+        {
+          "name": "macro.numeric_fast.u32_counter.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 3.5785299338164953,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            1111133.0,
+            1072565.0,
+            1077761.0
+          ]
+        },
+        {
+          "name": "macro.numeric_general.u64_timestamps.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.6910029887031726,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            55405218.0,
+            55294551.0,
+            55023131.0
+          ]
+        },
+        {
+          "name": "macro.numeric_general.u64_timestamps.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 5.302824652297014,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            4606202.0,
+            4373155.0,
+            4394771.0
+          ]
+        },
+        {
+          "name": "macro.numeric_general.u64_timestamps.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 4.602536465591553,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            4619039.0,
+            4424582.0,
+            4415396.0
+          ]
+        },
+        {
+          "name": "macro.numeric_general.delta_variable.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.5093514838571216,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            64074573.0,
+            64244831.0,
+            64401805.0
+          ]
+        },
+        {
+          "name": "macro.numeric_general.delta_variable.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 5.0955031134764415,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            9235678.0,
+            8785565.0,
+            8833534.0
+          ]
+        },
+        {
+          "name": "macro.numeric_general.delta_variable.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 4.4128783068378725,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            9271653.0,
+            8878995.0,
+            8898002.0
+          ]
+        },
+        {
+          "name": "macro.float_fast.f64_step.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.9678332969812585,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            2781728.0,
+            2764629.0,
+            2754971.0
+          ]
+        },
+        {
+          "name": "macro.float_fast.f64_step.compression_disabled",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.6078198950775839,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            101338874.0,
+            100725691.0,
+            100882351.0
+          ]
+        },
+        {
+          "name": "macro.float_fast.f64_step.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 8.319587760804966,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            5391433.0,
+            5186530.0,
+            5635075.0
+          ]
+        },
+        {
+          "name": "macro.float_fast.f64_step.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 8.153479144997487,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            5476288.0,
+            5227921.0,
+            5674429.0
+          ]
+        },
+        {
+          "name": "macro.float_general.f64_noisy.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.5093896402418214,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            42619045.0,
+            42416545.0,
+            42633642.0
+          ]
+        },
+        {
+          "name": "macro.float_general.f64_noisy.compression_disabled",
+          "section": "macro",
+          "status": "pass",
+          "measured": 1.0679557454981787,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            45202292.0,
+            44749888.0,
+            44724383.0
+          ]
+        },
+        {
+          "name": "macro.float_general.f64_noisy.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 5.520929054117932,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            8281292.0,
+            7843304.0,
+            7933230.0
+          ]
+        },
+        {
+          "name": "macro.float_general.f64_noisy.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 2.613267137936238,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            8304751.0,
+            8092959.0,
+            8104491.0
+          ]
+        },
+        {
+          "name": "macro.run_delta.int_sparse_change.compression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.8370368972966037,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            83841611.0,
+            83912191.0,
+            84543987.0
+          ]
+        },
+        {
+          "name": "macro.run_delta.int_sparse_change.compression_disabled",
+          "section": "macro",
+          "status": "pass",
+          "measured": 0.8598919664963978,
+          "required": 5.0,
+          "rule": "(max - min) / median <= 5.0% over 3 runs",
+          "medians_ns": [
+            109855809.0,
+            108911474.0,
+            109820191.0
+          ]
+        },
+        {
+          "name": "macro.run_delta.int_sparse_change.decompression",
+          "section": "macro",
+          "status": "pass",
+          "measured": 10.54514920630507,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            11994268.0,
+            10765545.0,
+            11652021.0
+          ]
+        },
+        {
+          "name": "macro.run_delta.int_sparse_change.decompression_alloc",
+          "section": "macro",
+          "status": "pass",
+          "measured": 13.484609333656467,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            11469765.0,
+            10003064.0,
+            10876852.0
+          ]
+        },
+        {
+          "name": "macro.full_decompress.mixed.timing",
+          "section": "macro",
+          "status": "pass",
+          "measured": 5.003866683722715,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            3535623.0,
+            3363508.0,
+            3439640.0
+          ]
+        },
+        {
+          "name": "macro.random_access.warm_64k.timing",
+          "section": "macro",
+          "status": "diagnostic",
+          "measured": 1.5763372298972722,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            22599.0,
+            22243.0,
+            22584.0
+          ]
+        },
+        {
+          "name": "macro.random_access.range_4k.timing",
+          "section": "macro",
+          "status": "diagnostic",
+          "measured": 1.809954751131222,
+          "required": 15.0,
+          "rule": "(max - min) / median <= 15.0% over 3 runs",
+          "medians_ns": [
+            114507.0,
+            112447.0,
+            113815.0
+          ]
+        },
+        {
+          "name": "environment.governor",
+          "section": "environment",
+          "status": "diagnostic",
+          "measured": null,
+          "required": null,
+          "rule": "governors: ['performance']"
+        }
+      ]
+    }
+  ]
+}

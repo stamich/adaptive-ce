@@ -66,7 +66,7 @@ machine.
 | # | Task | Commit | Acceptance |
 |---|---|---|---|
 | 25 ✅ | `fuzz-smoke` mode and CI job (15 × 25 s), corpus as cache / artifact, `cmin` in the campaign, policy document | Adds a fuzz smoke run to CI and documents the corpus policy | CI job |
-| 26 ⏩ | Fuzz campaign 15 × 10 min (reference machine) | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.5.1.sh fuzz` | 0 crashes, `examples/baselines/0.5.1/FUZZ.md` |
+| 26 ✅ | Fuzz campaign 15 × 10 min (reference machine) | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.5.1.sh fuzz` | 0 crashes, `examples/baselines/0.5.1/FUZZ.md` |
 
 ## Phase H — benchmarks
 
@@ -76,7 +76,7 @@ machine.
 | 28 ✅ | `tools/ace-repeatability0.5.1.py` (deterministic values identical, macro spread ≤ 5 % / decompression ≤ 15 %, median documents) | Adds the benchmark repeatability tool | detects a forged mismatch |
 | 29 ✅ | `--repeat N`, release runs three times, governor gate (`diagnostic` instead of `pass`) | Runs benchmarks three times for a release and refuses a pass on a non-performance governor | scripts |
 | 30 ✅ | `allocation-profile` family + report table | Adds the allocation-profile benchmark family | evaluator = 94 % of the int-sparse-change churn |
-| 31 ⏩ | Three runs on the Ryzen 9 5950X → `examples/baselines/0.5.1/` | `./ace-release0.5.1.sh ../ace-0.5.0` | checklist all PASS |
+| 31 ✅ | Three runs on the Ryzen 9 5950X → `examples/baselines/0.5.1/` | `./ace-release0.5.1.sh ../ace-0.5.0` | checklist all PASS |
 
 ## Phase I — CLI
 
