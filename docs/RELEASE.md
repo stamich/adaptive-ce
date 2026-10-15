@@ -91,3 +91,7 @@ Configuration: `sonar-project.properties`; workflow: `.github/workflows/ace-sona
 The workflow runs on pushes to `main` and on pull requests from the same repository, produces
 `lcov.info` (`cargo llvm-cov --workspace`) and `clippy-report.json`, and scans. Without the secret
 it is skipped with a notice.
+
+The README badges point at the workflow file by name (`ace-ci<version>.yml`) and at the Sonar
+project key; when the workflow file is renamed in a version bump, update the build-status badge
+in `README.md` in the same commit.
