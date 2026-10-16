@@ -5,8 +5,8 @@
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, CompressionProfile};
 use ace_planner::{
-    evaluate_candidates_v3, CompressionPlanner, DefaultCompressionPlanner, PlannerDataClass,
-    PlanningBudget,
+    evaluate_candidates_v4_with_route, CompressionPlanner, DefaultCompressionPlanner,
+    PlannerDataClass, PlanningBudget, RoutePolicy,
 };
 
 /// Runs Planner V3.6 for one block and returns the decision telemetry.
@@ -17,7 +17,14 @@ fn plan_block(data: &[u8], profile: CompressionProfile) -> ace_planner::PlannerD
     };
     let block_profile = DefaultBlockAnalyzer.analyze(data);
     let candidates = DefaultCompressionPlanner.candidates(&block_profile, &config);
-    evaluate_candidates_v3(data, &block_profile, &candidates, &config).unwrap()
+    evaluate_candidates_v4_with_route(
+        data,
+        &block_profile,
+        &candidates,
+        &config,
+        &RoutePolicy::classify(data, &config),
+    )
+    .unwrap()
 }
 
 /// Zero-heavy data must not spend Hybrid-LZ micro-trial budget.

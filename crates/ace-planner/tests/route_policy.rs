@@ -5,8 +5,8 @@
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, CodecId, CompressionProfile};
 use ace_planner::{
-    evaluate_candidates_v4, CandidateEligibility, CompressionPlanner, DefaultCompressionPlanner,
-    PlannerRoute, RoutePolicy,
+    evaluate_candidates_v4_with_route, CandidateEligibility, CompressionPlanner,
+    DefaultCompressionPlanner, PlannerRoute, RoutePolicy,
 };
 
 /// Builds a deterministic variable-delta u64 timestamp block representative of NumericGeneral.
@@ -40,7 +40,14 @@ fn numeric_general_uses_bounded_v4_2_budget() {
     let profile = analyzer.analyze(&input);
     let planner = DefaultCompressionPlanner;
     let candidates = planner.candidates(&profile, &config);
-    let decision = evaluate_candidates_v4(&input, &profile, &candidates, &config).unwrap();
+    let decision = evaluate_candidates_v4_with_route(
+        &input,
+        &profile,
+        &candidates,
+        &config,
+        &RoutePolicy::classify(&input, &config),
+    )
+    .unwrap();
 
     assert!(decision.telemetry.estimated_candidates <= 5);
     assert!(decision.telemetry.sampled_candidates <= 2);

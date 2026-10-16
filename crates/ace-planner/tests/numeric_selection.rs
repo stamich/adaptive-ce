@@ -4,7 +4,9 @@
 
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, CodecId, CompressionProfile};
-use ace_planner::{evaluate_candidates_v4, CompressionPlanner, DefaultCompressionPlanner};
+use ace_planner::{
+    evaluate_candidates_v4_with_route, CompressionPlanner, DefaultCompressionPlanner, RoutePolicy,
+};
 
 /// Builds one deterministic monotonic little-endian u32 counter block.
 fn numeric_counter_block(bytes: usize) -> Vec<u8> {
@@ -42,7 +44,14 @@ fn exact_numeric_estimate_keeps_numeric_in_v4_search() {
         "Planner V4 candidate generation must admit Numeric"
     );
 
-    let decision = evaluate_candidates_v4(&input, &profile, &candidates, &config).unwrap();
+    let decision = evaluate_candidates_v4_with_route(
+        &input,
+        &profile,
+        &candidates,
+        &config,
+        &RoutePolicy::classify(&input, &config),
+    )
+    .unwrap();
     assert!(
         decision
             .top_k_plans

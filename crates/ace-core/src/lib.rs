@@ -1,8 +1,8 @@
 //! Shared model, errors, limits and physical-plan types of the Adaptive Compression Engine.
 //!
-//! **Stability:** part of the public ACE API (with `ace-engine`, `ace-stream` and `ace-core`).
-//! 0.5.x releases change it only additively; the 0.6 `ace` facade will re-export it (see
-//! `docs/API-INVENTORY.md`).
+//! **Stability:** internal building block of ACE (not published). Its public items exist for the
+//! other ACE crates, the benchmark harness and the fuzz targets and may change in any release.
+//! Use the `ace` crate, which is the public API (`docs/API-INVENTORY.md`).
 
 mod block;
 mod codec;
