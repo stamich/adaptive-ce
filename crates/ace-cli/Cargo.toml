@@ -8,9 +8,12 @@ rust-version.workspace = true
 [[bin]]
 name = "ace"
 path = "src/main.rs"
+# The binary shares its name with the `ace` library; documenting both collides.
+doc = false
 
 [dependencies]
 ace-codecs = { path = "../ace-codecs" }
+ace = { path = "../ace" }
 ace-core = { path = "../ace-core" }
 ace-engine = { path = "../ace-engine" }
 ace-format = { path = "../ace-format" }

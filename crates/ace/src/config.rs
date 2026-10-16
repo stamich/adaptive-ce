@@ -161,11 +161,17 @@ impl ConfigBuilder {
         self
     }
 
-    /// Enables the integer and float specialisations (default `true`). `false` makes the
-    /// planner use only the general-purpose pipelines.
+    /// Enables the integer pipelines (FOR, delta, delta-of-delta; default `true`).
     #[must_use]
     pub fn numeric_specialization(mut self, enabled: bool) -> Self {
         self.inner.enable_numeric_specialization = enabled;
+        self
+    }
+
+    /// Enables the floating-point and time-series pipelines (default `true`). `false`
+    /// reproduces the planner decisions of ACE 0.4.6 and always writes format 1.3.
+    #[must_use]
+    pub fn float_specialization(mut self, enabled: bool) -> Self {
         self.inner.enable_float_specialization = enabled;
         self
     }
@@ -212,6 +218,7 @@ mod tests {
             .block_size_policy(BlockSizePolicy::Auto)
             .access_hint(AccessHint::RandomAccess)
             .numeric_specialization(false)
+            .float_specialization(false)
             .build()
             .unwrap();
         assert_eq!(c.block_size(), 64 * 1024);

@@ -61,6 +61,7 @@ dependencies = [
 name = "ace-cli"
 version = "0.6.0"
 dependencies = [
+ "ace",
  "ace-codecs",
  "ace-core",
  "ace-engine",

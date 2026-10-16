@@ -16,6 +16,9 @@ pub struct Stats {
     pub input_bytes: u64,
     /// Bytes of the ACE file written.
     pub output_bytes: u64,
+    /// Minor version of the file format written (`1.<minor>`): 3, or 4 when a block uses the
+    /// floating-point and time-series codec.
+    pub format_minor: u8,
     /// Number of blocks.
     pub blocks: u64,
     /// Blocks stored as is.
@@ -47,6 +50,7 @@ impl Stats {
         Self {
             input_bytes: stats.input_bytes,
             output_bytes: stats.output_bytes,
+            format_minor: if stats.time_series_blocks > 0 { 4 } else { 3 },
             blocks: stats.block_count,
             raw_blocks: stats.raw_blocks,
             rle_blocks: stats.rle_blocks,
@@ -79,6 +83,7 @@ mod tests {
         core.record_plan("lz+huffman");
         let s = Stats::from_core(&core);
         assert_eq!((s.input_bytes, s.output_bytes, s.blocks), (1000, 250, 3));
+        assert_eq!(s.format_minor, 4);
         assert_eq!(
             (
                 s.raw_blocks,

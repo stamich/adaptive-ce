@@ -151,6 +151,7 @@ impl Engine {
         Ok(Stats {
             input_bytes: stats.input_bytes,
             output_bytes: stats.output_bytes,
+            format_minor: if stats.format_1_4 { 4 } else { 3 },
             blocks: stats.blocks,
             ..Stats::default()
         })
@@ -243,6 +244,7 @@ mod tests {
         let (packed, stats) = small_blocks().compress_with_stats(&data).unwrap();
         assert_eq!(stats.input_bytes, data.len() as u64);
         assert_eq!(stats.output_bytes, packed.len() as u64);
+        assert_eq!(stats.format_minor, packed[5]);
         assert!(stats.blocks > 1);
         assert!(stats.ratio() > 1.0);
         let total: u64 = stats.plan_distribution.values().sum();
@@ -270,6 +272,7 @@ mod tests {
         let streamed = sink.into_inner();
         assert_eq!(streamed, engine.compress(&data).unwrap());
         assert_eq!(stats.input_bytes, data.len() as u64);
+        assert_eq!(stats.format_minor, streamed[5]);
         let mut back = Vec::new();
         engine
             .decompress_from(Cursor::new(&streamed), &mut back)
