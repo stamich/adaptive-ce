@@ -37,6 +37,12 @@ of the 0.6 plan (RunDelta small deltas, Patched FOR, ALP, Chimp evaluation, Form
 ### Removed
 - `ace_planner::evaluate_candidates_v3` and `evaluate_candidates_v4` (deprecated in 0.5.1).
 
+### Release qualification (manual, reference machine)
+- Passed on the Ryzen 9 5950X: Regression V3 (73 gates, 0 failures), interleaved A/B against 0.5.1
+  12 / 12 with byte-identical output (speed ratios 0.985 – 1.046), repeatability, fuzz campaign
+  15 × 600 s without a crash. Baseline `examples/baselines/0.6.0/`,
+  [`docs/PERFORMANCE-0.6.0.md`](docs/PERFORMANCE-0.6.0.md); tag `v0.6.0` follows the merge.
+
 ## 0.5.1 - 2026-10-13 — Hardened Release Candidate
 
 Base: 0.5.0. **No byte changes**: golden 0.5.0 is reproduced exactly (auto and

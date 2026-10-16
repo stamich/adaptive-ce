@@ -17,7 +17,7 @@
   "msrv": "1.98.1 (= the pinned build toolchain; 1.98.0 must not be used)",
   "toolchain": "1.98.1 (rust-toolchain.toml)",
   "concept": "docs/COMPETITIVE-ANALYSIS-KANZI.md section 6; ROADMAP.md",
-  "status": "Phase A implemented (tasks 1-19); release qualification (three runs on the reference machine, fuzz campaign, baseline examples/baselines/0.6.0/, tag v0.6.0) pending",
+  "status": "Phase A implemented (tasks 1-19); release qualification passed on the reference machine (Regression V3, A/B vs 0.5.1 12/12, repeatability, fuzz 15 x 600 s, baseline examples/baselines/0.6.0/); tag v0.6.0 after the merge",
   "golden": {
     "0.5.0": "examples/golden/0.5.0/GOLDEN.json must be reproduced byte for byte (auto and ACE_SIMD=scalar); 0.5.1 wrote the same bytes",
     "0.4.6": "frozen; Corpus V3 must reproduce it"

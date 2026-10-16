@@ -98,6 +98,9 @@ LZ4, Zstd-3 and gzip-6 with the lzbench columns. It is skipped when the variable
 * `Config` does not expose `min_gain_bytes`, `enable_early_raw`, `max_in_flight_blocks` and
   `enable_planner_fast_paths`; they keep their defaults.
 * `compress_stream` needs a fixed block size and a `Write + Seek` sink.
-* Release qualification (three runs on the reference machine, fuzz campaign, baseline
-  `examples/baselines/0.6.0/`, `PERFORMANCE-0.6.0.md`, tag `v0.6.0`) follows
-  [`RELEASE.md`](RELEASE.md).
+* Release qualification on the reference machine (Ryzen 9 5950X): Regression V3 passes
+  (73 gates, 0 failures), the interleaved A/B against 0.5.1 passes 12 / 12 with byte-identical
+  output (speed ratios 0.985 – 1.046; DENSE decode 0.961× → 1.004×), repeatability passes, and the
+  fuzz campaign ran 15 targets × 600 s without a crash. Baseline `examples/baselines/0.6.0/`,
+  [`PERFORMANCE-0.6.0.md`](PERFORMANCE-0.6.0.md); the tag `v0.6.0` follows the merge
+  ([`RELEASE.md`](RELEASE.md)).

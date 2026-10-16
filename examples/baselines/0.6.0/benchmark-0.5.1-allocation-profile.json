@@ -1,0 +1,779 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.5.1",
+  "base": "0.5.0",
+  "scope": "allocation-profile",
+  "benchmark_contract_origin": "ace-0.5.1",
+  "generated_at_utc_epoch_seconds": 1791910519,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "true",
+      "git_revision": "f0e4605865333f4473ebd11b49f22a48d356fb01",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": null,
+      "freq_khz_before": null,
+      "governor": null,
+      "logical_cpus": 2,
+      "max_freq_khz": null,
+      "model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "physical_cores": 2
+    },
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      0.61,
+      0.85,
+      1.09
+    ],
+    "loadavg_before": [
+      0.61,
+      0.85,
+      1.09
+    ],
+    "logical_cpus": 2,
+    "memory_bytes": 8419655680,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.18.44-fc-v114",
+      "name": "linux"
+    },
+    "physical_cores": 2,
+    "rust": {
+      "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": null,
+    "thermal_c_before": null,
+    "warnings": []
+  },
+  "configuration": {
+    "block_size": 262144,
+    "config_fingerprint": "ced6310344103233",
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3 | 1.4 (minimal version)",
+    "planner_version": "V5",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "threads": 0,
+    "threads_resolved": 2,
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workload_fingerprints": {
+    "f64-noisy@4194304": "f10850dc3f5f55fe6c6d6ad67015dcd192853672275a6ce44ac38525cd202bd9",
+    "f64-step@4194304": "8c569dcd304c6d451c78649a9b327e041c0ae51bf793726bd9c361834491690f",
+    "int-sparse-change@4194304": "8b2088dd75487222ed8c93ee4aa95de938b30cdff9d5d59c836ecb7b2c924265",
+    "mixed@4194304": "2e8b1dce80ab3069328f6050a9419bc4e86b7ec77e4c78fcd73ab14cf03f5c01",
+    "u32-counter@4194304": "29574cd4850dd564d921e73135017010e21ef172fe4a1d58be31f73b540079ab",
+    "u64-timestamps@4194304": "f08a120ddef5fd89d194fc83b44a37c1fbf914b05c4d818c89df1a3e7a81a775"
+  },
+  "workloads": [
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 5.946660041809082,
+      "engine_compress": {
+        "allocated_bytes": 24942100,
+        "allocations": 454,
+        "peak_live_bytes": 5372267
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_fast",
+      "profile": "Fast",
+      "routes": {
+        "generic": 12,
+        "numeric-general": 4
+      },
+      "staged_allocated_bytes": 20714812,
+      "staged_bytes_per_input_byte": 4.938796043395996,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 524288,
+          "allocated_bytes_per_input_byte": 0.125,
+          "allocations": 16,
+          "blocks": 16,
+          "max_peak_live_bytes": 32768,
+          "share_percent": 2.5309812128635296
+        },
+        "candidates": {
+          "allocated_bytes": 30720,
+          "allocated_bytes_per_input_byte": 0.00732421875,
+          "allocations": 60,
+          "blocks": 16,
+          "max_peak_live_bytes": 1792,
+          "share_percent": 0.14829968044122244
+        },
+        "classify": {
+          "allocated_bytes": 5120,
+          "allocated_bytes_per_input_byte": 0.001220703125,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 64,
+          "share_percent": 0.024716613406870407
+        },
+        "encode": {
+          "allocated_bytes": 20122556,
+          "allocated_bytes_per_input_byte": 4.797591209411621,
+          "allocations": 116,
+          "blocks": 16,
+          "max_peak_live_bytes": 3145728,
+          "share_percent": 97.14090574416026
+        },
+        "evaluate": {
+          "allocated_bytes": 32128,
+          "allocated_bytes_per_input_byte": 0.007659912109375,
+          "allocations": 100,
+          "blocks": 16,
+          "max_peak_live_bytes": 3360,
+          "share_percent": 0.1550967491281118
+        },
+        "float_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "numeric_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "ts1_policy": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        }
+      },
+      "workload_id": "mixed_16x256k"
+    },
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 16.11139416694641,
+      "engine_compress": {
+        "allocated_bytes": 67576085,
+        "allocations": 3514,
+        "peak_live_bytes": 5370602
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_balanced",
+      "profile": "Balanced",
+      "routes": {
+        "generic": 12,
+        "numeric-general": 4
+      },
+      "staged_allocated_bytes": 63350441,
+      "staged_bytes_per_input_byte": 15.103922128677368,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 4718592,
+          "allocated_bytes_per_input_byte": 1.125,
+          "allocations": 32,
+          "blocks": 16,
+          "max_peak_live_bytes": 262144,
+          "share_percent": 7.448396452362502
+        },
+        "candidates": {
+          "allocated_bytes": 224852,
+          "allocated_bytes_per_input_byte": 0.05360889434814453,
+          "allocations": 184,
+          "blocks": 16,
+          "max_peak_live_bytes": 8199,
+          "share_percent": 0.3549335986469297
+        },
+        "classify": {
+          "allocated_bytes": 5120,
+          "allocated_bytes_per_input_byte": 0.001220703125,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 64,
+          "share_percent": 0.008082027400566951
+        },
+        "encode": {
+          "allocated_bytes": 20124668,
+          "allocated_bytes_per_input_byte": 4.798094749450684,
+          "allocations": 132,
+          "blocks": 16,
+          "max_peak_live_bytes": 3145728,
+          "share_percent": 31.76721058658455
+        },
+        "evaluate": {
+          "allocated_bytes": 38277209,
+          "allocated_bytes_per_input_byte": 9.12599778175354,
+          "allocations": 3002,
+          "blocks": 16,
+          "max_peak_live_bytes": 704053,
+          "share_percent": 60.42137733500545
+        },
+        "float_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "numeric_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "ts1_policy": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        }
+      },
+      "workload_id": "mixed_16x256k"
+    },
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 24.300378799438477,
+      "engine_compress": {
+        "allocated_bytes": 101923176,
+        "allocations": 6120,
+        "peak_live_bytes": 5339064
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_dense",
+      "profile": "Dense",
+      "routes": {
+        "generic": 12,
+        "numeric-general": 4
+      },
+      "staged_allocated_bytes": 97695508,
+      "staged_bytes_per_input_byte": 23.292424201965332,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 4718592,
+          "allocated_bytes_per_input_byte": 1.125,
+          "allocations": 32,
+          "blocks": 16,
+          "max_peak_live_bytes": 262144,
+          "share_percent": 4.829896580301318
+        },
+        "candidates": {
+          "allocated_bytes": 224852,
+          "allocated_bytes_per_input_byte": 0.05360889434814453,
+          "allocations": 184,
+          "blocks": 16,
+          "max_peak_live_bytes": 8199,
+          "share_percent": 0.23015592487630035
+        },
+        "classify": {
+          "allocated_bytes": 5120,
+          "allocated_bytes_per_input_byte": 0.001220703125,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 64,
+          "share_percent": 0.005240773199111672
+        },
+        "encode": {
+          "allocated_bytes": 20090000,
+          "allocated_bytes_per_input_byte": 4.789829254150391,
+          "allocations": 152,
+          "blocks": 16,
+          "max_peak_live_bytes": 3145728,
+          "share_percent": 20.563893275420607
+        },
+        "evaluate": {
+          "allocated_bytes": 72656944,
+          "allocated_bytes_per_input_byte": 17.322765350341797,
+          "allocations": 5588,
+          "blocks": 16,
+          "max_peak_live_bytes": 787516,
+          "share_percent": 74.37081344620266
+        },
+        "float_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "numeric_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "ts1_policy": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        }
+      },
+      "workload_id": "mixed_16x256k"
+    },
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 1.009568214416504,
+      "engine_compress": {
+        "allocated_bytes": 4234436,
+        "allocations": 172,
+        "peak_live_bytes": 4211736
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_numeric_fast",
+      "profile": "Balanced",
+      "routes": {
+        "numeric-fast": 16
+      },
+      "staged_allocated_bytes": 10880,
+      "staged_bytes_per_input_byte": 0.002593994140625,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "candidates": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "classify": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "encode": {
+          "allocated_bytes": 640,
+          "allocated_bytes_per_input_byte": 0.000152587890625,
+          "allocations": 16,
+          "blocks": 16,
+          "max_peak_live_bytes": 40,
+          "share_percent": 5.882352941176471
+        },
+        "evaluate": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "float_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "numeric_fast": {
+          "allocated_bytes": 10240,
+          "allocated_bytes_per_input_byte": 0.00244140625,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 640,
+          "share_percent": 94.11764705882354
+        },
+        "ts1_policy": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        }
+      },
+      "workload_id": "u32-counter_16x256k"
+    },
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 4.386025428771973,
+      "engine_compress": {
+        "allocated_bytes": 18396324,
+        "allocations": 908,
+        "peak_live_bytes": 4340736
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_numeric_general",
+      "profile": "Balanced",
+      "routes": {
+        "numeric-general": 16
+      },
+      "staged_allocated_bytes": 14172768,
+      "staged_bytes_per_input_byte": 3.3790512084960938,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 4718592,
+          "allocated_bytes_per_input_byte": 1.125,
+          "allocations": 32,
+          "blocks": 16,
+          "max_peak_live_bytes": 262144,
+          "share_percent": 33.293369368637094
+        },
+        "candidates": {
+          "allocated_bytes": 299120,
+          "allocated_bytes_per_input_byte": 0.07131576538085938,
+          "allocations": 240,
+          "blocks": 16,
+          "max_peak_live_bytes": 8199,
+          "share_percent": 2.1105263276729005
+        },
+        "classify": {
+          "allocated_bytes": 5120,
+          "allocated_bytes_per_input_byte": 0.001220703125,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 64,
+          "share_percent": 0.036125617804510735
+        },
+        "encode": {
+          "allocated_bytes": 8651136,
+          "allocated_bytes_per_input_byte": 2.062591552734375,
+          "allocations": 64,
+          "blocks": 16,
+          "max_peak_live_bytes": 540696,
+          "share_percent": 61.04055326383668
+        },
+        "evaluate": {
+          "allocated_bytes": 498800,
+          "allocated_bytes_per_input_byte": 0.11892318725585938,
+          "allocations": 416,
+          "blocks": 16,
+          "max_peak_live_bytes": 17927,
+          "share_percent": 3.5194254220488195
+        },
+        "float_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "numeric_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "ts1_policy": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        }
+      },
+      "workload_id": "u64-timestamps_16x256k"
+    },
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 2.014251708984375,
+      "engine_compress": {
+        "allocated_bytes": 8448384,
+        "allocations": 284,
+        "peak_live_bytes": 4216847
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_float_fast",
+      "profile": "Balanced",
+      "routes": {
+        "float-fast": 16
+      },
+      "staged_allocated_bytes": 4224780,
+      "staged_bytes_per_input_byte": 1.0072660446166992,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "candidates": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "classify": {
+          "allocated_bytes": 4608,
+          "allocated_bytes_per_input_byte": 0.0010986328125,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 96,
+          "share_percent": 0.10907076818201185
+        },
+        "encode": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "evaluate": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "float_fast": {
+          "allocated_bytes": 4220172,
+          "allocated_bytes_per_input_byte": 1.0061674118041992,
+          "allocations": 128,
+          "blocks": 16,
+          "max_peak_live_bytes": 262644,
+          "share_percent": 99.89092923181799
+        },
+        "numeric_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "ts1_policy": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 0,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        }
+      },
+      "workload_id": "f64-step_16x256k"
+    },
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 3.7389917373657227,
+      "engine_compress": {
+        "allocated_bytes": 15682468,
+        "allocations": 1528,
+        "peak_live_bytes": 7621322
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_ts1_gorilla",
+      "profile": "Fast",
+      "routes": {
+        "float-general": 16
+      },
+      "staged_allocated_bytes": 11458871,
+      "staged_bytes_per_input_byte": 2.7320077419281006,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 524288,
+          "allocated_bytes_per_input_byte": 0.125,
+          "allocations": 16,
+          "blocks": 16,
+          "max_peak_live_bytes": 32768,
+          "share_percent": 4.57538966971528
+        },
+        "candidates": {
+          "allocated_bytes": 19456,
+          "allocated_bytes_per_input_byte": 0.004638671875,
+          "allocations": 64,
+          "blocks": 16,
+          "max_peak_live_bytes": 896,
+          "share_percent": 0.16978985102459046
+        },
+        "classify": {
+          "allocated_bytes": 4608,
+          "allocated_bytes_per_input_byte": 0.0010986328125,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 96,
+          "share_percent": 0.04021338576898195
+        },
+        "encode": {
+          "allocated_bytes": 7868855,
+          "allocated_bytes_per_input_byte": 1.8760812282562256,
+          "allocations": 33,
+          "blocks": 16,
+          "max_peak_live_bytes": 524288,
+          "share_percent": 68.67042137048232
+        },
+        "evaluate": {
+          "allocated_bytes": 3032064,
+          "allocated_bytes_per_input_byte": 0.722900390625,
+          "allocations": 1184,
+          "blocks": 16,
+          "max_peak_live_bytes": 37776,
+          "share_percent": 26.460407835990125
+        },
+        "float_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "numeric_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "ts1_policy": {
+          "allocated_bytes": 9600,
+          "allocated_bytes_per_input_byte": 0.002288818359375,
+          "allocations": 75,
+          "blocks": 16,
+          "max_peak_live_bytes": 640,
+          "share_percent": 0.0837778870187124
+        }
+      },
+      "workload_id": "f64-noisy_16x256k"
+    },
+    {
+      "blocks": 16,
+      "engine_bytes_per_input_byte": 35.723329305648804,
+      "engine_compress": {
+        "allocated_bytes": 149834503,
+        "allocations": 9247,
+        "peak_live_bytes": 4225629
+      },
+      "input_bytes": 4194304,
+      "path": "allocation_profile_ts1_run_delta",
+      "profile": "Balanced",
+      "routes": {
+        "float-fast": 1,
+        "generic": 15
+      },
+      "staged_allocated_bytes": 145610899,
+      "staged_bytes_per_input_byte": 34.71634364128113,
+      "stages": {
+        "analysis": {
+          "allocated_bytes": 4423680,
+          "allocated_bytes_per_input_byte": 1.0546875,
+          "allocations": 30,
+          "blocks": 15,
+          "max_peak_live_bytes": 262144,
+          "share_percent": 3.038014345341004
+        },
+        "candidates": {
+          "allocated_bytes": 280425,
+          "allocated_bytes_per_input_byte": 0.06685853004455566,
+          "allocations": 225,
+          "blocks": 15,
+          "max_peak_live_bytes": 8199,
+          "share_percent": 0.1925851718009103
+        },
+        "classify": {
+          "allocated_bytes": 5088,
+          "allocated_bytes_per_input_byte": 0.00121307373046875,
+          "allocations": 80,
+          "blocks": 16,
+          "max_peak_live_bytes": 96,
+          "share_percent": 0.0034942439301882205
+        },
+        "encode": {
+          "allocated_bytes": 3947840,
+          "allocated_bytes_per_input_byte": 0.9412384033203125,
+          "allocations": 30,
+          "blocks": 16,
+          "max_peak_live_bytes": 263302,
+          "share_percent": 2.711225620549187
+        },
+        "evaluate": {
+          "allocated_bytes": 136679952,
+          "allocated_bytes_per_input_byte": 32.587039947509766,
+          "allocations": 8723,
+          "blocks": 15,
+          "max_peak_live_bytes": 703927,
+          "share_percent": 93.86656695251912
+        },
+        "float_fast": {
+          "allocated_bytes": 264314,
+          "allocated_bytes_per_input_byte": 0.06301736831665039,
+          "allocations": 8,
+          "blocks": 16,
+          "max_peak_live_bytes": 263194,
+          "share_percent": 0.18152075278375968
+        },
+        "numeric_fast": {
+          "allocated_bytes": 0,
+          "allocated_bytes_per_input_byte": 0.0,
+          "allocations": 0,
+          "blocks": 16,
+          "max_peak_live_bytes": 0,
+          "share_percent": 0.0
+        },
+        "ts1_policy": {
+          "allocated_bytes": 9600,
+          "allocated_bytes_per_input_byte": 0.002288818359375,
+          "allocations": 75,
+          "blocks": 15,
+          "max_peak_live_bytes": 640,
+          "share_percent": 0.006592913075826831
+        }
+      },
+      "workload_id": "int-sparse-change_16x256k"
+    }
+  ]
+}

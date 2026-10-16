@@ -57,4 +57,4 @@ machine.
 | # | Task | Commit | Acceptance |
 |---|---|---|---|
 | 19 ✅ | `docs/MIGRATION-0.5-TO-0.6.md`, README quick start with the facade, ARCHITECTURE, COMPATIBILITY (MSRV policy), CHANGELOG, RELEASE-NOTES-0.6.0, ROADMAP | Documents the 0.6.0 API | review |
-| 20 ⏩ | Release run, fuzz campaign, baseline `examples/baselines/0.6.0/`, `docs/PERFORMANCE-0.6.0.md`, tag `v0.6.0` | [`docs/RELEASE.md`](docs/RELEASE.md) | checklist all PASS |
+| 20 ✅ / ⏩ | Release run, fuzz campaign, baseline `examples/baselines/0.6.0/`, `docs/PERFORMANCE-0.6.0.md` done on the reference machine (Regression V3 pass 73 / 0 fail, A/B 12 / 12 pass, repeatability pass, fuzz 15 × 600 s without a crash); tag `v0.6.0` after the merge ⏩ | [`docs/RELEASE.md`](docs/RELEASE.md) | checklist all PASS |

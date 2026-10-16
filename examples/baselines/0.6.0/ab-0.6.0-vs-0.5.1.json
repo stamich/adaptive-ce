@@ -1,0 +1,608 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.6.0",
+  "base": "0.5.1",
+  "scope": "ab",
+  "benchmark_contract_origin": "ace-0.6.0",
+  "generated_at_utc_epoch_seconds": 1792159960,
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "logical_cpus": 32,
+    "build_profile": "release",
+    "python": "3.14.7",
+    "loadavg_before": [
+      1.078125,
+      1.095703125,
+      1.08984375
+    ]
+  },
+  "configuration": {
+    "batches": 3,
+    "samples_per_batch": 7,
+    "min_sample_time_ms": 50,
+    "warmups": 5,
+    "quick": false,
+    "interleaving": "alternating side order per batch"
+  },
+  "status": "pass",
+  "workloads": [
+    {
+      "name": "ab.compression.fast.encode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.0435408657960272,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 1.0375749765152116,
+      "speed_ratio_upper": 1.0750798760503602,
+      "per_batch_speed_ratios": [
+        1.0375749765152116,
+        1.0750798760503602,
+        1.0423182290562183
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 3.0,
+      "baseline": {
+        "batch_medians_ns": [
+          48478405,
+          50460120,
+          48979800
+        ],
+        "median_of_medians_ns": 48979800,
+        "batch_mad_percent": 1.0236771077056255,
+        "iterations_per_sample": [
+          2,
+          2,
+          2
+        ],
+        "mb_s": 326.66527833923374
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          46722797,
+          46936159,
+          46991215
+        ],
+        "median_of_medians_ns": 46936159,
+        "batch_mad_percent": 0.1172997560367051,
+        "iterations_per_sample": [
+          2,
+          2,
+          2
+        ],
+        "mb_s": 340.8885673836242
+      }
+    },
+    {
+      "name": "ab.compression.balanced.encode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.015331573563319,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 1.0069639468463327,
+      "speed_ratio_upper": 1.0239320183715774,
+      "per_batch_speed_ratios": [
+        1.0069639468463327,
+        1.0140731437772903,
+        1.0239320183715774
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 3.0,
+      "baseline": {
+        "batch_medians_ns": [
+          73110276,
+          72573331,
+          72663392
+        ],
+        "median_of_medians_ns": 72663392,
+        "batch_mad_percent": 0.12394274134628894,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 220.193409082802
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          72604661,
+          71566170,
+          70965055
+        ],
+        "median_of_medians_ns": 71566170,
+        "batch_mad_percent": 0.8399429506986331,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 223.56932053231296
+      }
+    },
+    {
+      "name": "ab.compression.dense.encode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 0.9986336846614635,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 0.9938151311337869,
+      "speed_ratio_upper": 1.0090591318198454,
+      "per_batch_speed_ratios": [
+        1.0090591318198454,
+        0.9957635993105229,
+        0.9938151311337869
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 3.0,
+      "baseline": {
+        "batch_medians_ns": [
+          97530456,
+          95992780,
+          96522786
+        ],
+        "median_of_medians_ns": 96522786,
+        "batch_mad_percent": 0.5490993598133398,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 165.76396789873016
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          96654847,
+          96401174,
+          97123482
+        ],
+        "median_of_medians_ns": 96654847,
+        "batch_mad_percent": 0.26245243552038316,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 165.53748204681344
+      }
+    },
+    {
+      "name": "ab.compression.fast.decode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.0065435785707106,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 0.9936140872028858,
+      "speed_ratio_upper": 1.0082702684748552,
+      "per_batch_speed_ratios": [
+        1.0065435785707106,
+        1.0082702684748552,
+        0.9936140872028858
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 5.0,
+      "baseline": {
+        "batch_medians_ns": [
+          3245020,
+          3248061,
+          3225789
+        ],
+        "median_of_medians_ns": 3245020,
+        "batch_mad_percent": 0.09371282765591583,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4930.632168676927
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          3223924,
+          3221419,
+          3246521
+        ],
+        "median_of_medians_ns": 3223924,
+        "batch_mad_percent": 0.0777003428120514,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4962.896147675938
+      }
+    },
+    {
+      "name": "ab.compression.balanced.decode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 0.9965910061395101,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 0.5414976885002258,
+      "speed_ratio_upper": 1.0074586038642288,
+      "per_batch_speed_ratios": [
+        1.0015001826670336,
+        0.5414976885002258,
+        1.0074586038642288
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 5.0,
+      "baseline": {
+        "batch_medians_ns": [
+          3377315,
+          3341403,
+          3360760
+        ],
+        "median_of_medians_ns": 3360760,
+        "batch_mad_percent": 0.4925969126031017,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4760.8279079731965
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          3372256,
+          6170669,
+          3335879
+        ],
+        "median_of_medians_ns": 3372256,
+        "batch_mad_percent": 1.0787140715295636,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4744.598274864067
+      }
+    },
+    {
+      "name": "ab.compression.dense.decode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 0.9943255320257969,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 0.9913199881457069,
+      "speed_ratio_upper": 0.9999197071337448,
+      "per_batch_speed_ratios": [
+        0.9913199881457069,
+        0.995017587156002,
+        0.9999197071337448
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 5.0,
+      "baseline": {
+        "batch_medians_ns": [
+          3773178,
+          3777039,
+          3798289
+        ],
+        "median_of_medians_ns": 3777039,
+        "batch_mad_percent": 0.1022229317727458,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4236.122528785115
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          3806216,
+          3795952,
+          3798594
+        ],
+        "median_of_medians_ns": 3798594,
+        "batch_mad_percent": 0.06955205004799143,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4212.084787160723
+      }
+    },
+    {
+      "name": "ab.numeric_fast.u32_counter.encode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.0085542484242906,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 1.0057041019889383,
+      "speed_ratio_upper": 1.0091556042359362,
+      "per_batch_speed_ratios": [
+        1.0057041019889383,
+        1.0086860912589335,
+        1.0091556042359362
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 3.0,
+      "baseline": {
+        "batch_medians_ns": [
+          1985278,
+          1990758,
+          1991945
+        ],
+        "median_of_medians_ns": 1990758,
+        "batch_mad_percent": 0.05962552957215291,
+        "iterations_per_sample": [
+          32,
+          32,
+          32
+        ],
+        "mb_s": 8037.1396221941595
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          1974018,
+          1973615,
+          1973873
+        ],
+        "median_of_medians_ns": 1973873,
+        "batch_mad_percent": 0.007345964000723451,
+        "iterations_per_sample": [
+          32,
+          32,
+          32
+        ],
+        "mb_s": 8105.8913111431175
+      }
+    },
+    {
+      "name": "ab.numeric_fast.u32_counter.decode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.004834050190068,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 0.9994680530553526,
+      "speed_ratio_upper": 1.023214883153145,
+      "per_batch_speed_ratios": [
+        0.9994680530553526,
+        1.023214883153145,
+        1.0038931757258174
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 5.0,
+      "baseline": {
+        "batch_medians_ns": [
+          1061571,
+          1079593,
+          1060577
+        ],
+        "median_of_medians_ns": 1061571,
+        "batch_mad_percent": 0.0936348110489077,
+        "iterations_per_sample": [
+          64,
+          64,
+          64
+        ],
+        "mb_s": 15072.00177849621
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          1062136,
+          1055099,
+          1056464
+        ],
+        "median_of_medians_ns": 1056464,
+        "batch_mad_percent": 0.12920459192173134,
+        "iterations_per_sample": [
+          64,
+          64,
+          64
+        ],
+        "mb_s": 15144.860591558254
+      }
+    },
+    {
+      "name": "ab.numeric_general.u64_timestamps.encode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.0061574869221477,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 1.0012602267778004,
+      "speed_ratio_upper": 1.0090264796066224,
+      "per_batch_speed_ratios": [
+        1.0012602267778004,
+        1.0047963081409528,
+        1.0090264796066224
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 3.0,
+      "baseline": {
+        "batch_medians_ns": [
+          54337195,
+          54263685,
+          54458936
+        ],
+        "median_of_medians_ns": 54337195,
+        "batch_mad_percent": 0.1352848633426882,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 294.45759943994165
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          54268804,
+          54004662,
+          53971761
+        ],
+        "median_of_medians_ns": 54004662,
+        "batch_mad_percent": 0.06092251813371223,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 296.27071825762005
+      }
+    },
+    {
+      "name": "ab.numeric_general.delta_variable.encode",
+      "section": "performance",
+      "status": "pass",
+      "measured": 0.9931726632961109,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 0.9851923990695164,
+      "speed_ratio_upper": 1.0006946857568002,
+      "per_batch_speed_ratios": [
+        1.0006946857568002,
+        0.9851923990695164,
+        0.9962772110125262
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 3.0,
+      "baseline": {
+        "batch_medians_ns": [
+          64708691,
+          63165655,
+          63677310
+        ],
+        "median_of_medians_ns": 63677310,
+        "batch_mad_percent": 0.8035122714825735,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 251.26689553940014
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          64663770,
+          64115045,
+          63915253
+        ],
+        "median_of_medians_ns": 64115045,
+        "batch_mad_percent": 0.31161484796587136,
+        "iterations_per_sample": [
+          1,
+          1,
+          1
+        ],
+        "mb_s": 249.55141184101174
+      }
+    },
+    {
+      "name": "ab.full_decompress.mixed",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.007520255334183,
+      "required": 0.95,
+      "rule": "speed ratio >= 0.950 (upper bound < 0.970 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 0.9994479444143667,
+      "speed_ratio_upper": 1.0080234747220553,
+      "per_batch_speed_ratios": [
+        1.0080234747220553,
+        1.0027279650132968,
+        0.9994479444143667
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 5.0,
+      "baseline": {
+        "batch_medians_ns": [
+          3377552,
+          3360358,
+          3376418
+        ],
+        "median_of_medians_ns": 3376418,
+        "batch_mad_percent": 0.03358588895095335,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4738.749763802942
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          3350668,
+          3351216,
+          3378283
+        ],
+        "median_of_medians_ns": 3351216,
+        "batch_mad_percent": 0.016352273324071024,
+        "iterations_per_sample": [
+          16,
+          16,
+          16
+        ],
+        "mb_s": 4774.38637199154
+      }
+    },
+    {
+      "name": "ab.random_access.warm_64k",
+      "section": "performance",
+      "status": "pass",
+      "measured": 1.002005378059341,
+      "required": 0.9090909090909091,
+      "rule": "speed ratio >= 0.909 (upper bound < 0.929 confirms)",
+      "method": "interleaved-ab",
+      "speed_ratio_lower": 1.0019141372709872,
+      "speed_ratio_upper": 1.0049678683742764,
+      "per_batch_speed_ratios": [
+        1.0049678683742764,
+        1.0022337709700948,
+        1.0019141372709872
+      ],
+      "identical_output": true,
+      "stability_limit_percent": 5.0,
+      "baseline": {
+        "batch_medians_ns": [
+          22050,
+          21985,
+          21984
+        ],
+        "median_of_medians_ns": 21985,
+        "batch_mad_percent": 0.004548555833522857,
+        "iterations_per_sample": [
+          4096,
+          4096,
+          4096
+        ],
+        "mb_s": 2842.847395951785
+      },
+      "candidate": {
+        "batch_medians_ns": [
+          21941,
+          21936,
+          21942
+        ],
+        "median_of_medians_ns": 21941,
+        "batch_mad_percent": 0.00455767740759309,
+        "iterations_per_sample": [
+          4096,
+          4096,
+          4096
+        ],
+        "mb_s": 2848.548379745682
+      }
+    }
+  ]
+}
