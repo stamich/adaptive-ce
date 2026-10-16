@@ -15,6 +15,7 @@
 //!
 //! | Item | Purpose |
 //! |---|---|
+//! | [`Config`], [`ConfigBuilder`], [`Profile`], [`BlockSizePolicy`], [`AccessHint`] | compression settings, validated by `build()` |
 //! | [`Error`], [`ErrorKind`], [`Result`] | every failure, classified for the caller |
 //!
 //! # Stability
@@ -24,6 +25,8 @@
 //! `#[non_exhaustive]`. Output bytes follow the format rules: a patch release never changes
 //! them.
 
+mod config;
 mod error;
 
+pub use config::{AccessHint, BlockSizePolicy, Config, ConfigBuilder, Profile};
 pub use error::{Error, ErrorKind, Result};
