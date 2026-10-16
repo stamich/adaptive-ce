@@ -66,7 +66,6 @@ impl DecodeLimits {
         self.inner.max_index_entries
     }
 
-    #[allow(dead_code)] // used by the engine module of the next commit
     pub(crate) fn core(&self) -> &CoreLimits {
         &self.inner
     }

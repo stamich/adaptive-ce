@@ -43,7 +43,6 @@ impl Stats {
         }
     }
 
-    #[allow(dead_code)] // used by the engine module of the next commit
     pub(crate) fn from_core(stats: &CompressionStats) -> Self {
         Self {
             input_bytes: stats.input_bytes,

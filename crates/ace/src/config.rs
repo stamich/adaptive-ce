@@ -87,7 +87,6 @@ impl Config {
         self.inner.write_index
     }
 
-    #[allow(dead_code)]
     pub(crate) fn core(&self) -> &AceConfig {
         &self.inner
     }

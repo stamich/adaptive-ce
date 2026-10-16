@@ -20,7 +20,7 @@ pub enum ErrorKind {
     /// entropy coder or transform, or a missing dictionary.
     Unsupported,
     /// The data is damaged or hostile: truncated, inconsistent lengths, an invalid compressed
-    /// stream.
+    /// stream, or input that ends early.
     Corrupt,
     /// A checksum does not match (a block, or the block index). [`Error::block_id`] names the
     /// block when it is known.
@@ -63,7 +63,6 @@ impl Error {
     }
 
     /// An error of `kind` with `message`.
-    #[allow(dead_code)] // used by the config and engine modules of the next commits
     pub(crate) fn new(kind: ErrorKind, message: impl Into<String>) -> Self {
         Self {
             kind,
@@ -101,7 +100,6 @@ impl From<std::io::Error> for Error {
 
 impl Error {
     /// Maps the internal error of the engine crates onto the public one.
-    #[allow(dead_code)] // used by the engine module of the next commits
     pub(crate) fn from_core(error: AceError) -> Self {
         let message = error.to_string();
         let (kind, block_id) = match &error {
@@ -119,6 +117,13 @@ impl Error {
             AceError::BlockNotFound(block) => (ErrorKind::BlockNotFound, Some(*block)),
             AceError::Io(_) => {
                 return match error {
+                    // The input ended inside the file: it is truncated, not an I/O failure.
+                    AceError::Io(io) if io.kind() == std::io::ErrorKind::UnexpectedEof => Self {
+                        kind: ErrorKind::Corrupt,
+                        message: format!("file is truncated: {io}"),
+                        block_id: None,
+                        source: Some(io),
+                    },
                     AceError::Io(io) => Self::from(io),
                     _ => Self::new(ErrorKind::Io, message),
                 };
