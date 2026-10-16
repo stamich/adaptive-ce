@@ -17,6 +17,7 @@
 //! |---|---|
 //! | [`Config`], [`ConfigBuilder`], [`Profile`], [`BlockSizePolicy`], [`AccessHint`] | compression settings, validated by `build()` |
 //! | [`DecodeLimits`], [`DecodeLimitsBuilder`] | upper bounds enforced while decoding untrusted files |
+//! | [`Stats`] | what a compression run did: sizes, ratio, blocks per codec |
 //! | [`Error`], [`ErrorKind`], [`Result`] | every failure, classified for the caller |
 //!
 //! # Stability
@@ -29,7 +30,9 @@
 mod config;
 mod error;
 mod limits;
+mod stats;
 
 pub use config::{AccessHint, BlockSizePolicy, Config, ConfigBuilder, Profile};
 pub use error::{Error, ErrorKind, Result};
 pub use limits::{DecodeLimits, DecodeLimitsBuilder};
+pub use stats::Stats;
