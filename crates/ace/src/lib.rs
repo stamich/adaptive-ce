@@ -17,6 +17,7 @@
 //! |---|---|
 //! | [`Config`], [`ConfigBuilder`], [`Profile`], [`BlockSizePolicy`], [`AccessHint`] | compression settings, validated by `build()` |
 //! | [`Engine`] | compress, decompress, stream |
+//! | [`RangeReader`], [`RangeStats`] | read a byte range without decompressing the rest |
 //! | [`DecodeLimits`], [`DecodeLimitsBuilder`] | upper bounds enforced while decoding untrusted files |
 //! | [`Stats`] | what a compression run did: sizes, ratio, blocks per codec |
 //! | [`Error`], [`ErrorKind`], [`Result`] | every failure, classified for the caller |
@@ -32,10 +33,12 @@ mod config;
 mod engine;
 mod error;
 mod limits;
+mod range;
 mod stats;
 
 pub use config::{AccessHint, BlockSizePolicy, Config, ConfigBuilder, Profile};
 pub use engine::Engine;
 pub use error::{Error, ErrorKind, Result};
 pub use limits::{DecodeLimits, DecodeLimitsBuilder};
+pub use range::{RangeReader, RangeStats};
 pub use stats::Stats;
