@@ -7,8 +7,12 @@ name = "ace"
 version = "0.6.0"
 dependencies = [
  "ace-core",
+ "ace-corpus",
  "ace-engine",
  "ace-stream",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

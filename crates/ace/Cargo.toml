@@ -20,5 +20,11 @@ ace-core = { path = "../ace-core" }
 ace-engine = { path = "../ace-engine" }
 ace-stream = { path = "../ace-stream" }
 
+[dev-dependencies]
+ace-corpus = { path = "../ace-corpus" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
 [lints]
 workspace = true
