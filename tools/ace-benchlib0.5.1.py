@@ -20,9 +20,9 @@ import pathlib
 from typing import Any, Iterable
 
 #: Milestone produced by this tool set.
-MILESTONE = "0.5.1"
+MILESTONE = "0.6.0"
 #: Predecessor used as the A/B and stored-baseline reference.
-BASELINE = "0.5.0"
+BASELINE = "0.5.1"
 #: Schema version written by Harness V3 (2.2 = 2.1 + build revision and input fingerprints).
 SCHEMA = "2.2"
 

@@ -17,8 +17,8 @@ if [[ -n "${LC_ALL:-}" ]]; then
   unset LC_ALL
 fi
 export LC_NUMERIC=C
-ACE_VERSION="0.5.1"
-ACE_BASELINE="0.5.0"
+ACE_VERSION="0.6.0"
+ACE_BASELINE="0.5.1"
 ACE_RESULTS="${ACE_BENCH_OUT_DIR:-$ACE_ROOT/examples/results}"
 export ACE_BENCH_OUT_DIR="$ACE_RESULTS"
 

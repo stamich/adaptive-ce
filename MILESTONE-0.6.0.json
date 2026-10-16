@@ -1,0 +1,44 @@
+{
+  "project": "ACE",
+  "version": "0.6.0",
+  "milestone": "0.6.0",
+  "title": "API & Performance (Phase A of the 0.6 line)",
+  "release_kind": "api",
+  "base": "0.5.1",
+  "workspace_version": "0.6.0",
+  "planner": "V5 (unchanged: every 0.5.1 decision and byte is preserved)",
+  "format": {
+    "writer": "1.3 | 1.4 (unchanged; 1.5 arrives with 0.6.1)",
+    "readers": ["1.0", "1.1", "1.2", "1.3", "1.4"],
+    "changes": "none; a file of a newer minor format is rejected with an error naming the ACE version that can read it",
+    "compatibility_fixtures": "examples/compat/ (48 files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0; never regenerated)"
+  },
+  "benchmark_schema": "2.2 (unchanged)",
+  "msrv": "1.98.1 (= the pinned build toolchain; 1.98.0 must not be used)",
+  "toolchain": "1.98.1 (rust-toolchain.toml)",
+  "concept": "docs/COMPETITIVE-ANALYSIS-KANZI.md section 6; ROADMAP.md",
+  "status": "implemented; release qualification (three runs on the reference machine, fuzz campaign, baseline examples/baselines/0.6.0/, tag v0.6.0) pending",
+  "golden": {
+    "0.5.0": "examples/golden/0.5.0/GOLDEN.json must be reproduced byte for byte (auto and ACE_SIMD=scalar); 0.5.1 wrote the same bytes",
+    "0.4.6": "frozen; Corpus V3 must reproduce it"
+  },
+  "public_api": "crate `ace`: Engine, Config / ConfigBuilder, Profile, DecodeLimits / DecodeLimitsBuilder, RangeReader, Stats, Error (feature `explain`: BlockReport)",
+  "removed": [
+    "ace_planner::evaluate_candidates_v3",
+    "ace_planner::evaluate_candidates_v4"
+  ],
+  "new_benchmark_families": ["public-corpus"],
+  "next": "0.6.1 (Phase B): RunDelta / NUM1 small deltas, Patched FOR, ALP, Chimp measurement, format 1.5",
+  "docs": [
+    "docs/RELEASE-NOTES-0.6.0.md",
+    "docs/MIGRATION-0.5-TO-0.6.md",
+    "docs/ARCHITECTURE.md",
+    "docs/COMPATIBILITY.md",
+    "docs/API-INVENTORY.md"
+  ],
+  "tasks": "TASKS-0.6.0.md",
+  "history": {
+    "0.5.1": "docs/history/MILESTONE-0.5.1.json",
+    "0.5.0": "docs/history/MILESTONE-0.5.0.json"
+  }
+}

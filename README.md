@@ -135,7 +135,7 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 | `fuzz/` | `cargo-fuzz` project, 15 targets ([`fuzz/README.md`](fuzz/README.md)) |
 | `integrations/` | Java / Scala CLI examples |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
-| `TASKS-0.5.1.md`, `MILESTONE-0.5.1.json` | implementation order and machine-readable summary of this release |
+| `TASKS-0.6.0.md`, `MILESTONE-0.6.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
 
 ## Roadmap
 

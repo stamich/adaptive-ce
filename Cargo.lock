@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "ace-analysis"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
  "ace-corpus",
@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "ace-bench"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-analysis",
  "ace-codecs",
@@ -38,7 +38,7 @@ dependencies = [
 
 [[package]]
 name = "ace-bitpack"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
  "proptest",
@@ -46,7 +46,7 @@ dependencies = [
 
 [[package]]
 name = "ace-cli"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-codecs",
  "ace-core",
@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "ace-codecs"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-bitpack",
  "ace-core",
@@ -71,18 +71,18 @@ dependencies = [
 
 [[package]]
 name = "ace-core"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "ace-corpus"
-version = "0.5.1"
+version = "0.6.0"
 
 [[package]]
 name = "ace-cost"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-analysis",
  "ace-codecs",
@@ -91,14 +91,14 @@ dependencies = [
 
 [[package]]
 name = "ace-dictionary"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-engine"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-analysis",
  "ace-codecs",
@@ -121,14 +121,14 @@ dependencies = [
 
 [[package]]
 name = "ace-entropy"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
 ]
 
 [[package]]
 name = "ace-format"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
  "ace-simd",
@@ -138,7 +138,7 @@ dependencies = [
 
 [[package]]
 name = "ace-index"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
  "ace-format",
@@ -146,7 +146,7 @@ dependencies = [
 
 [[package]]
 name = "ace-planner"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-analysis",
  "ace-codecs",
@@ -160,7 +160,7 @@ dependencies = [
 
 [[package]]
 name = "ace-runtime"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
  "num_cpus",
@@ -169,11 +169,11 @@ dependencies = [
 
 [[package]]
 name = "ace-simd"
-version = "0.5.1"
+version = "0.6.0"
 
 [[package]]
 name = "ace-stream"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
  "ace-corpus",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "ace-transforms"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "ace-core",
 ]
