@@ -6,27 +6,27 @@ Canonical process of the current release line (0.5.x). Earlier checklists:
 ## 1. Automatic pipeline
 
 ```bash
-git worktree add ../ace-0.5.0 v0.5.0            # the previous release, for the interleaved A/B
-./ace-release0.5.1.sh ../ace-0.5.0              # on the reference machine, performance governor
+git worktree add ../ace-0.5.1 v0.5.1            # the previous release, for the interleaved A/B
+./ace-release0.6.0.sh ../ace-0.5.1              # on the reference machine, performance governor
 ```
 
-`ace-release0.5.1.sh` runs every step below, records each in
-`examples/results/release-checklist-0.5.1.md`, and writes the distribution to `dist/`:
+`ace-release0.6.0.sh` runs every step below, records each in
+`examples/results/release-checklist-0.6.0.md`, and writes the distribution to `dist/`:
 
 | # | Step | Gate |
 |---|---|---|
-| 1 | `ace-build0.5.1.sh`: fmt, clippy `-D warnings`, check, tests, release build, rustdoc (public and private items) | 0 warnings |
-| 2 | `tools/ace-code_audit0.5.1.py`: `unsafe` placement and `// SAFETY:`, justified clippy allowances, decoder audit (lints present, every referenced test and fuzz target exists) | no violation |
+| 1 | `ace-build0.6.0.sh`: fmt, clippy `-D warnings`, check, tests, release build, rustdoc (public and private items) | 0 warnings |
+| 2 | `tools/ace-code_audit0.6.0.py`: `unsafe` placement and `// SAFETY:`, justified clippy allowances, decoder audit (lints present, every referenced test and fuzz target exists) | no violation |
 | 3 | `cargo test --release` (property budget 10 000) incl. `--ignored` large-file tests | all pass |
 | 4 | golden SHA-256 0.5.0 and frozen 0.4.6, auto and `ACE_SIMD=scalar` | identical bytes |
 | 5 | CLI determinism: 10 processes × threads × SIMD backend, mixed + f64-noisy | one SHA-256 |
-| 6 | `ace-benchmark0.5.1.sh all --repeat 3` | repeatability PASS |
+| 6 | `ace-benchmark0.6.0.sh all --repeat 3` | repeatability PASS |
 | 7 | interleaved A/B vs the previous release + Regression V3 (Unstable → ≤ 2 re-measurements) | PASS (`diagnostic` on a non-`performance` governor is not a pass) |
-| 8 | `docs/PERFORMANCE-0.5.1.md` from the results | generated |
+| 8 | `docs/PERFORMANCE-0.6.0.md` from the results | generated |
 | 9 | demo | < 1 min, no error |
 | 10 | deterministic source archive, built twice | same SHA-256, script-name audit |
 | 11 | unpack the archive, run the tests and the golden check from it | PASS |
-| 12 | `dist/`: `ace-0.5.1-source.zip`, `ace-0.5.1-benchmarks.zip`, `RELEASE-REPORT.md` (git revision, toolchain, host, every gate verdict), `MANIFEST.sha256` | written |
+| 12 | `dist/`: `ace-0.6.0-source.zip`, `ace-0.6.0-benchmarks.zip`, `RELEASE-REPORT.md` (git revision, toolchain, host, every gate verdict), `MANIFEST.sha256` | written |
 
 `--quick` runs the same pipeline with smoke-sized measurements; its verdict is never a
 release.
@@ -36,8 +36,7 @@ release.
 | Area | Gate | Evidence |
 |---|---|---|
 | Build, lints, rustdoc (incl. private items) | 0 warnings | step 1 |
-| MSRV 1.97 | PASS | CI `msrv` job (`cargo +1.97.0`) |
-| Build toolchain 1.98.1 | PASS | CI `pr` job (`rust-toolchain.toml`) |
+| MSRV = build toolchain 1.98.1 | PASS | CI `pr` job (`rust-toolchain.toml`) |
 | Unsafe / panic / decoder audit | PASS, no new `unsafe` | step 2, [`DECODER-AUDIT.md`](DECODER-AUDIT.md) |
 | Golden 0.5.0 + frozen 0.4.6, auto + scalar | identical | step 4 |
 | Compatibility fixtures (0.2.1 – 0.5.0) | every file decodes byte for byte | `compat_fixtures` |
@@ -56,7 +55,7 @@ release.
 
 1. Set the `performance` governor, stop other work, run the pipeline (section 1).
 2. Fuzz campaign, recorded as `examples/baselines/<version>/FUZZ.md`:
-   `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.5.1.sh fuzz`.
+   `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.6.0.sh fuzz`.
 3. Publish the baseline: copy the median documents of step 6 (`examples/results/benchmark-*.json`,
    `ab-*.json`) to `examples/baselines/<version>/` with a `BASELINE.json` descriptor (machine,
    governor, toolchain, git revision, verdicts), and the generated
@@ -64,8 +63,8 @@ release.
 4. Merge, then tag the merge commit:
 
    ```bash
-   git tag -a v0.5.1 -m "ACE 0.5.1 — hardened release candidate" -m "$(cat dist/RELEASE-REPORT.md)"
-   git push origin v0.5.1
+   git tag -a v0.6.0 -m "ACE 0.6.0 — API & performance" -m "$(cat dist/RELEASE-REPORT.md)"
+   git push origin v0.6.0
    ```
 
 5. Attach `dist/*` to the GitHub release.
@@ -80,7 +79,7 @@ add `TASKS-<version>.md` / `MILESTONE-<version>.json` (earlier ones move to `doc
 
 ## 5. SonarQube Cloud (static analysis and coverage)
 
-Configuration: `sonar-project.properties`; workflow: `.github/workflows/ace-sonarcloud0.5.1.yml`
+Configuration: `sonar-project.properties`; workflow: `.github/workflows/ace-sonarcloud0.6.0.yml`
 (separate from `ace-ci`, so it never gates the build). One-time setup:
 
 1. In SonarQube Cloud import `stamich/adaptive-ce` (organization `stamich`, project key
@@ -91,3 +90,7 @@ Configuration: `sonar-project.properties`; workflow: `.github/workflows/ace-sona
 The workflow runs on pushes to `main` and on pull requests from the same repository, produces
 `lcov.info` (`cargo llvm-cov --workspace`) and `clippy-report.json`, and scans. Without the secret
 it is skipped with a notice.
+
+The README badges point at the workflow file by name (`ace-ci<version>.yml`) and at the Sonar
+project key; when the workflow file is renamed in a version bump, update the build-status badge
+in `README.md` in the same commit.

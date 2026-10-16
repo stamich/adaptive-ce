@@ -9,10 +9,10 @@ schema 2.2, three-run repeatability, the governor gate and the `allocation-profi
 ## Running
 
 ```bash
-./ace-benchmark0.5.1.sh all                     # every family + validation + Regression V3
-./ace-benchmark0.5.1.sh all --repeat 3          # release baseline: three runs, repeatability, medians
-./ace-benchmark0.5.1.sh release-performance --quick   # smoke (1 batch; never a release verdict)
-./ace-ab0.5.1.sh /path/to/ace-0.5.0             # interleaved A/B against the previous release
+./ace-benchmark0.6.0.sh all                     # every family + validation + Regression V3
+./ace-benchmark0.6.0.sh all --repeat 3          # release baseline: three runs, repeatability, medians
+./ace-benchmark0.6.0.sh release-performance --quick   # smoke (1 batch; never a release verdict)
+./ace-ab0.6.0.sh /path/to/ace-0.5.0             # interleaved A/B against the previous release
 ```
 
 ## Why (0.4.6)
@@ -63,7 +63,7 @@ Stability limits (batch MAD): compression and numeric encode 3 %, decode 5 %, wa
 
 ## Relative gates: interleaved A/B
 
-`tools/ace-ab0.5.1.py` builds the same probe (`tools/ace-abprobe0.5.1`) against the baseline
+`tools/ace-ab0.6.0.py` builds the same probe (`tools/ace-abprobe0.6.0`) against the baseline
 source tree (the previous release) and against the candidate (identical release profile), then for each case runs three
 batches per side **in alternating order** in one session:
 
@@ -75,7 +75,7 @@ batches per side **in alternating order** in one session:
 * otherwise regression (`fail`) only if `speed_ratio < required` **and** the best per-batch
   ratio is below `required + 0.02`.
 
-**A/A control.** `./ace-ab0.5.1.sh .` compares the candidate with itself (built in a separate
+**A/A control.** `./ace-ab0.6.0.sh .` compares the candidate with itself (built in a separate
 directory). On the 2-vCPU development VM used for 0.4.6, A/A decode ratios moved by up to
 ±20 % between separately linked but source-identical binaries (code layout, neighbours), while
 encode cases stayed within ±4 %. Run the A/A control first on a new machine: only differences
@@ -115,9 +115,9 @@ unchanged.
 ## Repeatability and the release baseline (0.5.1)
 
 A release baseline is the **median of three complete runs** on the reference machine
-(`./ace-benchmark0.5.1.sh all --repeat 3`, also what `ace-release0.5.1.sh` runs):
+(`./ace-benchmark0.6.0.sh all --repeat 3`, also what `ace-release0.6.0.sh` runs):
 
-* runs go to `examples/results/run-1 … run-3`; `tools/ace-repeatability0.5.1.py` compares them
+* runs go to `examples/results/run-1 … run-3`; `tools/ace-repeatability0.6.0.py` compares them
   and writes, per family, the document whose timing objects are the median run of each
   measurement into `examples/results/` — that directory is then evaluated by Regression V3
   and published as `examples/baselines/<version>/`;
@@ -154,10 +154,61 @@ Replays the first 16 blocks of each `memory` case exactly as the block encoder p
 counts allocations per stage (classify, NumericFast, FloatFast, analysis, candidates,
 evaluator, TS1 policy, encode), next to the engine total. It explains the allocation churn
 seen in the 0.5.0 baseline: for `int-sparse-change` BALANCED (~36 bytes allocated per input
-byte) about 94 % comes from the generic V4.3 evaluator's sampled micro-trials, which run
-before the TS1 RunDelta candidate replaces the generic plan. Measurement only — deciding TS1
-earlier changes the order of work and is planned for 0.6. The performance report prints the
-table.
+byte) about 94 % came from the generic V4.3 evaluator, whose sampled micro-trials ran before
+the TS1 RunDelta candidate replaced the generic plan. The allocations themselves came from
+`lz_encode`, which allocated a 512 KiB hash table and an 8-byte-per-byte chain table for every
+sample; since 0.6.0 each thread reuses them (output unchanged), and the same row reports about
+6 bytes per input byte. Deciding TS1 earlier would change the order of work and is not done.
+The performance report prints the table.
+
+### `public-corpus` (0.6.0)
+
+ACE (FAST, BALANCED, DENSE; one thread) next to LZ4, Zstd level 3 and gzip level 6 on files you
+supply, so the numbers can be compared with published tables. The corpus is not in the
+repository: point `ACE_PUBLIC_CORPUS` at a directory (for example the Silesia corpus, or
+`enwik8`) and every regular file in it is measured.
+
+```text
+ACE_PUBLIC_CORPUS=/data/silesia cargo run --release -p ace-bench -- public-corpus
+ACE_PUBLIC_CORPUS_MAX_BYTES=67108864   # truncate larger files (default 256 MiB)
+ACE_BENCH_QUICK=1                      # short measurement for a smoke run
+```
+
+Without the variable, or when it is not a directory, the family prints why and writes a document
+with no workloads, so `all` still runs everywhere. Each row has the usual timing objects and an
+`lzbench` object with the columns of the lzbench table: `compressed_bytes`, `ratio_percent`
+(compressed size as a percentage of the input), `compress_mb_s` and `decompress_mb_s`
+(10^6 bytes per second, from the median). The fingerprint of each file is recorded in
+`workload_fingerprints`. The family takes minutes to hours depending on the corpus and is not a
+release gate; it is a reference for the comparison tables.
+
+### DENSE versus BALANCED (0.6.0 decision)
+
+Question: does `Profile::Dense` earn its extra encode time? Data: container sizes of the 27
+workloads of the golden file (1 MiB each, deterministic) and the stored 0.5.1 baseline
+(`compression`, `mixed_16m`, reference machine).
+
+| | FAST | BALANCED | DENSE |
+|---|---|---|---|
+| bytes, 27 workloads | 7 671 209 | 6 880 023 | 6 859 138 |
+| versus BALANCED | +11.5 % | — | −0.30 % |
+| `mixed_16m` ratio | 3.682 | 3.726 | 3.722 |
+| `mixed_16m` encode | 334 MB/s | 223 MB/s | 167 MB/s |
+| `mixed_16m` decode | 4 821 MB/s | 4 564 MB/s | 4 161 MB/s |
+
+* DENSE is smaller than BALANCED by more than 0.5 % on 5 of 27 workloads: `low-cardinality`
+  (−2.6 %), `f64-financial-price` (−2.1 %), `f32-sensor` (−1.7 %), `f64-noisy` (−1.2 %),
+  `f32-smooth` (−0.9 %). It is identical on 15 and **larger** on `runs` (+10.9 %), `zeros`
+  (+30 %), `f64-special` (+0.9 %) and `mixed` (+0.1 %).
+* It costs 34 % more encode time and decodes 9 % slower than BALANCED on the mixed workload,
+  where it is also 0.1 % larger.
+
+Decision for 0.6.0: **BALANCED remains the default and the recommendation; DENSE is kept as it
+is** (0.6.0 may not change a byte) and documented as "may save up to about 3 % on
+floating-point and low-cardinality data for a third more encoding time, and is not guaranteed
+to be smaller than BALANCED". The cases where it is larger show that its estimates, not its
+search, are the limit; making DENSE never worse than BALANCED changes planner decisions and
+is therefore a candidate for 0.6.1 with the other Phase B changes.
 
 ### Float lane families (0.5.0)
 
@@ -203,5 +254,5 @@ below the slowest measured machine so they stay portable:
 
 ## Good practice
 
-`./ace-benchmark0.5.1.sh all --isolated` pins to a CPU subset (taskset) and prints hints:
+`./ace-benchmark0.6.0.sh all --isolated` pins to a CPU subset (taskset) and prints hints:
 `performance` governor, no concurrent builds, AC power, idle machine.

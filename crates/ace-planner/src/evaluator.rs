@@ -11,30 +11,6 @@ use crate::{
     PlannerDecision, PlannerTelemetry,
 };
 
-/// ACE 0.4 Planner V4 compatibility entry point.
-///
-/// Callers that already own a `PlanningContext` should use
-/// `evaluate_candidates_v4_with_route` to avoid a duplicate route-classification pass.
-///
-/// # Errors
-///
-/// Propagates candidate encoding and estimation errors; [`AceError::Malformed`] when no
-/// candidate survives (an internal invariant).
-#[deprecated(
-    since = "0.5.1",
-    note = "classifies the route a second time; use `evaluate_candidates_v4_with_route` with the \
-            block's `PlanningContext` (removed with the 0.6 API facade)"
-)]
-pub fn evaluate_candidates_v4(
-    input: &[u8],
-    profile: &ace_core::BlockProfile,
-    candidates: &[PhysicalCompressionPlan],
-    config: &AceConfig,
-) -> AceResult<PlannerDecision> {
-    let route = crate::RoutePolicy::classify(input, config);
-    evaluate_candidates_v4_with_route(input, profile, candidates, config, &route)
-}
-
 /// Evaluates Planner V4.3 candidates using an already-computed route decision.
 ///
 /// NumericFast returns directly from reusable validation evidence. NumericGeneral performs one
@@ -42,7 +18,8 @@ pub fn evaluate_candidates_v4(
 ///
 /// # Errors
 ///
-/// The conditions of [`evaluate_candidates_v4`].
+/// Candidate encoding and estimation errors; [`AceError::Malformed`] when no candidate survives
+/// (an internal invariant).
 pub fn evaluate_candidates_v4_with_route(
     input: &[u8],
     profile: &ace_core::BlockProfile,
@@ -92,30 +69,6 @@ pub fn evaluate_candidates_v4_with_route(
     // Hand the exact estimate to the encoder so it does not repeat the width/mode search.
     decision.numeric_estimate = numeric_estimate;
     Ok(decision)
-}
-
-/// Estimates all candidates, verifies a quality-preserving adaptive pool and selects a plan.
-///
-/// ACE 0.4 Planner V4 preserves the hardened Planner V3.6 behavior: profile/data-class budgets and confidence bands avoid unnecessary Hybrid LZ work without changing decoder semantics.
-/// Adaptive Top-K and semantic-family anchors define the search pool; sampling refines
-/// scores but never removes a stage-one survivor. The final QualityEnvelope first filters by
-/// blended compressed size, then the cost model selects the cheapest quality-safe plan.
-///
-/// # Errors
-///
-/// The conditions of [`evaluate_candidates_v4`].
-#[deprecated(
-    since = "0.5.1",
-    note = "Planner V3.6 entry point without route evidence; use \
-            `evaluate_candidates_v4_with_route` (removed with the 0.6 API facade)"
-)]
-pub fn evaluate_candidates_v3(
-    input: &[u8],
-    profile: &ace_core::BlockProfile,
-    candidates: &[PhysicalCompressionPlan],
-    config: &AceConfig,
-) -> AceResult<PlannerDecision> {
-    evaluate_candidates_internal(input, profile, candidates, config, None, None)
 }
 
 /// Shared hardened V3.6/V4 evaluator.

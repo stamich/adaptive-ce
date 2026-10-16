@@ -1,0 +1,1568 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.5.1",
+  "base": "0.5.0",
+  "scope": "float-false-positive",
+  "benchmark_contract_origin": "ace-0.5.1",
+  "generated_at_utc_epoch_seconds": 1791910262,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "true",
+      "git_revision": "49d0686e6488f72a9d76897d470f0ad1bf6fb2db",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": null,
+      "freq_khz_before": null,
+      "governor": null,
+      "logical_cpus": 2,
+      "max_freq_khz": null,
+      "model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "physical_cores": 2
+    },
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      0.9,
+      1.37,
+      1.31
+    ],
+    "loadavg_before": [
+      0.69,
+      1.35,
+      1.3
+    ],
+    "logical_cpus": 2,
+    "memory_bytes": 8419655680,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.18.44-fc-v114",
+      "name": "linux"
+    },
+    "physical_cores": 2,
+    "rust": {
+      "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": null,
+    "thermal_c_before": null,
+    "warnings": []
+  },
+  "configuration": {
+    "block_size": 262144,
+    "config_fingerprint": "a5dff93f79f3fb04",
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3 | 1.4 (minimal version)",
+    "planner_version": "V5",
+    "runs": 5,
+    "simd_backend": "Avx2",
+    "threads": 0,
+    "threads_resolved": 2,
+    "warmup_iterations": 1
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 1,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 2.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": true,
+    "samples_per_batch": 5,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 1
+  },
+  "workload_fingerprints": {
+    "delta-series@4194304": "84b3383ce4669646223ac970df7edbe64a4fbab239e70898bcc2db3fec4ef69f",
+    "delta-variable@4194304": "b18b9cadbd0012eff10e85f54864e5bbc439255027c8130586f93d03f6160977",
+    "f64-random@4194304": "6036a3fa2351d21c00242150d75709d52fa5f6edf0d6de5509e7f180e9fe011c",
+    "f64-special@4194304": "d37e0be9fa575d7a1dc1ffc03fe3d4798328189f5679da4ad77321bd718e60ac",
+    "fp-inf-heavy@4194304": "8c46a45ce4f9eb5aae6371fbd5eee10c737ce44adefc3a1cc1bb2119e5a7b07a",
+    "fp-nan-heavy@4194304": "3a0bf192972645a368eb1a02af17942d2fdb48169f89503c0568661ed19a513b",
+    "fp-random-bytes@4194304": "80dd235b29724a85fcee99b55b90a9f32a7e94165dcdb361ad4f1af74ea267f4",
+    "fp-random-finite-f64@4194304": "c8e30e30d3fb66d1f5fe5842ef1ff0db72420c5d66d309b8f153ae3f58912d22",
+    "fp-small-u64@4194304": "e148cf011ed8b114c5c565a65083fb4163f7167213c2cd7f6726445bebe1b3f4",
+    "fp-text@4194304": "1db6e2a1aaad3d09ed2c81df7aac45a81914f4adf73fcea331657d952793fc72",
+    "gauge-sawtooth@4194304": "7844fac778424d29e81a71ca2e5d5213cd2ba57c4e63de0fe90201a4e9f2eb2b",
+    "int-counter-reset@4194304": "01c8c72495b69f36cbf79130960d130efe3bd5c53f38617579b4229a120bc657",
+    "low-cardinality@4194304": "e12d4699f55900ae6b9a04f0705ec83b1f20aca8e6f502add7b9e5132e7dc717",
+    "mixed@4194304": "2e8b1dce80ab3069328f6050a9419bc4e86b7ec77e4c78fcd73ab14cf03f5c01",
+    "monotonic-outliers@4194304": "c96b81da74882557b60957ed96d1787041f936e9568e6f1456492ee4e356bf98",
+    "random@4194304": "80dd235b29724a85fcee99b55b90a9f32a7e94165dcdb361ad4f1af74ea267f4",
+    "runs@4194304": "34abafb840487f7529cda3ed9d7c504546dd0837a76560bf07e38051aa204a1c",
+    "structured-json@4194304": "e4aad20fa0e39cd8d9ae3c932c9c2115179586a06ddf904c00b74f619680efe7",
+    "u16-wrapping@4194304": "5eee6f66ebbca477efc31024d158155cb16efaa4929dbd91e5fec5d489859659",
+    "u32-counter@4194304": "29574cd4850dd564d921e73135017010e21ef172fe4a1d58be31f73b540079ab",
+    "u64-fixed-step@4194304": "e0204fc608e8b1564f033eb626d775bc246969ef1188bfd2f31e41db8b2f1180",
+    "u64-timestamps-ns@4194304": "b3536c53aeffcf9d1993d2fe67f69c5ebc233945fe0d909ba91ee8500c4b67b0",
+    "u64-timestamps@4194304": "f08a120ddef5fd89d194fc83b44a37c1fbf914b05c4d818c89df1a3e7a81a775",
+    "zeros@4194304": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8"
+  },
+  "workloads": [
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "zeros"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "zeros"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "zeros"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "low-cardinality"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "low-cardinality"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "low-cardinality"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "runs"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "runs"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "runs"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "u32-counter"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "u32-counter"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "u32-counter"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "delta-series"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "delta-series"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "delta-series"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "structured-json"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "structured-json"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "structured-json"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "random"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "random"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "random"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "mixed"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "mixed"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "mixed"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "u64-fixed-step"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "u64-fixed-step"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "u64-fixed-step"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "u64-timestamps-ns"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "u64-timestamps-ns"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "u64-timestamps-ns"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "gauge-sawtooth"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "gauge-sawtooth"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "gauge-sawtooth"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "monotonic-outliers"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "monotonic-outliers"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "monotonic-outliers"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "delta-variable"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "delta-variable"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "delta-variable"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "u16-wrapping"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "u16-wrapping"
+    },
+    {
+      "corpus_v3": true,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "u16-wrapping"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "f64-random"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "f64-random"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "f64-random"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "f64-special"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "f64-special"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "f64-special"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "int-counter-reset"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "int-counter-reset"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "int-counter-reset"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "fp-nan-heavy"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "fp-nan-heavy"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "fp-nan-heavy"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "fp-inf-heavy"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "fp-inf-heavy"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "fp-inf-heavy"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "fp-random-finite-f64"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "fp-random-finite-f64"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "fp-random-finite-f64"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "fp-random-bytes"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "fp-random-bytes"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "fp-random-bytes"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "fp-text"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "fp-text"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "fp-text"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "fast",
+      "workload_id": "fp-small-u64"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "balanced",
+      "workload_id": "fp-small-u64"
+    },
+    {
+      "corpus_v3": false,
+      "float_stats": {
+        "blocks": 16,
+        "float_fast_blocks": 0,
+        "float_fast_fallbacks": 0,
+        "float_route_blocks": 0,
+        "planner_full_trial_encodes": 0,
+        "time_series_blocks": 0,
+        "time_series_estimates": 0,
+        "ts1_gorilla_f32_blocks": 0,
+        "ts1_gorilla_f64_blocks": 0,
+        "ts1_run_delta_blocks": 0
+      },
+      "format_minor": 3,
+      "identical_to_disabled": true,
+      "path": "float_false_positive",
+      "profile": "dense",
+      "workload_id": "fp-small-u64"
+    },
+    {
+      "blocks": 1152,
+      "corpus_v3_identical": true,
+      "float_route_blocks": 0,
+      "path": "float_false_positive_summary",
+      "workload_id": "summary"
+    }
+  ]
+}

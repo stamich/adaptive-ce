@@ -106,16 +106,31 @@ pub fn rans4x_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> Ace
         )?);
     }
 
-    // Round-robin interleave; every lane is a slice iterator, so a short lane is an error
-    // instead of an out-of-bounds read.
-    let mut lanes: Vec<std::slice::Iter<'_, u8>> = decoded.iter().map(|lane| lane.iter()).collect();
-    let mut output = Vec::with_capacity(expected_size);
-    for index in 0..expected_size {
-        let byte = lanes
-            .get_mut(index & (RANS4X_LANES - 1))
-            .and_then(Iterator::next)
+    // Round-robin interleave. `rans_decode` returns exactly the length it was asked for, so the
+    // lane lengths are fixed by `lane_output_len`; checking them once lets the copy below run
+    // over whole 4-byte groups without a per-byte bounds or underflow test.
+    let [lane0, lane1, lane2, lane3] = <[Vec<u8>; RANS4X_LANES]>::try_from(decoded)
+        .map_err(|_| AceError::InvalidRans("rANS4x lane underflow"))?;
+    let lanes = [&lane0, &lane1, &lane2, &lane3];
+    for (lane, bytes) in lanes.iter().enumerate() {
+        if bytes.len() != lane_output_len(expected_size, lane) {
+            return Err(AceError::InvalidRans("rANS4x lane underflow"));
+        }
+    }
+    let mut output = vec![0u8; expected_size];
+    let (groups, tail) = output.as_chunks_mut::<RANS4X_LANES>();
+    for ((group, (&a, &b)), (&c, &d)) in groups
+        .iter_mut()
+        .zip(lane0.iter().zip(&lane1))
+        .zip(lane2.iter().zip(&lane3))
+    {
+        *group = [a, b, c, d];
+    }
+    // The 0..=3 bytes after the last full group come from the lanes' last elements.
+    for (slot, lane) in tail.iter_mut().zip(lanes) {
+        *slot = *lane
+            .last()
             .ok_or(AceError::InvalidRans("rANS4x lane underflow"))?;
-        output.push(*byte);
     }
     Ok(output)
 }
@@ -133,5 +148,34 @@ mod tests {
             rans4x_decode(&metadata, &payload, data.len()).unwrap(),
             data
         );
+    }
+
+    /// Every length around the lane boundary (including empty) restores the order of the bytes.
+    #[test]
+    fn every_small_length_round_trips() {
+        for length in 0..=40usize {
+            let data: Vec<u8> = (0..length)
+                .map(|i| u8::try_from(i * 37 % 251).unwrap())
+                .collect();
+            let (metadata, payload) = rans4x_encode(&data).unwrap();
+            assert_eq!(
+                rans4x_decode(&metadata, &payload, length).unwrap(),
+                data,
+                "length {length}"
+            );
+        }
+    }
+
+    /// Asking for more bytes than were encoded is an error, never a short or padded output.
+    #[test]
+    fn a_wrong_expected_size_is_rejected() {
+        let data: Vec<u8> = (0u8..=255).cycle().take(1001).collect();
+        let (metadata, payload) = rans4x_encode(&data).unwrap();
+        for wrong in [0usize, 1, 1000, 1002, 4004] {
+            assert!(
+                rans4x_decode(&metadata, &payload, wrong).is_err(),
+                "{wrong}"
+            );
+        }
     }
 }

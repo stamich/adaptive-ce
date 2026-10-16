@@ -1,6 +1,6 @@
 //! Command-line argument model (clap) and its mapping onto core configuration enums.
 
-use ace_core::{AccessHint, BlockSizePolicy, CompressionProfile};
+use ace::{AccessHint, BlockSizePolicy, Profile};
 use clap::{Parser, Subcommand, ValueEnum};
 
 /// Command-line interface of the Adaptive Compression Engine.
@@ -91,9 +91,21 @@ pub enum ProfileArg {
     Dense,
 }
 
-/// Maps the CLI spelling onto [`CompressionProfile`].
-impl From<ProfileArg> for CompressionProfile {
+/// Maps the CLI spelling onto [`Profile`].
+impl From<ProfileArg> for Profile {
     /// Maps CLI profile spelling to the core planner profile.
+    fn from(value: ProfileArg) -> Self {
+        match value {
+            ProfileArg::Fast => Self::Fast,
+            ProfileArg::Balanced => Self::Balanced,
+            ProfileArg::Dense => Self::Dense,
+        }
+    }
+}
+
+/// Maps the CLI spelling onto the internal profile used by the diagnostic `explain` command.
+impl From<ProfileArg> for ace_core::CompressionProfile {
+    /// Maps CLI profile spelling to the internal planner profile.
     fn from(value: ProfileArg) -> Self {
         match value {
             ProfileArg::Fast => Self::Fast,

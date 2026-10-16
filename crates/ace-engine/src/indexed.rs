@@ -172,6 +172,11 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
         Ok((out, metrics))
     }
 
+    /// Returns the total reconstructed size of the file in bytes.
+    pub fn original_size(&self) -> u64 {
+        self.indexed.file_header.original_size
+    }
+
     /// Returns the number of indexed independent blocks.
     pub fn block_count(&self) -> usize {
         self.indexed.index.entries.len()

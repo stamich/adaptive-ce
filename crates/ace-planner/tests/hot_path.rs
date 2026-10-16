@@ -4,7 +4,9 @@
 
 use ace_analysis::{BlockAnalyzer, DefaultBlockAnalyzer};
 use ace_core::{AceConfig, CompressionProfile};
-use ace_planner::{evaluate_candidates_v3, CompressionPlanner, DefaultCompressionPlanner};
+use ace_planner::{
+    evaluate_candidates_v4_with_route, CompressionPlanner, DefaultCompressionPlanner, RoutePolicy,
+};
 
 /// Verifies that Planner V3.1 preserves the zero-full-trial hot-path invariant.
 #[test]
@@ -16,7 +18,14 @@ fn hot_path_has_zero_full_trials() {
     };
     let profile = DefaultBlockAnalyzer.analyze(&data);
     let candidates = DefaultCompressionPlanner.candidates(&profile, &config);
-    let decision = evaluate_candidates_v3(&data, &profile, &candidates, &config).unwrap();
+    let decision = evaluate_candidates_v4_with_route(
+        &data,
+        &profile,
+        &candidates,
+        &config,
+        &RoutePolicy::classify(&data, &config),
+    )
+    .unwrap();
     assert_eq!(decision.telemetry.full_trial_encodes, 0);
     assert!(decision.telemetry.sampled_candidates <= 8);
     assert!(decision.telemetry.second_stage_candidates <= decision.telemetry.sampled_candidates);
@@ -29,8 +38,22 @@ fn planner_is_deterministic() {
     let config = AceConfig::default();
     let profile = DefaultBlockAnalyzer.analyze(&data);
     let candidates = DefaultCompressionPlanner.candidates(&profile, &config);
-    let a = evaluate_candidates_v3(&data, &profile, &candidates, &config).unwrap();
-    let b = evaluate_candidates_v3(&data, &profile, &candidates, &config).unwrap();
+    let a = evaluate_candidates_v4_with_route(
+        &data,
+        &profile,
+        &candidates,
+        &config,
+        &RoutePolicy::classify(&data, &config),
+    )
+    .unwrap();
+    let b = evaluate_candidates_v4_with_route(
+        &data,
+        &profile,
+        &candidates,
+        &config,
+        &RoutePolicy::classify(&data, &config),
+    )
+    .unwrap();
     assert_eq!(a.plan.decoding, b.plan.decoding);
     assert_eq!(a.plan.lz_mode, b.plan.lz_mode);
     assert_eq!(a.telemetry, b.telemetry);
@@ -46,7 +69,14 @@ fn dense_keeps_multiple_quality_candidates() {
     };
     let profile = DefaultBlockAnalyzer.analyze(&data);
     let candidates = DefaultCompressionPlanner.candidates(&profile, &config);
-    let decision = evaluate_candidates_v3(&data, &profile, &candidates, &config).unwrap();
+    let decision = evaluate_candidates_v4_with_route(
+        &data,
+        &profile,
+        &candidates,
+        &config,
+        &RoutePolicy::classify(&data, &config),
+    )
+    .unwrap();
     if !decision.telemetry.fast_path_hit {
         assert!(decision.top_k_plans.len() >= 4);
         assert!(decision.second_stage_plans.len() >= 3);

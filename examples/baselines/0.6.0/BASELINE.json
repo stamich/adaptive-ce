@@ -1,0 +1,39 @@
+{
+  "version": "0.6.0",
+  "accepted": true,
+  "purpose": "baseline of 0.6.x (stored-result diagnostics; release gates use the interleaved A/B against the 0.5.1 source tree)",
+  "machine_fingerprint": {
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "physical_cores": 16,
+    "logical_cpus": 32,
+    "memory": "128 GiB",
+    "os": "linux",
+    "arch": "x86_64",
+    "simd_backend": "Avx2",
+    "crc32c_backend": "sse4.2-3way",
+    "cpu_governor": "performance",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)"
+  },
+  "git_revision": "d52abe6bf6f6eb1609312c6471cf5bd8774c8e18",
+  "methodology": "schema 2.2, Harness V3 (5 warm-ups, 3 x 7 batches, >= 50 ms per sample, median-of-medians), median of three complete runs (tools/ace-repeatability0.6.0.py), interleaved A/B vs the 0.5.1 source tree (3 batches per side, alternating order)",
+  "verdict": {
+    "regression_v3": "pass",
+    "gates": {"pass": 73, "diagnostic": 6, "fail": 0, "unstable": 0, "skipped": 0},
+    "repeatability": "pass, deterministic values identical over 3 runs x 28 families; macro spread <= 5 % (compression, observed maximum 2.7 %) / <= 15 % (decompression, observed maximum 9.9 %)",
+    "ab_vs_0_5_1": "pass, 12 / 12 cases, byte-identical output; speed ratios 0.993 - 1.044 (all cases >= 0.993)",
+    "fuzz": "15 / 15 targets x 600 s, no crash (FUZZ.md)"
+  },
+  "float_lane": {
+    "f64_constant_ratio": 2416.07,
+    "f64_smooth_ratio": 2.71,
+    "int_sparse_change_ratio": 235.29,
+    "gorilla_codec_encode_mb_s": 2059.0,
+    "gorilla_codec_decode_mb_s": 1373.7,
+    "float_fast_encode_speedup_vs_disabled": 37.2,
+    "false_positive_blocks": 0,
+    "float_fast_fallbacks": 0
+  },
+  "allocation": "mixed_16x256k engine bytes per input byte: Fast 5.9, Balanced 8.3 (0.5.1: 16.1), Dense 11.1 (0.5.1: 24.3); int-sparse-change Balanced 5.9 (0.5.1: 35.7)",
+  "files": "benchmark-0.6.0-<family>.json (families incl. regression and repeatability; public-corpus is empty, ACE_PUBLIC_CORPUS was not set), ab-0.6.0-vs-0.5.1.json, and the 0.5.1 allocation-profile / float-false-positive documents used as comparison, unchanged from the run",
+  "note": "reference run of the 0.6.0 release on the author's workstation (performance governor, 37 C); the stored_baseline and lz4 / zstd drift rows are diagnostics against the 0.5.1 results. Compared with 0.5.1 the stricter-decoder slowdown of dense decode is gone and encode is 0.985 - 1.044 of 0.5.1."
+}

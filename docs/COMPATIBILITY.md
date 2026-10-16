@@ -42,7 +42,9 @@ Without the flag, data that no TS1 block helps (all of Corpus V3) is also writte
    coder, transform, flag bit — and in particular **every new TS1 mode** (ids 4 – 15 are
    reserved) — bumps the minor version, and readers reject the feature in files that declare an
    older minor version. An older reader must fail at the file header (`UnsupportedVersion`),
-   never inside a block. (TS1 modes are self-describing, so a new mode inside 1.4 would decode
+   never inside a block, and since 0.6.0 the error names the ACE release that can read the file
+   (`unsupported ACE format version 1.5 (written by ACE 0.6.1 or newer; this reader supports up
+   to 1.4)`; `crates/ace-engine/tests/newer_format.rs`). (TS1 modes are self-describing, so a new mode inside 1.4 would decode
    as "invalid TS1 stream" on a 0.5 reader instead of failing cleanly — therefore Chimp or any
    other mode planned for 0.6 means Format 1.5.) One historical exception predates this rule:
    0.4.5 added u16 NUM1 lanes inside Format 1.3, so 0.4.0 – 0.4.4 readers reject such blocks
@@ -80,16 +82,22 @@ Details per field: [`DECODER-AUDIT.md`](DECODER-AUDIT.md).
   (`DecodeLimits::max_block_count`, `INDEX_HEADER_SIZE`, the `ace version` command) and
   marked superseded entry points `#[deprecated]` (`evaluate_candidates_v3`,
   `evaluate_candidates_v4`).
-* The public API is `ace-core`, `ace-engine` and `ace-stream`; every other crate is internal
-  and may change in any 0.x release ([`API-INVENTORY.md`](API-INVENTORY.md)). 0.6 replaces
-  the three public crates by one `ace` facade; deprecated items are removed then.
+* 0.6.0 replaced the three public crates (`ace-core`, `ace-engine`, `ace-stream`) by the `ace`
+  facade, which is the only public API; every other crate is internal (`publish = false`) and
+  may change in any release ([`API-INVENTORY.md`](API-INVENTORY.md)). The deprecated
+  `evaluate_candidates_v3` / `_v4` were removed. Migration: [`MIGRATION-0.5-TO-0.6.md`](MIGRATION-0.5-TO-0.6.md).
+* Within a 0.x series the facade changes only additively: its enums and structs that may grow
+  are `#[non_exhaustive]`, and `ErrorKind` is the stable contract of failures (messages are for
+  people).
 * The `ace` CLI keeps its commands and options within a minor series; new commands are
   additive. Exit status: 0 success (also when stdout is closed early), 1 error, 2 usage error.
 
 ## Toolchain
 
-* MSRV (`rust-version`): **1.97.0**, checked by the CI `msrv` job with an explicit
-  `cargo +1.97.0`. Raising it is a minor-release change.
+* MSRV (`rust-version`): **1.98.1** since 0.6.0 (0.5.x: 1.97.0). It equals the pinned build
+  toolchain, so the `pr` CI job checks it; there is no separate MSRV job. Until 1.0 the MSRV
+  may rise in any minor release (`0.x.0`), always announced in the CHANGELOG, RELEASE-NOTES and
+  README; patch releases never raise it.
 * Build toolchain (`rust-toolchain.toml`): **1.98.1** — every build, CI run and benchmark
   fingerprint uses the same compiler and clippy. Rust 1.98.0 must not be used (vtable
   miscompilation fixed in 1.98.1).

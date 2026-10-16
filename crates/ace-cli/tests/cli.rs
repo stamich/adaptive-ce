@@ -1,4 +1,4 @@
-//! End-to-end tests of the `ace` binary (ACE 0.5.1 CLI hardening): round trips, `ace version`,
+//! End-to-end tests of the `ace` binary (ACE 0.5.1 CLI hardening, 0.6.0 forward compatibility): round trips, `ace version`,
 //! invalid input of every kind (exit status 1 with a message, never a panic) and a closed
 //! standard output (exit status 0, no panic).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
@@ -223,4 +223,28 @@ fn closed_stdout_is_a_quiet_success() {
         output.status
     );
     assert!(!stderr.contains("panicked"), "{stderr}");
+}
+
+/// A file written by a newer ACE (format 1.5) is refused by every command that reads it, and
+/// the message names the release that can read it.
+#[test]
+fn newer_format_names_the_release_that_reads_it() {
+    let dir = scratch("newer");
+    let input = sample(&dir);
+    let ace_file = dir.join("a.ace");
+    assert!(run(&["compress", s(&input), s(&ace_file)]).status.success());
+    let mut bytes = std::fs::read(&ace_file).unwrap();
+    bytes[5] = 5;
+    let crc = ace_format::checksum(&bytes[..28]);
+    bytes[28..32].copy_from_slice(&crc.to_le_bytes());
+    let newer = dir.join("newer.ace");
+    std::fs::write(&newer, &bytes).unwrap();
+    let out = dir.join("out");
+    for args in [
+        vec!["decompress", s(&newer), s(&out)],
+        vec!["verify", s(&newer)],
+        vec!["inspect", s(&newer)],
+    ] {
+        assert_clean_failure(&args, "ACE 0.6.1 or newer");
+    }
 }

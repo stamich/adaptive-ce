@@ -1,6 +1,6 @@
 # ACE architecture
 
-Canonical description of the current release (0.5.1). Earlier versions of this document:
+Canonical description of the current release (0.6.0). Earlier versions of this document:
 [`history/`](history/) (`ARCHITECTURE-0.4.6.md`, `ARCHITECTURE-0.5.0.md`).
 
 ACE is a deterministic, block-based lossless compressor. Every block is planned and encoded
@@ -22,9 +22,10 @@ public API and with `--document-private-items`). Public fallible functions docum
 
 | Crate | Kind | Responsibility |
 |---|---|---|
-| `ace-core` | public | model types: `AceConfig`, `DecodeLimits`, `CodecId` / `EntropyCodecId` / `TransformId`, physical plans, `CompressionStats`, `AceError` |
-| `ace-engine` | public | `AceEngine` (compress / decompress / explain), block encoder (Planner V5 `plan_block`), block pipeline, container assembly, `AceIndexedDecoder` |
-| `ace-stream` | public | bounded-memory streaming encoder (`Write + Seek` sink, in-place 1.4 header rewrite) and decoder |
+| `ace` | public | the only supported entry point: `Engine`, `Config` / `ConfigBuilder`, `DecodeLimits`, `RangeReader`, `Stats`, `Error` / `ErrorKind` (non-exhaustive types over the internal crates; feature `explain` adds `BlockReport`) |
+| `ace-core` | internal | model types: `AceConfig`, `DecodeLimits`, `CodecId` / `EntropyCodecId` / `TransformId`, physical plans, `CompressionStats`, `AceError` |
+| `ace-engine` | internal | `AceEngine` (compress / decompress / explain), block encoder (Planner V5 `plan_block`), block pipeline, container assembly, `AceIndexedDecoder` |
+| `ace-stream` | internal | bounded-memory streaming encoder (`Write + Seek` sink, in-place 1.4 header rewrite) and decoder |
 | `ace-format` | internal | Format 1.0 – 1.4: file / block headers, AIDX index, ACET trailer, CRC-32C, `read_serialized_block` |
 | `ace-index` | internal | seekable index loading and indexed block access |
 | `ace-codecs` | internal | RAW, RLE, LZ, NUM1 (FOR / Delta / DoD + bit packing), TS1 (Gorilla f64 / f32, RunDelta) |
@@ -41,9 +42,10 @@ public API and with `--document-private-items`). Public fallible functions docum
 | `ace-cli` | binary | the `ace` command |
 | `ace-bench` | binary | Benchmark Harness V3 ([`BENCHMARKS.md`](BENCHMARKS.md)) |
 
-"Public" crates are the API applications use; internal crates may change in any 0.x release
-([`API-INVENTORY.md`](API-INVENTORY.md)). From 0.6 a single `ace` facade crate replaces the
-three public crates ([`../ROADMAP.md`](../ROADMAP.md)).
+The `ace` crate is the API applications use: it wraps the engine, the streaming encoder and the
+indexed decoder in non-exhaustive types and one error type. Internal crates (`publish = false`)
+may change in any release ([`API-INVENTORY.md`](API-INVENTORY.md)); `ace-cli` uses the facade
+for compression and decoding and the internals for `inspect`, `explain` and `version`.
 
 ## 3. Data flow
 
@@ -74,7 +76,7 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
   `try_from → checked_* → DecodeLimits → allocation`; the parser modules compile with
   `clippy::arithmetic_side_effects` and `clippy::cast_possible_truncation`, so an unchecked
   operation fails the build. Field-by-field evidence: [`DECODER-AUDIT.md`](DECODER-AUDIT.md)
-  (generated, verified by `tools/ace-code_audit0.5.1.py`).
+  (generated, verified by `tools/ace-code_audit0.6.0.py`).
 * `DecodeLimits` is a contract: the table on the type says which reader applies which limit;
   `crates/ace-bench/tests/limits_before_allocation.rs` measures that a forged size fails
   before a buffer of that size exists.

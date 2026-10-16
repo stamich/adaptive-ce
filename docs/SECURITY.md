@@ -55,7 +55,7 @@ size, so a forged value cannot change what is decoded (tested).
 | 15 fuzz targets (0.5.0: `ts1_decode`, `ts1_roundtrip`, `bitstream_roundtrip`) | `fuzz/README.md` |
 | 10 000 random ranges, concurrent readers, out-of-bounds ranges | `ace-engine/tests/random_access_stress.rs` |
 | 1 GiB streaming and 256 MiB indexed files (`--ignored`) | `ace-stream/tests/large_files.rs` |
-| `unsafe` confined to audited kernels | [`UNSAFE-AUDIT.md`](UNSAFE-AUDIT.md), `tools/ace-code_audit0.5.1.py` |
+| `unsafe` confined to audited kernels | [`UNSAFE-AUDIT.md`](UNSAFE-AUDIT.md), `tools/ace-code_audit0.6.0.py` |
 | no `unwrap` / `expect` / `panic!` / `unreachable!` in production code | [`PANIC-AUDIT.md`](PANIC-AUDIT.md), workspace clippy lints |
 | (0.5.1) checked arithmetic and explicit narrowing in every parser module | `clippy::arithmetic_side_effects` + `cast_possible_truncation` per module, [`DECODER-AUDIT.md`](DECODER-AUDIT.md) |
 | (0.5.1) every count / size field at 0, `u32::MAX`, `u64::MAX` and overflowing values | `ace-format/tests/index_hardening.rs`, `ace-codecs/tests/header_fields.rs`, `ace-entropy/tests/metadata_fields.rs`, `ace-index/tests/trailer_limits.rs` |

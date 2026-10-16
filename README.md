@@ -1,5 +1,14 @@
 # Adaptive Compression Engine (ACE)
 
+[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.0.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.0.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=coverage)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 ACE is a lossless, schema-free, adaptive block compressor written in Rust. It looks at every
 block of the input — text, structured records, integer counters and timestamps, floating-point
 series — chooses the cheapest reversible pipeline for it with a deterministic cost model, and
@@ -23,7 +32,7 @@ repeatable benchmarks. See [`docs/RELEASE-NOTES-0.5.1.md`](docs/RELEASE-NOTES-0.
 | rarely changing values | TS1 RunDelta (Elias-gamma runs + ZigZag deltas) | sparse-change integers: ≈ 235× |
 | incompressible data | stored RAW (never larger than the input plus framing) | random: 1.0× |
 
-Measured numbers and methodology: [`docs/PERFORMANCE-0.5.0.md`](docs/PERFORMANCE-0.5.0.md)
+Measured numbers and methodology: [`docs/PERFORMANCE-0.5.1.md`](docs/PERFORMANCE-0.5.1.md)
 (reference machine AMD Ryzen 9 5950X), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start
@@ -33,10 +42,10 @@ cargo build --release                                  # builds the `ace` binary
 ./target/release/ace compress data.bin data.ace        # --profile fast | balanced | dense
 ./target/release/ace decompress data.ace restored.bin
 ./target/release/ace version                           # version, formats, backends, git revision
-./demo/ace-run-demo0.5.1.sh                            # one-minute product tour
+./demo/ace-run-demo0.6.0.sh                            # one-minute product tour
 ```
 
-Requirements: Rust 1.97.0 or newer (MSRV); the repository pins the build toolchain to 1.98.1
+Requirements: Rust 1.98.1 or newer (MSRV); the repository pins the build toolchain to 1.98.1
 in `rust-toolchain.toml` (never use 1.98.0). Python 3.9+ for the benchmark and release tools.
 
 ## Command line
@@ -61,20 +70,25 @@ Exit status: 0 success (also when the output pipe is closed early, e.g. `ace exp
 
 ```rust
 use std::io::Cursor;
-use ace_core::{AceConfig, CompressionProfile, DecodeLimits};
-use ace_engine::{AceEngine, AceIndexedDecoder};
+use ace::{Config, DecodeLimits, Engine, Profile};
 
-let engine = AceEngine::new(AceConfig { profile: CompressionProfile::Balanced, ..AceConfig::default() })?;
+let engine = Engine::new(Config::builder().profile(Profile::Balanced).build()?)?;
 let packed = engine.compress(&input)?;
 let restored = engine.decompress(&packed)?;              // or decompress_into(&packed, &mut buf)
-let mut reader = AceIndexedDecoder::open(Cursor::new(&packed), DecodeLimits::default())?;
-let slice = reader.read_range(4_000..4_100)?;
+
+let mut reader = engine.open_range_reader(Cursor::new(&packed))?;
+let slice = reader.read_range(4_000..4_100)?;            // decodes only the touched blocks
+
+let strict = Engine::default()                           // untrusted input: explicit limits
+    .with_decode_limits(DecodeLimits::builder().max_output_size(64 << 20).build());
 ```
 
-The public API is `ace-core`, `ace-engine` and `ace-stream` (bounded-memory streaming); the
-other crates are internal ([`docs/API-INVENTORY.md`](docs/API-INVENTORY.md)). The example is
-compiled and run as a doctest of `ace-engine`. JVM users can call the CLI today
-(`integrations/`); a C ABI with Java (Panama) and Scala bindings is planned for 0.7.
+The public API is the `ace` crate: `Engine`, `Config`, `DecodeLimits`, `RangeReader`, `Stats`
+and `Error` (with `ErrorKind` to act on). Every other crate is an internal building block
+([`docs/API-INVENTORY.md`](docs/API-INVENTORY.md)). The example is compiled and run as a
+doctest of `ace`; coming from 0.5: [`docs/MIGRATION-0.5-TO-0.6.md`](docs/MIGRATION-0.5-TO-0.6.md).
+JVM users can call the CLI today (`integrations/`); a C ABI with Java (Panama) and Scala
+bindings is planned for 0.7.
 
 ## How it works
 
@@ -108,29 +122,30 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 ## Development
 
 ```bash
-./ace-build0.5.1.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
-./ace-ci0.5.1.sh pr | msrv | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
-./ace-benchmark0.5.1.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
-./ace-ab0.5.1.sh /path/to/ace-0.5.0                  # interleaved A/B against the previous release
-./ace-benchmark-compare0.5.1.sh OLD NEW              # any two result files or directories
-./ace-release0.5.1.sh /path/to/ace-0.5.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+./ace-build0.6.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
+./ace-ci0.6.0.sh pr | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
+./ace-benchmark0.6.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
+./ace-ab0.6.0.sh /path/to/ace-0.5.1                  # interleaved A/B against the previous release
+./ace-benchmark-compare0.6.0.sh OLD NEW              # any two result files or directories
+./ace-release0.6.0.sh /path/to/ace-0.5.1             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
 ```
 
 | Path | Content |
 |---|---|
-| `crates/` | 18 crates ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
-| `ace-*0.5.1.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
+| `crates/` | 19 crates: the `ace` facade and 18 internal ones ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
+| `ace-*0.6.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
 | `examples/golden/` | golden SHA-256 (0.5.0; frozen 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
 | `fuzz/` | `cargo-fuzz` project, 15 targets ([`fuzz/README.md`](fuzz/README.md)) |
 | `integrations/` | Java / Scala CLI examples |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
-| `TASKS-0.5.1.md`, `MILESTONE-0.5.1.json` | implementation order and machine-readable summary of this release |
+| `TASKS-0.6.0.md`, `MILESTONE-0.6.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
 
 ## Roadmap
 
-0.6 — one `ace` API facade, decimal floats (ALP), more numeric modes and Format 1.5;
+0.6.0 — the `ace` API facade, decode and allocation recovery (this release); 0.6.1 — decimal floats (ALP),
+more numeric modes and Format 1.5;
 0.7 — C ABI, Java (Panama FFM) and Scala SDK; 0.8 — adaptive segmentation and columnar blocks
 (Format 2.0); 0.9 — integration with AdaptiveDB and GraphNet; 1.0 — stable API and format.
 See [`ROADMAP.md`](ROADMAP.md) and [`CHANGELOG.md`](CHANGELOG.md).

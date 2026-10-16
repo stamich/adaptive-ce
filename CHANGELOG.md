@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.6.0 - 2026-10-16 — API & Performance (Phase A)
+
+Base: 0.5.1. **No byte changes**: golden 0.5.0 is reproduced exactly (auto and
+`ACE_SIMD=scalar`); no codec, mode, route or format change. Task order: `TASKS-0.6.0.md`;
+notes: `docs/RELEASE-NOTES-0.6.0.md`; migration: `docs/MIGRATION-0.5-TO-0.6.md`. The codec work
+of the 0.6 plan (RunDelta small deltas, Patched FOR, ALP, Chimp evaluation, Format 1.5) is 0.6.1.
+
+### Added
+- Crate `ace`, the only public API: `Engine`, `Config` / `ConfigBuilder`, `Profile`,
+  `BlockSizePolicy`, `AccessHint`, `DecodeLimits` / `DecodeLimitsBuilder`, `RangeReader`,
+  `RangeStats`, `Stats`, `Error` / `ErrorKind`, feature `explain` (`BlockReport`); tested through
+  the facade (golden SHA-256, streaming, range reads, hostile input, every limit).
+- Readers name the ACE release that reads a newer format (`ace_core::NewerFormatHint`).
+- Benchmark family `public-corpus` (`ACE_PUBLIC_CORPUS`, lzbench columns).
+- `AceIndexedDecoder::original_size` (internal).
+- `docs/MIGRATION-0.5-TO-0.6.md`, `docs/RELEASE-NOTES-0.6.0.md`, the DENSE decision in
+  `docs/BENCHMARKS.md`.
+
+### Changed
+- MSRV and build toolchain: Rust 1.98.1 (1.98.0 must not be used); the `msrv` CI job is gone.
+- Scripts, tools and workflows renamed to 0.6.0 (`ace-ci-0.6.0`); stored baseline and A/B base
+  are 0.5.1.
+- Every crate except `ace` and `ace-cli` is `publish = false` and documented as internal; the
+  CLI compresses, decompresses, verifies and reads ranges through the facade (its statistics
+  line shows the stable counters and `format=1.N`).
+- The code audit treats `ace` as the public API and fails on an undocumented public item and on
+  any `#[deprecated]` item; `docs/API-INVENTORY.md` is regenerated.
+- Four-lane rANS decode copies the lanes in groups of four after a single length check
+  (isolated throughput 125 → 147 – 157 MB/s); the 0.5.1 checks are kept.
+- `lz_encode` keeps its hash tables per thread for inputs up to 64 KiB (the planner's samples):
+  allocation churn of `int-sparse-change` BALANCED 35.7 → 5.9 bytes per input byte (output
+  identical).
+- `Profile::Dense` documented as not guaranteed to be smaller than BALANCED.
+
+### Removed
+- `ace_planner::evaluate_candidates_v3` and `evaluate_candidates_v4` (deprecated in 0.5.1).
+
+### Release qualification (manual, reference machine)
+- Passed on the Ryzen 9 5950X: Regression V3 (73 gates, 0 failures), interleaved A/B against 0.5.1
+  12 / 12 with byte-identical output (speed ratios 0.985 – 1.046), repeatability, fuzz campaign
+  15 × 600 s without a crash. Baseline `examples/baselines/0.6.0/`,
+  [`docs/PERFORMANCE-0.6.0.md`](docs/PERFORMANCE-0.6.0.md); tag `v0.6.0` follows the merge.
+
 ## 0.5.1 - 2026-10-13 — Hardened Release Candidate
 
 Base: 0.5.0. **No byte changes**: golden 0.5.0 is reproduced exactly (auto and

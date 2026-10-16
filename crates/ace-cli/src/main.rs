@@ -16,6 +16,7 @@ mod files;
 use std::io::{ErrorKind, Write};
 use std::process::ExitCode;
 
+use ace::Config;
 use ace_core::{AceConfig, AceError};
 use anyhow::Result;
 use clap::Parser;
@@ -63,14 +64,13 @@ fn run(command: Command) -> Result<()> {
         } => commands::compress(
             &input,
             &output,
-            AceConfig {
-                threads,
-                profile: profile.into(),
-                block_size_policy: block_policy.into(),
-                access_hint: access_hint.into(),
-                enable_float_specialization: !disable_float,
-                ..AceConfig::default()
-            },
+            Config::builder()
+                .threads(threads)
+                .profile(profile.into())
+                .block_size_policy(block_policy.into())
+                .access_hint(access_hint.into())
+                .float_specialization(!disable_float)
+                .build()?,
         ),
         Command::CompressStream {
             input,
@@ -80,11 +80,10 @@ fn run(command: Command) -> Result<()> {
         } => commands::compress_stream(
             &input,
             &output,
-            AceConfig {
-                profile: profile.into(),
-                enable_float_specialization: !disable_float,
-                ..AceConfig::default()
-            },
+            Config::builder()
+                .profile(profile.into())
+                .float_specialization(!disable_float)
+                .build()?,
         ),
         Command::Decompress { input, output } => commands::decompress(&input, &output),
         Command::Inspect { input, blocks } => commands::inspect(&input, blocks),

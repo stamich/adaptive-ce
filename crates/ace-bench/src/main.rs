@@ -57,6 +57,7 @@ const FAMILIES: &[(&str, FamilyFn)] = &[
     ("float-fastpath", float_fastpath_family),
     ("float-false-positive", float_false_positive_family),
     ("float-estimator", float_estimator_family),
+    ("public-corpus", public_corpus_family),
 ];
 
 /// Resolves the command-line selection into the families to run.

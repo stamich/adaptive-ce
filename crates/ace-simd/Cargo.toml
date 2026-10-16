@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+publish = false
 
 # The only production crate allowed to contain `unsafe` (runtime-dispatched SIMD/CRC kernels,
 # see docs/UNSAFE-AUDIT.md). Every other lint matches the workspace table.

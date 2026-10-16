@@ -1,0 +1,780 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.6.0",
+  "base": "0.5.1",
+  "scope": "numeric",
+  "benchmark_contract_origin": "ace-0.6.0",
+  "generated_at_utc_epoch_seconds": 1792156022,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "false",
+      "git_revision": "d52abe6bf6f6eb1609312c6471cf5bd8774c8e18",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": 3839121,
+      "freq_khz_before": 3862062,
+      "governor": "performance",
+      "logical_cpus": 32,
+      "max_freq_khz": 5084000,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor",
+      "physical_cores": 16
+    },
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      2.06,
+      2.11,
+      1.28
+    ],
+    "loadavg_before": [
+      2.26,
+      2.15,
+      1.28
+    ],
+    "logical_cpus": 32,
+    "memory_bytes": 134959689728,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.12.21-gentoo-dist",
+      "name": "linux"
+    },
+    "physical_cores": 16,
+    "rust": {
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": 37.0,
+    "thermal_c_before": 35.0,
+    "warnings": []
+  },
+  "configuration": {
+    "block_size": 262144,
+    "config_fingerprint": "ced6310344103233",
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3 | 1.4 (minimal version)",
+    "planner_version": "V5",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "threads": 0,
+    "threads_resolved": 32,
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workload_fingerprints": {
+    "delta-variable@16777216": "ee9f9b140b8a4556911ea66885be4bf42ee5f6dcf21099e7754d4a353a182f8f",
+    "gauge-sawtooth@16777216": "dc64ea639202551e00699e22507d7884a50b0176fdfcfacd49d79b644c3d136f",
+    "monotonic-outliers@16777216": "2cbc9bfec0278f5b5e58db74f7740a7729a84fe7d3cfa6da83a5bff7088ac6d3",
+    "u32-counter@16777216": "a0fb0e32b9fe208f8512e2c4b9b5afd46a8ee4a1813d80430649d1c3777bb197",
+    "u64-timestamps@16777216": "662892bb1feb72c38cc970c0d52b92d15aab91eecd42b97601db329f5e4c89b7"
+  },
+  "workloads": [
+    {
+      "compressed_bytes": 7240,
+      "compression": {
+        "cv_percent": 0.9176640160520839,
+        "max_ns": 2009215,
+        "mean_ns": 1983895.238095238,
+        "median_mb_s": 8010.505778328278,
+        "median_ns": 1997377.0,
+        "min_ns": 1943349,
+        "p95_ns": 2003410.0,
+        "p99_ns": 2009215.0,
+        "runs": 21,
+        "samples_ns": [
+          2000995,
+          1972070,
+          1993016,
+          1998330,
+          2009215,
+          1995957,
+          2003410,
+          1993352,
+          1999686,
+          2003001,
+          2000259,
+          1997377,
+          1970164,
+          1965070,
+          1973189,
+          1967248,
+          1959083,
+          1943349,
+          1974821,
+          1958618,
+          1983590
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.047712575042167804,
+          "batch_medians_ns": [
+            1998330.0,
+            1997377.0,
+            1967248.0
+          ],
+          "batches": 3,
+          "global_median_ns": 1993016.0,
+          "harness": "v3",
+          "iterations_per_sample": 32,
+          "mad_ns": 10394.0,
+          "median_of_medians_ns": 1997377.0,
+          "outlier_indices": [
+            17
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 18205.492716170815,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "compression_ratio": 2317.2950276243096,
+      "decompression": {
+        "cv_percent": 1.1454750693726021,
+        "max_ns": 1144735,
+        "mean_ns": 1100936.0,
+        "median_mb_s": 14513.78809869376,
+        "median_ns": 1102400.0,
+        "min_ns": 1076978,
+        "p95_ns": 1112408.0,
+        "p99_ns": 1144735.0,
+        "runs": 21,
+        "samples_ns": [
+          1144735,
+          1094199,
+          1081205,
+          1095018,
+          1092169,
+          1076978,
+          1099713,
+          1099978,
+          1102400,
+          1097864,
+          1102634,
+          1098038,
+          1112408,
+          1105444,
+          1106184,
+          1099067,
+          1102681,
+          1100007,
+          1109175,
+          1096832,
+          1102927
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.025489840348330912,
+          "batch_medians_ns": [
+            1094199.0,
+            1102400.0,
+            1102681.0
+          ],
+          "batches": 3,
+          "global_median_ns": 1099978.0,
+          "harness": "v3",
+          "iterations_per_sample": 64,
+          "mad_ns": 3146.0,
+          "median_of_medians_ns": 1102400.0,
+          "outlier_indices": [
+            0,
+            2,
+            5
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 12610.94740974795,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U32/DeltaOfDelta/0b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 3,
+        "detected": true,
+        "dod_bit_width_p95": 0,
+        "dod_zero_ratio": 1.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4_3",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "u32-counter"
+    },
+    {
+      "compressed_bytes": 531528,
+      "compression": {
+        "cv_percent": 2.1633639766387835,
+        "max_ns": 57239538,
+        "mean_ns": 54915173.809523806,
+        "median_mb_s": 290.3147638030835,
+        "median_ns": 55112595.0,
+        "min_ns": 53439868,
+        "p95_ns": 57119816.0,
+        "p99_ns": 57239538.0,
+        "runs": 21,
+        "samples_ns": [
+          53439868,
+          53712991,
+          53855993,
+          53482869,
+          53780241,
+          54096665,
+          56025115,
+          55255857,
+          54272996,
+          55995005,
+          53534539,
+          55678431,
+          54718692,
+          55112595,
+          54348857,
+          54406118,
+          57239538,
+          57119816,
+          54395697,
+          56256158,
+          56490609
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 2.0749576389934097,
+          "batch_medians_ns": [
+            53780241.0,
+            55112595.0,
+            56256158.0
+          ],
+          "batches": 3,
+          "global_median_ns": 54406118.0,
+          "harness": "v3",
+          "iterations_per_sample": 1,
+          "mad_ns": 849739.0,
+          "median_of_medians_ns": 55112595.0,
+          "outlier_indices": [],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 1188015.087903814,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "compression_ratio": 31.564124561641155,
+      "decompression": {
+        "cv_percent": 0.5293885934588133,
+        "max_ns": 4531867,
+        "mean_ns": 4431747.952380952,
+        "median_mb_s": 3610.954009535627,
+        "median_ns": 4430962.0,
+        "min_ns": 4413351,
+        "p95_ns": 4435739.0,
+        "p99_ns": 4531867.0,
+        "runs": 21,
+        "samples_ns": [
+          4531867,
+          4434967,
+          4426370,
+          4435739,
+          4425996,
+          4433980,
+          4423787,
+          4430962,
+          4422119,
+          4435098,
+          4425000,
+          4434419,
+          4421322,
+          4433171,
+          4433774,
+          4429972,
+          4413351,
+          4413939,
+          4421989,
+          4424421,
+          4414464
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.06811162000486576,
+          "batch_medians_ns": [
+            4433980.0,
+            4430962.0,
+            4421989.0
+          ],
+          "batches": 3,
+          "global_median_ns": 4426370.0,
+          "harness": "v3",
+          "iterations_per_sample": 16,
+          "mad_ns": 6801.0,
+          "median_of_medians_ns": 4430962.0,
+          "outlier_indices": [
+            0
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 23461.168150749283,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U64/DeltaOfDelta/2b",
+      "numeric_profile": {
+        "confidence": 0.9000000357627869,
+        "delta_bit_width_p95": 11,
+        "detected": true,
+        "dod_bit_width_p95": 2,
+        "dod_zero_ratio": 0.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U64)"
+      },
+      "path": "planner_v4_3",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "compressed_bytes": 861512,
+      "compression": {
+        "cv_percent": 1.0387675953247586,
+        "max_ns": 136039826,
+        "mean_ns": 132188520.71428572,
+        "median_mb_s": 121.04632717564868,
+        "median_ns": 132180797.0,
+        "min_ns": 129939264,
+        "p95_ns": 133739393.0,
+        "p99_ns": 136039826.0,
+        "runs": 21,
+        "samples_ns": [
+          133001696,
+          136039826,
+          132348429,
+          132023235,
+          131471500,
+          130017534,
+          130192456,
+          133739393,
+          131180367,
+          130917844,
+          132292508,
+          133326068,
+          129939264,
+          132615291,
+          131943614,
+          132368099,
+          132965835,
+          133667262,
+          132147547,
+          132180797,
+          131580370
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.08451378909449304,
+          "batch_medians_ns": [
+            132023235.0,
+            132292508.0,
+            132180797.0
+          ],
+          "batches": 3,
+          "global_median_ns": 132180797.0,
+          "harness": "v3",
+          "iterations_per_sample": 1,
+          "mad_ns": 785038.0,
+          "median_of_medians_ns": 132180797.0,
+          "outlier_indices": [
+            1
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 1373131.517919156,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "compression_ratio": 19.474152420395768,
+      "decompression": {
+        "cv_percent": 0.6205361477801586,
+        "max_ns": 8565118,
+        "mean_ns": 8416393.476190476,
+        "median_mb_s": 1905.921567277423,
+        "median_ns": 8394889.0,
+        "min_ns": 8326791,
+        "p95_ns": 8482659.0,
+        "p99_ns": 8565118.0,
+        "runs": 21,
+        "samples_ns": [
+          8565118,
+          8444257,
+          8411962,
+          8444847,
+          8414285,
+          8407466,
+          8401326,
+          8394889,
+          8354196,
+          8393336,
+          8326791,
+          8434890,
+          8434386,
+          8414919,
+          8377793,
+          8385782,
+          8356297,
+          8358714,
+          8461698,
+          8478652,
+          8482659
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.10848267320747182,
+          "batch_medians_ns": [
+            8414285.0,
+            8394889.0,
+            8385782.0
+          ],
+          "batches": 3,
+          "global_median_ns": 8411962.0,
+          "harness": "v3",
+          "iterations_per_sample": 8,
+          "mad_ns": 32295.0,
+          "median_of_medians_ns": 8394889.0,
+          "outlier_indices": [
+            0
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 52226.763859172956,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 0,
+      "numeric_estimate": "U32/FrameOfReference/12b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 2,
+        "detected": true,
+        "dod_bit_width_p95": 0,
+        "dod_zero_ratio": 1.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4_3",
+      "plan_distribution": {
+        "lz_balanced+rans": 64
+      },
+      "workload_id": "gauge-sawtooth"
+    },
+    {
+      "compressed_bytes": 9444168,
+      "compression": {
+        "cv_percent": 1.3814609997028016,
+        "max_ns": 73944498,
+        "mean_ns": 71803046.57142857,
+        "median_mb_s": 223.74310353835173,
+        "median_ns": 71510584.0,
+        "min_ns": 70474442,
+        "p95_ns": 73887008.0,
+        "p99_ns": 73944498.0,
+        "runs": 21,
+        "samples_ns": [
+          71502524,
+          72892698,
+          71205800,
+          71348112,
+          71371692,
+          71339032,
+          71397422,
+          71760796,
+          73887008,
+          70498594,
+          71359842,
+          73944498,
+          70869797,
+          72185961,
+          73276911,
+          71027339,
+          72811117,
+          71014379,
+          72185430,
+          71510584,
+          70474442
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.19422579460405467,
+          "batch_medians_ns": [
+            71371692.0,
+            71760796.0,
+            71510584.0
+          ],
+          "batches": 3,
+          "global_median_ns": 71397422.0,
+          "harness": "v3",
+          "iterations_per_sample": 1,
+          "mad_ns": 383043.0,
+          "median_of_medians_ns": 71510584.0,
+          "outlier_indices": [
+            8,
+            11,
+            14
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 991931.0849827253,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "compression_ratio": 1.7764631040023855,
+      "decompression": {
+        "cv_percent": 1.3353496917724659,
+        "max_ns": 9553989,
+        "mean_ns": 9186276.80952381,
+        "median_mb_s": 1748.916000001749,
+        "median_ns": 9148524.0,
+        "min_ns": 9034760,
+        "p95_ns": 9401367.0,
+        "p99_ns": 9553989.0,
+        "runs": 21,
+        "samples_ns": [
+          9217531,
+          9152431,
+          9195351,
+          9072738,
+          9048907,
+          9034760,
+          9148524,
+          9133788,
+          9210681,
+          9332396,
+          9194739,
+          9121586,
+          9553989,
+          9401367,
+          9194157,
+          9290463,
+          9126976,
+          9065683,
+          9076756,
+          9116186,
+          9222804
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.23553526230023553,
+          "batch_medians_ns": [
+            9148524.0,
+            9210681.0,
+            9126976.0
+          ],
+          "batches": 3,
+          "global_median_ns": 9152431.0,
+          "harness": "v3",
+          "iterations_per_sample": 8,
+          "mad_ns": 65100.0,
+          "median_of_medians_ns": 9148524.0,
+          "outlier_indices": [
+            12
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 122668.9190613417,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U32/DeltaOfDelta/18b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 2,
+        "detected": true,
+        "dod_bit_width_p95": 0,
+        "dod_zero_ratio": 0.9985344409942627,
+        "exception_ratio": 0.0007326007471419871,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4_3",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "monotonic-outliers"
+    },
+    {
+      "compressed_bytes": 2628616,
+      "compression": {
+        "cv_percent": 1.5331816099165039,
+        "max_ns": 65162522,
+        "mean_ns": 63432514.047619045,
+        "median_mb_s": 252.43734568189512,
+        "median_ns": 63382064.0,
+        "min_ns": 62010670,
+        "p95_ns": 65117752.0,
+        "p99_ns": 65162522.0,
+        "runs": 21,
+        "samples_ns": [
+          62982140,
+          62796618,
+          65117752,
+          64084521,
+          62860069,
+          63382064,
+          63952749,
+          63649697,
+          65162522,
+          62202522,
+          62572156,
+          65094412,
+          63604616,
+          64135702,
+          62547445,
+          62010670,
+          62474954,
+          62983170,
+          62107521,
+          64107291,
+          64254204
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.42225352585551645,
+          "batch_medians_ns": [
+            63382064.0,
+            63649697.0,
+            62547445.0
+          ],
+          "batches": 3,
+          "global_median_ns": 63382064.0,
+          "harness": "v3",
+          "iterations_per_sample": 1,
+          "mad_ns": 753638.0,
+          "median_of_medians_ns": 63382064.0,
+          "outlier_indices": [],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 972535.6400857981,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "compression_ratio": 6.382528296259324,
+      "decompression": {
+        "cv_percent": 1.1819171410720588,
+        "max_ns": 9213662,
+        "mean_ns": 8869857.857142856,
+        "median_mb_s": 1809.845013922233,
+        "median_ns": 8840536.0,
+        "min_ns": 8736066,
+        "p95_ns": 9045935.0,
+        "p99_ns": 9213662.0,
+        "runs": 21,
+        "samples_ns": [
+          8957911,
+          8920702,
+          8785731,
+          8748582,
+          8736066,
+          8832424,
+          8822324,
+          8840536,
+          8895033,
+          8878195,
+          8846945,
+          8811058,
+          8796623,
+          8760575,
+          8841423,
+          9213662,
+          9045935,
+          8861222,
+          8887929,
+          8854267,
+          8929872
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.20600560870969814,
+          "batch_medians_ns": [
+            8822324.0,
+            8840536.0,
+            8887929.0
+          ],
+          "batches": 3,
+          "global_median_ns": 8846945.0,
+          "harness": "v3",
+          "iterations_per_sample": 8,
+          "mad_ns": 48088.0,
+          "median_of_medians_ns": 8840536.0,
+          "outlier_indices": [
+            15
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 104834.37040229823,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "numeric_estimate": "U32/DeltaOfDelta/5b",
+      "numeric_profile": {
+        "confidence": 1.0,
+        "delta_bit_width_p95": 6,
+        "detected": true,
+        "dod_bit_width_p95": 5,
+        "dod_zero_ratio": 0.0,
+        "exception_ratio": 0.0,
+        "monotonic_ratio": 1.0,
+        "width": "Some(U32)"
+      },
+      "path": "planner_v4_3",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "workload_id": "delta-variable"
+    }
+  ],
+  "repeatability": {
+    "runs": [
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-1",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-2",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-3"
+    ],
+    "rule": "median run per timing object"
+  }
+}

@@ -1,0 +1,30 @@
+[package]
+name = "ace"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Adaptive Compression Engine: lossless, deterministic, schema-free block compression with random access"
+readme = "README.md"
+keywords = ["compression", "lossless", "timeseries", "random-access", "deterministic"]
+categories = ["compression", "algorithms"]
+
+[features]
+default = []
+# `Engine::explain`: per-block planner report (`BlockReport`).
+explain = []
+
+[dependencies]
+ace-core = { path = "../ace-core" }
+ace-engine = { path = "../ace-engine" }
+ace-stream = { path = "../ace-stream" }
+
+[dev-dependencies]
+ace-corpus = { path = "../ace-corpus" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

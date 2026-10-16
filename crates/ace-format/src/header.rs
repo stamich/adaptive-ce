@@ -10,10 +10,10 @@ use ace_core::{
 
 /// Four-byte ACE format-v1 magic preserved from milestone 0.1.
 pub const MAGIC: [u8; 4] = *b"ACE1";
-/// Current major format version.
-pub const FORMAT_MAJOR: u8 = 1;
+/// Current major format version (defined in `ace-core` so that errors can name it).
+pub use ace_core::FORMAT_MAJOR;
 /// Highest minor format version this crate reads and writes (1.4 adds the TS1 codec).
-pub const FORMAT_MINOR: u8 = 4;
+pub use ace_core::FORMAT_MINOR;
 /// Minor version written for files that use no Format 1.4 feature, so they stay readable by
 /// ACE 0.4.x and byte-identical to its output.
 pub const FORMAT_MINOR_BASE: u8 = 3;
