@@ -14,6 +14,7 @@ mod numeric;
 mod plan;
 mod profile;
 mod stats;
+mod version;
 
 pub use block::*;
 pub use codec::*;
@@ -25,3 +26,4 @@ pub use numeric::*;
 pub use plan::*;
 pub use profile::*;
 pub use stats::*;
+pub use version::*;

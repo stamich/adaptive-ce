@@ -42,7 +42,9 @@ Without the flag, data that no TS1 block helps (all of Corpus V3) is also writte
    coder, transform, flag bit — and in particular **every new TS1 mode** (ids 4 – 15 are
    reserved) — bumps the minor version, and readers reject the feature in files that declare an
    older minor version. An older reader must fail at the file header (`UnsupportedVersion`),
-   never inside a block. (TS1 modes are self-describing, so a new mode inside 1.4 would decode
+   never inside a block, and since 0.6.0 the error names the ACE release that can read the file
+   (`unsupported ACE format version 1.5 (written by ACE 0.6.1 or newer; this reader supports up
+   to 1.4)`; `crates/ace-engine/tests/newer_format.rs`). (TS1 modes are self-describing, so a new mode inside 1.4 would decode
    as "invalid TS1 stream" on a 0.5 reader instead of failing cleanly — therefore Chimp or any
    other mode planned for 0.6 means Format 1.5.) One historical exception predates this rule:
    0.4.5 added u16 NUM1 lanes inside Format 1.3, so 0.4.0 – 0.4.4 readers reject such blocks

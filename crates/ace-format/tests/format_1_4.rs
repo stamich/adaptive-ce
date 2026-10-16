@@ -135,4 +135,6 @@ fn file_headers_1_0_to_1_4_are_readable() {
         decode_file_header(&future),
         Err(AceError::UnsupportedVersion { minor: 5, .. })
     ));
+    let message = decode_file_header(&future).unwrap_err().to_string();
+    assert!(message.contains("ACE 0.6.1 or newer"), "{message}");
 }

@@ -7,7 +7,10 @@ pub enum AceError {
     #[error("invalid ACE magic")]
     InvalidMagic,
     /// The file format version is not supported.
-    #[error("unsupported ACE format version {major}.{minor}")]
+    ///
+    /// For a file newer than this build reads, the message names the ACE release that can read it
+    /// (see [`crate::NewerFormatHint`]).
+    #[error("unsupported ACE format version {major}.{minor}{}", crate::NewerFormatHint { major: *major, minor: *minor })]
     UnsupportedVersion {
         /// Major version found in the header.
         major: u8,
