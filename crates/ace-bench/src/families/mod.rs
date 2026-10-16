@@ -6,6 +6,7 @@ mod float;
 mod memory;
 mod numeric;
 mod planner;
+mod public_corpus;
 mod random_access;
 mod release;
 
@@ -15,5 +16,6 @@ pub(crate) use float::*;
 pub(crate) use memory::*;
 pub(crate) use numeric::*;
 pub(crate) use planner::*;
+pub(crate) use public_corpus::public_corpus_family;
 pub(crate) use random_access::*;
 pub(crate) use release::*;

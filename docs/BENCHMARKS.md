@@ -161,6 +161,27 @@ sample; since 0.6.0 each thread reuses them (output unchanged), and the same row
 6 bytes per input byte. Deciding TS1 earlier would change the order of work and is not done.
 The performance report prints the table.
 
+### `public-corpus` (0.6.0)
+
+ACE (FAST, BALANCED, DENSE; one thread) next to LZ4, Zstd level 3 and gzip level 6 on files you
+supply, so the numbers can be compared with published tables. The corpus is not in the
+repository: point `ACE_PUBLIC_CORPUS` at a directory (for example the Silesia corpus, or
+`enwik8`) and every regular file in it is measured.
+
+```text
+ACE_PUBLIC_CORPUS=/data/silesia cargo run --release -p ace-bench -- public-corpus
+ACE_PUBLIC_CORPUS_MAX_BYTES=67108864   # truncate larger files (default 256 MiB)
+ACE_BENCH_QUICK=1                      # short measurement for a smoke run
+```
+
+Without the variable, or when it is not a directory, the family prints why and writes a document
+with no workloads, so `all` still runs everywhere. Each row has the usual timing objects and an
+`lzbench` object with the columns of the lzbench table: `compressed_bytes`, `ratio_percent`
+(compressed size as a percentage of the input), `compress_mb_s` and `decompress_mb_s`
+(10^6 bytes per second, from the median). The fingerprint of each file is recorded in
+`workload_fingerprints`. The family takes minutes to hours depending on the corpus and is not a
+release gate; it is a reference for the comparison tables.
+
 ### DENSE versus BALANCED (0.6.0 decision)
 
 Question: does `Profile::Dense` earn its extra encode time? Data: container sizes of the 27
