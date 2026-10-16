@@ -14,6 +14,80 @@ const HASH_SIZE: usize = 1 << HASH_BITS;
 /// Maximum candidates inspected per position in `LzMode::Balanced`.
 const MAX_CHAIN: usize = 16;
 
+/// Largest input (bytes) encoded with the per-thread tables. Longer inputs allocate their own:
+/// the cost of clearing the tables is then small next to the encoding, and the plain loop is
+/// about 7 % faster than the one that tracks the touched buckets.
+const SCRATCH_MAX_INPUT: usize = 64 * 1024;
+
+/// Hash-chain tables reused by the calls of one thread.
+///
+/// The planner trial-encodes dozens of small samples per block; allocating and clearing a
+/// 512 KiB hash table and an 8-byte-per-input-byte chain table for each of them was the largest
+/// source of allocation churn of the encoder. `head` is all `usize::MAX` between calls and only
+/// the buckets a call touched are reset; `prev` is never cleared, because the chain walk only
+/// reads entries of positions inserted by the same call.
+struct LzScratch {
+    /// Most recent position of each hash bucket; `usize::MAX` when empty.
+    head: Vec<usize>,
+    /// Previous position with the same bucket, indexed by position.
+    prev: Vec<usize>,
+    /// Buckets written by the current call.
+    touched: Vec<u32>,
+    /// `true` while a call is running; a call that unwound leaves the tables dirty.
+    in_use: bool,
+}
+
+impl LzScratch {
+    const fn new() -> Self {
+        Self {
+            head: Vec::new(),
+            prev: Vec::new(),
+            touched: Vec::new(),
+            in_use: false,
+        }
+    }
+
+    /// Makes `head` all-empty and `prev` at least `len` entries long.
+    fn prepare(&mut self, len: usize) {
+        if self.in_use || self.head.len() != HASH_SIZE {
+            self.head.clear();
+            self.head.resize(HASH_SIZE, usize::MAX);
+            self.touched.clear();
+        }
+        if self.prev.len() < len {
+            self.prev.resize(len, usize::MAX);
+        }
+        self.in_use = true;
+    }
+
+    /// Empties the buckets this call touched.
+    fn finish(&mut self) {
+        for &bucket in &self.touched {
+            self.head[bucket as usize] = usize::MAX;
+        }
+        self.touched.clear();
+        self.in_use = false;
+    }
+
+    /// Records `position` as the newest entry of `bucket` and returns the previous newest.
+    #[inline]
+    fn insert(&mut self, bucket: usize, position: usize) -> usize {
+        let older = self.head[bucket];
+        if older == usize::MAX {
+            // `bucket < HASH_SIZE = 1 << 16`.
+            self.touched.push(bucket as u32);
+        }
+        self.prev[position] = older;
+        self.head[bucket] = position;
+        older
+    }
+}
+
+thread_local! {
+    /// The hash-chain tables of the calling thread.
+    static LZ_SCRATCH: std::cell::RefCell<LzScratch> = const { std::cell::RefCell::new(LzScratch::new()) };
+}
+
 /// Encodes a byte slice into a simple LZ token stream.
 ///
 /// Token format: `0LLLLLLL <literal bytes>` for a literal packet and
@@ -22,6 +96,27 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
     if input.is_empty() {
         return Vec::new();
     }
+    if input.len() > SCRATCH_MAX_INPUT {
+        return lz_encode_allocating(input, mode);
+    }
+    LZ_SCRATCH.with(|cell| match cell.try_borrow_mut() {
+        Ok(mut scratch) => {
+            scratch.prepare(input.len());
+            let out = lz_encode_with(input, mode, &mut scratch);
+            scratch.finish();
+            out
+        }
+        // Re-entrant call (not expected): use private tables.
+        Err(_) => {
+            let mut scratch = LzScratch::new();
+            scratch.prepare(input.len());
+            lz_encode_with(input, mode, &mut scratch)
+        }
+    })
+}
+
+/// The encoder with tables allocated for this call (inputs above [`SCRATCH_MAX_INPUT`]).
+fn lz_encode_allocating(input: &[u8], mode: LzMode) -> Vec<u8> {
     let mut head = vec![usize::MAX; HASH_SIZE];
     let mut prev = vec![usize::MAX; input.len()];
     let mut out = Vec::with_capacity(input.len());
@@ -47,6 +142,40 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
                     let h = hash4(&input[p..p + 4]);
                     prev[p] = head[h];
                     head[h] = p;
+                }
+            }
+            i += len;
+            literal_start = i;
+        } else {
+            i += 1;
+        }
+    }
+    flush_literals(&mut out, &input[literal_start..]);
+    out
+}
+
+/// The encoder proper, over prepared tables.
+fn lz_encode_with(input: &[u8], mode: LzMode, scratch: &mut LzScratch) -> Vec<u8> {
+    let mut out = Vec::with_capacity(input.len());
+    let mut literal_start = 0usize;
+    let mut i = 0usize;
+    while i < input.len() {
+        let best = if i + MIN_MATCH <= input.len() {
+            let h = hash4(&input[i..i + 4]);
+            let candidate = scratch.insert(h, i);
+            find_best(input, i, candidate, &scratch.prev, mode)
+        } else {
+            None
+        };
+        if let Some((distance, len)) = best {
+            flush_literals(&mut out, &input[literal_start..i]);
+            let encoded_len = len - MIN_MATCH;
+            out.push(0x80 | encoded_len as u8);
+            out.extend_from_slice(&(distance as u16).to_le_bytes());
+            for p in i + 1..i + len {
+                if p + MIN_MATCH <= input.len() {
+                    let h = hash4(&input[p..p + 4]);
+                    scratch.insert(h, p);
                 }
             }
             i += len;
@@ -211,6 +340,101 @@ mod tests {
         for mode in [LzMode::Fast, LzMode::Balanced] {
             let e = lz_encode(data, mode);
             assert_eq!(lz_decode(&e, data.len()).unwrap(), data);
+        }
+    }
+
+    /// The encoder that allocates its tables, the reference for the reuse of the thread's.
+    fn reference_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
+        if input.is_empty() {
+            Vec::new()
+        } else {
+            lz_encode_allocating(input, mode)
+        }
+    }
+
+    fn inputs() -> Vec<Vec<u8>> {
+        let mut x = 7u32;
+        let mut noise = |n: usize| -> Vec<u8> {
+            (0..n)
+                .map(|_| {
+                    x = x.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                    (x >> 24) as u8
+                })
+                .collect()
+        };
+        vec![
+            b"a".to_vec(),
+            b"abcd".to_vec(),
+            noise(3),
+            noise(5000),
+            b"status=ACTIVE region=eu\n".repeat(900),
+            noise(70_000),
+            vec![0u8; 200_000],
+            (0..90_000u32).flat_map(|i| (i / 5).to_le_bytes()).collect(),
+            noise(10),
+        ]
+    }
+
+    /// Calls in any order, with sizes growing and shrinking, give the bytes of the allocating
+    /// encoder: stale entries of the reused tables are never read.
+    #[test]
+    fn reused_tables_give_the_reference_bytes() {
+        for mode in [LzMode::Fast, LzMode::Balanced] {
+            for round in 0..2 {
+                for input in inputs() {
+                    assert_eq!(
+                        lz_encode(&input, mode),
+                        reference_encode(&input, mode),
+                        "{mode:?} round {round} len {}",
+                        input.len()
+                    );
+                }
+            }
+        }
+    }
+
+    /// A call that unwound leaves the tables dirty; the next call repairs them.
+    #[test]
+    fn dirty_tables_are_repaired() {
+        let data = b"abracadabra abracadabra abracadabra".repeat(50);
+        let want = reference_encode(&data, LzMode::Balanced);
+        LZ_SCRATCH.with(|cell| {
+            let mut scratch = cell.borrow_mut();
+            scratch.prepare(100);
+            scratch.insert(5, 3);
+            scratch.insert(77, 9);
+            // Simulates an unwind: `finish` never ran.
+        });
+        assert_eq!(lz_encode(&data, LzMode::Balanced), want);
+    }
+
+    /// Inputs around the threshold give the same bytes whichever path encodes them.
+    #[test]
+    fn both_paths_agree_around_the_threshold() {
+        let base: Vec<u8> = (0..SCRATCH_MAX_INPUT + 50)
+            .map(|i| ((i * i / 7) % 61) as u8)
+            .collect();
+        for len in [
+            SCRATCH_MAX_INPUT - 1,
+            SCRATCH_MAX_INPUT,
+            SCRATCH_MAX_INPUT + 1,
+        ] {
+            for mode in [LzMode::Fast, LzMode::Balanced] {
+                let data = &base[..len];
+                let via_scratch = LZ_SCRATCH.with(|cell| {
+                    let mut scratch = cell.borrow_mut();
+                    scratch.prepare(data.len());
+                    let out = lz_encode_with(data, mode, &mut scratch);
+                    scratch.finish();
+                    out
+                });
+                assert_eq!(
+                    via_scratch,
+                    lz_encode_allocating(data, mode),
+                    "{len} {mode:?}"
+                );
+                assert_eq!(lz_encode(data, mode), via_scratch, "{len} {mode:?}");
+            }
         }
     }
 }
