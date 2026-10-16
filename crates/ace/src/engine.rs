@@ -67,6 +67,11 @@ impl Engine {
         self
     }
 
+    #[cfg(feature = "explain")]
+    pub(crate) fn internal(&self) -> &AceEngine {
+        &self.inner
+    }
+
     /// The settings this engine compresses with.
     #[must_use]
     pub fn config(&self) -> &Config {
