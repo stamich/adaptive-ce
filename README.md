@@ -70,20 +70,25 @@ Exit status: 0 success (also when the output pipe is closed early, e.g. `ace exp
 
 ```rust
 use std::io::Cursor;
-use ace_core::{AceConfig, CompressionProfile, DecodeLimits};
-use ace_engine::{AceEngine, AceIndexedDecoder};
+use ace::{Config, DecodeLimits, Engine, Profile};
 
-let engine = AceEngine::new(AceConfig { profile: CompressionProfile::Balanced, ..AceConfig::default() })?;
+let engine = Engine::new(Config::builder().profile(Profile::Balanced).build()?)?;
 let packed = engine.compress(&input)?;
 let restored = engine.decompress(&packed)?;              // or decompress_into(&packed, &mut buf)
-let mut reader = AceIndexedDecoder::open(Cursor::new(&packed), DecodeLimits::default())?;
-let slice = reader.read_range(4_000..4_100)?;
+
+let mut reader = engine.open_range_reader(Cursor::new(&packed))?;
+let slice = reader.read_range(4_000..4_100)?;            // decodes only the touched blocks
+
+let strict = Engine::default()                           // untrusted input: explicit limits
+    .with_decode_limits(DecodeLimits::builder().max_output_size(64 << 20).build());
 ```
 
-The public API is `ace-core`, `ace-engine` and `ace-stream` (bounded-memory streaming); the
-other crates are internal ([`docs/API-INVENTORY.md`](docs/API-INVENTORY.md)). The example is
-compiled and run as a doctest of `ace-engine`. JVM users can call the CLI today
-(`integrations/`); a C ABI with Java (Panama) and Scala bindings is planned for 0.7.
+The public API is the `ace` crate: `Engine`, `Config`, `DecodeLimits`, `RangeReader`, `Stats`
+and `Error` (with `ErrorKind` to act on). Every other crate is an internal building block
+([`docs/API-INVENTORY.md`](docs/API-INVENTORY.md)). The example is compiled and run as a
+doctest of `ace`; coming from 0.5: [`docs/MIGRATION-0.5-TO-0.6.md`](docs/MIGRATION-0.5-TO-0.6.md).
+JVM users can call the CLI today (`integrations/`); a C ABI with Java (Panama) and Scala
+bindings is planned for 0.7.
 
 ## How it works
 
@@ -120,14 +125,14 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 ./ace-build0.6.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
 ./ace-ci0.6.0.sh pr | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
 ./ace-benchmark0.6.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
-./ace-ab0.6.0.sh /path/to/ace-0.5.0                  # interleaved A/B against the previous release
+./ace-ab0.6.0.sh /path/to/ace-0.5.1                  # interleaved A/B against the previous release
 ./ace-benchmark-compare0.6.0.sh OLD NEW              # any two result files or directories
-./ace-release0.6.0.sh /path/to/ace-0.5.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+./ace-release0.6.0.sh /path/to/ace-0.5.1             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
 ```
 
 | Path | Content |
 |---|---|
-| `crates/` | 18 crates ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
+| `crates/` | 19 crates: the `ace` facade and 18 internal ones ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
 | `ace-*0.6.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
 | `examples/golden/` | golden SHA-256 (0.5.0; frozen 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
@@ -139,7 +144,8 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 
 ## Roadmap
 
-0.6 — one `ace` API facade, decimal floats (ALP), more numeric modes and Format 1.5;
+0.6.0 — the `ace` API facade, decode and allocation recovery (this release); 0.6.1 — decimal floats (ALP),
+more numeric modes and Format 1.5;
 0.7 — C ABI, Java (Panama FFM) and Scala SDK; 0.8 — adaptive segmentation and columnar blocks
 (Format 2.0); 0.9 — integration with AdaptiveDB and GraphNet; 1.0 — stable API and format.
 See [`ROADMAP.md`](ROADMAP.md) and [`CHANGELOG.md`](CHANGELOG.md).

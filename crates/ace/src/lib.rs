@@ -11,6 +11,31 @@
 //! (`ace-core`, `ace-engine`, `ace-format`, …) are internal building blocks: they are not
 //! published and may change in any release.
 //!
+//! # Quick start
+//!
+//! ```
+//! use std::io::Cursor;
+//! use ace::{Config, DecodeLimits, Engine, Profile};
+//!
+//! # let input = b"2026-10-16,sensor-1,42\n".repeat(20_000);
+//! // Compress and decompress in memory.
+//! let engine = Engine::new(Config::builder().profile(Profile::Balanced).build()?)?;
+//! let (packed, stats) = engine.compress_with_stats(&input)?;
+//! assert_eq!(engine.decompress(&packed)?, input);
+//! println!("{} -> {} bytes, ratio {:.1}", stats.input_bytes, stats.output_bytes, stats.ratio());
+//!
+//! // Read a byte range without decompressing the rest.
+//! let mut reader = engine.open_range_reader(Cursor::new(&packed))?;
+//! assert_eq!(reader.read_range(4_000..4_100)?, input[4_000..4_100]);
+//!
+//! // Decode untrusted input under explicit limits.
+//! let strict = Engine::default()
+//!     .with_decode_limits(DecodeLimits::builder().max_output_size(64 << 20).build());
+//! let restored = strict.decompress(&packed)?;
+//! # assert_eq!(restored, input);
+//! # Ok::<(), ace::Error>(())
+//! ```
+//!
 //! # Items
 //!
 //! | Item | Purpose |

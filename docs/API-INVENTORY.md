@@ -47,25 +47,25 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | Item | Kind | Location | Summary |
 |---|---|---|---|
 | `Profile` | item | `config.rs:13` | How much encoder effort to spend to make the output smaller. |
-| `BlockSizePolicy` | item | `config.rs:26` | Whether the block size is used as given or chosen once per file. |
-| `AccessHint` | item | `config.rs:37` | The expected way the file will be read; consulted by [`BlockSizePolicy::Auto`]. |
-| `Config` | item | `config.rs:49` | Validated compression settings. Create with [`Config::builder`] or [`Config::default`]. |
-| `builder` | method | `config.rs:56` | Starts a builder initialised with the defaults. |
-| `block_size` | method | `config.rs:64` | Target size of each independent block, in bytes. |
-| `profile` | method | `config.rs:70` | The effort profile. |
-| `threads` | method | `config.rs:80` | Worker threads; zero means one per logical CPU. |
-| `write_index` | method | `config.rs:86` | Whether a block index is written (needed for random access). |
-| `ConfigBuilder` | item | `config.rs:97` | Builds a [`Config`]. Every setter is optional; [`build`](Self::build) validates the result. |
-| `block_size` | method | `config.rs:104` | Target size of each independent block (default 256 KiB). Must be non-zero and fit `u32`. |
-| `profile` | method | `config.rs:111` | Encoder effort (default [`Profile::Balanced`]). |
-| `threads` | method | `config.rs:123` | Worker threads; zero (the default) means one per logical CPU. Output is identical |
-| `memory_budget` | method | `config.rs:130` | Soft cap on the memory used by blocks in flight (default 256 MiB). |
-| `write_index` | method | `config.rs:138` | Writes the block index and trailer (default `true`). Without it the file can only be |
-| `block_size_policy` | method | `config.rs:145` | Fixed or automatic block size (default [`BlockSizePolicy::Fixed`]). |
-| `access_hint` | method | `config.rs:155` | Expected access pattern (default [`AccessHint::Balanced`]). |
-| `numeric_specialization` | method | `config.rs:166` | Enables the integer pipelines (FOR, delta, delta-of-delta; default `true`). |
-| `float_specialization` | method | `config.rs:174` | Enables the floating-point and time-series pipelines (default `true`). `false` |
-| `build` | method | `config.rs:185` | Validates the settings. |
+| `BlockSizePolicy` | item | `config.rs:28` | Whether the block size is used as given or chosen once per file. |
+| `AccessHint` | item | `config.rs:39` | The expected way the file will be read; consulted by [`BlockSizePolicy::Auto`]. |
+| `Config` | item | `config.rs:51` | Validated compression settings. Create with [`Config::builder`] or [`Config::default`]. |
+| `builder` | method | `config.rs:58` | Starts a builder initialised with the defaults. |
+| `block_size` | method | `config.rs:66` | Target size of each independent block, in bytes. |
+| `profile` | method | `config.rs:72` | The effort profile. |
+| `threads` | method | `config.rs:82` | Worker threads; zero means one per logical CPU. |
+| `write_index` | method | `config.rs:88` | Whether a block index is written (needed for random access). |
+| `ConfigBuilder` | item | `config.rs:99` | Builds a [`Config`]. Every setter is optional; [`build`](Self::build) validates the result. |
+| `block_size` | method | `config.rs:106` | Target size of each independent block (default 256 KiB). Must be non-zero and fit `u32`. |
+| `profile` | method | `config.rs:113` | Encoder effort (default [`Profile::Balanced`]). |
+| `threads` | method | `config.rs:125` | Worker threads; zero (the default) means one per logical CPU. Output is identical |
+| `memory_budget` | method | `config.rs:132` | Soft cap on the memory used by blocks in flight (default 256 MiB). |
+| `write_index` | method | `config.rs:140` | Writes the block index and trailer (default `true`). Without it the file can only be |
+| `block_size_policy` | method | `config.rs:147` | Fixed or automatic block size (default [`BlockSizePolicy::Fixed`]). |
+| `access_hint` | method | `config.rs:157` | Expected access pattern (default [`AccessHint::Balanced`]). |
+| `numeric_specialization` | method | `config.rs:168` | Enables the integer pipelines (FOR, delta, delta-of-delta; default `true`). |
+| `float_specialization` | method | `config.rs:176` | Enables the floating-point and time-series pipelines (default `true`). `false` |
+| `build` | method | `config.rs:187` | Validates the settings. |
 | `Engine` | item | `engine.rs:30` | Compresses and decompresses ACE files. |
 | `new` | method | `engine.rs:53` | An engine with the given settings and the default decode limits. |
 | `with_decode_limits` | method | `engine.rs:64` | Replaces the limits applied while decoding. |
@@ -213,8 +213,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 |---|---|---|---|
 | `encode_codec` | item | `dispatch.rs:19` | Encodes a transformed byte stream with the requested primary codec. |
 | `decode_codec` | item | `dispatch.rs:36` | Decodes a primary codec stream to exactly `expected_size` bytes. |
-| `lz_encode` | item | `lz.rs:21` | Encodes a byte slice into a simple LZ token stream. |
-| `lz_decode` | item | `lz.rs:69` | Decodes a simple LZ token stream with strict reference and output validation. |
+| `lz_encode` | item | `lz.rs:96` | Encodes a byte slice into a simple LZ token stream. |
+| `lz_decode` | item | `lz.rs:157` | Decodes a simple LZ token stream with strict reference and output validation. |
 | `numeric_decode` | item | `numeric/decode.rs:24` | Decodes a NUM1 payload to exactly `expected_size` bytes. |
 | `numeric_encode` | item | `numeric/encode.rs:21` | Encodes bytes with the smallest deterministic FOR/Delta/DoD+BitPack representation. |
 | `numeric_encode_with` | item | `numeric/encode.rs:35` | Encodes bytes with an explicitly chosen lane width and mode. |

@@ -6,8 +6,8 @@ Canonical process of the current release line (0.5.x). Earlier checklists:
 ## 1. Automatic pipeline
 
 ```bash
-git worktree add ../ace-0.5.0 v0.5.0            # the previous release, for the interleaved A/B
-./ace-release0.6.0.sh ../ace-0.5.0              # on the reference machine, performance governor
+git worktree add ../ace-0.5.1 v0.5.1            # the previous release, for the interleaved A/B
+./ace-release0.6.0.sh ../ace-0.5.1              # on the reference machine, performance governor
 ```
 
 `ace-release0.6.0.sh` runs every step below, records each in

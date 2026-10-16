@@ -82,9 +82,13 @@ Details per field: [`DECODER-AUDIT.md`](DECODER-AUDIT.md).
   (`DecodeLimits::max_block_count`, `INDEX_HEADER_SIZE`, the `ace version` command) and
   marked superseded entry points `#[deprecated]` (`evaluate_candidates_v3`,
   `evaluate_candidates_v4`).
-* The public API is `ace-core`, `ace-engine` and `ace-stream`; every other crate is internal
-  and may change in any 0.x release ([`API-INVENTORY.md`](API-INVENTORY.md)). 0.6 replaces
-  the three public crates by one `ace` facade; deprecated items are removed then.
+* 0.6.0 replaced the three public crates (`ace-core`, `ace-engine`, `ace-stream`) by the `ace`
+  facade, which is the only public API; every other crate is internal (`publish = false`) and
+  may change in any release ([`API-INVENTORY.md`](API-INVENTORY.md)). The deprecated
+  `evaluate_candidates_v3` / `_v4` were removed. Migration: [`MIGRATION-0.5-TO-0.6.md`](MIGRATION-0.5-TO-0.6.md).
+* Within a 0.x series the facade changes only additively: its enums and structs that may grow
+  are `#[non_exhaustive]`, and `ErrorKind` is the stable contract of failures (messages are for
+  people).
 * The `ace` CLI keeps its commands and options within a minor series; new commands are
   additive. Exit status: 0 success (also when stdout is closed early), 1 error, 2 usage error.
 
