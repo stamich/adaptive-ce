@@ -36,8 +36,7 @@ release.
 | Area | Gate | Evidence |
 |---|---|---|
 | Build, lints, rustdoc (incl. private items) | 0 warnings | step 1 |
-| MSRV 1.97 | PASS | CI `msrv` job (`cargo +1.97.0`) |
-| Build toolchain 1.98.1 | PASS | CI `pr` job (`rust-toolchain.toml`) |
+| MSRV = build toolchain 1.98.1 | PASS | CI `pr` job (`rust-toolchain.toml`) |
 | Unsafe / panic / decoder audit | PASS, no new `unsafe` | step 2, [`DECODER-AUDIT.md`](DECODER-AUDIT.md) |
 | Golden 0.5.0 + frozen 0.4.6, auto + scalar | identical | step 4 |
 | Compatibility fixtures (0.2.1 – 0.5.0) | every file decodes byte for byte | `compat_fixtures` |

@@ -45,7 +45,7 @@ cargo build --release                                  # builds the `ace` binary
 ./demo/ace-run-demo0.6.0.sh                            # one-minute product tour
 ```
 
-Requirements: Rust 1.97.0 or newer (MSRV); the repository pins the build toolchain to 1.98.1
+Requirements: Rust 1.98.1 or newer (MSRV); the repository pins the build toolchain to 1.98.1
 in `rust-toolchain.toml` (never use 1.98.0). Python 3.9+ for the benchmark and release tools.
 
 ## Command line
@@ -118,7 +118,7 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 
 ```bash
 ./ace-build0.6.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
-./ace-ci0.6.0.sh pr | msrv | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
+./ace-ci0.6.0.sh pr | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
 ./ace-benchmark0.6.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
 ./ace-ab0.6.0.sh /path/to/ace-0.5.0                  # interleaved A/B against the previous release
 ./ace-benchmark-compare0.6.0.sh OLD NEW              # any two result files or directories

@@ -88,8 +88,10 @@ Details per field: [`DECODER-AUDIT.md`](DECODER-AUDIT.md).
 
 ## Toolchain
 
-* MSRV (`rust-version`): **1.97.0**, checked by the CI `msrv` job with an explicit
-  `cargo +1.97.0`. Raising it is a minor-release change.
+* MSRV (`rust-version`): **1.98.1** since 0.6.0 (0.5.x: 1.97.0). It equals the pinned build
+  toolchain, so the `pr` CI job checks it; there is no separate MSRV job. Until 1.0 the MSRV
+  may rise in any minor release (`0.x.0`), always announced in the CHANGELOG, RELEASE-NOTES and
+  README; patch releases never raise it.
 * Build toolchain (`rust-toolchain.toml`): **1.98.1** — every build, CI run and benchmark
   fingerprint uses the same compiler and clippy. Rust 1.98.0 must not be used (vtable
   miscompilation fixed in 1.98.1).

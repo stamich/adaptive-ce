@@ -6,7 +6,6 @@
 #   ./ace-ci0.6.0.sh fuzz      all 15 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
 #                              ACE_FUZZ_CMIN=1 minimises every corpus afterwards
 #   ./ace-ci0.6.0.sh fuzz-smoke  all 15 fuzz targets, ACE_FUZZ_SMOKE_SECONDS each (default 25)
-#   ./ace-ci0.6.0.sh msrv      check + test with Rust 1.97 (SKIPPED when not installed)
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.6.0.sh"
 cd "$ACE_ROOT"
@@ -45,23 +44,8 @@ case "${1:-}" in
       fi
     done
     ;;
-  msrv)
-    # The MSRV (1.97.0) is selected explicitly: rust-toolchain.toml pins the newer build
-    # toolchain, so a plain `cargo` would not test the MSRV at all.
-    toolchain=()
-    if cargo +1.97.0 --version >/dev/null 2>&1; then
-      toolchain=(+1.97.0)
-    elif cargo +1.97 --version >/dev/null 2>&1; then
-      toolchain=(+1.97)
-    elif ! rustc --version | grep -q '^rustc 1\.97\.'; then
-      ace_log "msrv: SKIPPED (Rust 1.97 not installed: rustup toolchain install 1.97.0)"
-      exit 0
-    fi
-    cargo "${toolchain[@]}" check --workspace --all-targets --locked
-    cargo "${toolchain[@]}" test --workspace --locked
-    ;;
   *)
-    ace_die "usage: $0 {pr|release|fuzz|fuzz-smoke|msrv}"
+    ace_die "usage: $0 {pr|release|fuzz|fuzz-smoke}"
     ;;
 esac
 ace_log "ci '$1' completed"

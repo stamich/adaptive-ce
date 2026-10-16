@@ -1,6 +1,6 @@
 # Thin GitHub Actions wrapper around the vendor-neutral ./ace-ci0.6.0.sh.
-# The build toolchain (1.98.1 + rustfmt + clippy) comes from rust-toolchain.toml; the msrv job
-# installs the MSRV (1.97.0) next to it and selects it explicitly.
+# The build toolchain (1.98.1 + rustfmt + clippy) comes from rust-toolchain.toml and is also the
+# MSRV (`rust-version`), so one `pr` job covers both.
 #
 # Every job keeps its full output in ci.log; on failure the compiler errors, clippy lints, test
 # failures and panics are re-emitted as `::error::` annotations so they are visible in the
@@ -14,14 +14,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup show && rustc --version && cargo clippy --version
       - run: set -o pipefail; ./ace-ci0.6.0.sh pr 2>&1 | tee ci.log
-      - if: failure()
-        run: tools/ace-ci-annotate0.6.0.sh ci.log
-  msrv:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup toolchain install 1.97.0 --profile minimal && cargo +1.97.0 --version
-      - run: set -o pipefail; ./ace-ci0.6.0.sh msrv 2>&1 | tee ci.log
       - if: failure()
         run: tools/ace-ci-annotate0.6.0.sh ci.log
   fuzz-smoke:

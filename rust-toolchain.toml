@@ -2,9 +2,8 @@
 # compiler and the same clippy lint set (a newer stable on a runner can add lints that fail
 # `clippy -D warnings`). rustup installs it automatically on first use.
 #
-# 1.98.1 fixes a vtable miscompilation of 1.98.0; never build ACE with 1.98.0. The toolchain is
-# deliberately separate from the MSRV (`rust-version` in Cargo.toml, 1.97.0), which the `msrv`
-# CI job keeps honest with an explicit `cargo +1.97.0`.
+# 1.98.1 fixes a vtable miscompilation of 1.98.0; never build ACE with 1.98.0. Since 0.6.0 the
+# MSRV (`rust-version` in Cargo.toml) is this same version, so there is no separate MSRV job.
 [toolchain]
 channel = "1.98.1"
 components = ["rustfmt", "clippy"]
