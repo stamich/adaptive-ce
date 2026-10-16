@@ -16,6 +16,7 @@ members = [
   "crates/ace-simd",
   "crates/ace-stream",
   "crates/ace-engine",
+  "crates/ace",
   "crates/ace-cli",
   "crates/ace-corpus",
   "crates/ace-bench",
@@ -34,7 +35,7 @@ panic = "unwind"
 version = "0.6.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://example.invalid/ace"
+repository = "https://github.com/stamich/adaptive-ce"
 rust-version = "1.98.1"
 
 [workspace.lints.rust]
