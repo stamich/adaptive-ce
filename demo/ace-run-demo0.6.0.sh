@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ACE 0.5.1 product demo (< 1 minute after a release build). No benchmarks.
+# ACE 0.6.0 product demo (< 1 minute after a release build). No benchmarks.
 #
 #   1. four representative workloads -> ratio, throughput, selected codecs, verified roundtrip
 #   2. Float lane (new in 0.5.0): float / sparse-change series with the lane on and off,
@@ -9,7 +9,7 @@
 #      including a TS1 file whose header is rewritten as Format 1.4
 #   5. determinism: 1 thread vs all threads vs ACE_SIMD=scalar (SHA-256)
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/tools/ace-common0.5.1.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/tools/ace-common0.6.0.sh"
 cd "$ACE_ROOT"
 
 WORK="$ACE_ROOT/target/demo-$ACE_VERSION"
@@ -39,7 +39,7 @@ for workload in structured-json u32-counter u64-timestamps-ns random; do
   printf '%-20s %8.2f %12s %12s  %s\n' "$workload" "$(python3 -c "print($bytes/$packed)")" \
     "$(mb_s "$bytes" $((t1 - t0)))" "$(mb_s "$bytes" $((t2 - t1)))" "$codecs"
 done
-echo "(timings include process start-up and file I/O; see ace-benchmark0.5.1.sh for measurements)"
+echo "(timings include process start-up and file I/O; see ace-benchmark0.6.0.sh for measurements)"
 
 ace_step "2. Float lane (TS1 / Format 1.4): lane on vs --disable-float, 1 thread, $SIZE each"
 printf '%-24s %-9s %10s %10s %8s %12s  %s\n' workload profile 'ratio on' 'ratio off' format 'comp MB/s' 'TS1 blocks'

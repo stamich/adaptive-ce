@@ -9,10 +9,10 @@ schema 2.2, three-run repeatability, the governor gate and the `allocation-profi
 ## Running
 
 ```bash
-./ace-benchmark0.5.1.sh all                     # every family + validation + Regression V3
-./ace-benchmark0.5.1.sh all --repeat 3          # release baseline: three runs, repeatability, medians
-./ace-benchmark0.5.1.sh release-performance --quick   # smoke (1 batch; never a release verdict)
-./ace-ab0.5.1.sh /path/to/ace-0.5.0             # interleaved A/B against the previous release
+./ace-benchmark0.6.0.sh all                     # every family + validation + Regression V3
+./ace-benchmark0.6.0.sh all --repeat 3          # release baseline: three runs, repeatability, medians
+./ace-benchmark0.6.0.sh release-performance --quick   # smoke (1 batch; never a release verdict)
+./ace-ab0.6.0.sh /path/to/ace-0.5.0             # interleaved A/B against the previous release
 ```
 
 ## Why (0.4.6)
@@ -63,7 +63,7 @@ Stability limits (batch MAD): compression and numeric encode 3 %, decode 5 %, wa
 
 ## Relative gates: interleaved A/B
 
-`tools/ace-ab0.5.1.py` builds the same probe (`tools/ace-abprobe0.5.1`) against the baseline
+`tools/ace-ab0.6.0.py` builds the same probe (`tools/ace-abprobe0.6.0`) against the baseline
 source tree (the previous release) and against the candidate (identical release profile), then for each case runs three
 batches per side **in alternating order** in one session:
 
@@ -75,7 +75,7 @@ batches per side **in alternating order** in one session:
 * otherwise regression (`fail`) only if `speed_ratio < required` **and** the best per-batch
   ratio is below `required + 0.02`.
 
-**A/A control.** `./ace-ab0.5.1.sh .` compares the candidate with itself (built in a separate
+**A/A control.** `./ace-ab0.6.0.sh .` compares the candidate with itself (built in a separate
 directory). On the 2-vCPU development VM used for 0.4.6, A/A decode ratios moved by up to
 ±20 % between separately linked but source-identical binaries (code layout, neighbours), while
 encode cases stayed within ±4 %. Run the A/A control first on a new machine: only differences
@@ -115,9 +115,9 @@ unchanged.
 ## Repeatability and the release baseline (0.5.1)
 
 A release baseline is the **median of three complete runs** on the reference machine
-(`./ace-benchmark0.5.1.sh all --repeat 3`, also what `ace-release0.5.1.sh` runs):
+(`./ace-benchmark0.6.0.sh all --repeat 3`, also what `ace-release0.6.0.sh` runs):
 
-* runs go to `examples/results/run-1 … run-3`; `tools/ace-repeatability0.5.1.py` compares them
+* runs go to `examples/results/run-1 … run-3`; `tools/ace-repeatability0.6.0.py` compares them
   and writes, per family, the document whose timing objects are the median run of each
   measurement into `examples/results/` — that directory is then evaluated by Regression V3
   and published as `examples/baselines/<version>/`;
@@ -203,5 +203,5 @@ below the slowest measured machine so they stay portable:
 
 ## Good practice
 
-`./ace-benchmark0.5.1.sh all --isolated` pins to a CPU subset (taskset) and prints hints:
+`./ace-benchmark0.6.0.sh all --isolated` pins to a CPU subset (taskset) and prints hints:
 `performance` governor, no concurrent builds, AC power, idle machine.

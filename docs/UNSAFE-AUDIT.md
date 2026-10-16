@@ -10,7 +10,7 @@ Canonical audit of the current release (0.5.1). Earlier versions: [`history/`](h
 | `ace-bench` (benchmark harness and its tests, not shipped as a library) | counting `GlobalAlloc` | `unsafe_op_in_unsafe_fn = deny`, `undocumented_unsafe_blocks = deny`, `missing_safety_doc = deny` |
 
 **0.5.0 and 0.5.1 add no production `unsafe`.** 0.5.1 adds one test-only allocator
-(`crates/ace-bench/tests/limits_before_allocation.rs`, see below). `tools/ace-code_audit0.5.1.py`
+(`crates/ace-bench/tests/limits_before_allocation.rs`, see below). `tools/ace-code_audit0.6.0.py`
 scans production code, build scripts and tests and fails if `unsafe` appears outside the
 audited files or without a `// SAFETY:` comment; the generated inventory is in
 [`PANIC-AUDIT.md`](PANIC-AUDIT.md).

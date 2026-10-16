@@ -1,6 +1,6 @@
 # Adaptive Compression Engine (ACE)
 
-[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.5.1.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.5.1.yml)
+[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.0.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.0.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=coverage)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
@@ -42,7 +42,7 @@ cargo build --release                                  # builds the `ace` binary
 ./target/release/ace compress data.bin data.ace        # --profile fast | balanced | dense
 ./target/release/ace decompress data.ace restored.bin
 ./target/release/ace version                           # version, formats, backends, git revision
-./demo/ace-run-demo0.5.1.sh                            # one-minute product tour
+./demo/ace-run-demo0.6.0.sh                            # one-minute product tour
 ```
 
 Requirements: Rust 1.97.0 or newer (MSRV); the repository pins the build toolchain to 1.98.1
@@ -117,18 +117,18 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 ## Development
 
 ```bash
-./ace-build0.5.1.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
-./ace-ci0.5.1.sh pr | msrv | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
-./ace-benchmark0.5.1.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
-./ace-ab0.5.1.sh /path/to/ace-0.5.0                  # interleaved A/B against the previous release
-./ace-benchmark-compare0.5.1.sh OLD NEW              # any two result files or directories
-./ace-release0.5.1.sh /path/to/ace-0.5.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+./ace-build0.6.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
+./ace-ci0.6.0.sh pr | msrv | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
+./ace-benchmark0.6.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
+./ace-ab0.6.0.sh /path/to/ace-0.5.0                  # interleaved A/B against the previous release
+./ace-benchmark-compare0.6.0.sh OLD NEW              # any two result files or directories
+./ace-release0.6.0.sh /path/to/ace-0.5.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
 ```
 
 | Path | Content |
 |---|---|
 | `crates/` | 18 crates ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
-| `ace-*0.5.1.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
+| `ace-*0.6.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
 | `examples/golden/` | golden SHA-256 (0.5.0; frozen 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |

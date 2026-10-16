@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Shared helpers of the ACE 0.5.1 scripts; sourced, never executed.
+# Shared helpers of the ACE 0.6.0 scripts; sourced, never executed.
 #
 #   ACE_VERSION   product / Cargo / result-file version
 #   ACE_BASELINE  predecessor used by A/B and stored-baseline diagnostics

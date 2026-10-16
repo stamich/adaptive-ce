@@ -74,7 +74,7 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
   `try_from → checked_* → DecodeLimits → allocation`; the parser modules compile with
   `clippy::arithmetic_side_effects` and `clippy::cast_possible_truncation`, so an unchecked
   operation fails the build. Field-by-field evidence: [`DECODER-AUDIT.md`](DECODER-AUDIT.md)
-  (generated, verified by `tools/ace-code_audit0.5.1.py`).
+  (generated, verified by `tools/ace-code_audit0.6.0.py`).
 * `DecodeLimits` is a contract: the table on the type says which reader applies which limit;
   `crates/ace-bench/tests/limits_before_allocation.rs` measures that a forged size fails
   before a buffer of that size exists.

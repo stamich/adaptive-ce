@@ -50,5 +50,5 @@ Scripts that parse the first output line of `compress` keep working.
 * result files are `benchmark-0.5.0-<family>.json` (schema 2.1 unchanged); new families
   `float-ablation`, `float`, `float-fastpath`, `float-false-positive`, `float-estimator`;
 * Regression V3 reads those families and has a `float` section;
-* the A/B baseline is the 0.4.6 source tree (`./ace-ab0.5.1.sh <0.4.6-tree>`);
+* the A/B baseline is the 0.4.6 source tree (`./ace-ab0.6.0.sh <0.4.6-tree>`);
 * `ace-corpus` lists 27 workloads (Corpus V3 + V4) plus the false-positive cases (`fp-*`).

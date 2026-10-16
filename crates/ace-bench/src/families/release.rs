@@ -1,7 +1,7 @@
 //! `release-performance`: exactly the cases the 0.4.6 performance gates are evaluated on.
 //!
 //! Every row carries a stable `case_id` (`<area>.<variant>`) used by
-//! `tools/ace-check_regressions0.5.1.py` and by the interleaved A/B script.
+//! `tools/ace-check_regressions0.6.0.py` and by the interleaved A/B script.
 //! Float lane cases (ACE 0.5.0) also measure the same engine with the lane disabled in the
 //! same run, so their gates are ratios within one process, not cross-run comparisons.
 //! Decompression is measured into a reused, pre-allocated buffer

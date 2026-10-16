@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Shared helpers of the ACE 0.5.1 benchmark tools (schema 2.0 – 2.2).
+"""Shared helpers of the ACE 0.6.0 benchmark tools (schema 2.0 – 2.2).
 
-Loaded by every ``tools/ace-*0.5.1.py`` script through :func:`load_benchlib`-style
+Loaded by every ``tools/ace-*0.6.0.py`` script through :func:`load_benchlib`-style
 ``importlib`` boilerplate (the hyphenated, versioned file name cannot be imported directly).
 
 Contents:

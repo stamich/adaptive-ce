@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ACE 0.5.1 benchmark repeatability: N complete runs -> median documents + gates.
+"""ACE 0.6.0 benchmark repeatability: N complete runs -> median documents + gates.
 
 Gates (exit 1 on violation):
 
@@ -24,7 +24,7 @@ With ``--median-out DIR`` the tool writes, per family, the run document whose ti
 are replaced by the median run of each timing object (the object whose median-of-medians is
 the median of the runs). That directory is the release baseline (median of three clean runs).
 
-usage: ace-repeatability0.5.1.py RUN_DIR RUN_DIR [RUN_DIR ...] [--median-out DIR]
+usage: ace-repeatability0.6.0.py RUN_DIR RUN_DIR [RUN_DIR ...] [--median-out DIR]
                                  [--max-spread PERCENT] [--max-decode-spread PERCENT]
                                  [--output FILE]
 """
@@ -41,8 +41,8 @@ from typing import Any, Iterator
 
 
 def _benchlib():
-    """Load the shared ``ace-benchlib0.5.1.py`` module that sits next to this script."""
-    path = pathlib.Path(__file__).with_name("ace-benchlib0.5.1.py")
+    """Load the shared ``ace-benchlib0.6.0.py`` module that sits next to this script."""
+    path = pathlib.Path(__file__).with_name("ace-benchlib0.6.0.py")
     spec = importlib.util.spec_from_file_location("ace_benchlib", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
