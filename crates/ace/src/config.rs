@@ -16,7 +16,9 @@ pub enum Profile {
     /// Balances size and CPU cost. The default.
     #[default]
     Balanced,
-    /// Prefers the smallest output over encoder CPU cost.
+    /// Spends about a third more encoding time to search more candidates. It saves up to
+    /// about 3 % on floating-point and low-cardinality data but is not guaranteed to be smaller
+    /// than [`Profile::Balanced`] (see `docs/BENCHMARKS.md`).
     Dense,
 }
 

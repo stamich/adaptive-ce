@@ -154,10 +154,40 @@ Replays the first 16 blocks of each `memory` case exactly as the block encoder p
 counts allocations per stage (classify, NumericFast, FloatFast, analysis, candidates,
 evaluator, TS1 policy, encode), next to the engine total. It explains the allocation churn
 seen in the 0.5.0 baseline: for `int-sparse-change` BALANCED (~36 bytes allocated per input
-byte) about 94 % comes from the generic V4.3 evaluator's sampled micro-trials, which run
-before the TS1 RunDelta candidate replaces the generic plan. Measurement only — deciding TS1
-earlier changes the order of work and is planned for 0.6. The performance report prints the
-table.
+byte) about 94 % came from the generic V4.3 evaluator, whose sampled micro-trials ran before
+the TS1 RunDelta candidate replaced the generic plan. The allocations themselves came from
+`lz_encode`, which allocated a 512 KiB hash table and an 8-byte-per-byte chain table for every
+sample; since 0.6.0 each thread reuses them (output unchanged), and the same row reports about
+6 bytes per input byte. Deciding TS1 earlier would change the order of work and is not done.
+The performance report prints the table.
+
+### DENSE versus BALANCED (0.6.0 decision)
+
+Question: does `Profile::Dense` earn its extra encode time? Data: container sizes of the 27
+workloads of the golden file (1 MiB each, deterministic) and the stored 0.5.1 baseline
+(`compression`, `mixed_16m`, reference machine).
+
+| | FAST | BALANCED | DENSE |
+|---|---|---|---|
+| bytes, 27 workloads | 7 671 209 | 6 880 023 | 6 859 138 |
+| versus BALANCED | +11.5 % | — | −0.30 % |
+| `mixed_16m` ratio | 3.682 | 3.726 | 3.722 |
+| `mixed_16m` encode | 334 MB/s | 223 MB/s | 167 MB/s |
+| `mixed_16m` decode | 4 821 MB/s | 4 564 MB/s | 4 161 MB/s |
+
+* DENSE is smaller than BALANCED by more than 0.5 % on 5 of 27 workloads: `low-cardinality`
+  (−2.6 %), `f64-financial-price` (−2.1 %), `f32-sensor` (−1.7 %), `f64-noisy` (−1.2 %),
+  `f32-smooth` (−0.9 %). It is identical on 15 and **larger** on `runs` (+10.9 %), `zeros`
+  (+30 %), `f64-special` (+0.9 %) and `mixed` (+0.1 %).
+* It costs 34 % more encode time and decodes 9 % slower than BALANCED on the mixed workload,
+  where it is also 0.1 % larger.
+
+Decision for 0.6.0: **BALANCED remains the default and the recommendation; DENSE is kept as it
+is** (0.6.0 may not change a byte) and documented as "may save up to about 3 % on
+floating-point and low-cardinality data for a third more encoding time, and is not guaranteed
+to be smaller than BALANCED". The cases where it is larger show that its estimates, not its
+search, are the limit; making DENSE never worse than BALANCED changes planner decisions and
+is therefore a candidate for 0.6.1 with the other Phase B changes.
 
 ### Float lane families (0.5.0)
 
