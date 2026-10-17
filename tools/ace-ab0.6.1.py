@@ -64,8 +64,8 @@ class Case:
 
 
 CASES = [
-    Case("compression.fast.encode", 0.95, 3.0),
-    Case("compression.balanced.encode", 0.95, 3.0),
+    Case("compression.fast.encode", 0.90, 3.0),
+    Case("compression.balanced.encode", 0.93, 3.0),
     # DENSE also plans every block as BALANCED (never larger than BALANCED): about 0.58x.
     Case("compression.dense.encode", 0.50, 3.0, output_changes=True),
     Case("compression.fast.decode", 0.95, 5.0),

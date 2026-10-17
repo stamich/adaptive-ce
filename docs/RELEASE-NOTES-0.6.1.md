@@ -70,7 +70,9 @@ encode 1.40× and decode 3.49×. The first run also showed FAST / BALANCED encod
 workload at 0.92× / 0.94× and `f64_noisy` encode at 0.79× with identical output; both were
 traced to the size counting of the new candidates and reduced (early-exit RunDelta count, cheaper
 ALP sample test) in the commit that follows it, so the next A/B run on that machine decides.
-The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
+Second reference run: 16 of 18 cases pass; FAST encode 0.937× and BALANCED encode 0.951× of 0.6.0 for identical output
+(extra planning work on the Mixed workload, part of it the exact RunDelta size count of one block), `f64_noisy` encode
+0.98×. Their floors are 0.90 and 0.93. The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
 
 ## Not covered here
 

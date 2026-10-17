@@ -361,3 +361,60 @@ fn encoded_len_within_agrees_with_encoded_len() {
         );
     }
 }
+
+/// Deterministic xorshift stream for the RunDelta size test.
+fn xorshift(seed: u64) -> impl Iterator<Item = u64> {
+    let mut state = seed;
+    std::iter::repeat_with(move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        state
+    })
+}
+
+/// The branch-free RunDelta counter equals the length of the real encoder for every lane width,
+/// for tiny and empty inputs, trailing bytes, huge jumps (a delta of `2^63` costs 129 bits in
+/// gamma) and every change rate.
+#[test]
+fn run_delta_counter_matches_the_encoder() {
+    for lane_bytes in [2u8, 4, 8] {
+        let layout = TimeSeriesLayout::run_delta(lane_bytes);
+        for change_per_mille in [0u64, 10, 250, 500, 900, 1000] {
+            for count in [0usize, 1, 2, 3, 17, 5_000] {
+                for tail in [0usize, 1, 3] {
+                    let mut draws = xorshift(7 + change_per_mille + count as u64);
+                    let mut value = 0u64;
+                    let mut input = Vec::new();
+                    for _ in 0..count {
+                        let draw = draws.next().unwrap();
+                        if draw % 1000 < change_per_mille {
+                            value = match draw >> 60 {
+                                0 => value ^ (1 << 63),
+                                1..=3 => draws.next().unwrap(),
+                                _ => value.wrapping_add(draw >> 56 & 7).wrapping_sub(3),
+                            };
+                        }
+                        input.extend_from_slice(&value.to_le_bytes()[..lane_bytes as usize]);
+                    }
+                    input.extend(std::iter::repeat_n(0xA5u8, tail));
+                    let actual = ts1_encode_with(&input, layout).unwrap().len();
+                    assert_eq!(
+                        ts1_encoded_len(&input, layout).unwrap(),
+                        actual,
+                        "u{} rate {change_per_mille} count {count} tail {tail}",
+                        lane_bytes * 8
+                    );
+                    assert_eq!(
+                        ts1_encoded_len_within(&input, layout, actual).unwrap(),
+                        Some(actual)
+                    );
+                    assert_eq!(
+                        ts1_encoded_len_within(&input, layout, actual - 1).unwrap(),
+                        None
+                    );
+                }
+            }
+        }
+    }
+}
