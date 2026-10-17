@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use ace_core::{AceResult, DecodeLimits};
 use ace_engine::AceEngine;
 
-/// Sequentially decompresses an ACE 1.0–1.4 stream into a writer with explicit limits.
+/// Sequentially decompresses an ACE 1.0–1.5 stream into a writer with explicit limits.
 ///
 /// # Errors
 ///

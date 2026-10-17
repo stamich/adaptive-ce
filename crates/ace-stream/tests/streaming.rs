@@ -74,7 +74,7 @@ fn streaming_rewrites_header_for_late_ts1_block() {
         StreamLimits::default(),
     )
     .unwrap();
-    assert!(stats.format_1_4);
+    assert_eq!(stats.format_minor, 4);
     assert_eq!(streamed[5], 4);
     let engine = AceEngine::default_engine();
     assert_eq!(streamed, engine.compress(&data).unwrap());
@@ -90,7 +90,7 @@ fn streaming_rewrites_header_for_late_ts1_block() {
         StreamLimits::default(),
     )
     .unwrap();
-    assert!(!stats.format_1_4);
+    assert_eq!(stats.format_minor, 3);
     assert_eq!(plain[5], 3);
 }
 

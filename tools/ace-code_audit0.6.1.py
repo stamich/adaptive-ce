@@ -92,7 +92,7 @@ DECODER_FIELDS = (
     ("File header", "magic, major / minor version",
      "exact magic; major 1, minor <= 4", "-",
      ("crates/ace-engine/tests/malformed_matrix.rs::mutation_table_is_rejected",
-      "crates/ace-format/tests/format_1_4.rs::file_headers_1_0_to_1_4_are_readable")),
+      "crates/ace-format/tests/format_1_4.rs::file_headers_1_0_to_1_5_are_readable")),
     ("File header", "flags (u16)", "only known bits (1.1+), else `UnsupportedFeature`", "-",
      ("crates/ace-engine/tests/malformed_matrix.rs::mutation_table_is_rejected",)),
     ("File header", "default_block_size (u32)", "informational; never sizes an allocation", "-",

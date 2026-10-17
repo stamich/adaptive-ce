@@ -22,6 +22,9 @@ pub struct CompressionStats {
     pub numeric_blocks: u64,
     /// Blocks encoded with the TS1 time-series codec (Format 1.4).
     pub time_series_blocks: u64,
+    /// Minor format version declared by the container (`3` to [`crate::FORMAT_MINOR`]); `0`
+    /// until a container has been assembled.
+    pub format_minor: u8,
     /// Number of blocks using byte-delta transform.
     pub delta_blocks: u64,
     /// Number of blocks finalized by Huffman.

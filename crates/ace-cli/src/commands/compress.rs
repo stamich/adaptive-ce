@@ -35,7 +35,7 @@ pub fn compress(input: &str, output: &str, config: Config) -> Result<()> {
 /// Compresses a file with bounded source-block memory and a deterministic block index.
 ///
 /// The output is byte-identical to `compress` with the same configuration, including the
-/// Format 1.4 header when a block uses TS1 (the header is rewritten in place at the end).
+/// Format 1.4 / 1.5 header when a block needs it (the header is rewritten in place at the end).
 pub fn compress_stream(input: &str, output: &str, config: Config) -> Result<()> {
     files::ensure_distinct(input, output)?;
     let mut out = std::io::stdout().lock();

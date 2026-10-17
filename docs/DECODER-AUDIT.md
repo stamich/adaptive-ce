@@ -16,7 +16,7 @@ wrap-around or an allocation of the forged size
 
 | Structure | Field | Validation | Limit | Tests |
 |---|---|---|---|---|
-| File header | magic, major / minor version | exact magic; major 1, minor <= 4 | - | `malformed_matrix.rs::mutation_table_is_rejected`<br>`format_1_4.rs::file_headers_1_0_to_1_4_are_readable` |
+| File header | magic, major / minor version | exact magic; major 1, minor <= 4 | - | `malformed_matrix.rs::mutation_table_is_rejected`<br>`format_1_4.rs::file_headers_1_0_to_1_5_are_readable` |
 | File header | flags (u16) | only known bits (1.1+), else `UnsupportedFeature` | - | `malformed_matrix.rs::mutation_table_is_rejected` |
 | File header | default_block_size (u32) | informational; never sizes an allocation | - | `malformed_matrix.rs::informational_block_size_field_does_not_affect_decoding` |
 | File header | original_size (u64) | <= limit; reservation capped by `PREALLOCATION_CAP_BYTES`; must equal the sum of the blocks | `max_output_size` | `malformed_matrix.rs::forged_original_size_is_not_preallocated`<br>`limits_before_allocation.rs::forged_original_size_fails_before_allocation` |
@@ -46,7 +46,7 @@ arithmetic or narrowing cast into a build failure. Proven-safe sites:
 
 | Module | Proven-safe allowances |
 |---|---|
-| `crates/ace-format/src/header.rs` | `:184` encoder: see Invariants |
+| `crates/ace-format/src/header.rs` | `:182` encoder: see Invariants |
 | `crates/ace-format/src/index.rs` | none |
 | `crates/ace-format/src/block_io.rs` | none |
 | `crates/ace-index/src/index_reader.rs` | `:18` constant: -28 |

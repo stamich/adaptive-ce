@@ -41,7 +41,7 @@ through the index.
 | 8 | 4 | original size | ≤ `max_block_size`; every decoder must produce exactly this many bytes |
 | 12 | 4 | encoded (payload) size | with the metadata size ≤ `max_encoded_block_size` |
 | 16 | 4 | entropy metadata size | see above |
-| 20 | 1 | primary codec: 0 RAW, 1 RLE, 2 LZ, 3 NUM1 (1.3+), 4 TS1 (1.4+) | known and allowed by the minor version |
+| 20 | 1 | primary codec: 0 RAW, 1 RLE, 2 LZ, 3 NUM1 (1.3+), 4 TS1 (1.4+); NUM1 / TS1 payload modes 4+ need 1.5 | known and allowed by the minor version |
 | 21 | 1 | entropy coder: 0 none, 1 Huffman, 2 rANS, 3 rANS4x (1.2+) | known; rANS4x only in 1.2+ |
 | 22 | 1 | transform count | ≤ `max_transforms` |
 | 23 | 1 | flags: `0x01` dictionary descriptor present (1.1+) | — |
@@ -74,7 +74,8 @@ Entry ids are strictly increasing, logical offsets contiguous, spans inside the 
 | 1.2 | 0.3 | rANS4x entropy coder |
 | 1.3 | 0.4 | NUM1 numeric codec (u16 lanes since 0.4.5) |
 | 1.4 | 0.5 | TS1 time-series codec (Gorilla f64 / f32, RunDelta) |
+| 1.5 | 0.6.1 | NUM1 mode 4 (Patched FOR) and TS1 mode 4 (ALP); the minor version is payload-aware ([`FORMAT-1.5.md`](FORMAT-1.5.md)) |
 
-The writer declares the minimal version a file needs: 1.4 only when a block uses TS1,
-otherwise 1.3. Every field and limit above is cross-referenced to its tests in
+The writer declares the minimal version a file needs: 1.5 when a payload uses a Format 1.5
+mode, 1.4 when a block uses TS1, otherwise 1.3. Every field and limit above is cross-referenced to its tests in
 [`DECODER-AUDIT.md`](DECODER-AUDIT.md).

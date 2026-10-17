@@ -15,8 +15,9 @@ pub fn version() -> Result<()> {
     writeln!(out, "git revision:   {}", env!("ACE_CLI_GIT_REVISION"))?;
     writeln!(
         out,
-        "format writer:  {FORMAT_MAJOR}.{FORMAT_MINOR_BASE} | {FORMAT_MAJOR}.{FORMAT_MINOR} \
-         (minimal version: {FORMAT_MAJOR}.{FORMAT_MINOR} only when a block uses TS1)"
+        "format writer:  {FORMAT_MAJOR}.{FORMAT_MINOR_BASE} | {FORMAT_MAJOR}.4 | \
+         {FORMAT_MAJOR}.{FORMAT_MINOR} (minimal version: 1.4 when a block uses TS1, \
+         1.5 when a payload uses a Format 1.5 mode)"
     )?;
     writeln!(out, "format readers: {}", readers.join(" "))?;
     writeln!(

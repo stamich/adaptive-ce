@@ -2,8 +2,8 @@
 
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 
-use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, CodecId, DecodeLimits};
-use ace_engine::AceEngine;
+use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, DecodeLimits};
+use ace_engine::{block_format_minor, AceEngine};
 use ace_format::{
     encode_file_header, minimal_minor_version, AceReader, AceWriter, FileHeader, SerializedBlock,
     FILE_FLAG_HAS_INDEX, FORMAT_MINOR_BASE,
@@ -52,7 +52,7 @@ pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
     let start = writer.stream_position()?;
     let mut ace = AceWriter::new(writer);
     ace.write_file_header(&file_header)?;
-    let mut codecs_used = Vec::new();
+    let mut minor_needed = FORMAT_MINOR_BASE;
 
     let engine = single_block_engine(&config)?;
     let mut buffer = vec![0u8; config.block_size];
@@ -63,9 +63,7 @@ pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
         read_exactly(&mut reader, source)?;
         let (mut header, metadata, payload) = encode_single_block(&engine, source)?;
         header.block_id = block_id;
-        if !codecs_used.contains(&header.codec) {
-            codecs_used.push(header.codec);
-        }
+        minor_needed = minor_needed.max(block_format_minor(header.codec, header.entropy, &payload));
         ace.write_block(&header, &metadata, &payload)?;
         stats.peak_source_buffer_bytes = stats.peak_source_buffer_bytes.max(remaining);
         stats.input_bytes += remaining as u64;
@@ -77,7 +75,7 @@ pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
         ));
     }
     let (mut sink, output_bytes) = ace.finish(true)?;
-    let minor_version = minimal_minor_version(codecs_used.iter().copied());
+    let minor_version = minimal_minor_version([minor_needed]);
     if minor_version != file_header.minor_version {
         // Rewrite only the fixed 32-byte header; its CRC covers the version byte.
         file_header.minor_version = minor_version;
@@ -87,7 +85,7 @@ pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
         sink.seek(SeekFrom::Start(end))?;
         sink.flush()?;
     }
-    stats.format_1_4 = codecs_used.contains(&CodecId::TimeSeries);
+    stats.format_minor = minor_version;
     stats.output_bytes = output_bytes;
     Ok(stats)
 }

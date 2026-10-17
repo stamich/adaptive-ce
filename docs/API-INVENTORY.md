@@ -28,12 +28,12 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-analysis` | internal | 36 | 12 | 0 |
 | `ace-bench` | internal | 29 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
-| `ace-codecs` | internal | 46 | 16 | 0 |
+| `ace-codecs` | internal | 47 | 16 | 0 |
 | `ace-core` | internal | 31 | 20 | 0 |
 | `ace-corpus` | internal | 4 | 13 | 0 |
 | `ace-cost` | internal | 14 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
-| `ace-engine` | internal | 8 | 22 | 0 |
+| `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-format` | internal | 33 | 14 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
@@ -262,8 +262,9 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `encode_codec` | item | `dispatch.rs:19` | Encodes a transformed byte stream with the requested primary codec. |
-| `decode_codec` | item | `dispatch.rs:36` | Decodes a primary codec stream to exactly `expected_size` bytes. |
+| `payload_minor_version` | item | `dispatch.rs:25` | Lowest minor format version whose readers can decode `primary`, the stream `codec` produced. |
+| `encode_codec` | item | `dispatch.rs:51` | Encodes a transformed byte stream with the requested primary codec. |
+| `decode_codec` | item | `dispatch.rs:68` | Decodes a primary codec stream to exactly `expected_size` bytes. |
 | `LZ_SCRATCH_MAX_INPUT` | item | `lz.rs:20` | Largest input (bytes) encoded with the per-thread tables. Longer inputs allocate their own: |
 | `lz_leave_scratch_dirty` | item | `lz.rs:96` | Test hook: leaves this thread's hash tables dirty, exactly as an encode that unwound would. |
 | `lz_encode` | item | `lz.rs:109` | Encodes a byte slice into a simple LZ token stream. |
@@ -373,13 +374,13 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `label` | method | `plan.rs:139` | Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry. |
 | `BlockProfile` | item | `profile.rs:3` | Statistical description of one input block used by the adaptive planner. |
 | `CompressionStats` | item | `stats.rs:8` | Aggregate telemetry produced by one compression operation. |
-| `compression_ratio` | method | `stats.rs:76` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
-| `record_selected_plan` | method | `stats.rs:85` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
-| `record_plan` | method | `stats.rs:106` | Increments the stable counter associated with one selected physical plan. |
+| `compression_ratio` | method | `stats.rs:79` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
+| `record_selected_plan` | method | `stats.rs:88` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
+| `record_plan` | method | `stats.rs:109` | Increments the stable counter associated with one selected physical plan. |
 | `FORMAT_MAJOR` | item | `version.rs:6` | Current major format version. |
-| `FORMAT_MINOR` | item | `version.rs:8` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec). |
-| `first_release_reading` | item | `version.rs:15` | The ACE release that first reads format `major.minor`, for the versions that are known to be |
-| `NewerFormatHint` | item | `version.rs:28` | Explains why format `major.minor` is rejected, for the [`crate::AceError::UnsupportedVersion`] |
+| `FORMAT_MINOR` | item | `version.rs:9` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the |
+| `first_release_reading` | item | `version.rs:18` | The ACE release that first reads format `major.minor`, for the versions that are known to be |
+| `NewerFormatHint` | item | `version.rs:29` | Explains why format `major.minor` is rejected, for the [`crate::AceError::UnsupportedVersion`] |
 
 ### `ace-corpus` (internal)
 
@@ -449,8 +450,9 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `wrap_entropy_metadata` | item | `block_pipeline.rs:23` | Prepends the primary-stream length to entropy model metadata when the coder requires it. |
-| `split_entropy_metadata` | item | `block_pipeline.rs:46` | Splits stored block metadata into `(entropy model metadata, primary stream length)`. |
+| `wrap_entropy_metadata` | item | `block_pipeline.rs:26` | Prepends the primary-stream length to entropy model metadata when the coder requires it. |
+| `block_format_minor` | item | `block_pipeline.rs:51` | Minor format version a block needs, given its codec, entropy coder and stored payload. |
+| `split_entropy_metadata` | item | `block_pipeline.rs:66` | Splits stored block metadata into `(entropy model metadata, primary stream length)`. |
 | `FixedBlockChunker` | item | `chunker.rs:3` | Deterministic fixed-size block splitter retained by ACE 0.2.1. |
 | `new` | method | `chunker.rs:10` | Creates a chunker or returns `None` for a zero block size. |
 | `chunks` | method | `chunker.rs:14` | Returns an iterator over independent fixed-size source blocks. |
@@ -463,10 +465,10 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `compress` | method | `engine.rs:85` | Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a |
 | `compress_with_stats` | method | `engine.rs:104` | Compresses bytes and returns both the file image and detailed telemetry. |
 | `compress_to` | method | `engine.rs:152` | Compresses source bytes and writes the finished ACE file to an arbitrary sink. |
-| `decompress` | method | `engine.rs:167` | Decompresses an in-memory ACE 1.0 – 1.4 file into reconstructed bytes. |
+| `decompress` | method | `engine.rs:167` | Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes. |
 | `decompress_into` | method | `engine.rs:187` | Decompresses an in-memory ACE file into a caller-owned buffer and returns the number |
-| `decompress_from` | method | `engine.rs:206` | Reads, validates and sequentially decompresses ACE 1.0–1.4 blocks to a writer. |
-| `explain` | method | `engine.rs:252` | Produces deterministic planner explanations (every candidate fully evaluated) without |
+| `decompress_from` | method | `engine.rs:206` | Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer. |
+| `explain` | method | `engine.rs:258` | Produces deterministic planner explanations (every candidate fully evaluated) without |
 | `BlockExplanation` | item | `explain.rs:10` | Planner explanation for one input block. |
 | `RangeAccessMetrics` | item | `indexed.rs:9` | Physical work implied by one logical random-access range request. |
 | `physical_to_logical_ratio` | method | `indexed.rs:23` | Returns physical serialized bytes read divided by logical reconstructed bytes requested. |
@@ -474,11 +476,11 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `AceIndexedDecoder` | item | `indexed.rs:38` | High-level random-access decoder backed by the serialized ACE 1.1/1.2 block index. |
 | `open` | method | `indexed.rs:52` | Opens and validates an indexed ACE stream. |
 | `decode_block` | method | `indexed.rs:63` | Decodes exactly one independent block by stable block identifier. |
-| `range_metrics` | method | `indexed.rs:73` | Returns physical-read diagnostics for a logical range without decoding it. |
-| `read_range` | method | `indexed.rs:101` | Decodes only blocks intersecting the requested logical byte range and trims boundary blocks. |
-| `read_range_with_metrics` | method | `indexed.rs:116` | Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup. |
-| `original_size` | method | `indexed.rs:176` | Returns the total reconstructed size of the file in bytes. |
-| `block_count` | method | `indexed.rs:181` | Returns the number of indexed independent blocks. |
+| `range_metrics` | method | `indexed.rs:79` | Returns physical-read diagnostics for a logical range without decoding it. |
+| `read_range` | method | `indexed.rs:107` | Decodes only blocks intersecting the requested logical byte range and trims boundary blocks. |
+| `read_range_with_metrics` | method | `indexed.rs:122` | Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup. |
+| `original_size` | method | `indexed.rs:182` | Returns the total reconstructed size of the file in bytes. |
+| `block_count` | method | `indexed.rs:187` | Returns the number of indexed independent blocks. |
 
 ### `ace-entropy` (internal)
 
@@ -531,15 +533,15 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `FILE_FLAG_HAS_DICTIONARIES` | item | `header.rs:29` | File flag indicating that one or more block dictionary references may be present. |
 | `SUPPORTED_FILE_FLAGS` | item | `header.rs:31` | Set of format-1.1…1.4 flags understood by ACE. |
 | `BLOCK_FLAG_HAS_DICTIONARY` | item | `header.rs:33` | Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors. |
-| `FileHeader` | item | `header.rs:37` | Fixed ACE file header shared by formats 1.0 – 1.4. |
+| `FileHeader` | item | `header.rs:37` | Fixed ACE file header shared by formats 1.0 – 1.5. |
 | `BlockHeader` | item | `header.rs:53` | Fixed and variable decoder metadata for one ACE block. |
-| `minimal_minor_version` | item | `header.rs:81` | Minor version a writer must declare for a file whose blocks use `codecs`. |
-| `encode_file_header` | item | `header.rs:95` | Serializes a file header, including a CRC32C over its first 28 bytes. |
-| `decode_file_header` | item | `header.rs:116` | Parses and validates a format 1.0 – 1.4 file header. |
-| `block_descriptor_size` | item | `header.rs:167` | Returns the variable descriptor byte count implied by a fixed block header. |
-| `encode_block_header` | item | `header.rs:185` | Serializes one block header and its variable transform/dictionary descriptors. |
-| `decode_block_header` | item | `header.rs:225` | Parses one fixed block header and its caller-supplied variable descriptors. |
-| `decoding_plan` | method | `header.rs:339` | Returns the decoder-relevant physical plan represented by this block header. |
+| `minimal_minor_version` | item | `header.rs:83` | Minor version a writer must declare for a file whose blocks each need the minor version |
+| `encode_file_header` | item | `header.rs:93` | Serializes a file header, including a CRC32C over its first 28 bytes. |
+| `decode_file_header` | item | `header.rs:114` | Parses and validates a format 1.0 – 1.5 file header. |
+| `block_descriptor_size` | item | `header.rs:165` | Returns the variable descriptor byte count implied by a fixed block header. |
+| `encode_block_header` | item | `header.rs:183` | Serializes one block header and its variable transform/dictionary descriptors. |
+| `decode_block_header` | item | `header.rs:223` | Parses one fixed block header and its caller-supplied variable descriptors. |
+| `decoding_plan` | method | `header.rs:337` | Returns the decoder-relevant physical plan represented by this block header. |
 | `INDEX_MAGIC` | item | `index.rs:9` | Four-byte serialized block-index section magic. |
 | `TRAILER_MAGIC` | item | `index.rs:11` | Four-byte end-of-file trailer magic. |
 | `INDEX_ENTRY_SIZE` | item | `index.rs:13` | Fixed serialized size of one block-index entry. |
@@ -699,7 +701,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `decompress_stream` | item | `decoder.rs:13` | Sequentially decompresses an ACE 1.0–1.4 stream into a writer with explicit limits. |
+| `decompress_stream` | item | `decoder.rs:13` | Sequentially decompresses an ACE 1.0–1.5 stream into a writer with explicit limits. |
 | `compress_reader_known_size` | item | `encoder.rs:35` | Compresses a reader into one indexed ACE stream using bounded block memory. |
 | `StreamLimits` | item | `limits.rs:5` | Resource limits applied to a bounded streaming operation. |
 | `StreamingStats` | item | `limits.rs:28` | Aggregate telemetry produced by the bounded streaming encoder. |

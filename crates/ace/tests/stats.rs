@@ -16,6 +16,7 @@ fn counters_and_ratio_follow_the_internal_stats() {
         numeric_blocks: 4,
         time_series_blocks: 5,
         rle_blocks: 6,
+        format_minor: 4,
         ..CompressionStats::default()
     };
     core.record_plan("lz+huffman");

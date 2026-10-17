@@ -9,8 +9,11 @@
 // narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
 #![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
-use ace_codecs::decode_codec;
-use ace_core::{AceError, AceResult, DecodeLimits, EntropyCodecId, PRIMARY_LENGTH_PREFIX_BYTES};
+use ace_codecs::{decode_codec, payload_minor_version};
+use ace_core::{
+    AceError, AceResult, CodecId, DecodeLimits, EntropyCodecId, FORMAT_MAJOR,
+    PRIMARY_LENGTH_PREFIX_BYTES,
+};
 use ace_entropy::decode_entropy_cow;
 use ace_format::{checksum, BlockHeader};
 use ace_transforms::invert_transform;
@@ -35,6 +38,23 @@ pub fn wrap_entropy_metadata(
     wrapped.extend_from_slice(&primary_len.to_le_bytes());
     wrapped.extend_from_slice(&metadata);
     Ok(wrapped)
+}
+
+/// Minor format version a block needs, given its codec, entropy coder and stored payload.
+///
+/// A payload that is stored directly (entropy `None`) is inspected: a NUM1 or TS1 stream of a
+/// Format 1.5 mode needs 1.5, a TS1 stream 1.4, anything else 1.3. The primary stream of an
+/// entropy-coded block cannot be seen without decoding it, so a NUM1 block with an entropy
+/// stage conservatively declares 1.5; declaring a higher minor version than needed is always
+/// valid, and the planner does not combine NUM1 with entropy coders.
+#[must_use]
+pub fn block_format_minor(codec: CodecId, entropy: EntropyCodecId, payload: &[u8]) -> u8 {
+    let needed = match entropy {
+        EntropyCodecId::None => payload_minor_version(codec, payload),
+        _ if matches!(codec, CodecId::Numeric | CodecId::TimeSeries) => 5,
+        _ => 0,
+    };
+    needed.max(ace_format::FORMAT_MINOR_BASE)
 }
 
 /// Splits stored block metadata into `(entropy model metadata, primary stream length)`.
@@ -73,10 +93,15 @@ fn max_primary_len(original_size: usize) -> usize {
 }
 
 /// Decodes one parsed block (entropy → codec → inverse transforms) and verifies its CRC32C.
+///
+/// `minor_version` is the minor format version of the file: a payload that uses a feature
+/// newer than the file declares (for example a NUM1 mode 4 stream in a 1.4 file) is rejected
+/// with [`AceError::UnsupportedVersion`] before it is decoded.
 pub(crate) fn decode_encoded_block(
     header: &BlockHeader,
     metadata: &[u8],
     payload: &[u8],
+    minor_version: u8,
     limits: &DecodeLimits,
 ) -> AceResult<Vec<u8>> {
     let original_size = header.original_size as usize;
@@ -93,6 +118,12 @@ pub(crate) fn decode_encoded_block(
     }
     // `None` entropy borrows the payload, so a RAW block is copied once, not twice.
     let primary = decode_entropy_cow(header.entropy, entropy_metadata, payload, primary_size)?;
+    if payload_minor_version(header.codec, &primary) > minor_version {
+        return Err(AceError::UnsupportedVersion {
+            major: FORMAT_MAJOR,
+            minor: minor_version,
+        });
+    }
     let mut stage = decode_codec(header.codec, &primary, original_size)?;
     for &transform in header.transforms.iter().rev() {
         stage = invert_transform(transform, &stage)?;

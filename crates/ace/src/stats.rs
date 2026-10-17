@@ -50,7 +50,7 @@ impl Stats {
         Self {
             input_bytes: stats.input_bytes,
             output_bytes: stats.output_bytes,
-            format_minor: if stats.time_series_blocks > 0 { 4 } else { 3 },
+            format_minor: stats.format_minor,
             blocks: stats.block_count,
             raw_blocks: stats.raw_blocks,
             rle_blocks: stats.rle_blocks,

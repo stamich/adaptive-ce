@@ -151,7 +151,7 @@ impl Engine {
         Ok(Stats {
             input_bytes: stats.input_bytes,
             output_bytes: stats.output_bytes,
-            format_minor: if stats.format_1_4 { 4 } else { 3 },
+            format_minor: stats.format_minor,
             blocks: stats.blocks,
             ..Stats::default()
         })

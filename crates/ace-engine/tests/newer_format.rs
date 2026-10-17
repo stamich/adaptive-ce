@@ -1,6 +1,7 @@
 //! A file of a newer format (ACE 0.6.0 forward-compatibility contract): every reader rejects it
 //! at the file header with `UnsupportedVersion`, and the message names the ACE release that can
-//! read it (1.5 is written by ACE 0.6.1 and newer).
+//! read it, or says "a newer ACE release" when no release is announced (1.5 is read since
+//! ACE 0.6.1, so the first unreadable version is 1.6).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use std::io::Cursor;
@@ -44,26 +45,6 @@ fn outcomes(bytes: &[u8]) -> Vec<(&'static str, AceError)> {
 }
 
 #[test]
-fn format_1_5_names_the_release_that_reads_it() {
-    for (reader, error) in outcomes(&forged(1, 5)) {
-        assert!(
-            matches!(error, AceError::UnsupportedVersion { major: 1, minor: 5 }),
-            "{reader}: {error:?}"
-        );
-        let message = error.to_string();
-        assert!(message.contains("1.5"), "{reader}: {message}");
-        assert!(
-            message.contains("ACE 0.6.1 or newer"),
-            "{reader}: {message}"
-        );
-        assert!(
-            message.contains("supports up to 1.4"),
-            "{reader}: {message}"
-        );
-    }
-}
-
-#[test]
 fn unknown_newer_versions_say_so_without_inventing_a_release() {
     for (major, minor) in [(1, 6), (1, 255), (2, 0)] {
         for (reader, error) in outcomes(&forged(major, minor)) {
@@ -77,7 +58,7 @@ fn unknown_newer_versions_say_so_without_inventing_a_release() {
                 "{reader} {major}.{minor}: {message}"
             );
             assert!(
-                !message.contains("0.6.1"),
+                message.contains("supports up to 1.5"),
                 "{reader} {major}.{minor}: {message}"
             );
         }
@@ -86,7 +67,7 @@ fn unknown_newer_versions_say_so_without_inventing_a_release() {
 
 #[test]
 fn supported_versions_still_decode() {
-    for minor in [3u8, 4] {
+    for minor in [3u8, 4, 5] {
         let bytes = forged(1, minor);
         assert!(
             AceEngine::default_engine().decompress(&bytes).is_ok(),

@@ -51,7 +51,7 @@ mod engine;
 mod explain;
 mod indexed;
 
-pub use block_pipeline::{split_entropy_metadata, wrap_entropy_metadata};
+pub use block_pipeline::{block_format_minor, split_entropy_metadata, wrap_entropy_metadata};
 pub use chunker::*;
 pub use engine::*;
 pub use explain::*;

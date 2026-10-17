@@ -62,7 +62,13 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
     /// [`crate::AceEngine::decompress_into`].
     pub fn decode_block(&mut self, block_id: u64) -> AceResult<Vec<u8>> {
         let (header, metadata, payload) = self.indexed.read_encoded_block(block_id)?;
-        decode_encoded_block(&header, &metadata, &payload, &self.limits)
+        decode_encoded_block(
+            &header,
+            &metadata,
+            &payload,
+            self.indexed.file_header.minor_version,
+            &self.limits,
+        )
     }
 
     /// Returns physical-read diagnostics for a logical range without decoding it.
