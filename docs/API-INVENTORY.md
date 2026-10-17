@@ -26,7 +26,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 |---|---|---|---|---|
 | `ace` | public | 15 | 58 | 0 |
 | `ace-analysis` | internal | 39 | 12 | 0 |
-| `ace-bench` | internal | 29 | 10 | 0 |
+| `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 50 | 21 | 0 |
 | `ace-core` | internal | 31 | 20 | 0 |
@@ -188,16 +188,21 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `finish` | method | `alloc.rs:115` | Stops counting and returns what was observed. |
 | `count_allocations` | item | `alloc.rs:126` | Runs `operation` inside an [`AllocationProbe`] and returns its result and report. |
 | `peak_rss_bytes` | item | `alloc.rs:133` | Process peak resident set size (`VmHWM` of `/proc/self/status`) in bytes. |
+| `ChimpError` | item | `chimp.rs:51` | Why a Chimp stream was rejected. |
+| `chimp_encode` | item | `chimp.rs:93` | Encodes `values` with Chimp; returns the stream and its length in bits. |
+| `chimp128_encode` | item | `chimp.rs:117` | Encodes `values` with Chimp128; returns the stream and its length in bits. |
+| `chimp_decode` | item | `chimp.rs:203` | Decodes `count` values of a [`chimp_encode`] stream. |
+| `chimp128_decode` | item | `chimp.rs:236` | Decodes `count` values of a [`chimp128_encode`] stream. |
 | `CORPUS_ENV` | item | `families/public_corpus.rs:19` | Environment variable naming the directory of the corpus files. |
 | `MAX_BYTES_ENV` | item | `families/public_corpus.rs:22` | Environment variable limiting the bytes read from one file. |
 | `corpus_files` | item | `families/public_corpus.rs:32` | The regular files of `directory`, sorted by name, as `(file name, path)`. |
 | `megabytes_per_second` | item | `families/public_corpus.rs:56` | Megabytes (10^6 bytes) per second for `bytes` processed in a median of `median_ns`. |
 | `measure_directory` | item | `families/public_corpus.rs:164` | Measures every file of `directory`. |
 | `public_corpus_family` | item | `families/public_corpus.rs:186` | Runs the family: one row per file and compressor, or nothing when no corpus is configured. |
-| `FamilyFn` | item | `lib.rs:30` | Signature shared by every benchmark family. |
-| `FAMILIES` | item | `lib.rs:33` | Every benchmark family in `all` order: `(name, runner)`. |
-| `select_families` | item | `lib.rs:69` | Resolves the command-line selection into the families to run. |
-| `run_family` | item | `lib.rs:85` | Runs one family and writes its document; returns the result path. |
+| `FamilyFn` | item | `lib.rs:31` | Signature shared by every benchmark family. |
+| `FAMILIES` | item | `lib.rs:34` | Every benchmark family in `all` order: `(name, runner)`. |
+| `select_families` | item | `lib.rs:71` | Resolves the command-line selection into the families to run. |
+| `run_family` | item | `lib.rs:87` | Runs one family and writes its document; returns the result path. |
 | `QUICK_ENV` | item | `timing/plan.rs:6` | Environment variable enabling the quick (smoke) plan: one short batch per case. |
 | `MIN_SAMPLE_MS_ENV` | item | `timing/plan.rs:9` | Environment variable overriding the minimum duration of one sample, in milliseconds. |
 | `MAX_ITERATIONS_PER_SAMPLE` | item | `timing/plan.rs:12` | Upper bound on operation invocations folded into one sample (protects nanosecond ops). |

@@ -219,6 +219,7 @@ is therefore a candidate for 0.6.1 with the other Phase B changes.
 | `float-fastpath` | f64-constant / f64-step: generic-analysis / planning / encoding time, encode speedup over the lane off (same run) | FloatFast skips analysis, all blocks FloatFast |
 | `float-false-positive` | Corpus V3, non-float V4 data and the false-positive corpus (`ace_corpus::FalsePositiveCase`) | zero Float-route blocks, Corpus V3 identity |
 | `float-estimator` | Gorilla estimate error (MAPE, bias, p95, max) and per-block decision recall / regret against the better of TS1 and the generic plan | estimator p95 ≤ 25 % |
+| `chimp-evaluation` | Chimp / Chimp128 against the best bare codec and the engine, per 256 KiB block (0.6.1 decision) | share of shrinking blocks ≥ 5 % to add Chimp |
 
 `release-performance` adds `float_fast.f64_step`, `float_general.f64_noisy` and
 `run_delta.int_sparse_change`; each also measures the same engine with the lane disabled in the
@@ -226,6 +227,28 @@ same process (`compression_disabled`, `encode_speedup_vs_disabled`, `ratio_gain_
 These are **within-run ratios**: their output intentionally differs from 0.4.6, while byte
 identity is an invariant of every interleaved A/B case, and a same-run ratio is immune to
 machine drift.
+
+### `chimp-evaluation` (0.6.1 decision: Chimp is not added)
+
+Question: does Chimp / Chimp128 (Liakos et al., 2022) deserve a TS1 mode next to Gorilla, RunDelta
+and ALP? `crates/ace-bench/src/chimp.rs` implements both as working codecs (decoders included,
+`tests/chimp.rs` checks exact round trips); they are **not** part of the format.
+
+Method: 9 binary64 workloads x 16 blocks of 256 KiB (144 blocks). Per block the best existing
+choice is the smallest of the bare codecs (RAW, RLE, LZ fast, NUM1, every TS1 layout including ALP)
+and of the whole engine (BALANCED and DENSE, one block per file, container overhead not
+subtracted). A block shrinks when the better Chimp variant, charged a TS1-sized header, is strictly
+smaller. Rule: Chimp is kept only if at least 5 % of the blocks shrink.
+
+| Baseline | Blocks where Chimp is smaller |
+|---|---:|
+| bare codecs only (no entropy stage) | 31 of 144 (21.5 %, all on `f64-special` and `f64-smooth`) |
+| bare codecs and the engine | **0 of 144 (0 %)** |
+
+The 31 blocks are won against Gorilla and RAW, but the generic plans (LZ + rANS) already store
+them smaller: the engine beats every bare codec on 48 blocks. Decision: **no Chimp mode** in
+0.6.1; TS1 mode 5 stays reserved. Re-run with `ace-bench chimp-evaluation` (sizes are exact and do
+not depend on the machine); the family writes the per-workload rows and a `chimp_decision` row.
 
 ### Float gates (Regression V3, 0.5.0)
 

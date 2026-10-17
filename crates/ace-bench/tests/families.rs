@@ -15,3 +15,8 @@ fn unknown_family_is_rejected() {
     assert!(select_families("no-such-family").is_err());
     assert_eq!(select_families("all").map(|f| f.len()), Ok(FAMILIES.len()));
 }
+
+#[test]
+fn the_chimp_evaluation_is_registered() {
+    assert!(select_families("chimp-evaluation").is_ok());
+}

@@ -60,7 +60,7 @@ fn blockwise(data: &[u8], encoded_len: impl Fn(&[u8]) -> Option<usize>) -> Optio
 }
 
 /// Codec-level sizes of every candidate (no entropy stage, no planner).
-fn candidate_sizes(data: &[u8]) -> Vec<(String, Option<usize>)> {
+pub(crate) fn candidate_sizes(data: &[u8]) -> Vec<(String, Option<usize>)> {
     let mut sizes = vec![
         ("raw".to_string(), Some(data.len())),
         (
@@ -206,6 +206,7 @@ fn float_stats_json(stats: &CompressionStats) -> Value {
         .field("ts1_gorilla_f64_blocks", stats.ts1_gorilla_f64_blocks)
         .field("ts1_gorilla_f32_blocks", stats.ts1_gorilla_f32_blocks)
         .field("ts1_run_delta_blocks", stats.ts1_run_delta_blocks)
+        .field("ts1_alp_blocks", stats.ts1_alp_blocks)
         .field("time_series_estimates", stats.time_series_estimates)
         .field(
             "planner_full_trial_encodes",

@@ -10,7 +10,7 @@ header; the payload is a complete bitstream (no entropy stage, no transform).
 | `RunDelta` | 3 | 2 / 4 / 8 bytes | values that rarely change (floats compared bit-wise, integers) |
 | `Alp` | 4 | 8 / 4 bytes | decimal floats (Format 1.5) |
 
-Ids 5–15 are reserved. Mode 4 needs Format 1.5. Lossless means **bit-exact**: `-0.0`, NaN payloads,
+Ids 5–15 are reserved (Chimp was evaluated for 0.6.1 and not added, see [`BENCHMARKS.md`](BENCHMARKS.md#chimp-evaluation-061-decision-chimp-is-not-added)). Mode 4 needs Format 1.5. Lossless means **bit-exact**: `-0.0`, NaN payloads,
 ±Inf and subnormals round-trip (`to_bits` equality is what the tests compare).
 
 ## Payload layout (little-endian)

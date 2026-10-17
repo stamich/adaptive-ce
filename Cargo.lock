@@ -30,6 +30,7 @@ name = "ace-bench"
 version = "0.6.1"
 dependencies = [
  "ace-analysis",
+ "ace-bitpack",
  "ace-codecs",
  "ace-core",
  "ace-corpus",

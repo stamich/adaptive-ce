@@ -9,11 +9,12 @@
 //! ```
 //!
 //! Module map: `prelude` (shared imports), `json` (document model), `timing` (Harness V3
-//! measurement and statistics), `environment` (fingerprint), `alloc` (counting allocator),
+//! measurement and statistics), `chimp` (Chimp / Chimp128 for the codec evaluation), `environment` (fingerprint), `alloc` (counting allocator),
 //! `corpus` (synthetic data), `plan_util` (planner helpers), `families` (one module per
 //! subsystem).
 
 pub mod alloc;
+pub mod chimp;
 pub mod corpus;
 pub mod environment;
 pub mod families;
@@ -58,6 +59,7 @@ pub const FAMILIES: &[(&str, FamilyFn)] = &[
     ("float-fastpath", float_fastpath_family),
     ("float-false-positive", float_false_positive_family),
     ("float-estimator", float_estimator_family),
+    ("chimp-evaluation", chimp_evaluation_family),
     ("public-corpus", public_corpus_family),
 ];
 
