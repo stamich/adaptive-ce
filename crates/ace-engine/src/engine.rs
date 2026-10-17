@@ -311,14 +311,3 @@ impl AceEngine {
         recommend_block_size(self.config.access_hint, self.config.profile, &numeric).block_size
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The configuration used by [`AceEngine::default_engine`] passes full validation.
-    #[test]
-    fn default_configuration_is_valid() {
-        assert!(AceEngine::new(AceConfig::default()).is_ok());
-    }
-}

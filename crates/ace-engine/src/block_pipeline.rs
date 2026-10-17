@@ -16,7 +16,11 @@ use ace_format::{checksum, BlockHeader};
 use ace_transforms::invert_transform;
 
 /// Prepends the primary-stream length to entropy model metadata when the coder requires it.
-pub(crate) fn wrap_entropy_metadata(
+///
+/// # Errors
+///
+/// [`AceError::ResourceLimitExceeded`] when the primary stream is longer than `u32::MAX` bytes.
+pub fn wrap_entropy_metadata(
     entropy: EntropyCodecId,
     primary_len: usize,
     metadata: Vec<u8>,
@@ -34,7 +38,12 @@ pub(crate) fn wrap_entropy_metadata(
 }
 
 /// Splits stored block metadata into `(entropy model metadata, primary stream length)`.
-fn split_entropy_metadata(
+///
+/// # Errors
+///
+/// [`AceError::Malformed`] when the coder requires a length prefix and the metadata is shorter
+/// than the prefix; [`AceError::ResourceLimitExceeded`] when the length does not fit `usize`.
+pub fn split_entropy_metadata(
     entropy: EntropyCodecId,
     metadata: &[u8],
     payload_len: usize,
@@ -95,31 +104,4 @@ pub(crate) fn decode_encoded_block(
         return Err(AceError::ChecksumMismatch(header.block_id));
     }
     Ok(stage)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Wrap and split are inverse; `None` carries no prefix; short metadata is rejected.
-    #[test]
-    fn entropy_metadata_framing() {
-        let wrapped = wrap_entropy_metadata(EntropyCodecId::Huffman, 1234, vec![7, 8]).unwrap();
-        assert_eq!(wrapped.len(), PRIMARY_LENGTH_PREFIX_BYTES + 2);
-        assert_eq!(
-            split_entropy_metadata(EntropyCodecId::Huffman, &wrapped, 99).unwrap(),
-            (&[7u8, 8][..], 1234)
-        );
-        assert_eq!(
-            wrap_entropy_metadata(EntropyCodecId::None, 5, vec![1]).unwrap(),
-            vec![1]
-        );
-        assert_eq!(
-            split_entropy_metadata(EntropyCodecId::None, &[], 42)
-                .unwrap()
-                .1,
-            42
-        );
-        assert!(split_entropy_metadata(EntropyCodecId::Rans, &[1, 2], 0).is_err());
-    }
 }
