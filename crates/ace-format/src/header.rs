@@ -32,11 +32,11 @@ pub const SUPPORTED_FILE_FLAGS: u16 = FILE_FLAG_HAS_INDEX | FILE_FLAG_HAS_DICTIO
 /// Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors.
 pub const BLOCK_FLAG_HAS_DICTIONARY: u8 = 0x01;
 
-/// Fixed ACE file header shared by formats 1.0 – 1.4.
+/// Fixed ACE file header shared by formats 1.0 – 1.5.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileHeader {
-    /// Minor format version: read from disk, or chosen by the writer (`FORMAT_MINOR_BASE`, or
-    /// [`FORMAT_MINOR`] when a block uses a 1.4 feature).
+    /// Minor format version: read from disk, or chosen by the writer (`FORMAT_MINOR_BASE` up to
+    /// [`FORMAT_MINOR`], see [`minimal_minor_version`]).
     pub minor_version: u8,
     /// File-level feature flags.
     pub flags: u16,
@@ -73,20 +73,18 @@ pub struct BlockHeader {
     pub payload_crc32c: u32,
 }
 
-/// Minor version a writer must declare for a file whose blocks use `codecs`.
+/// Minor version a writer must declare for a file whose blocks each need the minor version
+/// listed in `block_minors` (the *minimal-version* rule).
 ///
-/// This is the *minimal-version* rule of Format 1.4: only files that contain a TS1 block are
-/// written as 1.4; all others stay Format 1.3, byte-identical to ACE 0.4.x output and readable
-/// by 0.4.x decoders.
-pub fn minimal_minor_version(codecs: impl IntoIterator<Item = CodecId>) -> u8 {
-    if codecs
+/// A file stays Format 1.3 unless a block needs more: a TS1 block needs 1.4, a NUM1 or TS1
+/// payload of mode 4 needs 1.5 (see `ace_engine::block_format_minor`). Files that need nothing
+/// newer are byte-identical to ACE 0.4.x output and readable by 0.4.x decoders. The result is
+/// at least [`FORMAT_MINOR_BASE`] and at most [`FORMAT_MINOR`].
+pub fn minimal_minor_version(block_minors: impl IntoIterator<Item = u8>) -> u8 {
+    block_minors
         .into_iter()
-        .any(|codec| matches!(codec, CodecId::TimeSeries))
-    {
-        FORMAT_MINOR
-    } else {
-        FORMAT_MINOR_BASE
-    }
+        .fold(FORMAT_MINOR_BASE, u8::max)
+        .min(FORMAT_MINOR)
 }
 
 /// Serializes a file header, including a CRC32C over its first 28 bytes.
@@ -106,7 +104,7 @@ pub fn encode_file_header(header: &FileHeader) -> [u8; FILE_HEADER_SIZE] {
     bytes
 }
 
-/// Parses and validates a format 1.0 – 1.4 file header.
+/// Parses and validates a format 1.0 – 1.5 file header.
 ///
 /// # Errors
 ///

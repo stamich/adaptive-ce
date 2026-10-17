@@ -4,6 +4,7 @@
 //! |---|---|---|
 //! | Gorilla | the real encoder counted on the float sample windows, scaled to the block | O(256 values) |
 //! | RunDelta | the real encoder counted on the whole block (exact) | O(n), no allocation |
+//! | ALP (0.6.1) | the real encoder counted on the whole block (exact) | O(n), one exception list |
 //!
 //! Both run the codec's own bit-counting path (`ace_codecs::ts1_stream_bits`), so an estimate
 //! can never be based on a different cost model than the encoder. Gorilla on a whole block is
@@ -11,7 +12,10 @@
 //! evaluated for lanes the run prefilter admitted, where counting is a compare-and-skip loop.
 
 use ace_analysis::{lane_sample_windows, FloatWidth};
-use ace_codecs::{ts1_encoded_len, ts1_stream_bits, TimeSeriesLayout, TIME_SERIES_HEADER_SIZE};
+use ace_codecs::{
+    alp_sample_viable, ts1_encoded_len, ts1_encoded_len_within, ts1_stream_bits, TimeSeriesLayout,
+    TIME_SERIES_HEADER_SIZE,
+};
 use ace_core::AceResult;
 
 /// Size estimate of one TS1 layout for one block.
@@ -132,77 +136,73 @@ pub fn estimate_run_delta(input: &[u8], lane_bytes: u8) -> AceResult<TimeSeriesE
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ace_codecs::ts1_encode_with;
+/// [`estimate_run_delta`] that stops counting once the payload is larger than `max_bytes`.
+///
+/// `Some(estimate)` is exactly what [`estimate_run_delta`] returns and has
+/// `estimated_bytes <= max_bytes`; `None` means the exact size is larger than `max_bytes`.
+///
+/// # Errors
+///
+/// Same as [`estimate_run_delta`].
+///
+/// # Determinism
+///
+/// A pure function of its arguments.
+///
+/// # Invariants
+///
+/// `Some` only when `estimate_run_delta(input, lane_bytes)` would be `<= max_bytes`.
+pub fn estimate_run_delta_within(
+    input: &[u8],
+    lane_bytes: u8,
+    max_bytes: u64,
+) -> AceResult<Option<TimeSeriesEstimate>> {
+    let layout = TimeSeriesLayout::run_delta(lane_bytes);
+    let limit = usize::try_from(max_bytes).unwrap_or(usize::MAX);
+    Ok(
+        ts1_encoded_len_within(input, layout, limit)?.map(|len| TimeSeriesEstimate {
+            layout,
+            estimated_bytes: len as u64,
+            exact: true,
+            confidence: 1.0,
+        }),
+    )
+}
 
-    /// Little-endian f64 bytes of `values`.
-    fn f64_bytes(values: impl IntoIterator<Item = f64>) -> Vec<u8> {
-        values.into_iter().flat_map(f64::to_le_bytes).collect()
-    }
+/// Exact ALP payload size of `input` read as `width` values (ACE 0.6.1, TS1 mode 4).
+///
+/// # Errors
+///
+/// Propagates [`ace_core::AceError::InvalidTimeSeries`] from the TS1 bit counter; it cannot
+/// occur for the ALP layouts of a [`FloatWidth`].
+///
+/// # Determinism
+///
+/// Runs the TS1 encoder against a bit counter (the `(e, f)` choice is a pure function of the
+/// block), so the estimate is exact and platform independent.
+///
+/// # Invariants
+///
+/// `estimated_bytes == ts1_encode_with(input, layout).len()` and `exact == true`.
+pub fn estimate_alp(input: &[u8], width: FloatWidth) -> AceResult<TimeSeriesEstimate> {
+    let layout = alp_layout(width);
+    Ok(TimeSeriesEstimate {
+        layout,
+        estimated_bytes: ts1_encoded_len(input, layout)? as u64,
+        exact: true,
+        confidence: 1.0,
+    })
+}
 
-    /// A constant series costs one bit per value and the estimate is near-exact.
-    #[test]
-    fn gorilla_constant_is_one_bit_per_value() {
-        let data = f64_bytes(std::iter::repeat_n(21.5, 32_768));
-        let estimate = estimate_gorilla(&data, FloatWidth::F64).unwrap();
-        let actual = ts1_encode_with(&data, TimeSeriesLayout::GORILLA_F64)
-            .unwrap()
-            .len() as u64;
-        assert_eq!(estimate.estimated_bytes, actual);
-        assert_eq!(estimate.confidence, 1.0);
-        assert!(!estimate.exact);
-    }
+/// Cheap pre-test for [`estimate_alp`]: at least half of a 64-value sample is decimal-shaped.
+pub fn alp_plausible(input: &[u8], width: FloatWidth) -> bool {
+    alp_sample_viable(input, width.lane_bytes() as u8)
+}
 
-    /// On a uniform smooth series the sample estimate lands within 10 % of the real size
-    /// (each window restarts without an XOR window, a small pessimistic bias).
-    #[test]
-    fn gorilla_smooth_estimate_is_close() {
-        let mut value = 20.0f64;
-        let mut state = 0x1234_5678u32;
-        let data = f64_bytes((0..32_768).map(|_| {
-            state ^= state << 13;
-            state ^= state >> 17;
-            state ^= state << 5;
-            value += f64::from(state % 17) * 0.001 - 0.008;
-            value
-        }));
-        let estimate = estimate_gorilla(&data, FloatWidth::F64).unwrap();
-        let actual = ts1_encode_with(&data, TimeSeriesLayout::GORILLA_F64)
-            .unwrap()
-            .len() as f64;
-        let error = (estimate.estimated_bytes as f64 - actual).abs() / actual;
-        assert!(error < 0.10, "error {error}");
-    }
-
-    /// Short inputs fall back to the exact size; a tail is accounted for.
-    #[test]
-    fn gorilla_short_and_tail() {
-        let data = f64_bytes([1.0, 2.0, 3.0]);
-        let estimate = estimate_gorilla(&data, FloatWidth::F64).unwrap();
-        assert!(estimate.estimated_bytes > TIME_SERIES_HEADER_SIZE as u64);
-        let mut with_tail = f64_bytes(std::iter::repeat_n(5.0, 1024));
-        with_tail.extend_from_slice(&[1, 2, 3]);
-        let estimate = estimate_gorilla(&with_tail, FloatWidth::F64).unwrap();
-        let actual = ts1_encode_with(&with_tail, TimeSeriesLayout::GORILLA_F64)
-            .unwrap()
-            .len() as u64;
-        assert_eq!(estimate.estimated_bytes, actual);
-    }
-
-    /// RunDelta estimates are exact by construction.
-    #[test]
-    fn run_delta_is_exact() {
-        let data: Vec<u8> = (0..65_536u32)
-            .flat_map(|i| (1_000 + i / 200 * 7).to_le_bytes())
-            .collect();
-        let estimate = estimate_run_delta(&data, 4).unwrap();
-        let actual = ts1_encode_with(&data, TimeSeriesLayout::run_delta(4))
-            .unwrap()
-            .len() as u64;
-        assert_eq!(estimate.estimated_bytes, actual);
-        assert!(estimate.exact);
-        assert!(estimate.ratio_to(data.len()) < 0.01);
+/// TS1 ALP layout of a float width.
+pub const fn alp_layout(width: FloatWidth) -> TimeSeriesLayout {
+    match width {
+        FloatWidth::F32 => TimeSeriesLayout::ALP_F32,
+        FloatWidth::F64 => TimeSeriesLayout::ALP_F64,
     }
 }

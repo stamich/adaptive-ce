@@ -26,7 +26,10 @@ use ace_core::{
     AceConfig, AceResult, CandidateTier, CodecId, DecodingPlan, EntropyCodecId,
     PhysicalCompressionPlan, PlanCost,
 };
-use ace_cost::{estimate_gorilla, estimate_run_delta, TimeSeriesEstimate};
+use ace_cost::{
+    alp_plausible, estimate_alp, estimate_gorilla, estimate_run_delta, estimate_run_delta_within,
+    TimeSeriesEstimate,
+};
 
 use crate::{
     PlannerDecision, PlannerRoute, PlannerTelemetry, RouteDecision, RouteReason,
@@ -108,7 +111,9 @@ pub fn classify_float_lane(input: &[u8], config: &AceConfig, v4: RouteDecision) 
 }
 
 /// Gorilla estimate at the admitted width, plus the exact RunDelta size of the same lane when
-/// its values mostly repeat; the smaller one wins (ties: Gorilla). `None` on estimator errors.
+/// its values mostly repeat and (0.6.1) the exact ALP size unless the block is already
+/// FloatFast-dominant; the smallest
+/// wins (ties: Gorilla, then RunDelta). `None` on estimator errors.
 fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> {
     let gorilla = estimate_gorilla(input, profile.width).ok()?;
     let lane_bytes = profile.width.lane_bytes() as u8;
@@ -118,11 +123,24 @@ fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> 
     } else {
         None
     };
-    let estimates = 1 + usize::from(run.is_some());
-    let estimate = match run {
-        Some(run) if run.estimated_bytes < gorilla.estimated_bytes => run,
-        _ => gorilla,
+    let mut estimate = gorilla;
+    if let Some(run) = run.filter(|run| run.estimated_bytes < gorilla.estimated_bytes) {
+        estimate = run;
+    }
+    // ALP is counted only when the block is not already dominated by Gorilla / RunDelta: a
+    // constant or stepped series needs no third opinion, noisy full-precision floats fail the
+    // 64-value decimal test, and the exact count is a full pass.
+    let dominant =
+        estimate.estimated_bytes.saturating_mul(FLOAT_FAST_DIVISOR) <= input.len() as u64;
+    let alp = if dominant || !alp_plausible(input, profile.width) {
+        None
+    } else {
+        estimate_alp(input, profile.width).ok()
     };
+    if let Some(alp) = alp.filter(|alp| alp.estimated_bytes < estimate.estimated_bytes) {
+        estimate = alp;
+    }
+    let estimates = 1 + usize::from(run.is_some()) + usize::from(alp.is_some());
     Some(FloatEvidence {
         profile,
         estimate,
@@ -244,7 +262,7 @@ pub fn apply_time_series_policy(
     }
     let (candidate, estimates) = match route.float_evidence {
         Some(evidence) => (Some(evidence.estimate), evidence.estimates),
-        None => best_run_delta(input, route)?,
+        None => best_run_delta(input, route, generic_bytes)?,
     };
     let mut telemetry = decision.telemetry;
     telemetry.time_series_estimates = estimates;
@@ -266,16 +284,29 @@ pub fn apply_time_series_policy(
 }
 
 /// Smallest exact RunDelta estimate over the widths admitted by the run prefilter.
+///
+/// Counting stops as soon as a width cannot beat the best one so far or cannot pass the
+/// dominance rule against `generic_bytes` (an exact estimate must be at most
+/// [`TS1_MAX_FRACTION_OF_GENERIC`] of it and save at least `input / TS1_MIN_SAVING_DIVISOR`). Such a width would lose anyway, so the decision is
+/// the same as with full counts; only blocks where RunDelta loses get cheaper.
 fn best_run_delta(
     input: &[u8],
     route: &RouteDecision,
+    generic_bytes: u64,
 ) -> AceResult<(Option<TimeSeriesEstimate>, usize)> {
+    // Rounded up: the cap must never reject an estimate `ts1_beats_generic` would accept.
+    let relative_cap = (TS1_MAX_FRACTION_OF_GENERIC * generic_bytes as f64).ceil() as u64;
+    // The absolute rule needs `saving * DIVISOR >= input.len()`, i.e. at least this many bytes.
+    let saving_needed = (input.len() as u64).div_ceil(TS1_MIN_SAVING_DIVISOR);
+    let dominance_cap = relative_cap.min(generic_bytes.saturating_sub(saving_needed));
     let mut best: Option<TimeSeriesEstimate> = None;
     let mut count = 0;
     for profile in route.run_prefilter.admitted() {
-        let estimate = estimate_run_delta(input, profile.lane_bytes)?;
         count += 1;
-        if best.is_none_or(|b| estimate.estimated_bytes < b.estimated_bytes) {
+        let cap = best.map_or(dominance_cap, |b| {
+            dominance_cap.min(b.estimated_bytes.saturating_sub(1))
+        });
+        if let Some(estimate) = estimate_run_delta_within(input, profile.lane_bytes, cap)? {
             best = Some(estimate);
         }
     }
@@ -330,111 +361,5 @@ fn time_series_decision(
         quality_qualified_plans: vec![plan],
         numeric_estimate: None,
         time_series: Some(TimeSeriesSelection { estimate, payload }),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::RoutePolicy;
-    use ace_codecs::TimeSeriesLayout;
-
-    /// Little-endian f64 bytes of `values`.
-    fn f64_bytes(values: impl IntoIterator<Item = f64>) -> Vec<u8> {
-        values.into_iter().flat_map(f64::to_le_bytes).collect()
-    }
-
-    /// Smooth f64 values (small random increments, as in Corpus V4).
-    fn smooth(count: usize) -> Vec<u8> {
-        let mut value = 20.0f64;
-        let mut state = 0x1234_5678u32;
-        f64_bytes((0..count).map(|_| {
-            state ^= state << 13;
-            state ^= state >> 17;
-            state ^= state << 5;
-            value += f64::from(state % 17) * 0.001 - 0.008;
-            value
-        }))
-    }
-
-    /// The dominance rule needs both the relative and the absolute win.
-    #[test]
-    fn dominance_rule() {
-        let exact = |bytes| TimeSeriesEstimate {
-            layout: TimeSeriesLayout::run_delta(4),
-            estimated_bytes: bytes,
-            exact: true,
-            confidence: 1.0,
-        };
-        let sampled = |bytes| TimeSeriesEstimate {
-            layout: TimeSeriesLayout::GORILLA_F64,
-            exact: false,
-            ..exact(bytes)
-        };
-        assert!(ts1_beats_generic(&exact(100), 100_000, 262_144));
-        assert!(!ts1_beats_generic(&exact(95_000), 100_000, 262_144)); // only 5 % better
-        assert!(!ts1_beats_generic(&exact(100), 8_000, 262_144)); // saves < input / 32
-        assert!(ts1_beats_generic(&exact(0), 8_192, 262_144)); // saves exactly input / 32
-        assert!(ts1_beats_generic(&exact(85_000), 100_000, 262_144));
-        assert!(!ts1_beats_generic(&sampled(85_000), 100_000, 262_144)); // sampled: ≤ 75 %
-        assert!(ts1_beats_generic(&sampled(75_000), 100_000, 262_144));
-    }
-
-    /// A constant f64 block is FloatFast with RunDelta and the payload is kept.
-    #[test]
-    fn constant_f64_is_float_fast_run_delta() {
-        let input = f64_bytes(std::iter::repeat_n(21.5, 32_768));
-        let route = RoutePolicy::classify(&input, &AceConfig::default());
-        assert_eq!(route.route, PlannerRoute::FloatFast);
-        assert_eq!(route.reason, RouteReason::DominantFloat);
-        let evidence = route.float_evidence.expect("evidence");
-        assert_eq!(evidence.estimate.layout, TimeSeriesLayout::run_delta(8));
-        let FloatFastOutcome::Selected(decision) = float_fast_decision(&input, &route).unwrap()
-        else {
-            panic!("expected FloatFast selection");
-        };
-        assert_eq!(decision.plan.decoding.codec, CodecId::TimeSeries);
-        assert!(decision.telemetry.float_fast_hit);
-        let selection = decision.time_series.expect("selection");
-        assert!(selection.payload.is_some());
-        assert!(selection.estimate.exact);
-    }
-
-    /// A smooth f64 block is FloatGeneral; its base route is kept for the generic pipeline.
-    #[test]
-    fn smooth_f64_is_float_general() {
-        let input = smooth(32_768);
-        let route = RoutePolicy::classify(&input, &AceConfig::default());
-        assert_eq!(route.route, PlannerRoute::FloatGeneral);
-        assert!(!route.base_route.is_float());
-        assert_eq!(route.candidate_route(), route.base_route);
-        assert!(matches!(
-            float_fast_decision(&input, &route).unwrap(),
-            FloatFastOutcome::NotFloatFast
-        ));
-    }
-
-    /// Disabling float specialization restores the V4.3 route decision exactly.
-    #[test]
-    fn disabled_specialization_is_v4() {
-        let input = f64_bytes(std::iter::repeat_n(21.5, 32_768));
-        let config = AceConfig {
-            enable_float_specialization: false,
-            ..AceConfig::default()
-        };
-        let route = RoutePolicy::classify(&input, &config);
-        assert_eq!(route, crate::classify_planner_route(&input, &config));
-        assert!(!route.run_prefilter.any());
-    }
-
-    /// Integer blocks with sparse changes get the run prefilter, not a Float route.
-    #[test]
-    fn sparse_integers_get_run_prefilter() {
-        let input: Vec<u8> = (0..65_536u32)
-            .flat_map(|i| (1_000 + i / 200 * 7).to_le_bytes())
-            .collect();
-        let route = RoutePolicy::classify(&input, &AceConfig::default());
-        assert!(!route.route.is_float());
-        assert!(route.run_prefilter.any());
     }
 }

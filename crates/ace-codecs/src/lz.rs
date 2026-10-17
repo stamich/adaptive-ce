@@ -17,7 +17,7 @@ const MAX_CHAIN: usize = 16;
 /// Largest input (bytes) encoded with the per-thread tables. Longer inputs allocate their own:
 /// the cost of clearing the tables is then small next to the encoding, and the plain loop is
 /// about 7 % faster than the one that tracks the touched buckets.
-const SCRATCH_MAX_INPUT: usize = 64 * 1024;
+pub const LZ_SCRATCH_MAX_INPUT: usize = 64 * 1024;
 
 /// Hash-chain tables reused by the calls of one thread.
 ///
@@ -88,6 +88,20 @@ thread_local! {
     static LZ_SCRATCH: std::cell::RefCell<LzScratch> = const { std::cell::RefCell::new(LzScratch::new()) };
 }
 
+/// Test hook: leaves this thread's hash tables dirty, exactly as an encode that unwound would.
+///
+/// The next [`lz_encode`] call on the thread must repair the tables and still produce the bytes
+/// of [`lz_encode_allocating`].
+#[doc(hidden)]
+pub fn lz_leave_scratch_dirty() {
+    LZ_SCRATCH.with(|cell| {
+        let mut scratch = cell.borrow_mut();
+        scratch.prepare(100);
+        scratch.insert(5, 3);
+        scratch.insert(77, 9);
+    });
+}
+
 /// Encodes a byte slice into a simple LZ token stream.
 ///
 /// Token format: `0LLLLLLL <literal bytes>` for a literal packet and
@@ -96,7 +110,7 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
     if input.is_empty() {
         return Vec::new();
     }
-    if input.len() > SCRATCH_MAX_INPUT {
+    if input.len() > LZ_SCRATCH_MAX_INPUT {
         return lz_encode_allocating(input, mode);
     }
     LZ_SCRATCH.with(|cell| match cell.try_borrow_mut() {
@@ -115,8 +129,12 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
     })
 }
 
-/// The encoder with tables allocated for this call (inputs above [`SCRATCH_MAX_INPUT`]).
-fn lz_encode_allocating(input: &[u8], mode: LzMode) -> Vec<u8> {
+/// The encoder with hash tables allocated for this call (the path of inputs above
+/// [`LZ_SCRATCH_MAX_INPUT`]).
+///
+/// Produces exactly the bytes of [`lz_encode`] for every input; it is the reference the reuse of
+/// the per-thread tables is tested against.
+pub fn lz_encode_allocating(input: &[u8], mode: LzMode) -> Vec<u8> {
     let mut head = vec![usize::MAX; HASH_SIZE];
     let mut prev = vec![usize::MAX; input.len()];
     let mut out = Vec::with_capacity(input.len());
@@ -306,135 +324,5 @@ fn flush_literals(out: &mut Vec<u8>, literals: &[u8]) {
         out.push((len - 1) as u8);
         out.extend_from_slice(&literals[start..start + len]);
         start += len;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// `copy_match` must equal the naive byte-by-byte reference for overlapping and disjoint copies.
-    #[test]
-    fn copy_match_matches_reference() {
-        for distance in 1..40usize {
-            for len in 1..130usize {
-                let seed: Vec<u8> = (0..64u8)
-                    .map(|i| i.wrapping_mul(37).wrapping_add(5))
-                    .collect();
-                let mut fast = seed.clone();
-                let mut slow = seed.clone();
-                copy_match(&mut fast, distance, len);
-                for _ in 0..len {
-                    let b = slow[slow.len() - distance];
-                    slow.push(b);
-                }
-                assert_eq!(fast, slow, "distance {distance} len {len}");
-            }
-        }
-    }
-
-    /// Verifies overlapping LZ references are decoded correctly.
-    #[test]
-    fn repeated_data_roundtrip() {
-        let data = b"abcabcabcabcabcabcabcabc";
-        for mode in [LzMode::Fast, LzMode::Balanced] {
-            let e = lz_encode(data, mode);
-            assert_eq!(lz_decode(&e, data.len()).unwrap(), data);
-        }
-    }
-
-    /// The encoder that allocates its tables, the reference for the reuse of the thread's.
-    fn reference_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
-        if input.is_empty() {
-            Vec::new()
-        } else {
-            lz_encode_allocating(input, mode)
-        }
-    }
-
-    fn inputs() -> Vec<Vec<u8>> {
-        let mut x = 7u32;
-        let mut noise = |n: usize| -> Vec<u8> {
-            (0..n)
-                .map(|_| {
-                    x = x.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-                    (x >> 24) as u8
-                })
-                .collect()
-        };
-        vec![
-            b"a".to_vec(),
-            b"abcd".to_vec(),
-            noise(3),
-            noise(5000),
-            b"status=ACTIVE region=eu\n".repeat(900),
-            noise(70_000),
-            vec![0u8; 200_000],
-            (0..90_000u32).flat_map(|i| (i / 5).to_le_bytes()).collect(),
-            noise(10),
-        ]
-    }
-
-    /// Calls in any order, with sizes growing and shrinking, give the bytes of the allocating
-    /// encoder: stale entries of the reused tables are never read.
-    #[test]
-    fn reused_tables_give_the_reference_bytes() {
-        for mode in [LzMode::Fast, LzMode::Balanced] {
-            for round in 0..2 {
-                for input in inputs() {
-                    assert_eq!(
-                        lz_encode(&input, mode),
-                        reference_encode(&input, mode),
-                        "{mode:?} round {round} len {}",
-                        input.len()
-                    );
-                }
-            }
-        }
-    }
-
-    /// A call that unwound leaves the tables dirty; the next call repairs them.
-    #[test]
-    fn dirty_tables_are_repaired() {
-        let data = b"abracadabra abracadabra abracadabra".repeat(50);
-        let want = reference_encode(&data, LzMode::Balanced);
-        LZ_SCRATCH.with(|cell| {
-            let mut scratch = cell.borrow_mut();
-            scratch.prepare(100);
-            scratch.insert(5, 3);
-            scratch.insert(77, 9);
-            // Simulates an unwind: `finish` never ran.
-        });
-        assert_eq!(lz_encode(&data, LzMode::Balanced), want);
-    }
-
-    /// Inputs around the threshold give the same bytes whichever path encodes them.
-    #[test]
-    fn both_paths_agree_around_the_threshold() {
-        let base: Vec<u8> = (0..SCRATCH_MAX_INPUT + 50)
-            .map(|i| ((i * i / 7) % 61) as u8)
-            .collect();
-        for len in [
-            SCRATCH_MAX_INPUT - 1,
-            SCRATCH_MAX_INPUT,
-            SCRATCH_MAX_INPUT + 1,
-        ] {
-            for mode in [LzMode::Fast, LzMode::Balanced] {
-                let data = &base[..len];
-                let via_scratch = LZ_SCRATCH.with(|cell| {
-                    let mut scratch = cell.borrow_mut();
-                    scratch.prepare(data.len());
-                    let out = lz_encode_with(data, mode, &mut scratch);
-                    scratch.finish();
-                    out
-                });
-                assert_eq!(
-                    via_scratch,
-                    lz_encode_allocating(data, mode),
-                    "{len} {mode:?}"
-                );
-                assert_eq!(lz_encode(data, mode), via_scratch, "{len} {mode:?}");
-            }
-        }
     }
 }

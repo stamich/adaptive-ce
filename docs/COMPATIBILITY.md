@@ -4,16 +4,18 @@ What each ACE release promises about files, APIs, toolchains and benchmark docum
 
 ## Format
 
-ACE 0.5.x reads Format 1.0 – 1.4 and writes the **minimal** version a file needs: 1.3 unless the
-file contains a TS1 block, then 1.4 ([`FORMAT-1.4.md`](FORMAT-1.4.md)).
+ACE 0.6.1 reads Format 1.0 – 1.5 and writes the **minimal** version a file needs: 1.3 unless the
+file contains a TS1 block (1.4, [`FORMAT-1.4.md`](FORMAT-1.4.md)) or a payload of a Format 1.5
+mode (1.5, [`FORMAT-1.5.md`](FORMAT-1.5.md); the version is a property of the payload).
 
-| File format | ACE 0.4.x reader | ACE 0.5.x reader |
-|---|---|---|
-| 1.0 | supported | supported |
-| 1.1 | supported | supported |
-| 1.2 | supported | supported |
-| 1.3 | supported | supported |
-| 1.4 | rejected at the file header (`UnsupportedVersion`) | supported |
+| File format | ACE 0.4.x reader | ACE 0.5.x – 0.6.0 reader | ACE 0.6.1 reader |
+|---|---|---|---|
+| 1.0 | supported | supported | supported |
+| 1.1 | supported | supported | supported |
+| 1.2 | supported | supported | supported |
+| 1.3 | supported | supported | supported |
+| 1.4 | rejected at the file header (`UnsupportedVersion`) | supported | supported |
+| 1.5 | rejected at the file header | rejected at the file header (0.6.0 names ACE 0.6.1) | supported |
 
 | Version | Adds |
 |---|---|
@@ -21,6 +23,7 @@ file contains a TS1 block, then 1.4 ([`FORMAT-1.4.md`](FORMAT-1.4.md)).
 | 1.2 | rANS4x entropy coder |
 | 1.3 | primary codec 3 `Numeric` (NUM1 payload; u16 lanes since 0.4.5) |
 | 1.4 | primary codec 4 `TimeSeries` (TS1 payload: Gorilla f64 / f32, RunDelta) |
+| 1.5 | NUM1 mode 4 (Patched FOR), TS1 mode 4 (ALP): no new codec id, the mode inside the payload needs the version |
 
 Every extension adds only a codec / coder id plus its self-describing payload; outer file and
 block header sizes, dictionary descriptors, AIDX and ACET remain unchanged. A block whose
@@ -42,11 +45,16 @@ Without the flag, data that no TS1 block helps (all of Corpus V3) is also writte
    coder, transform, flag bit — and in particular **every new TS1 mode** (ids 4 – 15 are
    reserved) — bumps the minor version, and readers reject the feature in files that declare an
    older minor version. An older reader must fail at the file header (`UnsupportedVersion`),
-   never inside a block, and since 0.6.0 the error names the ACE release that can read the file
-   (`unsupported ACE format version 1.5 (written by ACE 0.6.1 or newer; this reader supports up
-   to 1.4)`; `crates/ace-engine/tests/newer_format.rs`). (TS1 modes are self-describing, so a new mode inside 1.4 would decode
-   as "invalid TS1 stream" on a 0.5 reader instead of failing cleanly — therefore Chimp or any
-   other mode planned for 0.6 means Format 1.5.) One historical exception predates this rule:
+   never inside a block, and since 0.6.0 the error says which release can read the file
+   (0.6.0 reading a 1.5 file: `unsupported ACE format version 1.5 (written by ACE 0.6.1 or
+   newer; this reader supports up to 1.4)`; 0.6.1 reading a 1.6 file: `... (written by a newer
+   ACE release; this reader supports up to 1.5)`; `crates/ace-engine/tests/newer_format.rs`).
+   Since 1.5 the rule has a second half: a payload mode newer than the file's declared minor
+   version is rejected by the reader even inside an otherwise readable file
+   (`crates/ace-engine/tests/format_1_5.rs`). (TS1 modes are self-describing, so a new mode
+   inside 1.4 would decode as "invalid TS1 stream" on a 0.5 reader instead of failing
+   cleanly — which is why every new mode is a new format minor version.) One historical
+   exception predates this rule:
    0.4.5 added u16 NUM1 lanes inside Format 1.3, so 0.4.0 – 0.4.4 readers reject such blocks
    as malformed numeric headers.
 3. **The writer declares the minimal version.** A file is written as the lowest minor version

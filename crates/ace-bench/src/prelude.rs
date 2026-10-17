@@ -25,7 +25,7 @@ pub(crate) use std::fs;
 pub(crate) use std::hint::black_box;
 pub(crate) use std::io::{Cursor, Read, Write};
 pub(crate) use std::path::PathBuf;
-pub(crate) use std::time::{Instant, SystemTime, UNIX_EPOCH};
+pub(crate) use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) use crate::corpus::*;
 pub(crate) use crate::json::*;

@@ -110,3 +110,37 @@ block by block (tested in `float_lane.rs`).
 | FloatFast skips generic analysis, zero fallbacks | `float_lane.rs::constant_f64_uses_float_fast`, benchmark `float-fastpath` |
 | `--disable-float` = V4.3 decision | `float_route.rs::disabled_specialization_is_v4`, `float_lane.rs::disabled_float_lane_writes_format_1_3` |
 | determinism with Float workloads | `determinism_matrix.rs` (f64-step, f64-noisy, int-sparse-change) |
+
+## Changes in ACE 0.6.1
+
+* **Numeric estimate.** `estimate_numeric` (and `estimate_numeric_for_width`, used by FAST with
+  the prefilter's lane width) includes Patched FOR (NUM1 mode 4, [`FORMAT-1.5.md`](FORMAT-1.5.md)).
+  It is considered only when the best base mode needs at least 4 bits per value and is selected
+  only when strictly smaller, so blocks without outliers keep their 0.6.0 plan and bytes.
+* **Dominant Numeric first.** When the exact Numeric size dominates the best generic estimate by
+  the profile's margin (`NumericMargin`: ratio <= 0.70 FAST, 0.80 BALANCED, 0.90 DENSE) the
+  planner verifies a single candidate. That candidate is now always Numeric. Patched FOR makes
+  such margins common (`int-counter-reset` is 12 KiB against a guessed 84 KiB for RLE); without
+  the rule FAST verified the RLE candidate, whose analytical score is lower only because its
+  size estimate is a guess, and stored the block at 13 times the size.
+* **RunDelta for small changes.** `run_prefilter` also admits a lane width whose sampled values
+  repeat their predecessor at least half of the time (`MIN_EQUAL_RATIO_SMALL_DELTA`) while at
+  least 95 % of the transitions move by at most 255 in the lane ring (`SMALL_DELTA_MAX`,
+  `MIN_SMALL_DELTA_RATIO`; a u16 wrap `65535 -> 0` is a step of one). The exact RunDelta size
+  and the dominance rule are unchanged, so nothing is chosen unless it is smaller. There is no
+  format change (TS1 mode 3, Format 1.4). All 27 earlier workloads keep their bytes;
+  `int-geometric-delta` shrinks by 29 %. `int-slow-drift` is the control: NUM1 stays within
+  10 % there. Float lanes keep the 80 % rule (`float_route.rs::float_evidence`).
+* **ALP in the float evidence.** For an admitted float block `float_evidence` now also counts the
+  exact ALP size (`ace_cost::estimate_alp`, TS1 mode 4, Format 1.5) next to the Gorilla sample
+  and the exact RunDelta size; the smallest wins (ties: Gorilla, then RunDelta) and the usual
+  dominance rule decides between it and the generic plan. `time_series_estimates` counts it.
+  `f64-financial-price` shrinks by 36 % (FAST) and `f64-decimal-price` (Corpus V5) is stored with
+  ALP in FAST and BALANCED. In DENSE the generic estimate can be optimistic enough to hide a smaller ALP block; the
+  DENSE rule below makes that harmless.
+* **DENSE never larger than BALANCED.** `encode_block` plans every DENSE block also as BALANCED and
+  stores the smaller framed result (payload + metadata + transform list; ties keep DENSE). The
+  rule is exact, deterministic and independent of the planner's estimates, so it also covers
+  future estimator errors. It changes DENSE bytes only where BALANCED was smaller (`zeros`,
+  `runs`, `mixed`, `f64-special`, `f64-decimal-price`) and costs one extra BALANCED plan per
+  DENSE block. FAST and BALANCED are untouched.

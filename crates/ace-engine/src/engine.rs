@@ -159,7 +159,7 @@ impl AceEngine {
         Ok(stats)
     }
 
-    /// Decompresses an in-memory ACE 1.0 – 1.4 file into reconstructed bytes.
+    /// Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes.
     ///
     /// # Errors
     ///
@@ -197,7 +197,7 @@ impl AceEngine {
         Ok(out.len())
     }
 
-    /// Reads, validates and sequentially decompresses ACE 1.0–1.4 blocks to a writer.
+    /// Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer.
     ///
     /// # Errors
     ///
@@ -226,7 +226,13 @@ impl AceEngine {
             if header.block_id != expected_id {
                 return Err(AceError::Malformed("unexpected block id"));
             }
-            let block = decode_encoded_block(&header, &metadata, &payload, &self.limits)?;
+            let block = decode_encoded_block(
+                &header,
+                &metadata,
+                &payload,
+                file.minor_version,
+                &self.limits,
+            )?;
             writer.write_all(&block)?;
             total = total
                 .checked_add(block.len() as u64)
@@ -309,16 +315,5 @@ impl AceEngine {
         }
         let numeric = analyze_numeric(&input[..input.len().min(AUTO_POLICY_SAMPLE_BYTES)]);
         recommend_block_size(self.config.access_hint, self.config.profile, &numeric).block_size
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The configuration used by [`AceEngine::default_engine`] passes full validation.
-    #[test]
-    fn default_configuration_is_valid() {
-        assert!(AceEngine::new(AceConfig::default()).is_ok());
     }
 }

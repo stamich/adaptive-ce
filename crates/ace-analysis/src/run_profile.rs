@@ -3,8 +3,12 @@
 //! RunDelta stores one `(run, delta)` pair per change, so its size is driven by the change
 //! rate of whole lane values. The prefilter samples the same windows as the float prefilter
 //! ([`crate::lane_sample_windows`]) and keeps every lane width whose sampled values repeat
-//! their predecessor at least [`MIN_EQUAL_RATIO`] of the time. The planner then counts the
-//! exact RunDelta size of each kept width (`ace_cost::estimate_run_delta`).
+//! their predecessor at least [`MIN_EQUAL_RATIO`] of the time, or (ACE 0.6.1) at least
+//! [`MIN_EQUAL_RATIO_SMALL_DELTA`] of the time while [`MIN_SMALL_DELTA_RATIO`] of the
+//! transitions move by at most [`SMALL_DELTA_MAX`]: a slowly drifting integer or a value with
+//! geometric step sizes, where the per-change gamma code beats a global bit width although a
+//! fifth to a half of the samples change. The planner then counts the exact RunDelta size of
+//! each kept width (`ace_cost::estimate_run_delta`) and the usual dominance rule decides.
 //!
 //! Lanes made of one repeated byte ("splats" such as `0x0000…` or `0x1111…`) are byte runs,
 //! not numbers: RLE already encodes them optimally and the 0.4 planner handles them, so a
@@ -19,6 +23,12 @@ use crate::{lane_sample_windows, LANE_WINDOW_VALUES};
 pub const RUN_LANE_BYTES: [u8; 3] = [8, 4, 2];
 /// Minimum fraction of sampled values equal to their predecessor.
 pub const MIN_EQUAL_RATIO: f32 = 0.8;
+/// Minimum fraction of equal transitions when the changes are small (ACE 0.6.1).
+pub const MIN_EQUAL_RATIO_SMALL_DELTA: f32 = 0.5;
+/// Largest `|delta|` (in the lane ring) that counts as a small change.
+pub const SMALL_DELTA_MAX: u64 = 255;
+/// Minimum fraction of sampled transitions with `|delta| <= SMALL_DELTA_MAX` (equal ones count).
+pub const MIN_SMALL_DELTA_RATIO: f32 = 0.95;
 /// Maximum fraction of sampled values that are a single repeated byte.
 pub const MAX_SPLAT_RATIO: f32 = 0.5;
 
@@ -31,15 +41,22 @@ pub struct RunProfile {
     pub value_count: usize,
     /// Fraction of sampled transitions where the value equals its predecessor.
     pub equal_ratio: f32,
+    /// Fraction of sampled transitions that move by at most [`SMALL_DELTA_MAX`] (including the
+    /// equal ones), measured in the lane ring: a wrap from `65535` to `0` is a delta of `+1`.
+    pub small_delta_ratio: f32,
     /// Fraction of sampled values whose bytes are all equal (byte runs, zero padding).
     pub splat_ratio: f32,
 }
 
 /// Inherent methods of [`RunProfile`].
 impl RunProfile {
-    /// True when RunDelta should be considered: values mostly repeat and are not byte runs.
+    /// True when RunDelta should be considered: values mostly repeat (or repeat often and move
+    /// by little when they change) and are not byte runs.
     pub fn admitted(&self) -> bool {
-        self.equal_ratio >= MIN_EQUAL_RATIO && self.splat_ratio <= MAX_SPLAT_RATIO
+        let repeats = self.equal_ratio >= MIN_EQUAL_RATIO
+            || (self.equal_ratio >= MIN_EQUAL_RATIO_SMALL_DELTA
+                && self.small_delta_ratio >= MIN_SMALL_DELTA_RATIO);
+        repeats && self.splat_ratio <= MAX_SPLAT_RATIO
     }
 }
 
@@ -82,6 +99,7 @@ fn run_profile_lane<const B: usize>(input: &[u8]) -> Option<RunProfile> {
     }
     let mut transitions = 0u32;
     let mut equal = 0u32;
+    let mut small = 0u32;
     let mut values = 0u32;
     let mut splats = 0u32;
     for window in lane_sample_windows(value_count) {
@@ -94,6 +112,7 @@ fn run_profile_lane<const B: usize>(input: &[u8]) -> Option<RunProfile> {
             if let Some(previous) = previous {
                 transitions += 1;
                 equal += u32::from(previous == value);
+                small += u32::from(ring_distance::<B>(previous, value) <= SMALL_DELTA_MAX);
             }
             previous = Some(value);
         }
@@ -106,8 +125,26 @@ fn run_profile_lane<const B: usize>(input: &[u8]) -> Option<RunProfile> {
         } else {
             equal as f32 / transitions as f32
         },
+        small_delta_ratio: if transitions == 0 {
+            0.0
+        } else {
+            small as f32 / transitions as f32
+        },
         splat_ratio: splats as f32 / values.max(1) as f32,
     })
+}
+
+/// `|current - previous|` in the ring of `B`-byte lanes (the shorter way round).
+fn ring_distance<const B: usize>(previous: u64, current: u64) -> u64 {
+    let forward = current.wrapping_sub(previous);
+    let backward = previous.wrapping_sub(current);
+    let (forward, backward) = if B >= 8 {
+        (forward, backward)
+    } else {
+        let mask = (1u64 << (8 * B)) - 1;
+        (forward & mask, backward & mask)
+    };
+    forward.min(backward)
 }
 
 /// Keeps every lane width whose profile is [`RunProfile::admitted`].
@@ -122,48 +159,4 @@ pub fn run_prefilter(input: &[u8]) -> RunPrefilter {
         *slot = run_profile(input, lane_bytes).filter(RunProfile::admitted);
     }
     prefilter
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A u32 series changing every 200 values is admitted at every width that sees it.
-    #[test]
-    fn sparse_changes_are_admitted() {
-        let data: Vec<u8> = (0..65_536u32)
-            .flat_map(|i| (1_000 + i / 200 * 7).to_le_bytes())
-            .collect();
-        let prefilter = run_prefilter(&data);
-        let widths: Vec<u8> = prefilter.admitted().map(|p| p.lane_bytes).collect();
-        assert_eq!(widths, vec![8, 4]);
-        assert!(prefilter.lanes[1].expect("u32").equal_ratio > 0.98);
-    }
-
-    /// A counter changes every value and is rejected.
-    #[test]
-    fn counters_are_rejected() {
-        let data: Vec<u8> = (0..65_536u32).flat_map(u32::to_le_bytes).collect();
-        assert!(!run_prefilter(&data).any());
-    }
-
-    /// Byte runs and zero padding are left to RLE.
-    #[test]
-    fn byte_runs_are_rejected() {
-        assert!(!run_prefilter(&[0u8; 65_536]).any());
-        let mut runs = vec![0x11u8; 32_768];
-        runs.extend(vec![0x22u8; 32_768]);
-        let profile = run_profile(&runs, 8).expect("profile");
-        assert_eq!(profile.equal_ratio, 1.0);
-        assert_eq!(profile.splat_ratio, 1.0);
-        assert!(!profile.admitted());
-    }
-
-    /// Short inputs and unsupported widths produce no profile.
-    #[test]
-    fn short_or_unsupported() {
-        assert_eq!(run_profile(&[0u8; 100], 8), None);
-        assert_eq!(run_profile(&[0u8; 4096], 3), None);
-        assert!(run_profile(&[0u8; 4096], 2).is_some());
-    }
 }

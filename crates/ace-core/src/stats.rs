@@ -22,6 +22,9 @@ pub struct CompressionStats {
     pub numeric_blocks: u64,
     /// Blocks encoded with the TS1 time-series codec (Format 1.4).
     pub time_series_blocks: u64,
+    /// Minor format version declared by the container (`3` to [`crate::FORMAT_MINOR`]); `0`
+    /// until a container has been assembled.
+    pub format_minor: u8,
     /// Number of blocks using byte-delta transform.
     pub delta_blocks: u64,
     /// Number of blocks finalized by Huffman.
@@ -52,6 +55,8 @@ pub struct CompressionStats {
     pub ts1_gorilla_f32_blocks: u64,
     /// Stored TS1 blocks in RunDelta mode (any lane width).
     pub ts1_run_delta_blocks: u64,
+    /// Stored TS1 blocks in ALP mode (Format 1.5).
+    pub ts1_alp_blocks: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
     /// Time spent in route prefilter/classification/full NumericFast validation.
@@ -106,33 +111,5 @@ impl CompressionStats {
     pub fn record_plan(&mut self, label: impl Into<String>) {
         let entry = self.plan_distribution.entry(label.into()).or_insert(0);
         *entry = entry.saturating_add(1);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Recording a plan increments exactly the matching counters.
-    #[test]
-    fn record_selected_plan_counts_codec_entropy_and_delta() {
-        let mut stats = CompressionStats::default();
-        let mut plan = PhysicalCompressionPlan::raw();
-        plan.decoding.codec = CodecId::Rle;
-        plan.decoding.entropy = EntropyCodecId::Huffman;
-        plan.decoding.transforms = vec![TransformId::DeltaByte];
-        stats.record_selected_plan(&plan);
-        stats.record_selected_plan(&PhysicalCompressionPlan::raw());
-        assert_eq!(
-            (
-                stats.rle_blocks,
-                stats.raw_blocks,
-                stats.huffman_blocks,
-                stats.delta_blocks
-            ),
-            (1, 1, 1, 1)
-        );
-        assert_eq!(stats.plan_distribution.get("delta+rle+huffman"), Some(&1));
-        assert_eq!(stats.plan_distribution.get("raw+none"), Some(&1));
     }
 }

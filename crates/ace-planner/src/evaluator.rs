@@ -193,6 +193,16 @@ fn evaluate_candidates_internal(
             reduce_numeric_general_candidates(estimated, route_budget.max_generated_candidates);
         if matches!(hybrid_policy, crate::RouteHybridLzPolicy::Disabled) {
             route_budget.max_sampled_candidates = route_budget.max_sampled_candidates.min(1);
+            // Numeric dominates by the profile's margin and is the one candidate that is
+            // verified: its exact size must not lose the single slot to a generic candidate whose
+            // analytical score is better only because its size estimate is a guess. (With
+            // Patched FOR the margin can become large enough for this to matter.)
+            if let Some(position) = estimated
+                .iter()
+                .position(|candidate| matches!(candidate.plan.decoding.codec, CodecId::Numeric))
+            {
+                estimated[..=position].rotate_right(1);
+            }
         }
     }
 
@@ -647,7 +657,7 @@ fn verify_candidate_samples(
 /// stronger analytical weight because short windows cannot faithfully reproduce long-range
 /// match opportunities. DENSE is intentionally conservative: sampling refines ranking rather
 /// than replacing full-block statistics.
-fn verification_blend_weights(
+pub fn verification_blend_weights(
     codec: CodecId,
     confidence: f32,
     stage: u8,
@@ -710,50 +720,4 @@ fn adaptive_second_stage_k(
         k = k.max(3).min(candidates.len());
     }
     k
-}
-
-#[cfg(test)]
-mod buildfix5_tests {
-    use super::*;
-
-    /// Ensures high-confidence LZ verification trusts full-block statistics more than samples.
-    #[test]
-    fn high_confidence_lz_prefers_analytical_weight() {
-        let (sample, analytical) =
-            verification_blend_weights(CodecId::Lz, 0.95, 2, CompressionProfile::Dense);
-        assert!(analytical > sample);
-        assert_eq!(sample + analytical, 100);
-    }
-
-    /// Ensures low-confidence non-LZ verification still keeps analytical evidence in the blend.
-    #[test]
-    fn low_confidence_sampling_never_fully_replaces_estimate() {
-        let (sample, analytical) =
-            verification_blend_weights(CodecId::Raw, 0.40, 2, CompressionProfile::Balanced);
-        assert!(sample < 100);
-        assert!(analytical > 0);
-        assert_eq!(sample + analytical, 100);
-    }
-
-    /// Verifies all supported profile, codec, confidence, and stage combinations produce valid percentages.
-    #[test]
-    fn verification_blend_weights_are_valid_percentages() {
-        for profile in [
-            CompressionProfile::Fast,
-            CompressionProfile::Balanced,
-            CompressionProfile::Dense,
-        ] {
-            for codec in [CodecId::Raw, CodecId::Rle, CodecId::Lz] {
-                for confidence in [0.40_f32, 0.80_f32, 0.95_f32] {
-                    for stage in [1_u8, 2_u8] {
-                        let (sample, analytical) =
-                            verification_blend_weights(codec, confidence, stage, profile);
-                        assert!(sample <= 100);
-                        assert!(analytical <= 100);
-                        assert_eq!(sample + analytical, 100);
-                    }
-                }
-            }
-        }
-    }
 }

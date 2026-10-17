@@ -11,6 +11,7 @@ rust-version.workspace = true
 ace-core = { path = "../ace-core" }
 ace-cost = { path = "../ace-cost" }
 ace-analysis = { path = "../ace-analysis" }
+ace-bitpack = { path = "../ace-bitpack" }
 ace-codecs = { path = "../ace-codecs" }
 ace-format = { path = "../ace-format" }
 ace-engine = { path = "../ace-engine" }

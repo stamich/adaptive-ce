@@ -44,7 +44,7 @@ fn hex(bytes: &[u8]) -> String {
 
 fn golden() -> Golden {
     let path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/golden/0.5.0/GOLDEN.json");
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/golden/0.6.1/GOLDEN.json");
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 
@@ -52,9 +52,9 @@ fn engine(profile: Profile) -> Engine {
     Engine::new(Config::builder().profile(profile).build().unwrap()).unwrap()
 }
 
-/// The facade writes exactly the 0.5.0 bytes for every workload and profile, and reads them back.
+/// The facade writes exactly the 0.6.1 bytes for every workload and profile, and reads them back.
 #[test]
-fn facade_reproduces_the_0_5_0_golden_file() {
+fn facade_reproduces_the_0_6_1_golden_file() {
     let golden = golden();
     assert_eq!(golden.entries.len(), Workload::ALL.len());
     for entry in &golden.entries {
@@ -167,15 +167,15 @@ fn hostile_input_never_returns_wrong_data() {
     assert!(engine.decompress(&[]).is_err());
 }
 
-/// A file from a newer minor format names the release that reads it.
+/// A file from a newer minor format (1.6) is unsupported and says a newer release wrote it.
 #[test]
 fn a_newer_format_is_unsupported_and_named() {
     let engine = Engine::default();
     let mut packed = engine.compress(&[7u8; 4096]).unwrap();
-    packed[5] = 5; // format 1.5
+    packed[5] = 6; // format 1.6
     let e = engine.decompress(&packed).unwrap_err();
     assert_eq!(e.kind(), ErrorKind::Unsupported);
-    assert!(e.to_string().contains("0.6.1"), "{e}");
+    assert!(e.to_string().contains("newer ACE release"), "{e}");
 }
 
 /// Every decode limit rejects with `LimitExceeded`.

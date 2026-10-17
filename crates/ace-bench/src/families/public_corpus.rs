@@ -16,16 +16,20 @@ use std::path::Path;
 use crate::prelude::*;
 
 /// Environment variable naming the directory of the corpus files.
-pub(crate) const CORPUS_ENV: &str = "ACE_PUBLIC_CORPUS";
+pub const CORPUS_ENV: &str = "ACE_PUBLIC_CORPUS";
 
 /// Environment variable limiting the bytes read from one file.
-pub(crate) const MAX_BYTES_ENV: &str = "ACE_PUBLIC_CORPUS_MAX_BYTES";
+pub const MAX_BYTES_ENV: &str = "ACE_PUBLIC_CORPUS_MAX_BYTES";
 
 /// Default limit of bytes read from one file.
 const DEFAULT_MAX_BYTES: usize = 256 * 1024 * 1024;
 
 /// The regular files of `directory`, sorted by name, as `(file name, path)`.
-pub(crate) fn corpus_files(directory: &Path) -> std::io::Result<Vec<(String, PathBuf)>> {
+///
+/// # Errors
+///
+/// The error of reading `directory`.
+pub fn corpus_files(directory: &Path) -> std::io::Result<Vec<(String, PathBuf)>> {
     let mut files = Vec::new();
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
@@ -49,7 +53,7 @@ fn read_prefix(path: &Path, max_bytes: usize) -> std::io::Result<Vec<u8>> {
 }
 
 /// Megabytes (10^6 bytes) per second for `bytes` processed in a median of `median_ns`.
-fn megabytes_per_second(bytes: usize, median_ns: f64) -> f64 {
+pub fn megabytes_per_second(bytes: usize, median_ns: f64) -> f64 {
     if median_ns <= 0.0 {
         0.0
     } else {
@@ -153,7 +157,11 @@ fn measure_file(
 }
 
 /// Measures every file of `directory`.
-pub(crate) fn measure_directory(
+///
+/// # Errors
+///
+/// The error of reading a file or of an operation under measurement.
+pub fn measure_directory(
     directory: &Path,
     max_bytes: usize,
     plan: MeasurementPlan,
@@ -171,7 +179,11 @@ pub(crate) fn measure_directory(
 }
 
 /// Runs the family: one row per file and compressor, or nothing when no corpus is configured.
-pub(crate) fn public_corpus_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+///
+/// # Errors
+///
+/// The error of reading the corpus or of an operation under measurement.
+pub fn public_corpus_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let Some(directory) = std::env::var_os(CORPUS_ENV).map(PathBuf::from) else {
         eprintln!("[public-corpus] skipped: set {CORPUS_ENV} to a directory with the corpus files");
         return Ok(Vec::new());
@@ -188,68 +200,4 @@ pub(crate) fn public_corpus_family() -> Result<Vec<Value>, Box<dyn std::error::E
         .and_then(|value| value.parse::<usize>().ok())
         .unwrap_or(DEFAULT_MAX_BYTES);
     measure_directory(&directory, max_bytes, MeasurementPlan::current())
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-mod tests {
-    use super::*;
-
-    fn scratch(name: &str) -> PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("ace-public-corpus-{name}-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
-        dir
-    }
-
-    #[test]
-    fn files_are_listed_sorted_and_directories_skipped() {
-        let dir = scratch("list");
-        fs::write(dir.join("b"), b"2").unwrap();
-        fs::write(dir.join("a"), b"1").unwrap();
-        fs::create_dir(dir.join("sub")).unwrap();
-        let names: Vec<String> = corpus_files(&dir)
-            .unwrap()
-            .into_iter()
-            .map(|f| f.0)
-            .collect();
-        assert_eq!(names, ["a", "b"]);
-        assert!(corpus_files(&dir.join("missing")).is_err());
-    }
-
-    #[test]
-    fn speeds_are_decimal_megabytes_per_second() {
-        assert!((megabytes_per_second(1_000_000, 1e9) - 1.0).abs() < 1e-9);
-        assert_eq!(megabytes_per_second(10, 0.0), 0.0);
-    }
-
-    #[test]
-    fn a_directory_yields_a_row_per_file_and_compressor() {
-        let dir = scratch("rows");
-        let text = b"the quick brown fox jumps over the lazy dog\n".repeat(2000);
-        fs::write(dir.join("fox.txt"), &text).unwrap();
-        fs::write(dir.join("empty"), b"").unwrap();
-        let rows = measure_directory(&dir, 60_000, MeasurementPlan::QUICK).unwrap();
-        let paths: Vec<&str> = rows.iter().map(|r| r["path"].as_str().unwrap()).collect();
-        assert_eq!(
-            paths,
-            [
-                "ace-fast",
-                "ace-balanced",
-                "ace-dense",
-                "lz4",
-                "zstd-3",
-                "gzip-6"
-            ]
-        );
-        for r in &rows {
-            assert_eq!(r["workload_id"], "fox.txt");
-            assert_eq!(r["input_bytes"], 60_000);
-            let l = &r["lzbench"];
-            assert!(l["ratio_percent"].as_f64().unwrap() < 50.0, "{r}");
-            assert!(l["compress_mb_s"].as_f64().unwrap() > 0.0);
-            assert!(l["decompress_mb_s"].as_f64().unwrap() > 0.0);
-        }
-    }
 }

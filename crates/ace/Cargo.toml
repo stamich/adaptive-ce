@@ -14,6 +14,10 @@ categories = ["compression", "algorithms"]
 default = []
 # `Engine::explain`: per-block planner report (`BlockReport`).
 explain = []
+# Hidden module `ace::internal` with the conversions between the facade types and the internal
+# crates. It exists only so that the mapping tests can live in `tests/`; it is not part of the
+# API, and the dev-dependency below is the only thing that enables it.
+internal-testing = []
 
 [dependencies]
 ace-core = { path = "../ace-core" }
@@ -21,6 +25,7 @@ ace-engine = { path = "../ace-engine" }
 ace-stream = { path = "../ace-stream" }
 
 [dev-dependencies]
+ace = { path = ".", features = ["explain", "internal-testing"] }
 ace-corpus = { path = "../ace-corpus" }
 serde.workspace = true
 serde_json.workspace = true

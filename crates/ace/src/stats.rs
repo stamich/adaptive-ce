@@ -50,7 +50,7 @@ impl Stats {
         Self {
             input_bytes: stats.input_bytes,
             output_bytes: stats.output_bytes,
-            format_minor: if stats.time_series_blocks > 0 { 4 } else { 3 },
+            format_minor: stats.format_minor,
             blocks: stats.block_count,
             raw_blocks: stats.raw_blocks,
             rle_blocks: stats.rle_blocks,
@@ -59,47 +59,5 @@ impl Stats {
             time_series_blocks: stats.time_series_blocks,
             plan_distribution: stats.plan_distribution.clone(),
         }
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn counters_and_ratio_follow_the_internal_stats() {
-        let mut core = CompressionStats {
-            input_bytes: 1000,
-            output_bytes: 250,
-            block_count: 3,
-            raw_blocks: 1,
-            lz_blocks: 2,
-            numeric_blocks: 4,
-            time_series_blocks: 5,
-            rle_blocks: 6,
-            ..CompressionStats::default()
-        };
-        core.record_plan("lz+huffman");
-        let s = Stats::from_core(&core);
-        assert_eq!((s.input_bytes, s.output_bytes, s.blocks), (1000, 250, 3));
-        assert_eq!(s.format_minor, 4);
-        assert_eq!(
-            (
-                s.raw_blocks,
-                s.rle_blocks,
-                s.lz_blocks,
-                s.numeric_blocks,
-                s.time_series_blocks
-            ),
-            (1, 6, 2, 4, 5)
-        );
-        assert_eq!(s.plan_distribution.get("lz+huffman"), Some(&1));
-        assert!((s.ratio() - 4.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn ratio_of_an_empty_run_is_one() {
-        assert!((Stats::default().ratio() - 1.0).abs() < 1e-12);
     }
 }

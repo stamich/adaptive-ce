@@ -108,9 +108,9 @@ fn older_codecs_are_valid_in_format_1_4() {
     }
 }
 
-/// Every file-header minor version 0 – 4 is readable; 5 is rejected as unsupported.
+/// Every file-header minor version 0 – 5 is readable; 6 is rejected as unsupported.
 #[test]
-fn file_headers_1_0_to_1_4_are_readable() {
+fn file_headers_1_0_to_1_5_are_readable() {
     for minor in 0..=FORMAT_MINOR {
         let bytes = encode_file_header(&FileHeader {
             minor_version: minor,
@@ -133,8 +133,12 @@ fn file_headers_1_0_to_1_4_are_readable() {
     future[28..32].copy_from_slice(&crc.to_le_bytes());
     assert!(matches!(
         decode_file_header(&future),
-        Err(AceError::UnsupportedVersion { minor: 5, .. })
+        Err(AceError::UnsupportedVersion { minor: 6, .. })
     ));
     let message = decode_file_header(&future).unwrap_err().to_string();
-    assert!(message.contains("ACE 0.6.1 or newer"), "{message}");
+    assert!(
+        message.contains("written by a newer ACE release"),
+        "{message}"
+    );
+    assert!(message.contains("supports up to 1.5"), "{message}");
 }

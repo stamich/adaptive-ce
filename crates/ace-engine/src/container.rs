@@ -9,11 +9,13 @@ use ace_format::{
 };
 
 use crate::block_encoder::EncodedBlock;
+use crate::block_pipeline::block_format_minor;
 
 /// Serializes blocks (already in id order) into a container and fills `stats`.
 ///
-/// The declared format version is the minimal one the blocks need: 1.4 only when a block uses
-/// the TS1 codec, otherwise 1.3 (see [`minimal_minor_version`]).
+/// The declared format version is the minimal one the blocks need: 1.4 when a block uses the
+/// TS1 codec, 1.5 when a payload uses a Format 1.5 mode, otherwise 1.3 (see
+/// [`minimal_minor_version`] and [`block_format_minor`]).
 pub(crate) fn assemble_container(
     blocks: Vec<EncodedBlock>,
     input_len: usize,
@@ -21,8 +23,13 @@ pub(crate) fn assemble_container(
     write_index: bool,
     stats: &mut CompressionStats,
 ) -> AceResult<Vec<u8>> {
+    let minor_version =
+        minimal_minor_version(blocks.iter().map(|block| {
+            block_format_minor(block.header.codec, block.header.entropy, &block.payload)
+        }));
+    stats.format_minor = minor_version;
     let file_header = FileHeader {
-        minor_version: minimal_minor_version(blocks.iter().map(|block| block.header.codec)),
+        minor_version,
         flags: if write_index { FILE_FLAG_HAS_INDEX } else { 0 },
         default_block_size: block_size as u32,
         original_size: input_len as u64,
@@ -71,6 +78,7 @@ fn record_block(stats: &mut CompressionStats, block: &EncodedBlock) {
         Some(TimeSeriesMode::GorillaF64) => stats.ts1_gorilla_f64_blocks += 1,
         Some(TimeSeriesMode::GorillaF32) => stats.ts1_gorilla_f32_blocks += 1,
         Some(TimeSeriesMode::RunDelta) => stats.ts1_run_delta_blocks += 1,
+        Some(TimeSeriesMode::Alp) => stats.ts1_alp_blocks += 1,
         None => {}
     }
 }

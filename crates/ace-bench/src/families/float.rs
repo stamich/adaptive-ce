@@ -60,7 +60,7 @@ fn blockwise(data: &[u8], encoded_len: impl Fn(&[u8]) -> Option<usize>) -> Optio
 }
 
 /// Codec-level sizes of every candidate (no entropy stage, no planner).
-fn candidate_sizes(data: &[u8]) -> Vec<(String, Option<usize>)> {
+pub(crate) fn candidate_sizes(data: &[u8]) -> Vec<(String, Option<usize>)> {
     let mut sizes = vec![
         ("raw".to_string(), Some(data.len())),
         (
@@ -109,7 +109,7 @@ fn engine_row(
 }
 
 /// Codec-level timing of the best TS1 layout (block by block, like the engine).
-fn best_ts1_timing(
+pub(crate) fn best_ts1_timing(
     data: &[u8],
     layout: TimeSeriesLayout,
 ) -> Result<Value, Box<dyn std::error::Error>> {
@@ -206,6 +206,7 @@ fn float_stats_json(stats: &CompressionStats) -> Value {
         .field("ts1_gorilla_f64_blocks", stats.ts1_gorilla_f64_blocks)
         .field("ts1_gorilla_f32_blocks", stats.ts1_gorilla_f32_blocks)
         .field("ts1_run_delta_blocks", stats.ts1_run_delta_blocks)
+        .field("ts1_alp_blocks", stats.ts1_alp_blocks)
         .field("time_series_estimates", stats.time_series_estimates)
         .field(
             "planner_full_trial_encodes",

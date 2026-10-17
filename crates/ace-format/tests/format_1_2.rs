@@ -5,12 +5,12 @@ use ace_format::{
     checksum, decode_file_header, encode_file_header, FileHeader, FORMAT_MINOR, FORMAT_MINOR_BASE,
 };
 
-/// The writer emits the requested minor version (1.3 base, 1.4 maximum) in the unchanged
+/// The writer emits the requested minor version (1.3 base, 1.5 maximum) in the unchanged
 /// fixed header shape; values above the maximum are capped.
 #[test]
 fn writer_emits_requested_minor_version() {
-    assert_eq!((FORMAT_MINOR_BASE, FORMAT_MINOR), (3, 4));
-    for (requested, written) in [(3u8, 3u8), (4, 4), (9, 4)] {
+    assert_eq!((FORMAT_MINOR_BASE, FORMAT_MINOR), (3, 5));
+    for (requested, written) in [(3u8, 3u8), (4, 4), (5, 5), (9, 5)] {
         let header = FileHeader {
             minor_version: requested,
             flags: 0,
@@ -58,18 +58,14 @@ fn reader_accepts_1_1() {
     assert_eq!(decode_file_header(&bytes).unwrap().minor_version, 1);
 }
 
-/// Minimal-version rule: only a TS1 block raises the declared version to 1.4.
+/// Minimal-version rule: the declared version is the highest version a block needs, never below
+/// 1.3 and never above the maximum.
 #[test]
-fn minimal_minor_version_depends_only_on_ts1() {
-    use ace_core::CodecId;
+fn minimal_minor_version_is_the_highest_block_requirement() {
     use ace_format::minimal_minor_version;
     assert_eq!(minimal_minor_version([]), 3);
-    assert_eq!(
-        minimal_minor_version([CodecId::Raw, CodecId::Lz, CodecId::Numeric, CodecId::Rle]),
-        3
-    );
-    assert_eq!(
-        minimal_minor_version([CodecId::Raw, CodecId::TimeSeries]),
-        4
-    );
+    assert_eq!(minimal_minor_version([0, 3, 3, 0]), 3);
+    assert_eq!(minimal_minor_version([3, 4, 3]), 4);
+    assert_eq!(minimal_minor_version([4, 5, 3]), 5);
+    assert_eq!(minimal_minor_version([9]), 5);
 }

@@ -210,6 +210,15 @@ to be smaller than BALANCED". The cases where it is larger show that its estimat
 search, are the limit; making DENSE never worse than BALANCED changes planner decisions and
 is therefore a candidate for 0.6.1 with the other Phase B changes.
 
+**0.6.1 follow-up: DENSE is never larger than BALANCED.** The engine plans every DENSE block a
+second time as BALANCED and stores the smaller result (ties keep DENSE), so the guarantee holds
+per block and therefore per file. Effect on the golden workloads (1 MiB each): `zeros` 4 488 ->
+3 448 bytes, `runs` 10 602 -> 9 564, `mixed` 281 768 -> 281 508, `f64-special` 253 222 -> 250 983,
+`f64-decimal-price` (Corpus V5) 252 130 -> 206 328; no other workload changes in DENSE. Cost:
+DENSE encoding includes one BALANCED plan per block (measured with the 0.6.1 release run, see
+`PERFORMANCE-0.6.1.md`); decoding is unaffected. `tests/dense_vs_balanced.rs` checks every corpus
+workload and the false-positive corpus.
+
 ### Float lane families (0.5.0)
 
 | Family | Content | Gates fed |
@@ -219,6 +228,7 @@ is therefore a candidate for 0.6.1 with the other Phase B changes.
 | `float-fastpath` | f64-constant / f64-step: generic-analysis / planning / encoding time, encode speedup over the lane off (same run) | FloatFast skips analysis, all blocks FloatFast |
 | `float-false-positive` | Corpus V3, non-float V4 data and the false-positive corpus (`ace_corpus::FalsePositiveCase`) | zero Float-route blocks, Corpus V3 identity |
 | `float-estimator` | Gorilla estimate error (MAPE, bias, p95, max) and per-block decision recall / regret against the better of TS1 and the generic plan | estimator p95 ≤ 25 % |
+| `chimp-evaluation` | Chimp / Chimp128 against the best bare codec and the engine, per 256 KiB block (0.6.1 decision) | share of shrinking blocks ≥ 5 % to add Chimp |
 
 `release-performance` adds `float_fast.f64_step`, `float_general.f64_noisy` and
 `run_delta.int_sparse_change`; each also measures the same engine with the lane disabled in the
@@ -226,6 +236,79 @@ same process (`compression_disabled`, `encode_speedup_vs_disabled`, `ratio_gain_
 These are **within-run ratios**: their output intentionally differs from 0.4.6, while byte
 identity is an invariant of every interleaved A/B case, and a same-run ratio is immune to
 machine drift.
+
+### `chimp-evaluation` (0.6.1 decision: Chimp is not added)
+
+Question: does Chimp / Chimp128 (Liakos et al., 2022) deserve a TS1 mode next to Gorilla, RunDelta
+and ALP? `crates/ace-bench/src/chimp.rs` implements both as working codecs (decoders included,
+`tests/chimp.rs` checks exact round trips); they are **not** part of the format.
+
+Method: 9 binary64 workloads x 16 blocks of 256 KiB (144 blocks). Per block the best existing
+choice is the smallest of the bare codecs (RAW, RLE, LZ fast, NUM1, every TS1 layout including ALP)
+and of the whole engine (BALANCED and DENSE, one block per file, container overhead not
+subtracted). A block shrinks when the better Chimp variant, charged a TS1-sized header, is strictly
+smaller. Rule: Chimp is kept only if at least 5 % of the blocks shrink.
+
+| Baseline | Blocks where Chimp is smaller |
+|---|---:|
+| bare codecs only (no entropy stage) | 31 of 144 (21.5 %, all on `f64-special` and `f64-smooth`) |
+| bare codecs and the engine | **0 of 144 (0 %)** |
+
+The 31 blocks are won against Gorilla and RAW, but the generic plans (LZ + rANS) already store
+them smaller: the engine beats every bare codec on 48 blocks. Decision: **no Chimp mode** in
+0.6.1; TS1 mode 5 stays reserved. Re-run with `ace-bench chimp-evaluation` (sizes are exact and do
+not depend on the machine); the family writes the per-workload rows and a `chimp_decision` row.
+
+### Phase B gates (0.6.1)
+
+New family `format-1-5` (`ace-bench format-1-5`: ratios and format versions of the Phase B workloads
+per profile, codec speed of ALP and Patched FOR, and the DENSE-versus-BALANCED sweep over all
+31 corpus workloads) and the section `format15` of Regression V3:
+
+| Gate | Requirement | 0.6.0 |
+|---|---|---|
+| `format15.dense_larger_than_balanced` | 0 of 31 workloads (correctness) | 5 |
+| `format15.int_counter_reset_ratio` | >= 15x | 2.7x |
+| `format15.monotonic_outliers_ratio` | >= 100x | 1.8x |
+| `format15.gauge_sawtooth_ratio` | >= 500x | 19x |
+| `format15.delta_variable_ratio` | >= 8x | 6.4x |
+| `format15.f64_decimal_price_ratio`, `…_financial_price_ratio` | >= 4.5x, >= 5.2x | — / 5.1x |
+| `format15.int_geometric_delta_gain` | >= 1.25x the disabled lane | — |
+| `format15.int_slow_drift_control` | >= 0.99x (NUM1 stays within 10 %) | — |
+| `format15.alp_codec_encode_mb_s`, `…_decode_mb_s` | >= 150, >= 300 MB/s (provisional) | — |
+| `format15.patched_codec_encode_mb_s`, `…_decode_mb_s` | >= 200, >= 300 MB/s (provisional) | — |
+
+Measured on the 32-thread reference machine (full run): counter-reset 21.1x, monotonic-outliers
+401x, gauge-sawtooth 1137x, delta-variable 10.2x, decimal price 5.09x, financial price 5.70x,
+geometric delta 1.47x, FAST encode 34.8x the disabled lane, ALP 335 / 1093 MB/s, Patched FOR
+735 / 1261 MB/s. All `format15` gates pass there. The ALP and Patched speed floors (150 / 300 and
+200 / 300 MB/s) stay as set; they can be raised with the next baseline.
+
+Interleaved A/B against 0.6.0 (`tools/ace-ab0.6.1.py`, base tag `v0.6.0`) gets cases for every
+path whose planning changed. Byte-identical cases keep the 0.95 floor; cases whose bytes change
+on purpose are flagged `output_changes` (no identity check) and carry the documented price of
+the change:
+
+| Case | Floor | Why |
+|---|---:|---|
+| `compression.dense.encode` | 0.50 | DENSE also plans every block as BALANCED (0.55x measured on the reference machine) |
+| `compression.dense.decode` | 0.95 | `output_changes`: the stored bytes differ from 0.6.0; decode speed itself is 1.05x |
+| `numeric_general.delta_variable.encode` | 0.75 | exact Patched FOR statistics pass plus encoder; the planner reuses the plan (no second pass) and a 64-window sample skips the exact pass when no gain is possible; +12 % instructions (callgrind), bytes -37 % |
+| `numeric_general.monotonic_outliers.encode` | 0.70 | same (0.80x on the reference machine, bytes -99.5 %) |
+| `numeric_general.int_counter_reset.encode`, `float.f64_decimal_price.encode / .decode` | 0.95 | faster than 0.6.0 (1.3x - 3.7x) |
+| `numeric_general.u64_timestamps.encode`, `float.f64_noisy.encode`, `float.f64_smooth.encode` | 0.95 | bytes identical; the Patched and ALP pre-tests keep the cost within noise |
+
+The first reference run (`ab-0.6.1-vs-0.6.0`) failed five A/B cases (FAST / BALANCED encode 0.92 / 0.94,
+`f64_noisy` 0.79, `delta_variable` 0.66, `dense.decode` without `output_changes`). Fixed since: the
+ALP sample test now stops after the first non-decimal majority (about 10x fewer operations on noise),
+the RunDelta size count stops as soon as the payload cannot pass the dominance rule
+(`estimate_run_delta_within`), and the two bookkeeping floors above were set from the measurements.
+
+Three pre-tests keep the new modes off the hot path: Patched FOR is estimated only at lane widths
+within 25 % of the best base size and only when 16-value chunks of some source differ by at least
+8 bits; ALP is counted only for blocks that are not FloatFast-dominant and whose 64-value sample
+is at least half decimal-shaped. Without the ALP rule FAST encode of `f64-constant` fell to 4.4x
+the disabled lane (gate: 5x); with it 17x.
 
 ### Float gates (Regression V3, 0.5.0)
 

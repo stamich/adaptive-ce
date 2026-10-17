@@ -101,8 +101,8 @@ fn version_reports_formats_and_backends() {
     );
     for needle in [
         "git revision:",
-        "format writer:  1.3 | 1.4",
-        "format readers: 1.0 1.1 1.2 1.3 1.4",
+        "format writer:  1.3 | 1.4 | 1.5",
+        "format readers: 1.0 1.1 1.2 1.3 1.4 1.5",
         "simd backend:",
         "crc32c backend:",
         "build:",
@@ -225,16 +225,16 @@ fn closed_stdout_is_a_quiet_success() {
     assert!(!stderr.contains("panicked"), "{stderr}");
 }
 
-/// A file written by a newer ACE (format 1.5) is refused by every command that reads it, and
-/// the message names the release that can read it.
+/// A file written by a newer ACE (format 1.6) is refused by every command that reads it, and
+/// the message says that a newer release wrote it.
 #[test]
-fn newer_format_names_the_release_that_reads_it() {
+fn newer_format_is_refused_with_a_clear_message() {
     let dir = scratch("newer");
     let input = sample(&dir);
     let ace_file = dir.join("a.ace");
     assert!(run(&["compress", s(&input), s(&ace_file)]).status.success());
     let mut bytes = std::fs::read(&ace_file).unwrap();
-    bytes[5] = 5;
+    bytes[5] = 6;
     let crc = ace_format::checksum(&bytes[..28]);
     bytes[28..32].copy_from_slice(&crc.to_le_bytes());
     let newer = dir.join("newer.ace");
@@ -245,6 +245,6 @@ fn newer_format_names_the_release_that_reads_it() {
         vec!["verify", s(&newer)],
         vec!["inspect", s(&newer)],
     ] {
-        assert_clean_failure(&args, "ACE 0.6.1 or newer");
+        assert_clean_failure(&args, "written by a newer ACE release");
     }
 }

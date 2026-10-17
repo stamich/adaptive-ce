@@ -3,10 +3,12 @@
 use ace_bitpack::{BitReader, BitWriter};
 use ace_core::{read_lane, AceError, AceResult};
 
+use super::alp;
+use super::alp_decode;
 use super::gorilla::{self, GorillaShape, GORILLA_F32, GORILLA_F64};
-use super::header::{serialize_payload, ts1_inspect, TIME_SERIES_HEADER_SIZE};
+use super::header::{ts1_inspect, ts1_serialize_payload, TIME_SERIES_HEADER_SIZE};
 use super::run_delta;
-use super::sink::{BitCounter, BitSink};
+use super::sink::{BitCounter, BitSink, LimitedBitCounter};
 use super::{TimeSeriesMode, TimeSeriesPayloadInfo, FLAG_WINDOW_REUSE};
 
 /// Mode plus lane width: everything an encoder needs to know about the wire layout.
@@ -31,6 +33,17 @@ impl TimeSeriesLayout {
         lane_bytes: 4,
     };
 
+    /// ALP over IEEE-754 binary64 (Format 1.5).
+    pub const ALP_F64: Self = Self {
+        mode: TimeSeriesMode::Alp,
+        lane_bytes: 8,
+    };
+    /// ALP over IEEE-754 binary32 (Format 1.5).
+    pub const ALP_F32: Self = Self {
+        mode: TimeSeriesMode::Alp,
+        lane_bytes: 4,
+    };
+
     /// RunDelta over lanes of `lane_bytes` (2, 4 or 8) bytes.
     pub const fn run_delta(lane_bytes: u8) -> Self {
         Self {
@@ -40,18 +53,21 @@ impl TimeSeriesLayout {
     }
 
     /// Every valid layout, in wire order.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 7] = [
         Self::GORILLA_F64,
         Self::GORILLA_F32,
         Self::run_delta(2),
         Self::run_delta(4),
         Self::run_delta(8),
+        Self::ALP_F64,
+        Self::ALP_F32,
     ];
 
     /// Stable label (`gorilla_f64`, `run_delta_u32`, …) for telemetry and `ace inspect`.
     pub fn label(self) -> String {
         match self.mode {
             TimeSeriesMode::RunDelta => format!("run_delta_u{}", self.lane_bytes as u32 * 8),
+            TimeSeriesMode::Alp => format!("alp_f{}", self.lane_bytes as u32 * 8),
             mode => mode.label().to_string(),
         }
     }
@@ -71,7 +87,7 @@ fn gorilla_shape(mode: TimeSeriesMode) -> Option<GorillaShape> {
     match mode {
         TimeSeriesMode::GorillaF64 => Some(GORILLA_F64),
         TimeSeriesMode::GorillaF32 => Some(GORILLA_F32),
-        TimeSeriesMode::RunDelta => None,
+        TimeSeriesMode::RunDelta | TimeSeriesMode::Alp => None,
     }
 }
 
@@ -88,6 +104,8 @@ fn encode_stream<S: BitSink>(input: &[u8], layout: TimeSeriesLayout, sink: &mut 
         (TimeSeriesMode::RunDelta, 2) => run_delta::encode_runs(lanes::<2>(input), lane_bits, sink),
         (TimeSeriesMode::RunDelta, 4) => run_delta::encode_runs(lanes::<4>(input), lane_bits, sink),
         (TimeSeriesMode::RunDelta, _) => run_delta::encode_runs(lanes::<8>(input), lane_bits, sink),
+        (TimeSeriesMode::Alp, 4) => alp::encode_alp::<4, S>(input, sink),
+        (TimeSeriesMode::Alp, _) => alp::encode_alp::<8, S>(input, sink),
     }
 }
 
@@ -104,7 +122,10 @@ fn payload_info(
     }
     let lane_bytes = layout.lane_bytes as usize;
     let value_count = input.len() / lane_bytes;
-    let first_bits = match (value_count > 0, lane_bytes) {
+    let first_bits = match (
+        value_count > 0 && layout.mode != TimeSeriesMode::Alp,
+        lane_bytes,
+    ) {
         (false, _) => 0,
         (true, 2) => read_lane::<2>(input),
         (true, 4) => read_lane::<4>(input),
@@ -136,7 +157,7 @@ pub fn ts1_encode_with(input: &[u8], layout: TimeSeriesLayout) -> AceResult<Vec<
     let (stream, stream_bits) = writer.finish();
     let info = payload_info(input, layout, stream_bits)?;
     let tail = &input[input.len() - info.tail_len..];
-    serialize_payload(&info, &stream, tail)
+    ts1_serialize_payload(&info, &stream, tail)
 }
 
 /// Exact byte length of `ts1_encode_with(input, layout)`, computed without writing a stream.
@@ -151,6 +172,33 @@ pub fn ts1_encoded_len(input: &[u8], layout: TimeSeriesLayout) -> AceResult<usiz
     encode_stream(input, layout, &mut counter);
     let info = payload_info(input, layout, counter.bits)?;
     Ok(TIME_SERIES_HEADER_SIZE + info.stream_bytes() + info.tail_len)
+}
+
+/// [`ts1_encoded_len`] that gives up once the payload cannot be `max_bytes` or smaller.
+///
+/// Returns `Ok(Some(len))` with the exact length when `len <= max_bytes`, and `Ok(None)` when
+/// the payload is larger (RunDelta stops counting at the first change past the limit; the other
+/// modes count in full). It never returns a length that `ts1_encoded_len` would not return.
+///
+/// # Errors
+///
+/// Same conditions as [`ts1_encode_with`].
+pub fn ts1_encoded_len_within(
+    input: &[u8],
+    layout: TimeSeriesLayout,
+    max_bytes: usize,
+) -> AceResult<Option<usize>> {
+    let mut counter = LimitedBitCounter {
+        bits: 0,
+        limit: (max_bytes as u64).saturating_mul(8),
+    };
+    encode_stream(input, layout, &mut counter);
+    if counter.exhausted() {
+        return Ok(None);
+    }
+    let info = payload_info(input, layout, counter.bits)?;
+    let len = TIME_SERIES_HEADER_SIZE + info.stream_bytes() + info.tail_len;
+    Ok((len <= max_bytes).then_some(len))
 }
 
 /// Exact number of stream bits `ts1_encode_with(input, layout)` would write (header and tail
@@ -221,6 +269,12 @@ pub fn ts1_decode(payload: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
             info.first_bits,
             info.value_count,
             info.flags & FLAG_WINDOW_REUSE != 0,
+            &mut reader,
+            &mut push,
+        )?,
+        None if info.mode == TimeSeriesMode::Alp => alp_decode::decode_alp(
+            lane_bytes as u32 * 8,
+            info.value_count,
             &mut reader,
             &mut push,
         )?,

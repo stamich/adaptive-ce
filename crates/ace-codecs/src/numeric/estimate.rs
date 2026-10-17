@@ -20,21 +20,51 @@ pub struct NumericEstimate {
     pub bit_width: u8,
     /// Complete encoded payload size including header and tail bytes.
     pub encoded_bytes: usize,
+    /// For [`NumericMode::Patched`]: the base mode whose stream is patched (with `bit_width` it
+    /// is everything [`crate::numeric_encode_estimated`] needs to skip the statistics pass).
+    pub patch_source: Option<NumericMode>,
 }
+
+/// The best base mode must need at least this many bits per value before Patched FOR is
+/// considered: below it an exception list cannot repay its section byte and positions, and the
+/// extra statistics pass is skipped on the most compressible blocks.
+const PATCHED_MIN_BASE_BITS: u8 = 4;
+
+/// `estimate_numeric` evaluates Patched FOR only at widths whose base mode is at most
+/// `1 + 1/PATCHED_WIDTH_SLACK` times the best base size (here 25 %).
+const PATCHED_WIDTH_SLACK: usize = 4;
 
 /// Estimates the best NUM1 representation over every lane width and mode.
 ///
 /// Ties are broken by smaller payload, then width rank (u32, u64, u16 — preserving pre-0.4.5
-/// decisions), then mode id.
+/// decisions), then mode id. Patched FOR (Format 1.5) is a candidate too, and wins only when it
+/// is strictly smaller than the best base mode, so a block without outliers is encoded exactly
+/// as before.
 ///
 /// # Determinism
 ///
 /// Exact sizes from integer arithmetic; ties are broken by the fixed key (size, width rank,
 /// mode id), never by evaluation order.
 pub fn estimate_numeric(input: &[u8]) -> Option<NumericEstimate> {
-    [NumericWidth::U32, NumericWidth::U64, NumericWidth::U16]
+    let widths = [NumericWidth::U32, NumericWidth::U64, NumericWidth::U16];
+    let bases: Vec<(NumericEstimate, LaneStats)> = widths
         .into_iter()
-        .filter_map(|width| estimate_numeric_for_width(input, width))
+        .filter_map(|width| best_base_estimate(input, width))
+        .collect();
+    let best_base_bytes = bases.iter().map(|(base, _)| base.encoded_bytes).min()?;
+    // Patched FOR only competes at lane widths whose base mode is within a quarter of the best
+    // one: a width that is far worse as a base is not where the outliers are, and the extra
+    // statistics pass is the cost of the feature on every block that needs 4 bits or more.
+    let patched_limit = best_base_bytes.saturating_add(best_base_bytes / PATCHED_WIDTH_SLACK);
+    bases
+        .into_iter()
+        .map(|(base, stats)| {
+            if base.encoded_bytes <= patched_limit {
+                with_patched(input, base, &stats)
+            } else {
+                base
+            }
+        })
         .min_by_key(|estimate| {
             (
                 estimate.encoded_bytes,
@@ -44,21 +74,62 @@ pub fn estimate_numeric(input: &[u8]) -> Option<NumericEstimate> {
         })
 }
 
+/// Smallest of the three base modes for one width and the statistics it came from (Patched FOR
+/// reuses the frame of reference and the widths); `None` below two values.
+fn best_base_estimate(input: &[u8], width: NumericWidth) -> Option<(NumericEstimate, LaneStats)> {
+    let stats = width_stats(input, width)?;
+    let base = NumericMode::ALL
+        .map(|mode| stats.estimate(mode, input.len()))
+        .into_iter()
+        .min_by_key(|estimate| (estimate.encoded_bytes, estimate.mode as u8))?;
+    Some((base, stats))
+}
+
+/// Statistics of `input` read as `width` lanes (`None` below two values).
+fn width_stats(input: &[u8], width: NumericWidth) -> Option<LaneStats> {
+    if input.len() < width.bytes() * 2 {
+        return None;
+    }
+    Some(dispatch_lane!(width, lane_stats(input)))
+}
+
+/// `base`, or the Patched FOR estimate of the same width when the base needs at least
+/// [`PATCHED_MIN_BASE_BITS`] bits per value and Patched is strictly smaller.
+fn with_patched(input: &[u8], base: NumericEstimate, stats: &LaneStats) -> NumericEstimate {
+    if base.bit_width >= PATCHED_MIN_BASE_BITS
+        && crate::patched_worth_trying(
+            input,
+            base.width,
+            stats.minimum,
+            base.encoded_bytes,
+            [stats.for_bits, stats.delta_bits, stats.dod_bits],
+        )
+    {
+        if let Some(patched) =
+            crate::patched_estimate_with_minimum(input, base.width, stats.minimum)
+        {
+            if patched.encoded_bytes < base.encoded_bytes {
+                return patched;
+            }
+        }
+    }
+    base
+}
+
 /// Estimates the best mode for one caller-chosen lane width (`None` below two values).
 ///
 /// Planner FAST passes the prefilter's width hint to avoid scanning the block three times.
+///
+/// The result is the smallest of the three base modes or, when the best base mode needs at
+/// least `PATCHED_MIN_BASE_BITS` (4) bits per value and Patched FOR is strictly smaller, the Patched
+/// estimate ([`crate::estimate_patched`]).
 pub fn estimate_numeric_for_width(input: &[u8], width: NumericWidth) -> Option<NumericEstimate> {
-    estimate_every_mode(input, width)?
-        .into_iter()
-        .min_by_key(|estimate| (estimate.encoded_bytes, estimate.mode as u8))
+    best_base_estimate(input, width).map(|(base, stats)| with_patched(input, base, &stats))
 }
 
 /// Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order.
 pub fn estimate_every_mode(input: &[u8], width: NumericWidth) -> Option<[NumericEstimate; 3]> {
-    if input.len() < width.bytes() * 2 {
-        return None;
-    }
-    let stats = dispatch_lane!(width, lane_stats(input));
+    let stats = width_stats(input, width)?;
     Some(NumericMode::ALL.map(|mode| stats.estimate(mode, input.len())))
 }
 
@@ -74,6 +145,8 @@ struct LaneStats {
     delta_bits: u8,
     /// Bits needed by the largest ZigZag delta-of-delta (DoD).
     dod_bits: u8,
+    /// Smallest value (the frame of reference of FOR and of Patched FOR).
+    minimum: u64,
 }
 
 /// Inherent methods of [`LaneStats`].
@@ -81,7 +154,7 @@ impl LaneStats {
     /// Exact payload size for `mode`, given the full input length.
     fn estimate(&self, mode: NumericMode, input_len: usize) -> NumericEstimate {
         let bit_width = match mode {
-            NumericMode::FrameOfReference => self.for_bits,
+            NumericMode::FrameOfReference | NumericMode::Patched => self.for_bits,
             NumericMode::Delta => self.delta_bits,
             NumericMode::DeltaOfDelta => self.dod_bits,
         };
@@ -95,6 +168,7 @@ impl LaneStats {
             encoded_bytes: NUMERIC_HEADER_SIZE
                 + packed_bits.div_ceil(8)
                 + input_len % self.width.bytes(),
+            patch_source: None,
         }
     }
 }
@@ -116,6 +190,7 @@ fn lane_stats<T: Lane>(input: &[u8]) -> LaneStats {
             for_bits: 0,
             delta_bits: 0,
             dod_bits: 0,
+            minimum: 0,
         };
     };
     let (mut min, mut max) = (first, first);
@@ -140,6 +215,7 @@ fn lane_stats<T: Lane>(input: &[u8]) -> LaneStats {
         for_bits: bits_required_u64(max.wrapping_sub(min).to_u64()),
         delta_bits: bits_required_u64(delta_or),
         dod_bits: bits_required_u64(dod_or),
+        minimum: min.to_u64(),
     }
 }
 

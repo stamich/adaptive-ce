@@ -4,9 +4,9 @@ use std::time::{Duration, Instant};
 
 use ace_analysis::{AnalysisLevel, DefaultBlockAnalyzer};
 use ace_codecs::{
-    numeric_encode_fixed_step, numeric_encode_with, ts1_encode_with, TimeSeriesLayout,
+    numeric_encode_estimated, numeric_encode_fixed_step, ts1_encode_with, TimeSeriesLayout,
 };
-use ace_core::{AceConfig, AceResult, CodecId, PhysicalCompressionPlan};
+use ace_core::{AceConfig, AceResult, CodecId, CompressionProfile, PhysicalCompressionPlan};
 use ace_format::{checksum, BlockHeader, BLOCK_HEADER_SIZE};
 use ace_planner::{
     apply_time_series_policy, encode_plan_payload, evaluate_candidates_v4_with_route,
@@ -51,8 +51,48 @@ pub(crate) struct EncodedBlock {
     pub time_series_layout: Option<TimeSeriesLayout>,
 }
 
-/// Encodes block `id` with one authoritative Planner V5 routing decision.
+/// Bytes a block occupies besides its fixed-size header: payload, metadata and transform list.
+fn framed_len(block: &EncodedBlock) -> usize {
+    block.payload.len() + block.metadata.len() + block.plan.decoding.transforms.len()
+}
+
+/// Encodes block `id`; the DENSE profile never stores a block larger than BALANCED would (0.6.1).
+///
+/// DENSE plans with a wider and slower search, but its estimates are not exact, so on some data
+/// (zero blocks, long runs, decimal floats) the search settles on a plan that is a little larger
+/// than the one BALANCED picks. The block is therefore also planned as BALANCED and the smaller
+/// result is stored; ties keep the DENSE block. The cost is one extra BALANCED plan per block,
+/// which the slowest profile can afford.
+///
+/// # Determinism
+///
+/// Both encodings are pure functions of `(config, input)` and the comparison is on exact stored
+/// sizes, so the choice is the same on every platform and thread count.
 pub(crate) fn encode_block(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
+    let dense = encode_block_with_profile(config, id, input)?;
+    if config.profile != CompressionProfile::Dense {
+        return Ok(dense);
+    }
+    let balanced_config = AceConfig {
+        profile: CompressionProfile::Balanced,
+        ..config.clone()
+    };
+    let balanced = encode_block_with_profile(&balanced_config, id, input)?;
+    let balanced_wins = framed_len(&balanced) < framed_len(&dense);
+    let (mut winner, loser) = if balanced_wins {
+        (balanced, dense)
+    } else {
+        (dense, balanced)
+    };
+    winner.timings.route_classify += loser.timings.route_classify;
+    winner.timings.generic_analysis += loser.timings.generic_analysis;
+    winner.timings.planning += loser.timings.planning;
+    winner.timings.encoding += loser.timings.encoding;
+    Ok(winner)
+}
+
+/// Encodes block `id` with one authoritative Planner V5 routing decision.
+fn encode_block_with_profile(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
     // Route classification and strict NumericFast validation happen exactly once.
     let context = PlanningContext::classify(input, config);
     let mut timings = BlockTimings {
@@ -184,7 +224,7 @@ fn encode_selected_plan(
             evidence.tail_bytes,
         )?)
     } else if let Some(estimate) = decision.numeric_estimate {
-        Some(numeric_encode_with(input, estimate.width, estimate.mode)?)
+        Some(numeric_encode_estimated(input, &estimate)?)
     } else {
         None
     };

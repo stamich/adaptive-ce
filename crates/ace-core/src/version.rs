@@ -4,19 +4,20 @@ use std::fmt;
 
 /// Current major format version.
 pub const FORMAT_MAJOR: u8 = 1;
-/// Highest minor format version this build reads and writes (1.4 adds the TS1 codec).
-pub const FORMAT_MINOR: u8 = 4;
+/// Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the
+/// NUM1 and TS1 mode 4 payloads).
+pub const FORMAT_MINOR: u8 = 5;
 
 /// The ACE release that first reads format `major.minor`, for the versions that are known to be
 /// planned but not readable by this build (`None` for every other version).
 ///
-/// Format 1.5 (new numeric and float modes) is introduced by ACE 0.6.1.
+/// Format 1.5 was the last planned version and ACE 0.6.1 reads it, so no newer version is
+/// announced: an unreadable file is reported as written by "a newer ACE release". An entry is
+/// added here when a release plan fixes the number of the next format.
 #[must_use]
 pub const fn first_release_reading(major: u8, minor: u8) -> Option<&'static str> {
-    match (major, minor) {
-        (1, 5) => Some("0.6.1"),
-        _ => None,
-    }
+    let _ = (major, minor);
+    None
 }
 
 /// Explains why format `major.minor` is rejected, for the [`crate::AceError::UnsupportedVersion`]

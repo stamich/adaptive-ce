@@ -1,6 +1,6 @@
 //! The closed set of named workloads and their metadata.
 
-use crate::{float_generators, generators};
+use crate::{float_generators, generators, v5_generators};
 
 /// One deterministic synthetic workload.
 ///
@@ -61,6 +61,14 @@ pub enum Workload {
     IntSparseChange,
     /// Corpus V4: u64 counter with periodic resets.
     IntCounterReset,
+    /// Corpus V5: u32 gauge that drifts by ±1 on a quarter of the samples.
+    IntSlowDrift,
+    /// Corpus V5: u32 value with geometric step magnitudes (half the samples repeat).
+    IntGeometricDelta,
+    /// Corpus V5: f64 prices with two decimals and a few special records (ALP).
+    F64DecimalPrice,
+    /// Corpus V5: f32 temperatures with one decimal (ALP).
+    F32DecimalSensor,
 }
 
 impl Workload {
@@ -80,8 +88,17 @@ impl Workload {
         Self::IntCounterReset,
     ];
 
-    /// Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]) followed by [`Self::CORPUS_V4`].
-    pub const ALL: [Workload; 27] = [
+    /// Corpus V5 (ACE 0.6.1): integer series with small non-zero changes and decimal floats.
+    pub const CORPUS_V5: [Workload; 4] = [
+        Self::IntSlowDrift,
+        Self::IntGeometricDelta,
+        Self::F64DecimalPrice,
+        Self::F32DecimalSensor,
+    ];
+
+    /// Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]), [`Self::CORPUS_V4`] and
+    /// [`Self::CORPUS_V5`].
+    pub const ALL: [Workload; 31] = [
         Self::Zeros,
         Self::LowCardinality,
         Self::Runs,
@@ -109,6 +126,10 @@ impl Workload {
         Self::F32Sensor,
         Self::IntSparseChange,
         Self::IntCounterReset,
+        Self::IntSlowDrift,
+        Self::IntGeometricDelta,
+        Self::F64DecimalPrice,
+        Self::F32DecimalSensor,
     ];
 
     /// The 0.4.x corpus (Corpus V3), covered by the 0.4.6 golden file.
@@ -160,6 +181,10 @@ impl Workload {
             Self::F32Sensor => "f32-sensor",
             Self::IntSparseChange => "int-sparse-change",
             Self::IntCounterReset => "int-counter-reset",
+            Self::IntSlowDrift => "int-slow-drift",
+            Self::IntGeometricDelta => "int-geometric-delta",
+            Self::F64DecimalPrice => "f64-decimal-price",
+            Self::F32DecimalSensor => "f32-decimal-sensor",
         }
     }
 
@@ -204,6 +229,10 @@ impl Workload {
             Self::F32Sensor => float_generators::f32_sensor(bytes),
             Self::IntSparseChange => float_generators::int_sparse_change(bytes),
             Self::IntCounterReset => float_generators::int_counter_reset(bytes),
+            Self::IntSlowDrift => v5_generators::int_slow_drift(bytes),
+            Self::IntGeometricDelta => v5_generators::int_geometric_delta(bytes),
+            Self::F64DecimalPrice => v5_generators::f64_decimal_price(bytes),
+            Self::F32DecimalSensor => v5_generators::f32_decimal_sensor(bytes),
         }
     }
 }
@@ -212,31 +241,5 @@ impl std::fmt::Display for Workload {
     /// Writes the stable identifier.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.name())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Names round-trip, aliases resolve, every generator honours the requested size.
-    #[test]
-    fn names_aliases_and_sizes() {
-        for workload in Workload::ALL {
-            assert_eq!(Workload::from_name(workload.name()), Some(workload));
-            for bytes in [0usize, 1, 7, 4097, 70_001] {
-                assert_eq!(workload.generate(bytes).len(), bytes, "{workload}");
-            }
-            assert_eq!(
-                workload.generate(10_000),
-                workload.generate(10_000),
-                "{workload} deterministic"
-            );
-        }
-        assert_eq!(
-            Workload::from_name("numeric-u32"),
-            Some(Workload::U32Counter)
-        );
-        assert_eq!(Workload::from_name("nope"), None);
     }
 }

@@ -2,16 +2,18 @@
 //!
 //! A NUM1 payload interprets a block as little-endian unsigned integers of one lane width
 //! (16, 32 or 64 bits) plus up to `width - 1` verbatim *tail bytes*. The integers are stored with
-//! one of three sub-codecs ([`NumericMode`]):
+//! one of four sub-codecs ([`NumericMode`]):
 //!
 //! | mode               | stored stream                          | good for                  |
 //! |--------------------|----------------------------------------|---------------------------|
 //! | `FrameOfReference` | `v[i] - min(v)` bit-packed             | bounded-range values      |
 //! | `Delta`            | `zigzag(v[i] - v[i-1])` bit-packed     | counters, drifting values |
 //! | `DeltaOfDelta`     | `zigzag(d[i] - d[i-1])` bit-packed     | regular timestamps        |
+//! | `Patched` (1.5)    | one of the above, narrow + exceptions  | rare outliers             |
 //!
 //! Module map: `mode` (sub-codec ids), `header` (40-byte wire header, parse/serialize),
-//! `estimate` (exact, allocation-free size estimation), `encode`, `decode`, `lane_dispatch`
+//! `estimate` (exact, allocation-free size estimation), `encode`, `decode`, `patched` /
+//! `patched_decode` (Patched FOR: planning, encoder, hardened decoder), `lane_dispatch`
 //! (run-time width → compile-time lane).
 //!
 //! Safety properties: every length is validated with checked arithmetic before allocation, the
@@ -23,12 +25,13 @@ mod estimate;
 mod header;
 mod lane_dispatch;
 mod mode;
+mod patched;
+mod patched_decode;
 
 pub use decode::*;
 pub use encode::*;
 pub use estimate::*;
 pub use header::*;
 pub use mode::*;
-
-#[cfg(test)]
-mod tests;
+pub use patched::estimate_patched;
+pub(crate) use patched::{patched_estimate_with_minimum, patched_worth_trying};

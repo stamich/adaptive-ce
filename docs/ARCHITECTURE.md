@@ -90,25 +90,34 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
 
 | Guard | Protects | Mechanism |
 |---|---|---|
-| Golden SHA-256 | the writer | `examples/golden/0.5.0/` (Corpus V3 + V4, 27 workloads × 3 profiles, with format version) and the frozen `examples/golden/0.4.6/`; checked with the auto and the scalar SIMD backend |
-| Compatibility fixtures | the reader | `examples/compat/` — files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6 and 0.5.0, never regenerated ([`COMPATIBILITY.md`](COMPATIBILITY.md)) |
+| Golden SHA-256 | the writer | `examples/golden/0.6.1/` (Corpus V3 – V5, 31 workloads × 3 profiles, with format version) and the frozen `examples/golden/0.5.0/` and `0.4.6/` (unchanged workloads must match them; the deliberate changes may only shrink); checked with the auto and the scalar SIMD backend |
+| Compatibility fixtures | the reader | `examples/compat/` — files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0 and 0.6.1, never regenerated ([`COMPATIBILITY.md`](COMPATIBILITY.md)) |
 | Determinism matrix | thread / API independence | workloads × profiles × 1 – 32 workers × in-flight batch sizes × `compress` / `compress_to` / streaming |
 | Planner invariants | Planner V5 rules | property tests: TS1 ⇔ selection + dominance rule, NumericFast without Float evidence, selected ∈ candidates, zero full trial encodes, fixed tie-breaks |
-| Malformed input | the decoder | malformed matrix, per-field tests, limits tests, 15 fuzz targets (smoke on every PR, 15 × 10 min per release) |
+| Malformed input | the decoder | malformed matrix, per-field tests, limits tests, 18 fuzz targets (smoke on every PR, 18 × 10 min per release) |
 | Benchmarks | performance | Harness V3, Regression V3, interleaved A/B, three-run repeatability ([`BENCHMARKS.md`](BENCHMARKS.md)) |
 
 ## 6. Testing layers
 
 | Layer | Where | Sees |
 |---|---|---|
-| unit | `#[cfg(test)] mod tests` next to the code | private invariants (bitstream, Gorilla, gamma codes, prefilters) |
-| integration | `crates/*/tests/` | public API contracts and scenarios |
+| unit / integration | `crates/<crate>/tests/<module>.rs` | the public items of the crate: one test file per source module |
+| facade internals | `crates/ace/tests/` with feature `internal-testing` | the hidden `ace::internal` conversions |
 | CLI | `crates/ace-cli/tests/cli.rs` | the `ace` binary: round trips, invalid input, closed pipes |
 | golden / compat | `crates/ace-engine/tests/golden.rs`, `compat_fixtures.rs` | bytes on disk |
 | fuzz | `fuzz/` | arbitrary input ([`../fuzz/README.md`](../fuzz/README.md)) |
 
-Unit tests stay next to the private code they test: moving them to `tests/` would require
-making that code public, the opposite of the API reduction planned for 0.6.
+### Test layout
+
+No file under `crates/*/src` contains `#[cfg(test)]` (enforced by `tools/ace-code_audit0.6.1.py`).
+A test of `crates/ace-cost/src/quality.rs` lives in `crates/ace-cost/tests/quality.rs` and calls
+public items only. When a test needs a private helper, one of three things happens, in this order
+of preference: the test restates the helper (a bit reader is ten lines), the helper becomes `pub`
+with rustdoc because it is a legitimate low-level API of an internal crate (bit I/O, serializers,
+entropy framing), or, for the `ace` facade, the test reaches it through the `internal-testing`
+feature, whose `ace::internal` module is `#[doc(hidden)]` and not part of the public API. Test
+helpers that unwrap carry `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]`
+because a panic in a test is a failure.
 
 ## 7. Principles
 

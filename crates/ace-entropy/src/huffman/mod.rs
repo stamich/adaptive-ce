@@ -11,5 +11,7 @@ mod code_lengths;
 mod decoder;
 mod encoder;
 
+pub use bit_io::{BitReader as MsbBitReader, BitWriter as MsbBitWriter};
+pub use canonical::LOOKUP_BITS;
 pub use decoder::*;
 pub use encoder::*;

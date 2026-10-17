@@ -1,7 +1,7 @@
 //! Environment fingerprint: build toolchain, CPU, frequency policy, thermal state and load.
 //!
 //! Volatile values (frequency, temperature, load) are captured before and after each family
-//! as [`RuntimeSnapshot`]s. Every value is best-effort — missing `/proc` or `/sys` entries
+//! as `RuntimeSnapshot`s. Every value is best-effort — missing `/proc` or `/sys` entries
 //! become `null`, never an error — so the harness runs anywhere while Linux release
 //! machines get a complete fingerprint.
 

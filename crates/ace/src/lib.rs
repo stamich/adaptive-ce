@@ -72,3 +72,33 @@ pub use explain::BlockReport;
 pub use limits::{DecodeLimits, DecodeLimitsBuilder};
 pub use range::{RangeReader, RangeStats};
 pub use stats::Stats;
+
+/// Conversions between the facade types and the internal crates, for the test suite of this
+/// crate (feature `internal-testing`; not part of the API).
+#[cfg(feature = "internal-testing")]
+#[doc(hidden)]
+pub mod internal {
+    use ace_core::{AceConfig, AceError, CompressionStats, DecodeLimits as CoreLimits};
+
+    use crate::{Config, DecodeLimits, Error, Stats};
+
+    /// The facade error for an internal error.
+    pub fn error_from_core(error: AceError) -> Error {
+        Error::from_core(error)
+    }
+
+    /// The internal configuration a [`Config`] resolves to.
+    pub fn config_core(config: &Config) -> &AceConfig {
+        config.core()
+    }
+
+    /// The internal limits a [`DecodeLimits`] resolves to.
+    pub fn limits_core(limits: &DecodeLimits) -> &CoreLimits {
+        limits.core()
+    }
+
+    /// The facade statistics for internal statistics.
+    pub fn stats_from_core(stats: &CompressionStats) -> Stats {
+        Stats::from_core(stats)
+    }
+}

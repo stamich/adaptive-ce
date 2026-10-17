@@ -102,18 +102,3 @@ pub fn rans_decode(metadata: &[u8], input: &[u8], expected_size: usize) -> AceRe
     }
     Ok(out)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Verifies exact rANS round-trip for skewed and full-alphabet inputs.
-    #[test]
-    fn round_trip() {
-        let mut data = vec![b'a'; 20_000];
-        data.extend((0u8..=255).cycle().take(10_000));
-        let (metadata, payload) = rans_encode(&data).unwrap();
-        let decoded = rans_decode(&metadata, &payload, data.len()).unwrap();
-        assert_eq!(decoded, data);
-    }
-}

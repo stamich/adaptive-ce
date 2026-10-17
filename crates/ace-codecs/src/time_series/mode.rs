@@ -12,12 +12,19 @@ pub enum TimeSeriesMode {
     GorillaF32 = 2,
     /// Run lengths of unchanged values plus ZigZag deltas over u16 / u32 / u64 lanes.
     RunDelta = 3,
+    /// Decimal floats as scaled integers with a frame of reference and exceptions (Format 1.5).
+    Alp = 4,
 }
 
 /// Inherent methods of [`TimeSeriesMode`].
 impl TimeSeriesMode {
     /// Every mode in wire-id order.
-    pub const ALL: [Self; 3] = [Self::GorillaF64, Self::GorillaF32, Self::RunDelta];
+    pub const ALL: [Self; 4] = [
+        Self::GorillaF64,
+        Self::GorillaF32,
+        Self::RunDelta,
+        Self::Alp,
+    ];
 
     /// Whether `lane_bytes` is a legal lane width for this mode.
     pub const fn accepts_lane_bytes(self, lane_bytes: u8) -> bool {
@@ -25,6 +32,7 @@ impl TimeSeriesMode {
             Self::GorillaF64 => lane_bytes == 8,
             Self::GorillaF32 => lane_bytes == 4,
             Self::RunDelta => matches!(lane_bytes, 2 | 4 | 8),
+            Self::Alp => matches!(lane_bytes, 4 | 8),
         }
     }
 
@@ -34,6 +42,7 @@ impl TimeSeriesMode {
             Self::GorillaF64 => "gorilla_f64",
             Self::GorillaF32 => "gorilla_f32",
             Self::RunDelta => "run_delta",
+            Self::Alp => "alp",
         }
     }
 }
@@ -49,6 +58,7 @@ impl TryFrom<u8> for TimeSeriesMode {
             1 => Ok(Self::GorillaF64),
             2 => Ok(Self::GorillaF32),
             3 => Ok(Self::RunDelta),
+            4 => Ok(Self::Alp),
             _ => Err(AceError::InvalidTimeSeries("unknown TS1 mode")),
         }
     }

@@ -14,7 +14,7 @@ const MAX_EXPONENT: u32 = 64;
 
 /// Writes `gamma(value + 1)`.
 #[inline]
-pub(crate) fn put_gamma<S: BitSink>(sink: &mut S, value: u64) {
+pub fn put_gamma<S: BitSink>(sink: &mut S, value: u64) {
     let x = value as u128 + 1;
     let exponent = 127 - x.leading_zeros();
     sink.put(0, exponent);
@@ -25,7 +25,7 @@ pub(crate) fn put_gamma<S: BitSink>(sink: &mut S, value: u64) {
 
 /// Reads one `gamma(value + 1)` and returns `value`; `None` on truncation or overflow.
 #[inline]
-pub(crate) fn read_gamma(reader: &mut BitReader<'_>) -> Option<u64> {
+pub fn read_gamma(reader: &mut BitReader<'_>) -> Option<u64> {
     let mut exponent = 0u32;
     while !reader.read_bit()? {
         exponent += 1;
