@@ -5,7 +5,7 @@ use ace_bitpack::{
 };
 use ace_core::{AceError, AceResult, NumericWidth};
 
-use super::header::serialize_payload;
+use super::header::numeric_serialize_payload;
 use super::lane_dispatch::{dispatch_lane, width_of};
 use crate::{estimate_numeric, NumericMode, NumericPayloadInfo};
 
@@ -88,7 +88,7 @@ pub fn numeric_encode_fixed_step(
         first_value,
         first_delta,
     };
-    serialize_payload(&info, &[], &input[value_bytes..])
+    numeric_serialize_payload(&info, &[], &input[value_bytes..])
 }
 
 /// Width-generic encoder body: transform, ZigZag, bit-pack, serialize.
@@ -126,5 +126,5 @@ fn encode_lane<T: Lane>(input: &[u8], mode: NumericMode) -> AceResult<Vec<u8>> {
         first_value: first.to_u64(),
         first_delta,
     };
-    serialize_payload(&info, &packed, tail)
+    numeric_serialize_payload(&info, &packed, tail)
 }

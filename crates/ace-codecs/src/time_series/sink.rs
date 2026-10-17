@@ -8,7 +8,7 @@
 use ace_bitpack::BitWriter;
 
 /// Destination of LSB-first bit fields.
-pub(crate) trait BitSink {
+pub trait BitSink {
     /// Appends the low `width` bits of `value` (`width` in `0..=64`).
     fn put(&mut self, value: u64, width: u32);
 }
@@ -23,9 +23,9 @@ impl BitSink for BitWriter {
 
 /// Counts bits without storing them.
 #[derive(Debug, Default, Clone, Copy)]
-pub(crate) struct BitCounter {
+pub struct BitCounter {
     /// Bits "written" so far.
-    pub(crate) bits: u64,
+    pub bits: u64,
 }
 
 /// Exact size counter.

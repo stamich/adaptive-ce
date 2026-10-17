@@ -127,7 +127,12 @@ pub fn numeric_inspect(payload: &[u8]) -> AceResult<NumericPayloadInfo> {
 ///
 /// `info.packed_bytes` / `info.tail_bytes` are ignored and taken from the slices, so a caller
 /// cannot produce a header that disagrees with its body.
-pub(crate) fn serialize_payload(
+///
+/// # Errors
+///
+/// [`AceError::ResourceLimitExceeded`] when a count or length does not fit the 32-bit header
+/// fields; [`AceError::Malformed`] for an unsupported lane width.
+pub fn numeric_serialize_payload(
     info: &NumericPayloadInfo,
     packed: &[u8],
     tail: &[u8],

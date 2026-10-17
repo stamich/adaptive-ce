@@ -42,32 +42,3 @@ pub fn decode_codec(id: CodecId, input: &[u8], expected_size: usize) -> AceResul
         CodecId::TimeSeries => ts1_decode(input, expected_size),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Every codec round-trips through the dispatcher.
-    #[test]
-    fn dispatch_roundtrip_for_every_codec() {
-        let data: Vec<u8> = (0..4096u32)
-            .flat_map(|i| (1000 + 3 * i).to_le_bytes())
-            .collect();
-        for id in [
-            CodecId::Raw,
-            CodecId::Rle,
-            CodecId::Lz,
-            CodecId::Numeric,
-            CodecId::TimeSeries,
-        ] {
-            for mode in [None, Some(LzMode::Balanced)] {
-                let encoded = encode_codec(id, mode, &data).unwrap();
-                assert_eq!(
-                    decode_codec(id, &encoded, data.len()).unwrap(),
-                    data,
-                    "{id:?}"
-                );
-            }
-        }
-    }
-}

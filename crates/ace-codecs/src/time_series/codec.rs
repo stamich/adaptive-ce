@@ -4,7 +4,7 @@ use ace_bitpack::{BitReader, BitWriter};
 use ace_core::{read_lane, AceError, AceResult};
 
 use super::gorilla::{self, GorillaShape, GORILLA_F32, GORILLA_F64};
-use super::header::{serialize_payload, ts1_inspect, TIME_SERIES_HEADER_SIZE};
+use super::header::{ts1_inspect, ts1_serialize_payload, TIME_SERIES_HEADER_SIZE};
 use super::run_delta;
 use super::sink::{BitCounter, BitSink};
 use super::{TimeSeriesMode, TimeSeriesPayloadInfo, FLAG_WINDOW_REUSE};
@@ -136,7 +136,7 @@ pub fn ts1_encode_with(input: &[u8], layout: TimeSeriesLayout) -> AceResult<Vec<
     let (stream, stream_bits) = writer.finish();
     let info = payload_info(input, layout, stream_bits)?;
     let tail = &input[input.len() - info.tail_len..];
-    serialize_payload(&info, &stream, tail)
+    ts1_serialize_payload(&info, &stream, tail)
 }
 
 /// Exact byte length of `ts1_encode_with(input, layout)`, computed without writing a stream.

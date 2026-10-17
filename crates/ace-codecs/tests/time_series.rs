@@ -1,6 +1,8 @@
-//! Unit tests of the TS1 codec (header, Gorilla, RunDelta, edge cases).
+//! Tests of the TS1 codec (header, Gorilla, RunDelta, edge cases).
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
-use super::*;
+use ace_codecs::gorilla;
+use ace_codecs::*;
 
 /// A valid header round-trips through serialization and inspection.
 #[test]
@@ -14,7 +16,7 @@ fn header_roundtrip_and_validation() {
         first_bits: 0xDEAD_BEEF,
         stream_bits: 13,
     };
-    let payload = serialize_payload(&info, &[0xAB, 0x1F], &[7, 9]).unwrap();
+    let payload = ts1_serialize_payload(&info, &[0xAB, 0x1F], &[7, 9]).unwrap();
     assert_eq!(payload.len(), TIME_SERIES_HEADER_SIZE + 2 + 2);
     assert_eq!(ts1_inspect(&payload).unwrap(), info);
     assert_eq!(info.decoded_len().unwrap(), 14);
@@ -32,7 +34,7 @@ fn header_corruptions_are_rejected() {
         first_bits: 0x3F80_0000,
         stream_bits: 9,
     };
-    let valid = serialize_payload(&info, &[1, 0], &[5]).unwrap();
+    let valid = ts1_serialize_payload(&info, &[1, 0], &[5]).unwrap();
     let corruptions: [(usize, u8); 11] = [
         (0, b'X'),  // magic
         (4, 2),     // version
@@ -184,7 +186,7 @@ fn gorilla_decoder_honours_window_flag() {
         first_bits: values[0].to_bits(),
         stream_bits: bits,
     };
-    let payload = serialize_payload(&info, &stream, &[]).unwrap();
+    let payload = ts1_serialize_payload(&info, &stream, &[]).unwrap();
     assert_eq!(ts1_decode(&payload, input.len()).unwrap(), input);
 
     // '1' (non-zero XOR), '0' (reuse) as the very first control bits: no window yet.
@@ -194,7 +196,7 @@ fn gorilla_decoder_honours_window_flag() {
         stream_bits: 2,
         ..info
     };
-    let payload = serialize_payload(&bad, &[0b01], &[]).unwrap();
+    let payload = ts1_serialize_payload(&bad, &[0b01], &[]).unwrap();
     assert!(ts1_decode(&payload, 16).is_err());
 }
 
@@ -291,7 +293,7 @@ fn run_delta_rejects_invalid_streams() {
     ];
     for (index, fields) in cases.iter().enumerate() {
         let (stream, bits) = stream_of(fields);
-        let payload = serialize_payload(
+        let payload = ts1_serialize_payload(
             &TimeSeriesPayloadInfo {
                 stream_bits: bits,
                 ..info
@@ -307,7 +309,6 @@ fn run_delta_rejects_invalid_streams() {
 /// Elias-gamma round-trips the full u64 range and reports exact costs.
 #[test]
 fn gamma_roundtrips_extremes() {
-    use super::gamma::{put_gamma, read_gamma};
     let values = [0u64, 1, 2, 3, 255, 1 << 32, u64::MAX - 1, u64::MAX];
     let mut writer = ace_bitpack::BitWriter::default();
     let mut expected_bits = 0;

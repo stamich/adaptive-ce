@@ -22,21 +22,21 @@ use super::sink::BitSink;
 
 /// Shape parameters of one IEEE-754 width.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct GorillaShape {
+pub struct GorillaShape {
     /// Value width in bits (`W`).
-    pub(crate) bits: u32,
+    pub bits: u32,
     /// Lane width in bytes.
-    pub(crate) lane_bytes: usize,
+    pub lane_bytes: usize,
     /// Cap on the stored leading-zero count.
-    pub(crate) l_max: u32,
+    pub l_max: u32,
     /// Bits used to store the leading-zero count.
-    pub(crate) l_bits: u32,
+    pub l_bits: u32,
     /// Bits used to store `M - 1`.
-    pub(crate) m_bits: u32,
+    pub m_bits: u32,
 }
 
 /// Binary64 parameters (`L` capped at 31 → 5 bits, `M - 1` in 6 bits).
-pub(crate) const GORILLA_F64: GorillaShape = GorillaShape {
+pub const GORILLA_F64: GorillaShape = GorillaShape {
     bits: 64,
     lane_bytes: 8,
     l_max: 31,
@@ -45,7 +45,7 @@ pub(crate) const GORILLA_F64: GorillaShape = GorillaShape {
 };
 
 /// Binary32 parameters (`L` capped at 15 → 4 bits, `M - 1` in 5 bits).
-pub(crate) const GORILLA_F32: GorillaShape = GorillaShape {
+pub const GORILLA_F32: GorillaShape = GorillaShape {
     bits: 32,
     lane_bytes: 4,
     l_max: 15,
@@ -60,7 +60,7 @@ type Window = (u32, u32);
 ///
 /// `values` yields the raw IEEE bits zero-extended to 64 bits. The first value is not encoded
 /// (it lives in the header). With `reuse == false` no window is ever reused.
-pub(crate) fn encode_xors<S: BitSink>(
+pub fn encode_xors<S: BitSink>(
     shape: GorillaShape,
     values: impl Iterator<Item = u64>,
     reuse: bool,
@@ -102,7 +102,12 @@ pub(crate) fn encode_xors<S: BitSink>(
 
 /// Decodes `count` values (the first is `first_bits`) and passes each raw bit pattern to
 /// `emit` in order. Fails on any structural error or when stream bits remain unused.
-pub(crate) fn decode_values(
+///
+/// # Errors
+///
+/// [`AceError::InvalidTimeSeries`] for a truncated stream, a window that is used before it is
+/// defined, a window wider than the lane, or unused trailing bits.
+pub fn decode_values(
     shape: GorillaShape,
     first_bits: u64,
     count: usize,

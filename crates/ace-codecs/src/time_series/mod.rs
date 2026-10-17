@@ -23,15 +23,14 @@
 
 mod codec;
 mod gamma;
-mod gorilla;
+pub mod gorilla;
 mod header;
 mod mode;
 mod run_delta;
 mod sink;
 
 pub use codec::*;
+pub use gamma::{put_gamma, read_gamma};
 pub use header::*;
 pub use mode::*;
-
-#[cfg(test)]
-mod tests;
+pub use sink::{BitCounter, BitSink};

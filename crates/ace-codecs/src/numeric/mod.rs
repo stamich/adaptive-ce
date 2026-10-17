@@ -29,6 +29,3 @@ pub use encode::*;
 pub use estimate::*;
 pub use header::*;
 pub use mode::*;
-
-#[cfg(test)]
-mod tests;

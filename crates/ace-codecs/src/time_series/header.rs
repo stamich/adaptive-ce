@@ -163,7 +163,13 @@ pub fn ts1_inspect(payload: &[u8]) -> AceResult<TimeSeriesPayloadInfo> {
 ///
 /// `info.tail_len` is taken from `tail`, so the header cannot disagree with the body; the
 /// stream length must match `info.stream_bits`.
-pub(crate) fn serialize_payload(
+///
+/// # Errors
+///
+/// [`AceError::ResourceLimitExceeded`] when the value count or the stream length does not fit
+/// the 32-bit header fields; [`AceError::InvalidTimeSeries`] when the tail is longer than 255
+/// bytes or the stream length disagrees with `info.stream_bits`.
+pub fn ts1_serialize_payload(
     info: &TimeSeriesPayloadInfo,
     stream: &[u8],
     tail: &[u8],

@@ -1,8 +1,9 @@
-//! Unit tests of the NUM1 codec (round-trips, exact estimates, header validation, hostile input).
+//! Tests of the NUM1 codec (round-trips, exact estimates, header validation, hostile input).
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use ace_core::NumericWidth;
 
-use crate::*;
+use ace_codecs::*;
 
 /// Serializes a u32 sequence to little-endian bytes.
 fn bytes_u32(values: impl IntoIterator<Item = u32>) -> Vec<u8> {
