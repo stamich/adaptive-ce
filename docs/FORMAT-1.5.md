@@ -14,7 +14,7 @@ Unchanged:
 New:
 - minor version = 5;
 - NUM1 mode 4, `Patched` (Patched FOR over a FOR, Delta or DoD stream, see below);
-- TS1 mode 4, `Alp` (defined in [`TS1-CODEC.md`](TS1-CODEC.md) once the codec lands);
+- TS1 mode 4, `Alp` (decimal floats, see below and [`TS1-CODEC.md`](TS1-CODEC.md));
 - a stream whose header names a mode of Format 1.5 is valid only in a file that declares 1.5.
 
 RunDelta for small non-zero deltas (admission by the run prefilter) is a planner change: it
@@ -56,6 +56,25 @@ therefore every file without outliers, is written exactly as by ACE 0.6.0.
 Example: the counter `monotonic-outliers` (step 1, a +100 000 jump every 1024 values) has a
 zero delta-of-delta almost everywhere; mode 4 stores it with `b = 0` and two exceptions per jump
 instead of 17-bit deltas.
+
+## TS1 mode 4: ALP
+
+Decimal floats (`12.37`, `1013.25`) are integers in disguise. ALP scales every value by
+`10^e · 10^-f`, rounds to an integer `d`, and stores `d` with a frame of reference and a fixed
+bit width. A value that does not come back bit for bit (`-0.0`, NaN, ±Inf, a full-precision
+double) is an exception and is stored verbatim.
+
+* Lanes: 8 bytes (binary64) or 4 bytes (binary32). The header carries `first_bits = 0` and no
+  flags; `value_count`, `tail_len` and `stream_bits` keep their TS1 meaning.
+* Stream: `e:5 f:5 width:7 base:64 gamma(exception_count)`, then per exception
+  `gamma(gap) raw_bits`, then `value_count` offsets of `width` bits. `0 <= f <= e <= 18`,
+  `width <= 64`; the offset of an exception slot is zero.
+* `d = round(v · 10^e · 10^-f)` and `v = d · 10^f · 10^-e` are evaluated in binary64 in this
+  order (binary32 lanes are widened, decoded in binary64 and narrowed). The encoder keeps a
+  value only when the decoded bits equal the original bits and `|v · 10^e · 10^-f| < 2^53`.
+* The decoder rejects exponents or widths out of range, more exceptions than values, positions
+  out of order or past the end, an exception wider than the lane, a stream whose length is not
+  exactly the declared sections, a non-zero exception slot and an offset that leaves `i64`.
 
 ## Payload-aware minimal version
 

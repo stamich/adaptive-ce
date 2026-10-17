@@ -78,6 +78,7 @@ fn record_block(stats: &mut CompressionStats, block: &EncodedBlock) {
         Some(TimeSeriesMode::GorillaF64) => stats.ts1_gorilla_f64_blocks += 1,
         Some(TimeSeriesMode::GorillaF32) => stats.ts1_gorilla_f32_blocks += 1,
         Some(TimeSeriesMode::RunDelta) => stats.ts1_run_delta_blocks += 1,
+        Some(TimeSeriesMode::Alp) => stats.ts1_alp_blocks += 1,
         None => {}
     }
 }

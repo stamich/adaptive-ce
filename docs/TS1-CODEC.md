@@ -1,6 +1,6 @@
-# TS1 — time-series codec (ACE 0.5.0)
+# TS1 — time-series codec (ACE 0.5.0, ALP since 0.6.1)
 
-`CodecId::TimeSeries` (Format 1.4) stores one block as a TS1 payload. Three modes share one
+`CodecId::TimeSeries` (Format 1.4) stores one block as a TS1 payload. Four modes share one
 header; the payload is a complete bitstream (no entropy stage, no transform).
 
 | Mode | Id | Lanes | For |
@@ -8,8 +8,9 @@ header; the payload is a complete bitstream (no entropy stage, no transform).
 | `GorillaF64` | 1 | 8 bytes | IEEE-754 binary64 series |
 | `GorillaF32` | 2 | 4 bytes | IEEE-754 binary32 series |
 | `RunDelta` | 3 | 2 / 4 / 8 bytes | values that rarely change (floats compared bit-wise, integers) |
+| `Alp` | 4 | 8 / 4 bytes | decimal floats (Format 1.5) |
 
-Ids 4–15 are reserved (Chimp, ALP, …). Lossless means **bit-exact**: `-0.0`, NaN payloads,
+Ids 5–15 are reserved. Mode 4 needs Format 1.5. Lossless means **bit-exact**: `-0.0`, NaN payloads,
 ±Inf and subnormals round-trip (`to_bits` equality is what the tests compare).
 
 ## Payload layout (little-endian)
@@ -18,13 +19,13 @@ Ids 4–15 are reserved (Chimp, ALP, …). Lossless means **bit-exact**: `-0.0`,
 |---:|---:|---|---|
 | 0 | 4 | magic `TS1\0` | |
 | 4 | 1 | version = 1 | |
-| 5 | 1 | mode | 1–3 |
-| 6 | 1 | lane_bytes | 8 (GorillaF64), 4 (GorillaF32), 2 / 4 / 8 (RunDelta) |
+| 5 | 1 | mode | 1–4 |
+| 6 | 1 | lane_bytes | 8 (GorillaF64), 4 (GorillaF32), 2 / 4 / 8 (RunDelta), 8 / 4 (Alp) |
 | 7 | 1 | flags | bit 0 `window_reuse` (Gorilla only); other bits must be 0 |
 | 8 | 4 | value_count | complete lane values |
 | 12 | 1 | tail_len | `original_len % lane_bytes`, < lane_bytes |
 | 13 | 3 | reserved | must be 0 |
-| 16 | 8 | first_bits | raw bits of the first value (must fit the lane) |
+| 16 | 8 | first_bits | raw bits of the first value (must fit the lane); 0 for ALP |
 | 24 | 4 | stream_bits | bit length of the stream |
 | 28 | n | stream | `ceil(stream_bits / 8)` bytes, LSB-first |
 | 28 + n | tail_len | tail | raw trailing bytes |
@@ -82,6 +83,23 @@ terminator:        gamma(run) gamma(0)                run = unchanged values at 
 * The decoder rejects runs or changes beyond `value_count`, deltas wider than the lane, a
   missing terminator and trailing bits.
 
+## ALP (Format 1.5)
+
+Layout and rules: [`FORMAT-1.5.md`](FORMAT-1.5.md#ts1-mode-4-alp). Implementation notes:
+
+* `(e, f)` is chosen once per block from a sample of four windows of 16 consecutive values
+  (consecutive, so a periodic series cannot alias with the sample); the choice minimises the
+  sampled cost `exceptions · (lane_bits + 8) + values · width`, ties go to the lower `e`, then
+  the lower `f`. A poor choice only costs bytes: every value is verified against the decoder.
+* The encoder runs once against a [`BitSink`], so `ts1_encoded_len` is exact; it makes two
+  passes over the lanes (exception list and range, then the stream) and allocates only the
+  exception positions.
+* `ace_cost::estimate_alp` is that exact size; the float evidence of the planner compares it with
+  the Gorilla sample and RunDelta (ties: Gorilla, then RunDelta).
+* ALP has no delta stage: a decimal series that drifts slowly is stored at the width of its
+  whole range. Entropy-coded generic plans win on such data and ALP is not selected there
+  (`f32-decimal-sensor`).
+
 ## Size and speed
 
 `ts1_encoded_len(input, layout)` runs the same encoder against a bit counter (`BitSink`), so
@@ -94,14 +112,15 @@ Gorilla f64 1.3–2.5 GB/s / 0.75–1 GB/s ([`FLOAT-CALIBRATION-0.5.0.md`](FLOAT
 
 | Item | Purpose |
 |---|---|
-| `TimeSeriesMode`, `TimeSeriesLayout` (`GORILLA_F64`, `GORILLA_F32`, `run_delta(n)`, `ALL`, `label`) | mode + lane width |
+| `TimeSeriesMode`, `TimeSeriesLayout` (`GORILLA_F64`, `GORILLA_F32`, `ALP_F64`, `ALP_F32`, `run_delta(n)`, `ALL`, `label`) | mode + lane width |
 | `ts1_encode_with(input, layout)` | encode with one layout |
 | `ts1_encoded_len`, `ts1_stream_bits` | exact size without writing |
 | `ts1_encode_best(input, layouts)`, `ts1_encode(input)` | smallest of several / all layouts |
 | `ts1_decode(payload, expected_size)` | validated decode |
 | `ts1_inspect(payload)` → `TimeSeriesPayloadInfo` | header only |
 
-Tests: `crates/ace-codecs/src/time_series/tests.rs` (header corruption table, special values,
+Tests: `crates/ace-codecs/tests/time_series.rs` (header corruption table, special values,
 tails, window flag, every RunDelta lane, gamma extremes), `crates/ace-codecs/tests/ts1_properties.rs`
-(arbitrary f64 / f32 bits and sparse integers, exact-size property); fuzz targets `ts1_decode`,
+(arbitrary f64 / f32 bits and sparse integers, exact-size property), `crates/ace-codecs/tests/ts1_alp.rs`
+(decimals, exceptions, special values, header and stream corruption); fuzz targets `ts1_decode`,
 `ts1_roundtrip`, `bitstream_roundtrip`.

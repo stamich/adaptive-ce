@@ -5,12 +5,12 @@
 //! 0      4    magic "TS1\0"
 //! 4      1    version (= 1)
 //! 5      1    mode (TimeSeriesMode)
-//! 6      1    lane_bytes (8 / 4 for Gorilla; 2 / 4 / 8 for RunDelta)
+//! 6      1    lane_bytes (8 / 4 for Gorilla and ALP; 2 / 4 / 8 for RunDelta)
 //! 7      1    flags (bit 0: Gorilla window reuse; all other bits must be zero)
 //! 8      4    value_count (complete lanes)
 //! 12     1    tail_len (= original_len % lane_bytes)
 //! 13     3    reserved (zero)
-//! 16     8    first_bits (raw bits of the first value, zero-extended)
+//! 16     8    first_bits (raw bits of the first value, zero-extended; zero for ALP)
 //! 24     4    stream_bits (bit length of the stream that follows)
 //! 28     n    stream (ceil(stream_bits / 8) bytes, LSB-first)
 //! 28+n   t    tail (tail_len verbatim bytes)
@@ -116,7 +116,7 @@ pub fn ts1_inspect(payload: &[u8]) -> AceResult<TimeSeriesPayloadInfo> {
     let flags = header[7];
     let allowed_flags = match mode {
         TimeSeriesMode::GorillaF64 | TimeSeriesMode::GorillaF32 => FLAG_WINDOW_REUSE,
-        TimeSeriesMode::RunDelta => 0,
+        TimeSeriesMode::RunDelta | TimeSeriesMode::Alp => 0,
     };
     if flags & !allowed_flags != 0 {
         return Err(AceError::InvalidTimeSeries("unknown TS1 flags"));
@@ -144,6 +144,11 @@ pub fn ts1_inspect(payload: &[u8]) -> AceResult<TimeSeriesPayloadInfo> {
     if lane_bits < 64 && info.first_bits >> lane_bits != 0 {
         return Err(AceError::InvalidTimeSeries(
             "TS1 first value exceeds lane width",
+        ));
+    }
+    if info.mode == TimeSeriesMode::Alp && info.first_bits != 0 {
+        return Err(AceError::InvalidTimeSeries(
+            "ALP header carries a first value",
         ));
     }
     if info.value_count == 0 && (info.stream_bits != 0 || info.first_bits != 0) {

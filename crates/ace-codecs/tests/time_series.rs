@@ -66,7 +66,10 @@ fn modes_are_stable() {
         assert_eq!(TimeSeriesMode::try_from(mode as u8).unwrap(), mode);
     }
     assert!(TimeSeriesMode::try_from(0).is_err());
-    assert!(TimeSeriesMode::try_from(4).is_err());
+    assert_eq!(TimeSeriesMode::try_from(4).unwrap(), TimeSeriesMode::Alp);
+    assert!(TimeSeriesMode::try_from(5).is_err());
+    assert!(TimeSeriesMode::Alp.accepts_lane_bytes(8) && TimeSeriesMode::Alp.accepts_lane_bytes(4));
+    assert!(!TimeSeriesMode::Alp.accepts_lane_bytes(2));
     assert!(TimeSeriesMode::RunDelta.accepts_lane_bytes(2));
     assert!(!TimeSeriesMode::GorillaF64.accepts_lane_bytes(4));
     assert_eq!(TimeSeriesMode::GorillaF64.label(), "gorilla_f64");
