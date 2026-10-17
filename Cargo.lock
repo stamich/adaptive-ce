@@ -6,6 +6,7 @@ version = 4
 name = "ace"
 version = "0.6.1"
 dependencies = [
+ "ace",
  "ace-core",
  "ace-corpus",
  "ace-engine",
