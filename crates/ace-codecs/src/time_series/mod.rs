@@ -32,6 +32,7 @@ mod mode;
 mod run_delta;
 mod sink;
 
+pub use alp::alp_sample_viable;
 pub use codec::*;
 pub use gamma::{put_gamma, read_gamma};
 pub use header::*;

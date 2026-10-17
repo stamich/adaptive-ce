@@ -230,3 +230,30 @@ pub(crate) fn encode_alp<const B: usize, S: BitSink>(input: &[u8], sink: &mut S)
         put_bits(sink, offset, width);
     }
 }
+
+/// True when at most half of a deterministic sample (see [`choose_params`]) survives the best
+/// `(e, f)` as an integer, i.e. the block looks like decimals. Noisy full-precision floats fail
+/// this cheap test (about 64 values), so callers can skip the full ALP size count for them.
+///
+/// `lane_bytes` must be 4 or 8; any other width, and blocks without a complete lane, are `false`.
+pub fn alp_sample_viable(input: &[u8], lane_bytes: u8) -> bool {
+    fn viable<const B: usize>(input: &[u8]) -> bool {
+        let count = input.len() / B;
+        if count == 0 {
+            return false;
+        }
+        let lane_bits = (B * 8) as u32;
+        let sample = sample_lanes::<B>(input, count);
+        let params = choose_params(&sample, lane_bits);
+        let kept = sample
+            .iter()
+            .filter(|&&bits| digits_of(bits, params, lane_bits).is_some())
+            .count();
+        kept * 2 >= sample.len()
+    }
+    match lane_bytes {
+        4 => viable::<4>(input),
+        8 => viable::<8>(input),
+        _ => false,
+    }
+}

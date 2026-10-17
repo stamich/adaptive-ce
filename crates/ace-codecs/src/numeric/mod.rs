@@ -34,3 +34,4 @@ pub use estimate::*;
 pub use header::*;
 pub use mode::*;
 pub use patched::estimate_patched;
+pub(crate) use patched::patched_worth_trying;

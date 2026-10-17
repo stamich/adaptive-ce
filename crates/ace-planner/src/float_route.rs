@@ -26,7 +26,9 @@ use ace_core::{
     AceConfig, AceResult, CandidateTier, CodecId, DecodingPlan, EntropyCodecId,
     PhysicalCompressionPlan, PlanCost,
 };
-use ace_cost::{estimate_alp, estimate_gorilla, estimate_run_delta, TimeSeriesEstimate};
+use ace_cost::{
+    alp_plausible, estimate_alp, estimate_gorilla, estimate_run_delta, TimeSeriesEstimate,
+};
 
 use crate::{
     PlannerDecision, PlannerRoute, PlannerTelemetry, RouteDecision, RouteReason,
@@ -108,8 +110,9 @@ pub fn classify_float_lane(input: &[u8], config: &AceConfig, v4: RouteDecision) 
 }
 
 /// Gorilla estimate at the admitted width, plus the exact RunDelta size of the same lane when
-/// its values mostly repeat and (0.6.1) the exact ALP size; the smallest wins (ties: Gorilla,
-/// then RunDelta). `None` on estimator errors.
+/// its values mostly repeat and (0.6.1) the exact ALP size unless the block is already
+/// FloatFast-dominant; the smallest
+/// wins (ties: Gorilla, then RunDelta). `None` on estimator errors.
 fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> {
     let gorilla = estimate_gorilla(input, profile.width).ok()?;
     let lane_bytes = profile.width.lane_bytes() as u8;
@@ -119,14 +122,24 @@ fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> 
     } else {
         None
     };
-    let alp = estimate_alp(input, profile.width).ok();
-    let estimates = 1 + usize::from(run.is_some()) + usize::from(alp.is_some());
     let mut estimate = gorilla;
-    for candidate in [run, alp].into_iter().flatten() {
-        if candidate.estimated_bytes < estimate.estimated_bytes {
-            estimate = candidate;
-        }
+    if let Some(run) = run.filter(|run| run.estimated_bytes < gorilla.estimated_bytes) {
+        estimate = run;
     }
+    // ALP is counted only when the block is not already dominated by Gorilla / RunDelta: a
+    // constant or stepped series needs no third opinion, noisy full-precision floats fail the
+    // 64-value decimal test, and the exact count is a full pass.
+    let dominant =
+        estimate.estimated_bytes.saturating_mul(FLOAT_FAST_DIVISOR) <= input.len() as u64;
+    let alp = if dominant || !alp_plausible(input, profile.width) {
+        None
+    } else {
+        estimate_alp(input, profile.width).ok()
+    };
+    if let Some(alp) = alp.filter(|alp| alp.estimated_bytes < estimate.estimated_bytes) {
+        estimate = alp;
+    }
+    let estimates = 1 + usize::from(run.is_some()) + usize::from(alp.is_some());
     Some(FloatEvidence {
         profile,
         estimate,

@@ -259,6 +259,49 @@ them smaller: the engine beats every bare codec on 48 blocks. Decision: **no Chi
 0.6.1; TS1 mode 5 stays reserved. Re-run with `ace-bench chimp-evaluation` (sizes are exact and do
 not depend on the machine); the family writes the per-workload rows and a `chimp_decision` row.
 
+### Phase B gates (0.6.1)
+
+New family `format-1-5` (`ace-bench format-1-5`: ratios and format versions of the Phase B workloads
+per profile, codec speed of ALP and Patched FOR, and the DENSE-versus-BALANCED sweep over all
+31 corpus workloads) and the section `format15` of Regression V3:
+
+| Gate | Requirement | 0.6.0 |
+|---|---|---|
+| `format15.dense_larger_than_balanced` | 0 of 31 workloads (correctness) | 5 |
+| `format15.int_counter_reset_ratio` | >= 15x | 2.7x |
+| `format15.monotonic_outliers_ratio` | >= 100x | 1.8x |
+| `format15.gauge_sawtooth_ratio` | >= 500x | 19x |
+| `format15.delta_variable_ratio` | >= 8x | 6.4x |
+| `format15.f64_decimal_price_ratio`, `…_financial_price_ratio` | >= 4.5x, >= 5.2x | — / 5.1x |
+| `format15.int_geometric_delta_gain` | >= 1.25x the disabled lane | — |
+| `format15.int_slow_drift_control` | >= 0.99x (NUM1 stays within 10 %) | — |
+| `format15.alp_codec_encode_mb_s`, `…_decode_mb_s` | >= 150, >= 300 MB/s (provisional) | — |
+| `format15.patched_codec_encode_mb_s`, `…_decode_mb_s` | >= 200, >= 300 MB/s (provisional) | — |
+
+Measured on the development VM (quick run): counter-reset 21.1x, monotonic-outliers 401x,
+gauge-sawtooth 1137x, delta-variable 10.2x, decimal price 5.1x, financial price 5.7x,
+geometric delta 1.47x, ALP 440 / 866 MB/s, Patched FOR 524 / 807 MB/s. The two codec-speed floors
+are provisional: the 0.6.1 reference run (task "release run") confirms or raises them.
+
+Interleaved A/B against 0.6.0 (`tools/ace-ab0.6.1.py`, base tag `v0.6.0`) gets cases for every
+path whose planning changed. Byte-identical cases keep the 0.95 floor; cases whose bytes change
+on purpose are flagged `output_changes` (no identity check) and carry the documented price of
+the change:
+
+| Case | Floor | Why |
+|---|---:|---|
+| `compression.dense.encode` | 0.50 | DENSE also plans every block as BALANCED (about 0.58x measured) |
+| `numeric_general.delta_variable.encode` | 0.70 | Patched FOR estimate and encoder (about 0.74x, bytes -37 %) |
+| `numeric_general.monotonic_outliers.encode` | 0.70 | same (about 0.98x, bytes -99.5 %) |
+| `numeric_general.int_counter_reset.encode`, `float.f64_decimal_price.encode / .decode` | 0.95 | faster than 0.6.0 (1.3x - 3.7x) |
+| `numeric_general.u64_timestamps.encode`, `float.f64_noisy.encode`, `float.f64_smooth.encode` | 0.95 | bytes identical; the Patched and ALP pre-tests keep the cost within noise |
+
+Three pre-tests keep the new modes off the hot path: Patched FOR is estimated only at lane widths
+within 25 % of the best base size and only when 16-value chunks of some source differ by at least
+8 bits; ALP is counted only for blocks that are not FloatFast-dominant and whose 64-value sample
+is at least half decimal-shaped. Without the ALP rule FAST encode of `f64-constant` fell to 4.4x
+the disabled lane (gate: 5x); with it 17x.
+
 ### Float gates (Regression V3, 0.5.0)
 
 | Gate | Requirement | Section |

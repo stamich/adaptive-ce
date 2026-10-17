@@ -21,6 +21,67 @@ use super::header::numeric_serialize_patched_payload;
 use super::lane_dispatch::{dispatch_lane, width_of};
 use crate::{NumericEstimate, NumericMode, NumericPatch, NumericPayloadInfo, NUMERIC_HEADER_SIZE};
 
+/// Values per chunk of the outlier pre-test.
+const SPREAD_CHUNK: usize = 16;
+/// A source needs chunks whose bit widths differ by at least this much before Patched FOR can
+/// repay an exception (a position costs `bits(len - 1)` bits plus the high part).
+const MIN_SPREAD_BITS: u32 = 8;
+
+/// Cheap, vectorisable pre-test for the Patched estimate: `true` when the block might contain
+/// outliers, i.e. in some source (FOR offsets, ZigZag deltas or delta-of-deltas) the widest
+/// 16-value chunk needs at least [`MIN_SPREAD_BITS`] more bits than the narrowest. Blocks with
+/// evenly wide values (counters, timestamps, noise) skip the histogram pass. Blocks of fewer
+/// than four chunks are always tried. Only [`estimate_numeric`](crate::estimate_numeric) uses it;
+/// [`estimate_patched`] and the encoder are unaffected.
+pub(crate) fn patched_worth_trying(input: &[u8], width: NumericWidth) -> bool {
+    dispatch_lane!(width, spread_pretest(input))
+}
+
+/// Width-monomorphized body of [`patched_worth_trying`].
+fn spread_pretest<T: Lane>(input: &[u8]) -> bool {
+    let count = input.len() / T::BYTES;
+    if count < 4 * SPREAD_CHUNK {
+        return true;
+    }
+    let Some(minimum) = input.chunks_exact(T::BYTES).map(T::read_le).min() else {
+        return true;
+    };
+    let (mut narrowest, mut widest) = ([u32::MAX; 3], [0u32; 3]);
+    let mut all = input.chunks_exact(T::BYTES).map(T::read_le);
+    let (Some(first), Some(second)) = (all.next(), all.next()) else {
+        return true;
+    };
+    let mut previous = second;
+    let mut previous_delta = second.wrapping_sub(first);
+    let mut lanes = all;
+    let mut chunk_index = 0usize;
+    loop {
+        let mut or = [0u64; 3];
+        let mut taken = 0usize;
+        for value in lanes.by_ref().take(SPREAD_CHUNK) {
+            let delta = value.wrapping_sub(previous);
+            let dod = delta.wrapping_sub(previous_delta);
+            or[0] |= value.wrapping_sub(minimum).to_u64();
+            or[1] |= T::zigzag(delta.to_signed()).to_u64();
+            or[2] |= T::zigzag(dod.to_signed()).to_u64();
+            previous_delta = delta;
+            previous = value;
+            taken += 1;
+        }
+        if taken < SPREAD_CHUNK {
+            break;
+        }
+        for source in 0..3 {
+            let bits = u32::from(bits_required_u64(or[source]));
+            narrowest[source] = narrowest[source].min(bits);
+            widest[source] = widest[source].max(bits);
+        }
+        chunk_index += 1;
+    }
+    chunk_index < 4
+        || (0..3).any(|source| widest[source].saturating_sub(narrowest[source]) >= MIN_SPREAD_BITS)
+}
+
 /// The Patched FOR configuration chosen for one block.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct PatchPlan {
@@ -65,7 +126,7 @@ fn plan_patched<T: Lane>(input: &[u8]) -> Option<PatchPlan> {
     let minimum = input.chunks_exact(T::BYTES).map(T::read_le).min()?;
 
     // hist[source][bits] = number of stream values of that source needing `bits` bits.
-    let mut hist = [[0usize; 65]; 3];
+    let mut hist = [[0u32; 65]; 3];
     hist[0][usize::from(bits_required_u64(first.wrapping_sub(minimum).to_u64()))] += 1;
     let (mut previous, mut previous_delta) = (first, None::<T>);
     for value in lanes {
@@ -90,7 +151,7 @@ fn plan_patched<T: Lane>(input: &[u8]) -> Option<PatchPlan> {
         let position_bits = usize::from(NumericPatch::position_bits(stream_len));
         let mut exceptions = stream_len;
         for (bit_width, &at_width) in histogram.iter().enumerate().take(widest + 1) {
-            exceptions -= at_width;
+            exceptions -= at_width as usize;
             let high_bits = widest - bit_width;
             let section = if exceptions == 0 {
                 0

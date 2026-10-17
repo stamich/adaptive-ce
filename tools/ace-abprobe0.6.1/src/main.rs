@@ -105,6 +105,37 @@ fn case(id: &str) -> Option<Case> {
             CompressionProfile::Balanced,
             Operation::Compress,
         ),
+        // ACE 0.6.1 (Phase B): paths whose planning or bytes changed.
+        "numeric_general.monotonic_outliers.encode" => (
+            Workload::MonotonicOutliers,
+            CompressionProfile::Balanced,
+            Operation::Compress,
+        ),
+        "numeric_general.int_counter_reset.encode" => (
+            Workload::IntCounterReset,
+            CompressionProfile::Balanced,
+            Operation::Compress,
+        ),
+        "float.f64_noisy.encode" => (
+            Workload::F64Noisy,
+            CompressionProfile::Fast,
+            Operation::Compress,
+        ),
+        "float.f64_smooth.encode" => (
+            Workload::F64Smooth,
+            CompressionProfile::Balanced,
+            Operation::Compress,
+        ),
+        "float.f64_decimal_price.encode" => (
+            Workload::F64DecimalPrice,
+            CompressionProfile::Balanced,
+            Operation::Compress,
+        ),
+        "float.f64_decimal_price.decode" => (
+            Workload::F64DecimalPrice,
+            CompressionProfile::Balanced,
+            Operation::Decompress,
+        ),
         "full_decompress.mixed" => (
             Workload::Mixed,
             CompressionProfile::Balanced,

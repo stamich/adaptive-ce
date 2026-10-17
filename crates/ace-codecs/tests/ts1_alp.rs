@@ -174,3 +174,27 @@ fn stream_fields_are_validated() {
     bad[TIME_SERIES_HEADER_SIZE + 2] |= 0x01;
     assert!(ts1_decode(&bad, input.len()).is_err());
 }
+
+/// The 64-value pre-test accepts decimals in both widths and rejects noise and bad widths.
+#[test]
+fn sample_test_separates_decimals_from_noise() {
+    use ace_codecs::alp_sample_viable;
+    let decimals: Vec<f64> = (0..5_000u32)
+        .map(|i| f64::from(i * 7 % 1_000) / 100.0)
+        .collect();
+    assert!(alp_sample_viable(&f64_bytes(&decimals), 8));
+    let tenths: Vec<f32> = (0..5_000u32).map(|i| (i % 300) as f32 / 10.0).collect();
+    assert!(alp_sample_viable(&f32_bytes(&tenths), 4));
+    let mut state = 0x9e37_79b9_7f4a_7c15u64;
+    let noise: Vec<f64> = (0..5_000)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            f64::from_bits(0x3ff0_0000_0000_0000 | (state >> 12))
+        })
+        .collect();
+    assert!(!alp_sample_viable(&f64_bytes(&noise), 8));
+    assert!(!alp_sample_viable(&[], 8));
+    assert!(!alp_sample_viable(&[0u8; 64], 2));
+}

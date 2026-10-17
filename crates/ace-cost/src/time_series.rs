@@ -12,7 +12,9 @@
 //! evaluated for lanes the run prefilter admitted, where counting is a compare-and-skip loop.
 
 use ace_analysis::{lane_sample_windows, FloatWidth};
-use ace_codecs::{ts1_encoded_len, ts1_stream_bits, TimeSeriesLayout, TIME_SERIES_HEADER_SIZE};
+use ace_codecs::{
+    alp_sample_viable, ts1_encoded_len, ts1_stream_bits, TimeSeriesLayout, TIME_SERIES_HEADER_SIZE,
+};
 use ace_core::AceResult;
 
 /// Size estimate of one TS1 layout for one block.
@@ -156,6 +158,11 @@ pub fn estimate_alp(input: &[u8], width: FloatWidth) -> AceResult<TimeSeriesEsti
         exact: true,
         confidence: 1.0,
     })
+}
+
+/// Cheap pre-test for [`estimate_alp`]: at least half of a 64-value sample is decimal-shaped.
+pub fn alp_plausible(input: &[u8], width: FloatWidth) -> bool {
+    alp_sample_viable(input, width.lane_bytes() as u8)
 }
 
 /// TS1 ALP layout of a float width.

@@ -28,10 +28,10 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-analysis` | internal | 39 | 12 | 0 |
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
-| `ace-codecs` | internal | 50 | 21 | 0 |
+| `ace-codecs` | internal | 51 | 21 | 0 |
 | `ace-core` | internal | 31 | 20 | 0 |
 | `ace-corpus` | internal | 4 | 14 | 0 |
-| `ace-cost` | internal | 16 | 7 | 0 |
+| `ace-cost` | internal | 17 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
@@ -201,8 +201,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `public_corpus_family` | item | `families/public_corpus.rs:186` | Runs the family: one row per file and compressor, or nothing when no corpus is configured. |
 | `FamilyFn` | item | `lib.rs:31` | Signature shared by every benchmark family. |
 | `FAMILIES` | item | `lib.rs:34` | Every benchmark family in `all` order: `(name, runner)`. |
-| `select_families` | item | `lib.rs:71` | Resolves the command-line selection into the families to run. |
-| `run_family` | item | `lib.rs:87` | Runs one family and writes its document; returns the result path. |
+| `select_families` | item | `lib.rs:72` | Resolves the command-line selection into the families to run. |
+| `run_family` | item | `lib.rs:88` | Runs one family and writes its document; returns the result path. |
 | `QUICK_ENV` | item | `timing/plan.rs:6` | Environment variable enabling the quick (smoke) plan: one short batch per case. |
 | `MIN_SAMPLE_MS_ENV` | item | `timing/plan.rs:9` | Environment variable overriding the minimum duration of one sample, in milliseconds. |
 | `MAX_ITERATIONS_PER_SAMPLE` | item | `timing/plan.rs:12` | Upper bound on operation invocations folded into one sample (protects nanosecond ops). |
@@ -283,9 +283,9 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `numeric_encode_with` | item | `numeric/encode.rs:35` | Encodes bytes with an explicitly chosen lane width and mode. |
 | `numeric_encode_fixed_step` | item | `numeric/encode.rs:57` | Encodes a validated fixed-step block directly as zero-bit-width DoD (header + tail only). |
 | `NumericEstimate` | item | `numeric/estimate.rs:14` | Size estimate of one `(width, mode)` NUM1 encoding. |
-| `estimate_numeric` | item | `numeric/estimate.rs:41` | Estimates the best NUM1 representation over every lane width and mode. |
-| `estimate_numeric_for_width` | item | `numeric/estimate.rs:61` | Estimates the best mode for one caller-chosen lane width (`None` below two values). |
-| `estimate_every_mode` | item | `numeric/estimate.rs:76` | Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order. |
+| `estimate_numeric` | item | `numeric/estimate.rs:45` | Estimates the best NUM1 representation over every lane width and mode. |
+| `estimate_numeric_for_width` | item | `numeric/estimate.rs:101` | Estimates the best mode for one caller-chosen lane width (`None` below two values). |
+| `estimate_every_mode` | item | `numeric/estimate.rs:106` | Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order. |
 | `NUMERIC_HEADER_SIZE` | item | `numeric/header.rs:37` | Fixed byte size of the self-describing NUM1 header. |
 | `NumericPayloadInfo` | item | `numeric/header.rs:44` | Header-level description of one NUM1 payload (everything except the packed values). |
 | `NumericPatch` | item | `numeric/header.rs:68` | The Patched FOR part of a NUM1 header (Format 1.5): which stream is patched and how many |
@@ -301,11 +301,12 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `PATCH_SOURCES` | method | `numeric/mode.rs:29` | The base modes whose stream a [`NumericMode::Patched`] payload can patch. |
 | `label` | method | `numeric/mode.rs:32` | Returns a short stable label used by `ace inspect` and benchmark telemetry. |
 | `stream_len` | method | `numeric/mode.rs:46` | Number of packed stream values this mode stores for `value_count` logical integers. |
-| `estimate_patched` | item | `numeric/patched.rs:46` | Exact size of the best Patched FOR payload of `input` for one lane width. |
+| `estimate_patched` | item | `numeric/patched.rs:107` | Exact size of the best Patched FOR payload of `input` for one lane width. |
 | `raw_encode` | item | `raw.rs:4` | Returns a verbatim copy of the source bytes. |
 | `raw_decode` | item | `raw.rs:13` | Validates and reconstructs a RAW payload. |
 | `rle_encode` | item | `rle.rs:9` | Encodes bytes using packet RLE with 1..=128-byte literal and repeated-run packets. |
 | `rle_decode` | item | `rle.rs:44` | Decodes packet RLE while enforcing the caller-provided output size bound. |
+| `alp_sample_viable` | item | `time_series/alp.rs:239` | True when at most half of a deterministic sample (see [`choose_params`]) survives the best |
 | `TimeSeriesLayout` | item | `time_series/codec.rs:16` | Mode plus lane width: everything an encoder needs to know about the wire layout. |
 | `GORILLA_F64` | method | `time_series/codec.rs:26` | Gorilla over IEEE-754 binary64. |
 | `GORILLA_F32` | method | `time_series/codec.rs:31` | Gorilla over IEEE-754 binary32. |
@@ -441,13 +442,14 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `deterministic_sample_ranges` | item | `sampling.rs:104` | Returns stable, non-random sample ranges for a block. |
 | `codec_sample_ranges` | item | `sampling.rs:113` | Returns deterministic sample ranges specialized for the candidate codec and verifier stage. |
 | `stratified_ranges` | item | `sampling.rs:137` | Builds deterministic evenly distributed windows without overlapping the end of the block. |
-| `TimeSeriesEstimate` | item | `time_series.rs:20` | Size estimate of one TS1 layout for one block. |
-| `ratio_to` | method | `time_series.rs:34` | Estimated bytes per input byte (`0.0` for empty input). |
-| `gorilla_layout` | item | `time_series.rs:44` | TS1 Gorilla layout of a float width. |
-| `estimate_gorilla` | item | `time_series.rs:71` | Estimates the Gorilla payload of `input` read as `width` values from the sample windows. |
-| `estimate_run_delta` | item | `time_series.rs:126` | Exact RunDelta payload size of `input` read as `lane_bytes` lanes. |
-| `estimate_alp` | item | `time_series.rs:151` | Exact ALP payload size of `input` read as `width` values (ACE 0.6.1, TS1 mode 4). |
-| `alp_layout` | item | `time_series.rs:162` | TS1 ALP layout of a float width. |
+| `TimeSeriesEstimate` | item | `time_series.rs:22` | Size estimate of one TS1 layout for one block. |
+| `ratio_to` | method | `time_series.rs:36` | Estimated bytes per input byte (`0.0` for empty input). |
+| `gorilla_layout` | item | `time_series.rs:46` | TS1 Gorilla layout of a float width. |
+| `estimate_gorilla` | item | `time_series.rs:73` | Estimates the Gorilla payload of `input` read as `width` values from the sample windows. |
+| `estimate_run_delta` | item | `time_series.rs:128` | Exact RunDelta payload size of `input` read as `lane_bytes` lanes. |
+| `estimate_alp` | item | `time_series.rs:153` | Exact ALP payload size of `input` read as `width` values (ACE 0.6.1, TS1 mode 4). |
+| `alp_plausible` | item | `time_series.rs:164` | Cheap pre-test for [`estimate_alp`]: at least half of a 64-value sample is decimal-shaped. |
+| `alp_layout` | item | `time_series.rs:169` | TS1 ALP layout of a float width. |
 
 ### `ace-dictionary` (internal)
 
@@ -628,19 +630,19 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `evaluate_all_candidates` | item | `exhaustive.rs:35` | Deterministically evaluates every candidate and returns populated cost/score fields in stable input order. |
 | `PlannerFastPath` | item | `fastpath.rs:7` | Deterministic planner shortcut for blocks whose statistics strongly imply one inexpensive plan. |
 | `DefaultPlannerFastPath` | item | `fastpath.rs:18` | Default ACE 0.3.1 fast-path classifier with the frozen zero-heavy quality guard. |
-| `FLOAT_FAST_DIVISOR` | item | `float_route.rs:37` | FloatFast admission: the TS1 estimate is at most `input / FLOAT_FAST_DIVISOR`. |
-| `FLOAT_FAST_FALLBACK_DIVISOR` | item | `float_route.rs:40` | FloatFast fallback: an encoded payload above `input / FLOAT_FAST_FALLBACK_DIVISOR` is |
-| `TS1_MAX_FRACTION_OF_GENERIC` | item | `float_route.rs:42` | An exact TS1 size (RunDelta) must be at most this fraction of the generic size. |
-| `TS1_MAX_FRACTION_SAMPLED` | item | `float_route.rs:47` | A sampled TS1 estimate (Gorilla) must be at most this fraction of the generic size. |
-| `TS1_MIN_SAVING_DIVISOR` | item | `float_route.rs:49` | TS1 must save at least `input / TS1_MIN_SAVING_DIVISOR` bytes over the generic plan. |
-| `FloatEvidence` | item | `float_route.rs:53` | Float lane evidence collected once by the route classifier. |
-| `FloatFastOutcome` | item | `float_route.rs:64` | Outcome of [`float_fast_decision`]. |
-| `classify_float_lane` | item | `float_route.rs:78` | Adds the Planner V5 Float lane to a V4.3 route decision. |
-| `float_fast_decision` | item | `float_route.rs:152` | FloatFast: encodes the evidence layout once and keeps it if it meets the fallback bound. |
-| `ts1_beats_generic` | item | `float_route.rs:190` | The TS1 dominance rule: relative (≤ 90 % of generic when exact, ≤ 75 % when sampled) and |
-| `generic_decision_bytes` | item | `float_route.rs:207` | Size the generic decision is expected to produce (blended sample size when available). |
-| `apply_time_series_policy` | item | `float_route.rs:236` | Lets the TS1 candidate compete with a finished generic decision. |
-| `time_series_plan` | item | `float_route.rs:290` | The physical plan of a TS1 block: no transforms, no entropy stage. |
+| `FLOAT_FAST_DIVISOR` | item | `float_route.rs:39` | FloatFast admission: the TS1 estimate is at most `input / FLOAT_FAST_DIVISOR`. |
+| `FLOAT_FAST_FALLBACK_DIVISOR` | item | `float_route.rs:42` | FloatFast fallback: an encoded payload above `input / FLOAT_FAST_FALLBACK_DIVISOR` is |
+| `TS1_MAX_FRACTION_OF_GENERIC` | item | `float_route.rs:44` | An exact TS1 size (RunDelta) must be at most this fraction of the generic size. |
+| `TS1_MAX_FRACTION_SAMPLED` | item | `float_route.rs:49` | A sampled TS1 estimate (Gorilla) must be at most this fraction of the generic size. |
+| `TS1_MIN_SAVING_DIVISOR` | item | `float_route.rs:51` | TS1 must save at least `input / TS1_MIN_SAVING_DIVISOR` bytes over the generic plan. |
+| `FloatEvidence` | item | `float_route.rs:55` | Float lane evidence collected once by the route classifier. |
+| `FloatFastOutcome` | item | `float_route.rs:66` | Outcome of [`float_fast_decision`]. |
+| `classify_float_lane` | item | `float_route.rs:80` | Adds the Planner V5 Float lane to a V4.3 route decision. |
+| `float_fast_decision` | item | `float_route.rs:165` | FloatFast: encodes the evidence layout once and keeps it if it meets the fallback bound. |
+| `ts1_beats_generic` | item | `float_route.rs:203` | The TS1 dominance rule: relative (≤ 90 % of generic when exact, ≤ 75 % when sampled) and |
+| `generic_decision_bytes` | item | `float_route.rs:220` | Size the generic decision is expected to produce (blended sample size when available). |
+| `apply_time_series_policy` | item | `float_route.rs:249` | Lets the TS1 candidate compete with a finished generic decision. |
+| `time_series_plan` | item | `float_route.rs:303` | The physical plan of a TS1 block: no transforms, no entropy stage. |
 | `HybridLzPolicy` | item | `hybrid.rs:15` | Profile- and stage-specific bounded micro-trial budget for one LZ candidate. |
 | `for_profile` | method | `hybrid.rs:29` | Returns the bounded micro-trial budget for a profile and verifier stage. |
 | `HybridLzObservation` | item | `hybrid.rs:73` | Diagnostic result emitted by one bounded LZ refinement. |

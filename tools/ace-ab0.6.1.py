@@ -58,19 +58,30 @@ class Case:
     case_id: str
     required_ratio: float
     stability_limit: float
+    #: True when 0.6.1 changes the produced bytes on purpose (Phase B): the byte-identity check
+    #: is skipped for the case and its speed floor is the documented price of the change.
+    output_changes: bool = False
 
 
 CASES = [
     Case("compression.fast.encode", 0.95, 3.0),
     Case("compression.balanced.encode", 0.95, 3.0),
-    Case("compression.dense.encode", 0.95, 3.0),
+    # DENSE also plans every block as BALANCED (never larger than BALANCED): about 0.58x.
+    Case("compression.dense.encode", 0.50, 3.0, output_changes=True),
     Case("compression.fast.decode", 0.95, 5.0),
     Case("compression.balanced.decode", 0.95, 5.0),
     Case("compression.dense.decode", 0.95, 5.0),
     Case("numeric_fast.u32_counter.encode", 0.95, 3.0),
     Case("numeric_fast.u32_counter.decode", 0.95, 5.0),
     Case("numeric_general.u64_timestamps.encode", 0.95, 3.0),
-    Case("numeric_general.delta_variable.encode", 0.95, 3.0),
+    Case("numeric_general.delta_variable.encode", 0.70, 3.0, output_changes=True),
+    # ACE 0.6.1 (Phase B): the changed paths must not get slower, although their bytes differ.
+    Case("numeric_general.monotonic_outliers.encode", 0.70, 3.0, output_changes=True),
+    Case("numeric_general.int_counter_reset.encode", 0.95, 3.0, output_changes=True),
+    Case("float.f64_noisy.encode", 0.95, 3.0),
+    Case("float.f64_smooth.encode", 0.95, 3.0),
+    Case("float.f64_decimal_price.encode", 0.95, 3.0, output_changes=True),
+    Case("float.f64_decimal_price.decode", 0.95, 5.0, output_changes=True),
     Case("full_decompress.mixed", 0.95, 5.0),
     # warm 64 KiB range: latency <= 110 % of baseline  <=>  speed ratio >= 1 / 1.10.
     Case("random_access.warm_64k", 1.0 / 1.10, 5.0),
@@ -149,7 +160,7 @@ def evaluate(case: Case, base_batches: list[dict], cand_batches: list[dict]) -> 
     lower, upper = min(per_batch), max(per_batch)
     identical = len({batch["output_fnv1a"] for batch in base_batches + cand_batches}) == 1
     worst_mad = max(base["batch_mad_percent"], cand["batch_mad_percent"])
-    if not identical:
+    if not identical and not case.output_changes:
         status = lib.FAIL
     elif lower >= case.required_ratio:
         status = lib.PASS

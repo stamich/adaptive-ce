@@ -109,7 +109,7 @@ fn engine_row(
 }
 
 /// Codec-level timing of the best TS1 layout (block by block, like the engine).
-fn best_ts1_timing(
+pub(crate) fn best_ts1_timing(
     data: &[u8],
     layout: TimeSeriesLayout,
 ) -> Result<Value, Box<dyn std::error::Error>> {

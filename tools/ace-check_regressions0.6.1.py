@@ -7,6 +7,7 @@ Sections:
   and externally checked gates passed as ``--external NAME=pass|fail`` (golden SHA-256,
   determinism matrix, format readers, malformed matrix, ...);
 * ``quality``     -- Planner V4.3 policy recall/regret and compression ratios (unchanged);
+* ``format15``    -- Phase B (0.6.1): Patched FOR, ALP, small-delta RunDelta, DENSE <= BALANCED.
 * ``float``       -- Planner V5 Float lane (0.5.0): zero false positives, Corpus V3 identity,
   zero FloatFast fallbacks, never larger than the disabled lane, ratio targets, estimator
   accuracy, codec-level TS1 speed and the FloatFast speedup measured in the same run;
@@ -78,6 +79,7 @@ class Inputs:
         self.float_false_positive = ours("float-false-positive")
         self.float_estimator = ours("float-estimator")
         self.float_ablation = ours("float-ablation")
+        self.format15 = ours("format-1-5")
         legacy = baselines / "0.2.1-buildfix1"
         self.quality_compression = lib.load_doc(legacy / "benchmark-0.2.1-buildfix1-compression.json")
         stored = baselines / lib.BASELINE
@@ -198,6 +200,49 @@ def float_gates(data: Inputs) -> list[Row]:
     return gates
 
 
+def format15_gates(data: Inputs) -> list[Row]:
+    """Phase B (0.6.1): Patched FOR, ALP, small-delta RunDelta and the DENSE guarantee."""
+    ratio = lambda wid, profile="balanced": float(  # noqa: E731
+        lib.find_row(data.format15, workload_id=wid, profile=profile)["compression_ratio"])
+    gain = lambda wid: float(lib.find_row(  # noqa: E731
+        data.format15, workload_id=wid, profile="balanced")["gain_vs_float_lane_disabled"])
+    summary = lib.find_row(data.format15, workload_id="summary")
+    alp = lib.timing(lib.find_row(data.format15, workload_id="f64-decimal-price", path="format_1_5_codec")["alp"], "encode")
+    alp_dec = lib.timing(lib.find_row(data.format15, workload_id="f64-decimal-price", path="format_1_5_codec")["alp"], "decode")
+    patched_row = lib.find_row(data.format15, workload_id="monotonic-outliers", path="format_1_5_codec")["patched"]
+    gates = [
+        threshold("format15.dense_larger_than_balanced", "correctness",
+                  float(summary["dense_larger_than_balanced"]), 0.0, False,
+                  f"== 0 on {int(summary['workloads_checked'])} corpus workloads"),
+        threshold("format15.int_counter_reset_ratio", "format15", ratio("int-counter-reset"), 15.0, True,
+                  ">= 15x (0.6.0: 2.7x)"),
+        threshold("format15.monotonic_outliers_ratio", "format15", ratio("monotonic-outliers"), 100.0, True,
+                  ">= 100x (0.6.0: 1.8x)"),
+        threshold("format15.gauge_sawtooth_ratio", "format15", ratio("gauge-sawtooth"), 500.0, True,
+                  ">= 500x (0.6.0: 19x)"),
+        threshold("format15.delta_variable_ratio", "format15", ratio("delta-variable"), 8.0, True,
+                  ">= 8x (0.6.0: 6.4x)"),
+        threshold("format15.f64_decimal_price_ratio", "format15", ratio("f64-decimal-price"), 4.5, True, ">= 4.5x"),
+        threshold("format15.f64_financial_price_ratio", "format15", ratio("f64-financial-price"), 5.2, True,
+                  ">= 5.2x (0.6.0: 5.1x)"),
+        threshold("format15.int_geometric_delta_gain", "format15", gain("int-geometric-delta"), 1.25, True,
+                  ">= 1.25x the disabled lane (RunDelta for small deltas)"),
+        threshold("format15.int_slow_drift_control", "format15", gain("int-slow-drift"), 0.99, True,
+                  ">= 0.99x (control: NUM1 stays within 10 %)"),
+        timed_gate("format15.alp_codec_encode_mb_s", alp, float(alp["median_mb_s"]), 150.0, True,
+                   ">= 150 MB/s (provisional floor, reference run in 0.6.1 baseline)", 6.0, "format15"),
+        timed_gate("format15.alp_codec_decode_mb_s", alp_dec, float(alp_dec["median_mb_s"]), 300.0, True,
+                   ">= 300 MB/s (provisional floor)", 6.0, "format15"),
+        timed_gate("format15.patched_codec_encode_mb_s", lib.timing(patched_row, "encode"),
+                   float(lib.timing(patched_row, "encode")["median_mb_s"]), 200.0, True,
+                   ">= 200 MB/s (provisional floor)", 6.0, "format15"),
+        timed_gate("format15.patched_codec_decode_mb_s", lib.timing(patched_row, "decode"),
+                   float(lib.timing(patched_row, "decode")["median_mb_s"]), 300.0, True,
+                   ">= 300 MB/s (provisional floor)", 6.0, "format15"),
+    ]
+    return gates
+
+
 def timed_gate(name: str, timing_obj: Row, measured: float, required: float, higher: bool,
                rule: str, limit: float, section: str = "performance") -> Row:
     """Absolute performance gate on a Harness V3 measurement (unstable beats pass/fail)."""
@@ -293,7 +338,7 @@ def main(argv: list[str]) -> int:
     external = dict(item.split("=", 1) for item in args.external)
     data = Inputs(args.results, args.baselines)
     ab = lib.load_doc(args.ab) if args.ab else None
-    gates = (correctness_gates(data, external) + quality_gates(data) + float_gates(data)
+    gates = (correctness_gates(data, external) + quality_gates(data) + float_gates(data) + format15_gates(data)
              + performance_gates(data, ab)
              + stability_gates(data) + environment_rows(data))
     status = lib.overall_status(gates)
