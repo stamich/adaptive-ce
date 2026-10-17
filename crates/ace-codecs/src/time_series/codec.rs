@@ -8,7 +8,7 @@ use super::alp_decode;
 use super::gorilla::{self, GorillaShape, GORILLA_F32, GORILLA_F64};
 use super::header::{ts1_inspect, ts1_serialize_payload, TIME_SERIES_HEADER_SIZE};
 use super::run_delta;
-use super::sink::{BitCounter, BitSink};
+use super::sink::{BitCounter, BitSink, LimitedBitCounter};
 use super::{TimeSeriesMode, TimeSeriesPayloadInfo, FLAG_WINDOW_REUSE};
 
 /// Mode plus lane width: everything an encoder needs to know about the wire layout.
@@ -172,6 +172,33 @@ pub fn ts1_encoded_len(input: &[u8], layout: TimeSeriesLayout) -> AceResult<usiz
     encode_stream(input, layout, &mut counter);
     let info = payload_info(input, layout, counter.bits)?;
     Ok(TIME_SERIES_HEADER_SIZE + info.stream_bytes() + info.tail_len)
+}
+
+/// [`ts1_encoded_len`] that gives up once the payload cannot be `max_bytes` or smaller.
+///
+/// Returns `Ok(Some(len))` with the exact length when `len <= max_bytes`, and `Ok(None)` when
+/// the payload is larger (RunDelta stops counting at the first change past the limit; the other
+/// modes count in full). It never returns a length that `ts1_encoded_len` would not return.
+///
+/// # Errors
+///
+/// Same conditions as [`ts1_encode_with`].
+pub fn ts1_encoded_len_within(
+    input: &[u8],
+    layout: TimeSeriesLayout,
+    max_bytes: usize,
+) -> AceResult<Option<usize>> {
+    let mut counter = LimitedBitCounter {
+        bits: 0,
+        limit: (max_bytes as u64).saturating_mul(8),
+    };
+    encode_stream(input, layout, &mut counter);
+    if counter.exhausted() {
+        return Ok(None);
+    }
+    let info = payload_info(input, layout, counter.bits)?;
+    let len = TIME_SERIES_HEADER_SIZE + info.stream_bytes() + info.tail_len;
+    Ok((len <= max_bytes).then_some(len))
 }
 
 /// Exact number of stream bits `ts1_encode_with(input, layout)` would write (header and tail

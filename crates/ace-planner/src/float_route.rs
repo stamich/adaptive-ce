@@ -27,7 +27,8 @@ use ace_core::{
     PhysicalCompressionPlan, PlanCost,
 };
 use ace_cost::{
-    alp_plausible, estimate_alp, estimate_gorilla, estimate_run_delta, TimeSeriesEstimate,
+    alp_plausible, estimate_alp, estimate_gorilla, estimate_run_delta, estimate_run_delta_within,
+    TimeSeriesEstimate,
 };
 
 use crate::{
@@ -261,7 +262,7 @@ pub fn apply_time_series_policy(
     }
     let (candidate, estimates) = match route.float_evidence {
         Some(evidence) => (Some(evidence.estimate), evidence.estimates),
-        None => best_run_delta(input, route)?,
+        None => best_run_delta(input, route, generic_bytes)?,
     };
     let mut telemetry = decision.telemetry;
     telemetry.time_series_estimates = estimates;
@@ -283,16 +284,29 @@ pub fn apply_time_series_policy(
 }
 
 /// Smallest exact RunDelta estimate over the widths admitted by the run prefilter.
+///
+/// Counting stops as soon as a width cannot beat the best one so far or cannot pass the
+/// dominance rule against `generic_bytes` (an exact estimate must be at most
+/// [`TS1_MAX_FRACTION_OF_GENERIC`] of it and save at least `input / TS1_MIN_SAVING_DIVISOR`). Such a width would lose anyway, so the decision is
+/// the same as with full counts; only blocks where RunDelta loses get cheaper.
 fn best_run_delta(
     input: &[u8],
     route: &RouteDecision,
+    generic_bytes: u64,
 ) -> AceResult<(Option<TimeSeriesEstimate>, usize)> {
+    // Rounded up: the cap must never reject an estimate `ts1_beats_generic` would accept.
+    let relative_cap = (TS1_MAX_FRACTION_OF_GENERIC * generic_bytes as f64).ceil() as u64;
+    // The absolute rule needs `saving * DIVISOR >= input.len()`, i.e. at least this many bytes.
+    let saving_needed = (input.len() as u64).div_ceil(TS1_MIN_SAVING_DIVISOR);
+    let dominance_cap = relative_cap.min(generic_bytes.saturating_sub(saving_needed));
     let mut best: Option<TimeSeriesEstimate> = None;
     let mut count = 0;
     for profile in route.run_prefilter.admitted() {
-        let estimate = estimate_run_delta(input, profile.lane_bytes)?;
         count += 1;
-        if best.is_none_or(|b| estimate.estimated_bytes < b.estimated_bytes) {
+        let cap = best.map_or(dominance_cap, |b| {
+            dominance_cap.min(b.estimated_bytes.saturating_sub(1))
+        });
+        if let Some(estimate) = estimate_run_delta_within(input, profile.lane_bytes, cap)? {
             best = Some(estimate);
         }
     }

@@ -231,9 +231,14 @@ pub(crate) fn encode_alp<const B: usize, S: BitSink>(input: &[u8], sink: &mut S)
     }
 }
 
-/// True when at least half of a deterministic sample (four windows of 16 consecutive values) survives the best
-/// `(e, f)` as an integer, i.e. the block looks like decimals. Noisy full-precision floats fail
-/// this cheap test (about 64 values), so callers can skip the full ALP size count for them.
+/// True when at least half of a deterministic sample (four windows of 16 consecutive values)
+/// is a decimal: some `10^-e` scaling with `e <= 18` turns the value into an integer that
+/// converts back to the same bits. Noisy full-precision floats fail this cheap test, and fail
+/// it early (the scan stops once more than half of the sample has no such `e`), so callers can
+/// skip the full ALP size count for them.
+///
+/// The test is looser than the `(e, f)` choice of the encoder (every value may use its own `e`);
+/// it only decides whether the exact count is worth running, never what is encoded.
 ///
 /// `lane_bytes` must be 4 or 8; any other width, and blocks without a complete lane, are `false`.
 pub fn alp_sample_viable(input: &[u8], lane_bytes: u8) -> bool {
@@ -244,12 +249,22 @@ pub fn alp_sample_viable(input: &[u8], lane_bytes: u8) -> bool {
         }
         let lane_bits = (B * 8) as u32;
         let sample = sample_lanes::<B>(input, count);
-        let params = choose_params(&sample, lane_bits);
-        let kept = sample
-            .iter()
-            .filter(|&&bits| digits_of(bits, params, lane_bits).is_some())
-            .count();
-        kept * 2 >= sample.len()
+        // At most this many values may be non-decimal for `kept * 2 >= len`.
+        let allowed_misses = sample.len() / 2;
+        let mut misses = 0usize;
+        for &bits in &sample {
+            let decimal = (0..=MAX_EXPONENT).any(|e| {
+                AlpParams::new(u64::from(e), 0)
+                    .is_some_and(|params| digits_of(bits, params, lane_bits).is_some())
+            });
+            if !decimal {
+                misses += 1;
+                if misses > allowed_misses {
+                    return false;
+                }
+            }
+        }
+        true
     }
     match lane_bytes {
         4 => viable::<4>(input),

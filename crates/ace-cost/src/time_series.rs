@@ -13,7 +13,8 @@
 
 use ace_analysis::{lane_sample_windows, FloatWidth};
 use ace_codecs::{
-    alp_sample_viable, ts1_encoded_len, ts1_stream_bits, TimeSeriesLayout, TIME_SERIES_HEADER_SIZE,
+    alp_sample_viable, ts1_encoded_len, ts1_encoded_len_within, ts1_stream_bits, TimeSeriesLayout,
+    TIME_SERIES_HEADER_SIZE,
 };
 use ace_core::AceResult;
 
@@ -133,6 +134,39 @@ pub fn estimate_run_delta(input: &[u8], lane_bytes: u8) -> AceResult<TimeSeriesE
         exact: true,
         confidence: 1.0,
     })
+}
+
+/// [`estimate_run_delta`] that stops counting once the payload is larger than `max_bytes`.
+///
+/// `Some(estimate)` is exactly what [`estimate_run_delta`] returns and has
+/// `estimated_bytes <= max_bytes`; `None` means the exact size is larger than `max_bytes`.
+///
+/// # Errors
+///
+/// Same as [`estimate_run_delta`].
+///
+/// # Determinism
+///
+/// A pure function of its arguments.
+///
+/// # Invariants
+///
+/// `Some` only when `estimate_run_delta(input, lane_bytes)` would be `<= max_bytes`.
+pub fn estimate_run_delta_within(
+    input: &[u8],
+    lane_bytes: u8,
+    max_bytes: u64,
+) -> AceResult<Option<TimeSeriesEstimate>> {
+    let layout = TimeSeriesLayout::run_delta(lane_bytes);
+    let limit = usize::try_from(max_bytes).unwrap_or(usize::MAX);
+    Ok(
+        ts1_encoded_len_within(input, layout, limit)?.map(|len| TimeSeriesEstimate {
+            layout,
+            estimated_bytes: len as u64,
+            exact: true,
+            confidence: 1.0,
+        }),
+    )
 }
 
 /// Exact ALP payload size of `input` read as `width` values (ACE 0.6.1, TS1 mode 4).

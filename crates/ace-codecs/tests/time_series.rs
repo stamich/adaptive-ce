@@ -339,3 +339,25 @@ fn best_layout_is_selected() {
     assert!(ts1_encode_best(&sparse, &[]).is_err());
     assert!(ts1_encode_with(&sparse, TimeSeriesLayout::run_delta(3)).is_err());
 }
+
+/// `ts1_encoded_len_within` is `ts1_encoded_len` up to the limit and `None` past it, for every
+/// layout (RunDelta stops early, the other modes count in full).
+#[test]
+fn encoded_len_within_agrees_with_encoded_len() {
+    let data: Vec<u8> = (0..4_096u32)
+        .flat_map(|i| (f64::from(i % 400) / 8.0).to_le_bytes())
+        .collect();
+    for layout in TimeSeriesLayout::ALL {
+        let len = ts1_encoded_len(&data, layout).unwrap();
+        assert_eq!(
+            ts1_encoded_len_within(&data, layout, len).unwrap(),
+            Some(len),
+            "{layout:?}"
+        );
+        assert_eq!(
+            ts1_encoded_len_within(&data, layout, len - 1).unwrap(),
+            None,
+            "{layout:?}"
+        );
+    }
+}

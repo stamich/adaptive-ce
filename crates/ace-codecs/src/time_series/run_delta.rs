@@ -51,6 +51,9 @@ pub(crate) fn encode_runs<S: BitSink>(
         put_gamma(sink, run);
         put_gamma(sink, zigzag_i64(signed_delta(last, value, lane_bits)));
         run = 0;
+        if sink.exhausted() {
+            return;
+        }
     }
     if previous.is_some() {
         put_gamma(sink, run);

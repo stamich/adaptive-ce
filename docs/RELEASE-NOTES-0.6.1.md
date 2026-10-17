@@ -53,7 +53,7 @@ Over the 27 workloads of 0.5.0 the total shrinks by 12.0 % (FAST), 15.5 % (BALAN
   baseline, they would shrink 0 of 144 blocks (rule: at least 5 % more blocks). Decision and
   data: [`BENCHMARKS.md`](BENCHMARKS.md).
 * **DENSE never larger than BALANCED**: DENSE also plans each block as BALANCED and stores the
-  smaller framed result (ties keep DENSE). Cost: DENSE encode runs at about 0.58× of 0.6.0
+  smaller framed result (ties keep DENSE). Cost: DENSE encode runs at about 0.55× of 0.6.0
   speed; decode is unaffected.
 * **Format 1.5** with payload-aware minimal versions ([`FORMAT-1.5.md`](FORMAT-1.5.md)).
 * **Tests**: no `#[cfg(test)]` module remains in any `src/` file (enforced by the code audit);
@@ -63,10 +63,14 @@ Over the 27 workloads of 0.5.0 the total shrinks by 12.0 % (FAST), 15.5 % (BALAN
 
 ## Performance trade-offs
 
-Measured on a shared development VM, so the final numbers come from the reference-machine run
-(`docs/PERFORMANCE-0.6.1.md`, task 20): DENSE encode ≈ 0.58×, `delta-variable` encode ≈ 0.74×
-(bytes −37 %), `monotonic-outliers` encode ≈ 0.98×; all byte-identical cases stay within the
-0.95 A/B floor. The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
+First run on the 32-thread reference machine (A/B against 0.6.0, interleaved, 3 batches):
+DENSE encode 0.55× (DENSE decode 1.05×), `delta-variable` encode 0.66× (bytes −37 %),
+`monotonic-outliers` encode 0.80× (bytes −99.5 %), `int-counter-reset` encode 1.52×, decimal-price
+encode 1.40× and decode 3.49×. The first run also showed FAST / BALANCED encode of the mixed
+workload at 0.92× / 0.94× and `f64_noisy` encode at 0.79× with identical output; both were
+traced to the size counting of the new candidates and reduced (early-exit RunDelta count, cheaper
+ALP sample test) in the commit that follows it, so the next A/B run on that machine decides.
+The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
 
 ## Not covered here
 

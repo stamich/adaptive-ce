@@ -91,3 +91,38 @@ fn alp_estimate_is_exact() {
         assert!(estimate.ratio_to(data.len()) < 0.35, "{estimate:?}");
     }
 }
+
+/// A drifting counter: a change every few values, the delta always small.
+fn drifting_counter() -> Vec<u8> {
+    let mut value = 1_000u32;
+    (0..20_000u32)
+        .flat_map(|i| {
+            if i % 3 == 0 {
+                value = value.wrapping_add(i % 5 + 1);
+            }
+            value.to_le_bytes()
+        })
+        .collect()
+}
+
+/// The capped RunDelta estimate is the exact one when it fits and `None` when it does not,
+/// at every cap around the exact size.
+#[test]
+fn run_delta_within_matches_the_exact_estimate() {
+    let input = drifting_counter();
+    let exact = estimate_run_delta(&input, 4).unwrap();
+    let size = exact.estimated_bytes;
+    for cap in [size, size + 1, size * 2, u64::MAX] {
+        assert_eq!(
+            estimate_run_delta_within(&input, 4, cap).unwrap(),
+            Some(exact)
+        );
+    }
+    for cap in [size - 1, size / 2, 1, 0] {
+        assert_eq!(
+            estimate_run_delta_within(&input, 4, cap).unwrap(),
+            None,
+            "cap {cap}"
+        );
+    }
+}

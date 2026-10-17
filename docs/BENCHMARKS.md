@@ -278,10 +278,11 @@ per profile, codec speed of ALP and Patched FOR, and the DENSE-versus-BALANCED s
 | `format15.alp_codec_encode_mb_s`, `…_decode_mb_s` | >= 150, >= 300 MB/s (provisional) | — |
 | `format15.patched_codec_encode_mb_s`, `…_decode_mb_s` | >= 200, >= 300 MB/s (provisional) | — |
 
-Measured on the development VM (quick run): counter-reset 21.1x, monotonic-outliers 401x,
-gauge-sawtooth 1137x, delta-variable 10.2x, decimal price 5.1x, financial price 5.7x,
-geometric delta 1.47x, ALP 440 / 866 MB/s, Patched FOR 524 / 807 MB/s. The two codec-speed floors
-are provisional: the 0.6.1 reference run (task "release run") confirms or raises them.
+Measured on the 32-thread reference machine (full run): counter-reset 21.1x, monotonic-outliers
+401x, gauge-sawtooth 1137x, delta-variable 10.2x, decimal price 5.09x, financial price 5.70x,
+geometric delta 1.47x, FAST encode 34.8x the disabled lane, ALP 335 / 1093 MB/s, Patched FOR
+735 / 1261 MB/s. All `format15` gates pass there. The ALP and Patched speed floors (150 / 300 and
+200 / 300 MB/s) stay as set; they can be raised with the next baseline.
 
 Interleaved A/B against 0.6.0 (`tools/ace-ab0.6.1.py`, base tag `v0.6.0`) gets cases for every
 path whose planning changed. Byte-identical cases keep the 0.95 floor; cases whose bytes change
@@ -290,11 +291,18 @@ the change:
 
 | Case | Floor | Why |
 |---|---:|---|
-| `compression.dense.encode` | 0.50 | DENSE also plans every block as BALANCED (about 0.58x measured) |
-| `numeric_general.delta_variable.encode` | 0.70 | Patched FOR estimate and encoder (about 0.74x, bytes -37 %) |
-| `numeric_general.monotonic_outliers.encode` | 0.70 | same (about 0.98x, bytes -99.5 %) |
+| `compression.dense.encode` | 0.50 | DENSE also plans every block as BALANCED (0.55x measured on the reference machine) |
+| `compression.dense.decode` | 0.95 | `output_changes`: the stored bytes differ from 0.6.0; decode speed itself is 1.05x |
+| `numeric_general.delta_variable.encode` | 0.60 | Patched FOR estimate and encoder (0.66x on the 32-thread reference machine, bytes -37 %) |
+| `numeric_general.monotonic_outliers.encode` | 0.70 | same (0.80x on the reference machine, bytes -99.5 %) |
 | `numeric_general.int_counter_reset.encode`, `float.f64_decimal_price.encode / .decode` | 0.95 | faster than 0.6.0 (1.3x - 3.7x) |
 | `numeric_general.u64_timestamps.encode`, `float.f64_noisy.encode`, `float.f64_smooth.encode` | 0.95 | bytes identical; the Patched and ALP pre-tests keep the cost within noise |
+
+The first reference run (`ab-0.6.1-vs-0.6.0`) failed five A/B cases (FAST / BALANCED encode 0.92 / 0.94,
+`f64_noisy` 0.79, `delta_variable` 0.66, `dense.decode` without `output_changes`). Fixed since: the
+ALP sample test now stops after the first non-decimal majority (about 10x fewer operations on noise),
+the RunDelta size count stops as soon as the payload cannot pass the dominance rule
+(`estimate_run_delta_within`), and the two bookkeeping floors above were set from the measurements.
 
 Three pre-tests keep the new modes off the hot path: Patched FOR is estimated only at lane widths
 within 25 % of the best base size and only when 16-value chunks of some source differ by at least

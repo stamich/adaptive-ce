@@ -17,7 +17,7 @@ Reference: `examples/golden/0.6.1/`. Task order: `TASKS-0.6.1.md`; notes:
   fuzz targets `alp_decode`, `alp_roundtrip`, `numeric_patched_decode` (18 in total).
 
 ### Changed
-- DENSE plans each block as BALANCED too and stores the smaller result (DENSE encode ≈ 0.58×
+- DENSE plans each block as BALANCED too and stores the smaller result (DENSE encode ≈ 0.55×
   of 0.6.0 speed, never larger than BALANCED).
 - Unit tests moved from `src/` to `crates/<crate>/tests/`; `ace-bench` has a library target; the
   audit rejects `#[cfg(test)]` in `src/`.

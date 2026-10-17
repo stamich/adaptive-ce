@@ -37,4 +37,4 @@ pub use codec::*;
 pub use gamma::{put_gamma, read_gamma};
 pub use header::*;
 pub use mode::*;
-pub use sink::{BitCounter, BitSink};
+pub use sink::{BitCounter, BitSink, LimitedBitCounter};

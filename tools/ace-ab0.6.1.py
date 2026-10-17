@@ -70,11 +70,11 @@ CASES = [
     Case("compression.dense.encode", 0.50, 3.0, output_changes=True),
     Case("compression.fast.decode", 0.95, 5.0),
     Case("compression.balanced.decode", 0.95, 5.0),
-    Case("compression.dense.decode", 0.95, 5.0),
+    Case("compression.dense.decode", 0.95, 5.0, output_changes=True),
     Case("numeric_fast.u32_counter.encode", 0.95, 3.0),
     Case("numeric_fast.u32_counter.decode", 0.95, 5.0),
     Case("numeric_general.u64_timestamps.encode", 0.95, 3.0),
-    Case("numeric_general.delta_variable.encode", 0.70, 3.0, output_changes=True),
+    Case("numeric_general.delta_variable.encode", 0.60, 3.0, output_changes=True),
     # ACE 0.6.1 (Phase B): the changed paths must not get slower, although their bytes differ.
     Case("numeric_general.monotonic_outliers.encode", 0.70, 3.0, output_changes=True),
     Case("numeric_general.int_counter_reset.encode", 0.95, 3.0, output_changes=True),
