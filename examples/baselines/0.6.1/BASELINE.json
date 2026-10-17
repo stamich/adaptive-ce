@@ -1,0 +1,41 @@
+{
+  "version": "0.6.1",
+  "accepted": true,
+  "purpose": "baseline of 0.6.1 (stored-result diagnostics; release gates use the interleaved A/B against the 0.6.0 source tree)",
+  "machine_fingerprint": {
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "physical_cores": 16,
+    "logical_cpus": 32,
+    "memory": "128 GiB",
+    "os": "linux",
+    "arch": "x86_64",
+    "simd_backend": "Avx2",
+    "crc32c_backend": "sse4.2-3way",
+    "cpu_governor": "performance",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)"
+  },
+  "git_revision": "68a6a449e95cf00f4fa5e8fb3cff8fe885f3e8e9",
+  "methodology": "schema 2.2, Harness V3 (5 warm-ups, 3 x 7 batches, >= 50 ms per sample, median-of-medians), median of three complete runs (tools/ace-repeatability0.6.1.py), interleaved A/B vs the 0.6.0 source tree (3 batches per side, alternating order)",
+  "verdict": {
+    "regression_v3": "pass",
+    "gates": {
+      "pass": 92,
+      "diagnostic": 6,
+      "fail": 0,
+      "unstable": 0,
+      "skipped": 0
+    },
+    "repeatability": "pass, deterministic values identical over 3 runs x 30 families; macro spread <= 5 % (compression, observed maximum 2.1 %) / <= 15 % (decompression, observed maximum 8.9 %)",
+    "ab_vs_0_6_0": "pass, 18 / 18 cases; byte-identical output on the unchanged paths (FAST / BALANCED encode 0.973 / 0.981, decode 0.984 - 0.988, f64_noisy 0.997); paths whose bytes change on purpose: DENSE encode 0.568 (floor 0.50), delta-variable encode 0.799 (floor 0.75), monotonic-outliers 0.956 (floor 0.70), int-counter-reset 1.755, decimal-price encode 1.724 / decode 3.462",
+    "fuzz": "18 / 18 targets, no crash (FUZZ.md); ts1_decode and ts1_roundtrip logged 5487 s of wall time for 600 s (suspected host suspend, see FUZZ.md)"
+  },
+  "format_1_5": {
+    "delta_variable_ratio": 10.218,
+    "int_counter_reset_ratio": 21.092,
+    "monotonic_outliers_ratio": 401.138,
+    "f64_decimal_price_ratio": 5.091
+  },
+  "allocation": "engine bytes per input byte (mixed 4 MiB, 16 blocks): Fast 5.9, Balanced 8.3, Dense 18.2 (0.6.0: 11.1, DENSE plans every block as BALANCED too)",
+  "files": "benchmark-0.6.1-<family>.json (33 families incl. regression, repeatability, format-1-5 and chimp-evaluation; public-corpus is empty, ACE_PUBLIC_CORPUS was not set) and ab-0.6.1-vs-0.6.0.json, unchanged from the run",
+  "note": "reference run of the 0.6.1 release on the author's workstation (performance governor, 32-34 C), third A/B run after the planner cost reductions; code revision 68a6a44 (the merge only adds documentation). Decode of delta-variable is 0.47x of 0.6.0 (861 vs 1837 MB/s) for a 37 % smaller output, DENSE encode is 0.57x: both are documented trade-offs (docs/RELEASE-NOTES-0.6.1.md)."
+}

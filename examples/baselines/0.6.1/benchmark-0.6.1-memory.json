@@ -1,0 +1,307 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.6.1",
+  "base": "0.6.0",
+  "scope": "memory",
+  "benchmark_contract_origin": "ace-0.6.1",
+  "generated_at_utc_epoch_seconds": 1792243990,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "false",
+      "git_revision": "68a6a449e95cf00f4fa5e8fb3cff8fe885f3e8e9",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": 3897011,
+      "freq_khz_before": 4896003,
+      "governor": "performance",
+      "logical_cpus": 32,
+      "max_freq_khz": 5084000,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor",
+      "physical_cores": 16
+    },
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      2.95,
+      3.46,
+      2.25
+    ],
+    "loadavg_before": [
+      2.95,
+      3.46,
+      2.25
+    ],
+    "logical_cpus": 32,
+    "memory_bytes": 134959689728,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.12.21-gentoo-dist",
+      "name": "linux"
+    },
+    "physical_cores": 16,
+    "rust": {
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": 34.0,
+    "thermal_c_before": 34.0,
+    "warnings": []
+  },
+  "configuration": {
+    "block_size": 262144,
+    "config_fingerprint": "ced6310344103233",
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3 | 1.4 (minimal version)",
+    "planner_version": "V5",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "threads": 0,
+    "threads_resolved": 32,
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workload_fingerprints": {
+    "f64-noisy@16777216": "a2226b1219a79d82ec8265976cb4dbd075ea398a7fffddd54da784217e91baed",
+    "f64-step@16777216": "ae14e1bc0fff8a90c5f6a634ab123c08a9ca6f30be26b66aff4db6be3dc8ede6",
+    "int-sparse-change@16777216": "ecde18ab7d882bf902386456f4251c2fbf9e1f035e022ab2c3154344e6a1bb0f",
+    "mixed@16777216": "564dcb740257d0f549d7c751a025d887c58e51eecf2024af153ea1d91dc2b1b3",
+    "u32-counter@16777216": "a0fb0e32b9fe208f8512e2c4b9b5afd46a8ee4a1813d80430649d1c3777bb197",
+    "u64-timestamps@16777216": "662892bb1feb72c38cc970c0d52b92d15aab91eecd42b97601db329f5e4c89b7"
+  },
+  "workloads": [
+    {
+      "block_size_bytes": 262144,
+      "path": "worker_scratch_and_planner",
+      "planner_estimated_candidates": 752,
+      "planner_fast_path_blocks": 16,
+      "planner_full_trial_encodes": 0,
+      "planner_sampled_candidates": 272,
+      "scratch_capacity_preserved": true,
+      "scratch_reserved_after_reset_bytes": 787456,
+      "scratch_reserved_bytes": 787456,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 99727972,
+        "allocations": 1727,
+        "peak_live_bytes": 21444495
+      },
+      "compress_allocated_bytes_per_input_byte": 5.9442503452301025,
+      "compressed_bytes": 4556392,
+      "decompress": {
+        "allocated_bytes": 38278120,
+        "allocations": 354,
+        "peak_live_bytes": 17296552
+      },
+      "decompress_into": {
+        "allocated_bytes": 21498832,
+        "allocations": 352,
+        "peak_live_bytes": 524288
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_fast",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 136781882,
+        "allocations": 13554,
+        "peak_live_bytes": 22104278
+      },
+      "compress_allocated_bytes_per_input_byte": 8.152835488319397,
+      "compressed_bytes": 4503208,
+      "decompress": {
+        "allocated_bytes": 38356520,
+        "allocations": 450,
+        "peak_live_bytes": 17037204
+      },
+      "decompress_into": {
+        "allocated_bytes": 21577232,
+        "allocations": 448,
+        "peak_live_bytes": 524288
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_balanced",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 302237835,
+        "allocations": 37043,
+        "peak_live_bytes": 22096867
+      },
+      "compress_allocated_bytes_per_input_byte": 18.014778792858124,
+      "compressed_bytes": 4503048,
+      "decompress": {
+        "allocated_bytes": 38349704,
+        "allocations": 274,
+        "peak_live_bytes": 17037204
+      },
+      "decompress_into": {
+        "allocated_bytes": 21570416,
+        "allocations": 272,
+        "peak_live_bytes": 524288
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_dense",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "mixed_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 16908164,
+        "allocations": 607,
+        "peak_live_bytes": 16822528
+      },
+      "compress_allocated_bytes_per_input_byte": 1.0078051090240479,
+      "compressed_bytes": 7240,
+      "decompress": {
+        "allocated_bytes": 33559064,
+        "allocations": 130,
+        "peak_live_bytes": 17039400
+      },
+      "decompress_into": {
+        "allocated_bytes": 16779776,
+        "allocations": 128,
+        "peak_live_bytes": 262184
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_numeric_fast",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "u32-counter_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 73565956,
+        "allocations": 3615,
+        "peak_live_bytes": 17346816
+      },
+      "compress_allocated_bytes_per_input_byte": 4.384872674942017,
+      "compressed_bytes": 531528,
+      "decompress": {
+        "allocated_bytes": 34083352,
+        "allocations": 130,
+        "peak_live_bytes": 17047592
+      },
+      "decompress_into": {
+        "allocated_bytes": 17304064,
+        "allocations": 128,
+        "peak_live_bytes": 270376
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_numeric_general",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "u64-timestamps_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 33763969,
+        "allocations": 1055,
+        "peak_live_bytes": 16851264
+      },
+      "compress_allocated_bytes_per_input_byte": 2.012489378452301,
+      "compressed_bytes": 35973,
+      "decompress": {
+        "allocated_bytes": 33587797,
+        "allocations": 130,
+        "peak_live_bytes": 17039839
+      },
+      "decompress_into": {
+        "allocated_bytes": 16808509,
+        "allocations": 128,
+        "peak_live_bytes": 262637
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_float_fast",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "f64-step_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 69910787,
+        "allocations": 6026,
+        "peak_live_bytes": 31630049
+      },
+      "compress_allocated_bytes_per_input_byte": 4.167007625102997,
+      "compressed_bytes": 14814750,
+      "decompress": {
+        "allocated_bytes": 48366574,
+        "allocations": 130,
+        "peak_live_bytes": 17296552
+      },
+      "decompress_into": {
+        "allocated_bytes": 31587286,
+        "allocations": 128,
+        "peak_live_bytes": 524288
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_ts1_gorilla",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "f64-noisy_16m"
+    },
+    {
+      "compress": {
+        "allocated_bytes": 98618518,
+        "allocations": 36240,
+        "peak_live_bytes": 17541776
+      },
+      "compress_allocated_bytes_per_input_byte": 5.878121733665466,
+      "compressed_bytes": 70101,
+      "decompress": {
+        "allocated_bytes": 33621925,
+        "allocations": 130,
+        "peak_live_bytes": 17040381
+      },
+      "decompress_into": {
+        "allocated_bytes": 16842637,
+        "allocations": 128,
+        "peak_live_bytes": 263353
+      },
+      "input_bytes": 16777216,
+      "path": "allocations_ts1_run_delta",
+      "process_peak_rss_bytes": 379789312,
+      "workload_id": "int-sparse-change_16m"
+    }
+  ],
+  "repeatability": {
+    "runs": [
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-1",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-2",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-3"
+    ],
+    "rule": "median run per timing object"
+  }
+}
