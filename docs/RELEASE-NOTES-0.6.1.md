@@ -72,9 +72,9 @@ traced to the size counting of the new candidates and reduced (early-exit RunDel
 ALP sample test) in the commit that follows it, so the next A/B run on that machine decides.
 Second reference run: 16 of 18 cases pass; FAST encode 0.937× and BALANCED encode 0.951× of 0.6.0 for identical output
 (extra planning work on the Mixed workload, part of it the exact RunDelta size count of one block), `f64_noisy` encode
-0.98×. These were fixed in the code, not in the floors: the Patched FOR plan is reused by the encoder, a sampled pre-test skips the exact pass on blocks without outliers, the ALP count has a counting shortcut and cheaper rounding. FAST and BALANCED encode keep the 0.95 floor; the next reference run confirms it. The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
+0.98×. These were fixed in the code, not in the floors: the Patched FOR plan is reused by the encoder, a sampled pre-test skips the exact pass on blocks without outliers, the ALP count has a counting shortcut and cheaper rounding. The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
+Third reference run (32 logical CPUs, 3 batches): 18 of 18 A/B cases pass at their restored floors. FAST encode 0.973×, BALANCED encode 0.981× (identical output), `f64_noisy` 0.997×, `delta-variable` 0.799× (bytes −37 %), `monotonic-outliers` 0.956×, DENSE encode 0.568×, DENSE decode 1.047×, `int-counter-reset` 1.75×, decimal-price encode 1.72× and decode 3.46×; the other cases are 0.97× – 1.00×.
 
 ## Not covered here
 
-Fuzz targets `alp_decode`, `alp_roundtrip` and `numeric_patched_decode` need a nightly toolchain;
-the release campaign (18 targets × 10 min) runs on the reference machine.
+Fuzz campaign on the reference machine (18 targets × 10 min, including `alp_decode`, `alp_roundtrip` and `numeric_patched_decode`): no crash, no sanitizer finding. The `ts1_roundtrip` and `ts1_decode` logs both show 5487 s of wall time for a 600 s budget and libFuzzer reported one "slow unit" of 4893 s for `ts1_roundtrip`; both targets stretched by the same amount, which points to the machine being suspended during the run, not to an input. The unit is not part of the archive, so this is not proven; a re-run of the two targets is the check.
