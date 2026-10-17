@@ -16,6 +16,8 @@ pub(crate) use float::*;
 pub(crate) use memory::*;
 pub(crate) use numeric::*;
 pub(crate) use planner::*;
-pub(crate) use public_corpus::public_corpus_family;
+pub use public_corpus::{
+    corpus_files, measure_directory, megabytes_per_second, public_corpus_family,
+};
 pub(crate) use random_access::*;
 pub(crate) use release::*;

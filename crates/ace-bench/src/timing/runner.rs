@@ -6,11 +6,15 @@ use std::time::Instant;
 use super::{MeasurementPlan, SampleStats, MAX_ITERATIONS_PER_SAMPLE};
 
 /// Boxed error type returned by benchmark operations.
-pub(crate) type BenchError = Box<dyn std::error::Error>;
+pub type BenchError = Box<dyn std::error::Error>;
 
 /// Measures `operation` with the process-wide [`MeasurementPlan`] and returns the statistics
 /// together with the result of the final invocation (used for correctness checks).
-pub(crate) fn measure<F, T>(operation: F) -> Result<(SampleStats, T), BenchError>
+///
+/// # Errors
+///
+/// The error returned by `operation`.
+pub fn measure<F, T>(operation: F) -> Result<(SampleStats, T), BenchError>
 where
     F: FnMut() -> Result<T, BenchError>,
 {
@@ -24,7 +28,11 @@ where
 ///    lasts at least `plan.min_sample_ns` (capped at `MAX_ITERATIONS_PER_SAMPLE`);
 /// 3. `plan.batches × plan.samples_per_batch` samples, each the mean per-invocation time of
 ///    `iterations` consecutive calls.
-pub(crate) fn measure_with<F, T>(
+///
+/// # Errors
+///
+/// The error returned by `operation`.
+pub fn measure_with<F, T>(
     plan: MeasurementPlan,
     mut operation: F,
 ) -> Result<(SampleStats, T), BenchError>
@@ -82,7 +90,7 @@ where
 
 /// Calibration step: keeps `iterations` once a group of that size lasted `min_sample_ns`
 /// (or the cap is reached), otherwise doubles it.
-pub(crate) fn next_iterations(iterations: u64, elapsed_ns: u64, min_sample_ns: u64) -> u64 {
+pub fn next_iterations(iterations: u64, elapsed_ns: u64, min_sample_ns: u64) -> u64 {
     if elapsed_ns >= min_sample_ns || iterations >= MAX_ITERATIONS_PER_SAMPLE {
         iterations
     } else {
@@ -93,39 +101,4 @@ pub(crate) fn next_iterations(iterations: u64, elapsed_ns: u64, min_sample_ns: u
 /// Nanoseconds elapsed since `start`, saturated to `u64`.
 fn elapsed_ns(start: Instant) -> u64 {
     u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn calibration_doubles_until_long_enough_and_is_capped() {
-        assert_eq!(next_iterations(1, 100_000_000, 50_000_000), 1);
-        assert_eq!(next_iterations(4, 1_000_000, 50_000_000), 8);
-        assert_eq!(
-            next_iterations(MAX_ITERATIONS_PER_SAMPLE, 0, 50_000_000),
-            MAX_ITERATIONS_PER_SAMPLE
-        );
-    }
-
-    #[test]
-    fn measure_with_returns_last_value_and_full_sample_count() {
-        let plan = MeasurementPlan {
-            batches: 2,
-            samples_per_batch: 3,
-            warmups: 1,
-            min_sample_ns: 0,
-            quick: true,
-        };
-        let mut calls = 0u32;
-        let (stats, last) = measure_with(plan, || {
-            calls += 1;
-            Ok(calls)
-        })
-        .expect("infallible operation");
-        assert_eq!(stats.samples_ns.len(), 6);
-        assert_eq!(stats.batch_medians_ns.len(), 2);
-        assert_eq!(last, calls);
-    }
 }

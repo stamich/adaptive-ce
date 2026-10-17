@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use serde::Serialize;
 
 /// Global allocator that forwards to [`System`] and optionally counts allocations.
-pub(crate) struct CountingAllocator;
+pub struct CountingAllocator;
 
 /// Whether allocations are currently being counted.
 static ENABLED: AtomicBool = AtomicBool::new(false);
@@ -83,18 +83,18 @@ unsafe impl GlobalAlloc for CountingAllocator {
 
 /// Allocation activity observed during one [`AllocationProbe`].
 #[derive(Debug, Clone, Copy, Default, Serialize, PartialEq, Eq)]
-pub(crate) struct AllocationReport {
+pub struct AllocationReport {
     /// Allocation calls (including reallocations).
-    pub(crate) allocations: u64,
+    pub allocations: u64,
     /// Total bytes requested.
-    pub(crate) allocated_bytes: u64,
+    pub allocated_bytes: u64,
     /// Peak of simultaneously live bytes allocated inside the probe.
-    pub(crate) peak_live_bytes: u64,
+    pub peak_live_bytes: u64,
 }
 
 /// Scoped allocation counter; not re-entrant (the harness measures one case at a time).
 #[derive(Debug)]
-pub(crate) struct AllocationProbe {
+pub struct AllocationProbe {
     /// Prevents construction outside [`AllocationProbe::start`].
     _private: (),
 }
@@ -102,7 +102,7 @@ pub(crate) struct AllocationProbe {
 /// Inherent methods of [`AllocationProbe`].
 impl AllocationProbe {
     /// Resets the counters and starts counting.
-    pub(crate) fn start() -> Self {
+    pub fn start() -> Self {
         ALLOCATIONS.store(0, Ordering::Relaxed);
         ALLOCATED_BYTES.store(0, Ordering::Relaxed);
         LIVE_BYTES.store(0, Ordering::Relaxed);
@@ -112,7 +112,7 @@ impl AllocationProbe {
     }
 
     /// Stops counting and returns what was observed.
-    pub(crate) fn finish(self) -> AllocationReport {
+    pub fn finish(self) -> AllocationReport {
         ENABLED.store(false, Ordering::SeqCst);
         AllocationReport {
             allocations: ALLOCATIONS.load(Ordering::Relaxed),
@@ -123,14 +123,14 @@ impl AllocationProbe {
 }
 
 /// Runs `operation` inside an [`AllocationProbe`] and returns its result and report.
-pub(crate) fn count_allocations<T>(operation: impl FnOnce() -> T) -> (T, AllocationReport) {
+pub fn count_allocations<T>(operation: impl FnOnce() -> T) -> (T, AllocationReport) {
     let probe = AllocationProbe::start();
     let value = operation();
     (value, probe.finish())
 }
 
 /// Process peak resident set size (`VmHWM` of `/proc/self/status`) in bytes.
-pub(crate) fn peak_rss_bytes() -> Option<u64> {
+pub fn peak_rss_bytes() -> Option<u64> {
     fs::read_to_string("/proc/self/status")
         .ok()
         .and_then(|text| {
@@ -141,21 +141,4 @@ pub(crate) fn peak_rss_bytes() -> Option<u64> {
                     .map(|kb| kb * 1024)
             })
         })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn probe_counts_a_vector_allocation() {
-        let (len, report) = count_allocations(|| {
-            let buffer = std::hint::black_box(vec![0u8; 4096]);
-            buffer.len()
-        });
-        assert_eq!(len, 4096);
-        assert!(report.allocations >= 1);
-        assert!(report.allocated_bytes >= 4096);
-        assert!(report.peak_live_bytes >= 4096);
-    }
 }

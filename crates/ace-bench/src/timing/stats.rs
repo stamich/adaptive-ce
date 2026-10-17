@@ -10,58 +10,58 @@
 
 /// Default batch-MAD limit (%) used for the per-case `stability` verdict; release gates apply
 /// their own, possibly stricter, limits.
-pub(crate) const DEFAULT_STABLE_BATCH_MAD_PERCENT: f64 = 5.0;
+pub const DEFAULT_STABLE_BATCH_MAD_PERCENT: f64 = 5.0;
 
 /// Scale relating the MAD to the standard deviation of a normal distribution.
-pub(crate) const MAD_SIGMA_SCALE: f64 = 1.4826;
+pub const MAD_SIGMA_SCALE: f64 = 1.4826;
 
 /// Number of scaled MADs beyond which a sample is an outlier.
-pub(crate) const OUTLIER_SIGMAS: f64 = 3.0;
+pub const OUTLIER_SIGMAS: f64 = 3.0;
 
 /// Per-invocation timing samples of one benchmark case and their summaries.
 ///
 /// [`SampleStats::median_ns`] (the median-of-medians) is the headline statistic; classic
 /// moments are kept for schema-2.0 compatibility and diagnostics.
 #[derive(Debug, Clone)]
-pub(crate) struct SampleStats {
+pub struct SampleStats {
     /// All samples in measurement order (batch-major), nanoseconds per invocation.
-    pub(crate) samples_ns: Vec<u64>,
+    pub samples_ns: Vec<u64>,
     /// Median of each batch, in batch order.
-    pub(crate) batch_medians_ns: Vec<f64>,
+    pub batch_medians_ns: Vec<f64>,
     /// Number of samples per batch.
-    pub(crate) samples_per_batch: usize,
+    pub samples_per_batch: usize,
     /// Invocations folded into one sample (adaptive calibration result).
-    pub(crate) iterations_per_sample: u64,
+    pub iterations_per_sample: u64,
     /// Median of the batch medians (release value).
-    pub(crate) median_ns: f64,
+    pub median_ns: f64,
     /// Median of all samples (diagnostic).
-    pub(crate) global_median_ns: f64,
+    pub global_median_ns: f64,
     /// 95th percentile over all samples.
-    pub(crate) p95_ns: f64,
+    pub p95_ns: f64,
     /// 99th percentile over all samples.
-    pub(crate) p99_ns: f64,
+    pub p99_ns: f64,
     /// Arithmetic mean over all samples.
-    pub(crate) mean_ns: f64,
+    pub mean_ns: f64,
     /// Population standard deviation over all samples.
-    pub(crate) stddev_ns: f64,
+    pub stddev_ns: f64,
     /// Coefficient of variation (`stddev / mean`) in % (diagnostic only).
-    pub(crate) cv_percent: f64,
+    pub cv_percent: f64,
     /// Median absolute deviation of all samples from [`Self::global_median_ns`].
-    pub(crate) mad_ns: f64,
+    pub mad_ns: f64,
     /// MAD of the batch medians relative to [`Self::median_ns`], in % (gate input).
-    pub(crate) batch_mad_percent: f64,
+    pub batch_mad_percent: f64,
     /// Indices into [`Self::samples_ns`] of reported outliers.
-    pub(crate) outlier_indices: Vec<usize>,
+    pub outlier_indices: Vec<usize>,
     /// Fastest sample.
-    pub(crate) min_ns: u64,
+    pub min_ns: u64,
     /// Slowest sample.
-    pub(crate) max_ns: u64,
+    pub max_ns: u64,
 }
 
 /// Inherent methods of [`SampleStats`].
 impl SampleStats {
     /// Summarizes batches of samples (each inner vector is one batch).
-    pub(crate) fn from_batches(batches: Vec<Vec<u64>>, iterations_per_sample: u64) -> Self {
+    pub fn from_batches(batches: Vec<Vec<u64>>, iterations_per_sample: u64) -> Self {
         let samples_per_batch = batches.first().map_or(0, Vec::len);
         let batch_medians_ns: Vec<f64> =
             batches.iter().map(|batch| median(&to_f64(batch))).collect();
@@ -94,17 +94,17 @@ impl SampleStats {
     }
 
     /// `true` when the batch MAD is within `limit_percent`.
-    pub(crate) fn is_stable_within(&self, limit_percent: f64) -> bool {
+    pub fn is_stable_within(&self, limit_percent: f64) -> bool {
         self.batch_mad_percent <= limit_percent
     }
 
     /// `true` when the batch MAD is within [`DEFAULT_STABLE_BATCH_MAD_PERCENT`].
-    pub(crate) fn is_stable(&self) -> bool {
+    pub fn is_stable(&self) -> bool {
         self.is_stable_within(DEFAULT_STABLE_BATCH_MAD_PERCENT)
     }
 
     /// Throughput in MiB/s for `bytes` processed per invocation at the release median.
-    pub(crate) fn mib_per_second(&self, bytes: usize) -> f64 {
+    pub fn mib_per_second(&self, bytes: usize) -> f64 {
         if self.median_ns <= 0.0 {
             0.0
         } else {
@@ -126,7 +126,7 @@ fn sorted(values: &[f64]) -> Vec<f64> {
 }
 
 /// Median (mean of the two middle values for even lengths); `0.0` for an empty slice.
-pub(crate) fn median(values: &[f64]) -> f64 {
+pub fn median(values: &[f64]) -> f64 {
     if values.is_empty() {
         return 0.0;
     }
@@ -140,7 +140,7 @@ pub(crate) fn median(values: &[f64]) -> f64 {
 }
 
 /// Median absolute deviation of `values` around `center`.
-pub(crate) fn mad(values: &[f64], center: f64) -> f64 {
+pub fn mad(values: &[f64], center: f64) -> f64 {
     let deviations: Vec<f64> = values.iter().map(|v| (v - center).abs()).collect();
     median(&deviations)
 }
@@ -188,52 +188,4 @@ fn outliers(values: &[f64], center: f64, mad: f64) -> Vec<usize> {
         .filter(|(_, value)| (*value - center).abs() > limit)
         .map(|(index, _)| index)
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn median_of_medians_ignores_one_bad_batch() {
-        let stats = SampleStats::from_batches(
-            vec![vec![100, 101, 99], vec![100, 100, 100], vec![500, 510, 490]],
-            1,
-        );
-        assert_eq!(stats.batch_medians_ns, vec![100.0, 100.0, 500.0]);
-        assert_eq!(stats.median_ns, 100.0);
-        assert_eq!(stats.batch_mad_percent, 0.0, "two of three batches agree");
-    }
-
-    #[test]
-    fn drifting_batches_are_unstable() {
-        let stats = SampleStats::from_batches(vec![vec![100; 5], vec![110; 5], vec![120; 5]], 1);
-        assert_eq!(stats.median_ns, 110.0);
-        assert!((stats.batch_mad_percent - 10.0 / 110.0 * 100.0).abs() < 1e-9);
-        assert!(!stats.is_stable());
-    }
-
-    #[test]
-    fn single_outlier_is_reported_not_removed() {
-        let stats = SampleStats::from_batches(vec![vec![100, 101, 99, 100, 102, 98, 1000]], 1);
-        assert_eq!(stats.outlier_indices, vec![6]);
-        assert_eq!(stats.samples_ns.len(), 7);
-        assert_eq!(stats.median_ns, 100.0);
-        assert_eq!(stats.max_ns, 1000);
-    }
-
-    #[test]
-    fn constant_samples_are_stable_and_outlier_free() {
-        let stats = SampleStats::from_batches(vec![vec![7; 7], vec![7; 7]], 3);
-        assert_eq!(stats.mad_ns, 0.0);
-        assert!(stats.outlier_indices.is_empty());
-        assert!(stats.is_stable());
-        assert_eq!(stats.iterations_per_sample, 3);
-    }
-
-    #[test]
-    fn throughput_uses_release_median() {
-        let stats = SampleStats::from_batches(vec![vec![1_000_000_000]], 1);
-        assert!((stats.mib_per_second(1_048_576) - 1.0).abs() < 1e-9);
-    }
 }
