@@ -302,7 +302,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `PATCH_SOURCES` | method | `numeric/mode.rs:29` | The base modes whose stream a [`NumericMode::Patched`] payload can patch. |
 | `label` | method | `numeric/mode.rs:32` | Returns a short stable label used by `ace inspect` and benchmark telemetry. |
 | `stream_len` | method | `numeric/mode.rs:46` | Number of packed stream values this mode stores for `value_count` logical integers. |
-| `estimate_patched` | item | `numeric/patched.rs:136` | Exact size of the best Patched FOR payload of `input` for one lane width. |
+| `estimate_patched` | item | `numeric/patched.rs:139` | Exact size of the best Patched FOR payload of `input` for one lane width. |
 | `raw_encode` | item | `raw.rs:4` | Returns a verbatim copy of the source bytes. |
 | `raw_decode` | item | `raw.rs:13` | Validates and reconstructs a RAW payload. |
 | `rle_encode` | item | `rle.rs:9` | Encodes bytes using packet RLE with 1..=128-byte literal and repeated-run packets. |

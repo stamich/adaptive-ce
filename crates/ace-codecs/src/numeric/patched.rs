@@ -52,6 +52,9 @@ pub(crate) fn patched_worth_trying(
 }
 
 /// Width-monomorphized body of [`patched_worth_trying`].
+// `chunks_exact` is kept on purpose: the three aligned views mirror `plan_patched`, and `as_chunks`
+// would need a lane-size const generic here. `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn sample_pretest<T: Lane>(input: &[u8], minimum: u64, base_bytes: usize, widest: [u8; 3]) -> bool {
     let count = input.len() / T::BYTES;
     let span = SAMPLE_WINDOWS * (WINDOW_VALUES + 2);
