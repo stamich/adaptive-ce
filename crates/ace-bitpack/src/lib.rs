@@ -29,7 +29,7 @@ mod scalar;
 mod width;
 mod zigzag;
 
-pub use bitstream::{BitReader, BitWriter};
+pub use bitstream::{read_bits_validated, write_bits, BitReader, BitWriter};
 pub use delta::*;
 pub use delta_of_delta::*;
 pub use for_codec::*;
