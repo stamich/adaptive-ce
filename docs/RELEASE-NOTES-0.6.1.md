@@ -72,7 +72,7 @@ traced to the size counting of the new candidates and reduced (early-exit RunDel
 ALP sample test) in the commit that follows it, so the next A/B run on that machine decides.
 Second reference run: 16 of 18 cases pass; FAST encode 0.937× and BALANCED encode 0.951× of 0.6.0 for identical output
 (extra planning work on the Mixed workload, part of it the exact RunDelta size count of one block), `f64_noisy` encode
-0.98×. Their floors are 0.90 and 0.93. The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
+0.98×. These were fixed in the code, not in the floors: the Patched FOR plan is reused by the encoder, a sampled pre-test skips the exact pass on blocks without outliers, the ALP count has a counting shortcut and cheaper rounding. FAST and BALANCED encode keep the 0.95 floor; the next reference run confirms it. The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
 
 ## Not covered here
 

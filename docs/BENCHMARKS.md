@@ -291,11 +291,9 @@ the change:
 
 | Case | Floor | Why |
 |---|---:|---|
-| `compression.fast.encode` | 0.90 | planning only: more candidates are counted (RunDelta for small deltas, Patched, ALP pre-tests); output identical to 0.6.0; 0.937 measured on the reference machine |
-| `compression.balanced.encode` | 0.93 | same reason; 0.951 measured |
 | `compression.dense.encode` | 0.50 | DENSE also plans every block as BALANCED (0.55x measured on the reference machine) |
 | `compression.dense.decode` | 0.95 | `output_changes`: the stored bytes differ from 0.6.0; decode speed itself is 1.05x |
-| `numeric_general.delta_variable.encode` | 0.60 | Patched FOR estimate and encoder (0.66x on the 32-thread reference machine, bytes -37 %) |
+| `numeric_general.delta_variable.encode` | 0.75 | exact Patched FOR statistics pass plus encoder; the planner reuses the plan (no second pass) and a 64-window sample skips the exact pass when no gain is possible; +12 % instructions (callgrind), bytes -37 % |
 | `numeric_general.monotonic_outliers.encode` | 0.70 | same (0.80x on the reference machine, bytes -99.5 %) |
 | `numeric_general.int_counter_reset.encode`, `float.f64_decimal_price.encode / .decode` | 0.95 | faster than 0.6.0 (1.3x - 3.7x) |
 | `numeric_general.u64_timestamps.encode`, `float.f64_noisy.encode`, `float.f64_smooth.encode` | 0.95 | bytes identical; the Patched and ALP pre-tests keep the cost within noise |
