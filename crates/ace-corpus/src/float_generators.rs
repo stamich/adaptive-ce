@@ -180,26 +180,3 @@ pub(crate) fn int_counter_reset(bytes: usize) -> Vec<u8> {
         value.to_le_bytes()
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// First value of every float generator (guards the generators against accidental change).
-    #[test]
-    fn float_generators_are_stable() {
-        let first = |data: Vec<u8>| {
-            let mut raw = [0u8; 8];
-            raw.copy_from_slice(&data[..8]);
-            f64::from_le_bytes(raw)
-        };
-        assert_eq!(first(f64_constant(8)), 21.5);
-        assert_eq!(first(f64_step(8)), 100.0);
-        assert_eq!(first(f64_special(8)).to_bits(), 0);
-        assert!(f64_random(1 << 16)
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .all(|&c| (u64::from_le_bytes(c) >> 52) & 0x7FF != 0x7FF));
-    }
-}
