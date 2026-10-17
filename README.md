@@ -17,22 +17,23 @@ stores the result in a self-describing container with a block index for random a
 The same input and configuration always produce the same bytes, on every machine, thread count
 and SIMD backend. Every byte read from a file is validated before it is trusted.
 
-**Current release: 0.5.1 — Hardened Release Candidate.** It writes exactly the bytes of 0.5.0
-and qualifies them for long-term use: audited decoder arithmetic and resource limits, frozen
-compatibility files from every earlier release, determinism up to 32 threads, fuzzing in CI and
-repeatable benchmarks. See [`docs/RELEASE-NOTES-0.5.1.md`](docs/RELEASE-NOTES-0.5.1.md).
+**Current release: 0.6.1 — Numeric & Float II.** Format 1.5 adds Patched frame-of-reference for
+integers with outliers (NUM1 mode 4) and ALP for decimal floats (TS1 mode 4), admits small non-zero
+deltas to RunDelta, and makes DENSE never larger than BALANCED. Files written by every earlier
+version stay readable. See [`docs/RELEASE-NOTES-0.6.1.md`](docs/RELEASE-NOTES-0.6.1.md) and, coming
+from 0.6.0, [`docs/MIGRATION-0.6-TO-0.6.1.md`](docs/MIGRATION-0.6-TO-0.6.1.md).
 
 ## What it does well
 
 | Data | How ACE stores it | Example (BALANCED) |
 |---|---|---|
 | text, logs, JSON, mixed binary | LZ / RLE / delta + Huffman, rANS or 4-lane rANS, chosen per block | mixed corpus 16 MiB: ≈ 3.7× |
-| integer counters, timestamps, IDs | NUM1: frame-of-reference, delta or delta-of-delta + bit packing (u16 / u32 / u64) | u32 counter: ≈ 2 300×; u64 timestamps: ≈ 32× |
-| floating-point series | TS1 Gorilla XOR, bit-exact for f64 / f32 (NaN payloads, −0.0, subnormals) | constant f64: ≈ 2 400× |
+| integer counters, timestamps, IDs | NUM1: frame-of-reference, delta or delta-of-delta + bit packing (u16 / u32 / u64), Patched FOR for outliers | u32 counter: ≈ 2 300×; u64 timestamps: ≈ 32×; counter with resets: ≈ 21×; monotonic with outliers: ≈ 400× |
+| floating-point series | TS1 Gorilla XOR, or ALP for decimal values; bit-exact for f64 / f32 (NaN payloads, −0.0, subnormals) | constant f64: ≈ 2 400×; decimal prices: ≈ 5× |
 | rarely changing values | TS1 RunDelta (Elias-gamma runs + ZigZag deltas) | sparse-change integers: ≈ 235× |
 | incompressible data | stored RAW (never larger than the input plus framing) | random: 1.0× |
 
-Measured numbers and methodology: [`docs/PERFORMANCE-0.5.1.md`](docs/PERFORMANCE-0.5.1.md)
+Measured numbers and methodology: [`docs/PERFORMANCE-0.6.1.md`](docs/PERFORMANCE-0.6.1.md)
 (reference machine AMD Ryzen 9 5950X), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start

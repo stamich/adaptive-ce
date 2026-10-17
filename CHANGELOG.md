@@ -27,6 +27,12 @@ Reference: `examples/golden/0.6.1/`. Task order: `TASKS-0.6.1.md`; notes:
 ### Decided
 - Chimp / Chimp128 are not added: 0 of 144 blocks would shrink (rule: at least 5 %).
 
+### Release qualification (manual, reference machine)
+- Passed on the Ryzen 9 5950X: Regression V3 (92 gates, 0 failures), interleaved A/B against 0.6.0
+  18 / 18, repeatability, fuzz campaign 18 × 600 s without a crash. Baseline
+  `examples/baselines/0.6.1/`, [`docs/PERFORMANCE-0.6.1.md`](docs/PERFORMANCE-0.6.1.md); tag
+  `v0.6.1` follows the merge.
+
 ## 0.6.0 - 2026-10-16 — API & Performance (Phase A)
 
 Base: 0.5.1. **No byte changes**: golden 0.5.0 is reproduced exactly (auto and

@@ -17,7 +17,7 @@
   "msrv": "1.98.1",
   "toolchain": "1.98.1 (rust-toolchain.toml)",
   "concept": "ROADMAP.md (0.6.1); docs/FLOAT-CALIBRATION-0.5.0.md",
-  "status": "implemented; release run pending",
+  "status": "released; baseline examples/baselines/0.6.1/, tag v0.6.1 pending",
   "golden": {
     "0.6.1": "examples/golden/0.6.1/GOLDEN.json (new reference)",
     "0.5.0": "frozen; still decoded by every reader",
