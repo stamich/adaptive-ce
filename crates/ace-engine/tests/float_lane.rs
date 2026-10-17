@@ -173,3 +173,48 @@ fn small_delta_run_delta_beats_numeric_on_geometric_steps() {
         assert_eq!(engine(profile, true).decompress(&with).unwrap(), data);
     }
 }
+
+/// Prices with two decimals are stored with ALP (Format 1.5), at most as large as the same data
+/// with the Float lane switched off, and round-trip in every profile.
+#[test]
+fn decimal_prices_use_alp() {
+    let data = Workload::F64DecimalPrice.generate(BYTES);
+    for profile in [CompressionProfile::Fast, CompressionProfile::Balanced] {
+        let (with, stats) = engine(profile, true).compress_with_stats(&data).unwrap();
+        let without = engine(profile, false).compress(&data).unwrap();
+        assert_eq!(stats.ts1_alp_blocks, stats.block_count, "{profile:?}");
+        assert_eq!(minor_version(&with), 5);
+        assert!(
+            with.len() < without.len(),
+            "{profile:?}: {} vs {}",
+            with.len(),
+            without.len()
+        );
+        assert_eq!(engine(profile, true).decompress(&with).unwrap(), data);
+    }
+    // The dense profile may mix plans per block, but never grows beyond the generic plan.
+    let dense_with = engine(CompressionProfile::Dense, true)
+        .compress(&data)
+        .unwrap();
+    let dense_without = engine(CompressionProfile::Dense, false)
+        .compress(&data)
+        .unwrap();
+    assert!(dense_with.len() <= dense_without.len());
+    assert_eq!(
+        engine(CompressionProfile::Dense, true)
+            .decompress(&dense_with)
+            .unwrap(),
+        data
+    );
+}
+
+/// With the Float lane off no block is written in a Format 1.5 TS1 mode.
+#[test]
+fn disabled_float_lane_never_writes_alp() {
+    let data = Workload::F64DecimalPrice.generate(BYTES);
+    for profile in PROFILES {
+        let (encoded, stats) = engine(profile, false).compress_with_stats(&data).unwrap();
+        assert_eq!(stats.ts1_alp_blocks, 0, "{profile:?}");
+        assert!(minor_version(&encoded) <= 4, "{profile:?}");
+    }
+}

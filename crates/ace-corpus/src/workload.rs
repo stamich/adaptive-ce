@@ -65,6 +65,10 @@ pub enum Workload {
     IntSlowDrift,
     /// Corpus V5: u32 value with geometric step magnitudes (half the samples repeat).
     IntGeometricDelta,
+    /// Corpus V5: f64 prices with two decimals and a few special records (ALP).
+    F64DecimalPrice,
+    /// Corpus V5: f32 temperatures with one decimal (ALP).
+    F32DecimalSensor,
 }
 
 impl Workload {
@@ -84,12 +88,17 @@ impl Workload {
         Self::IntCounterReset,
     ];
 
-    /// Corpus V5 (ACE 0.6.1): integer series with small non-zero changes.
-    pub const CORPUS_V5: [Workload; 2] = [Self::IntSlowDrift, Self::IntGeometricDelta];
+    /// Corpus V5 (ACE 0.6.1): integer series with small non-zero changes and decimal floats.
+    pub const CORPUS_V5: [Workload; 4] = [
+        Self::IntSlowDrift,
+        Self::IntGeometricDelta,
+        Self::F64DecimalPrice,
+        Self::F32DecimalSensor,
+    ];
 
     /// Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]), [`Self::CORPUS_V4`] and
     /// [`Self::CORPUS_V5`].
-    pub const ALL: [Workload; 29] = [
+    pub const ALL: [Workload; 31] = [
         Self::Zeros,
         Self::LowCardinality,
         Self::Runs,
@@ -119,6 +128,8 @@ impl Workload {
         Self::IntCounterReset,
         Self::IntSlowDrift,
         Self::IntGeometricDelta,
+        Self::F64DecimalPrice,
+        Self::F32DecimalSensor,
     ];
 
     /// The 0.4.x corpus (Corpus V3), covered by the 0.4.6 golden file.
@@ -172,6 +183,8 @@ impl Workload {
             Self::IntCounterReset => "int-counter-reset",
             Self::IntSlowDrift => "int-slow-drift",
             Self::IntGeometricDelta => "int-geometric-delta",
+            Self::F64DecimalPrice => "f64-decimal-price",
+            Self::F32DecimalSensor => "f32-decimal-sensor",
         }
     }
 
@@ -218,6 +231,8 @@ impl Workload {
             Self::IntCounterReset => float_generators::int_counter_reset(bytes),
             Self::IntSlowDrift => v5_generators::int_slow_drift(bytes),
             Self::IntGeometricDelta => v5_generators::int_geometric_delta(bytes),
+            Self::F64DecimalPrice => v5_generators::f64_decimal_price(bytes),
+            Self::F32DecimalSensor => v5_generators::f32_decimal_sensor(bytes),
         }
     }
 }

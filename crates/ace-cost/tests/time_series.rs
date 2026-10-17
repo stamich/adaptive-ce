@@ -72,3 +72,22 @@ fn run_delta_is_exact() {
     assert!(estimate.exact);
     assert!(estimate.ratio_to(data.len()) < 0.01);
 }
+
+/// The ALP estimate is the exact payload size for both float widths.
+#[test]
+fn alp_estimate_is_exact() {
+    let f64s: Vec<u8> = (0..30_000u32)
+        .flat_map(|i| (f64::from(i * 7 % 2_000) / 100.0).to_le_bytes())
+        .collect();
+    let f32s: Vec<u8> = (0..30_000u32)
+        .flat_map(|i| (f64::from(i * 7 % 900) as f32 / 10.0).to_le_bytes())
+        .collect();
+    for (data, width) in [(&f64s, FloatWidth::F64), (&f32s, FloatWidth::F32)] {
+        let estimate = estimate_alp(data, width).unwrap();
+        let actual = ts1_encode_with(data, alp_layout(width)).unwrap().len() as u64;
+        assert_eq!(estimate.estimated_bytes, actual);
+        assert!(estimate.exact);
+        assert_eq!(estimate.layout, alp_layout(width));
+        assert!(estimate.ratio_to(data.len()) < 0.35, "{estimate:?}");
+    }
+}

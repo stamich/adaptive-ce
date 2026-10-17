@@ -28,10 +28,10 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-analysis` | internal | 39 | 12 | 0 |
 | `ace-bench` | internal | 29 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
-| `ace-codecs` | internal | 50 | 19 | 0 |
+| `ace-codecs` | internal | 50 | 21 | 0 |
 | `ace-core` | internal | 31 | 20 | 0 |
 | `ace-corpus` | internal | 4 | 14 | 0 |
-| `ace-cost` | internal | 14 | 7 | 0 |
+| `ace-cost` | internal | 16 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
@@ -301,18 +301,20 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `raw_decode` | item | `raw.rs:13` | Validates and reconstructs a RAW payload. |
 | `rle_encode` | item | `rle.rs:9` | Encodes bytes using packet RLE with 1..=128-byte literal and repeated-run packets. |
 | `rle_decode` | item | `rle.rs:44` | Decodes packet RLE while enforcing the caller-provided output size bound. |
-| `TimeSeriesLayout` | item | `time_series/codec.rs:14` | Mode plus lane width: everything an encoder needs to know about the wire layout. |
-| `GORILLA_F64` | method | `time_series/codec.rs:24` | Gorilla over IEEE-754 binary64. |
-| `GORILLA_F32` | method | `time_series/codec.rs:29` | Gorilla over IEEE-754 binary32. |
-| `run_delta` | method | `time_series/codec.rs:35` | RunDelta over lanes of `lane_bytes` (2, 4 or 8) bytes. |
-| `ALL` | method | `time_series/codec.rs:43` | Every valid layout, in wire order. |
-| `label` | method | `time_series/codec.rs:52` | Stable label (`gorilla_f64`, `run_delta_u32`, …) for telemetry and `ace inspect`. |
-| `ts1_encode_with` | item | `time_series/codec.rs:133` | Encodes `input` as a TS1 payload with `layout`. |
-| `ts1_encoded_len` | item | `time_series/codec.rs:149` | Exact byte length of `ts1_encode_with(input, layout)`, computed without writing a stream. |
-| `ts1_stream_bits` | item | `time_series/codec.rs:162` | Exact number of stream bits `ts1_encode_with(input, layout)` would write (header and tail |
-| `ts1_encode_best` | item | `time_series/codec.rs:174` | Encodes `input` with the smallest of the given layouts (ties: earlier layout wins). |
-| `ts1_encode` | item | `time_series/codec.rs:191` | Encodes `input` with the smallest TS1 layout (used by the generic codec dispatcher). |
-| `ts1_decode` | item | `time_series/codec.rs:205` | Decodes a TS1 payload to exactly `expected_size` bytes. |
+| `TimeSeriesLayout` | item | `time_series/codec.rs:16` | Mode plus lane width: everything an encoder needs to know about the wire layout. |
+| `GORILLA_F64` | method | `time_series/codec.rs:26` | Gorilla over IEEE-754 binary64. |
+| `GORILLA_F32` | method | `time_series/codec.rs:31` | Gorilla over IEEE-754 binary32. |
+| `ALP_F64` | method | `time_series/codec.rs:37` | ALP over IEEE-754 binary64 (Format 1.5). |
+| `ALP_F32` | method | `time_series/codec.rs:42` | ALP over IEEE-754 binary32 (Format 1.5). |
+| `run_delta` | method | `time_series/codec.rs:48` | RunDelta over lanes of `lane_bytes` (2, 4 or 8) bytes. |
+| `ALL` | method | `time_series/codec.rs:56` | Every valid layout, in wire order. |
+| `label` | method | `time_series/codec.rs:67` | Stable label (`gorilla_f64`, `run_delta_u32`, …) for telemetry and `ace inspect`. |
+| `ts1_encode_with` | item | `time_series/codec.rs:154` | Encodes `input` as a TS1 payload with `layout`. |
+| `ts1_encoded_len` | item | `time_series/codec.rs:170` | Exact byte length of `ts1_encode_with(input, layout)`, computed without writing a stream. |
+| `ts1_stream_bits` | item | `time_series/codec.rs:183` | Exact number of stream bits `ts1_encode_with(input, layout)` would write (header and tail |
+| `ts1_encode_best` | item | `time_series/codec.rs:195` | Encodes `input` with the smallest of the given layouts (ties: earlier layout wins). |
+| `ts1_encode` | item | `time_series/codec.rs:212` | Encodes `input` with the smallest TS1 layout (used by the generic codec dispatcher). |
+| `ts1_decode` | item | `time_series/codec.rs:226` | Decodes a TS1 payload to exactly `expected_size` bytes. |
 | `put_gamma` | item | `time_series/gamma.rs:17` | Writes `gamma(value + 1)`. |
 | `read_gamma` | item | `time_series/gamma.rs:28` | Reads one `gamma(value + 1)` and returns `value`; `None` on truncation or overflow. |
 | `GorillaShape` | item | `time_series/gorilla.rs:25` | Shape parameters of one IEEE-754 width. |
@@ -327,11 +329,11 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `stream_bytes` | method | `time_series/header.rs:75` | Bytes occupied by the encoded stream (saturates at `usize::MAX` on hosts whose `usize` |
 | `bits_per_value` | method | `time_series/header.rs:80` | Average stored stream bits per value (header and tail excluded). |
 | `ts1_inspect` | item | `time_series/header.rs:99` | Parses and fully validates the TS1 header of `payload` without decoding any value. |
-| `ts1_serialize_payload` | item | `time_series/header.rs:172` | Serializes `info` followed by the stream and the tail bytes. |
+| `ts1_serialize_payload` | item | `time_series/header.rs:177` | Serializes `info` followed by the stream and the tail bytes. |
 | `TimeSeriesMode` | item | `time_series/mode.rs:8` | Encoding mode of a TS1 payload (one byte on the wire). |
-| `ALL` | method | `time_series/mode.rs:20` | Every mode in wire-id order. |
-| `accepts_lane_bytes` | method | `time_series/mode.rs:23` | Whether `lane_bytes` is a legal lane width for this mode. |
-| `label` | method | `time_series/mode.rs:32` | Stable lower-case label used by `ace inspect` and benchmark telemetry. |
+| `ALL` | method | `time_series/mode.rs:22` | Every mode in wire-id order. |
+| `accepts_lane_bytes` | method | `time_series/mode.rs:30` | Whether `lane_bytes` is a legal lane width for this mode. |
+| `label` | method | `time_series/mode.rs:40` | Stable lower-case label used by `ace inspect` and benchmark telemetry. |
 | `BitSink` | item | `time_series/sink.rs:11` | Destination of LSB-first bit fields. |
 | `BitCounter` | item | `time_series/sink.rs:26` | Counts bits without storing them. |
 
@@ -383,9 +385,9 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `label` | method | `plan.rs:139` | Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry. |
 | `BlockProfile` | item | `profile.rs:3` | Statistical description of one input block used by the adaptive planner. |
 | `CompressionStats` | item | `stats.rs:8` | Aggregate telemetry produced by one compression operation. |
-| `compression_ratio` | method | `stats.rs:79` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
-| `record_selected_plan` | method | `stats.rs:88` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
-| `record_plan` | method | `stats.rs:109` | Increments the stable counter associated with one selected physical plan. |
+| `compression_ratio` | method | `stats.rs:81` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
+| `record_selected_plan` | method | `stats.rs:90` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
+| `record_plan` | method | `stats.rs:111` | Increments the stable counter associated with one selected physical plan. |
 | `FORMAT_MAJOR` | item | `version.rs:6` | Current major format version. |
 | `FORMAT_MINOR` | item | `version.rs:9` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the |
 | `first_release_reading` | item | `version.rs:18` | The ACE release that first reads format `major.minor`, for the versions that are known to be |
@@ -406,13 +408,13 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `new` | method | `rng.rs:36` | Creates a generator; a zero seed is replaced by a fixed non-zero constant. |
 | `next_u64` | method | `rng.rs:47` | Advances the state and returns it. |
 | `Workload` | item | `workload.rs:9` | One deterministic synthetic workload. |
-| `CORPUS_V4` | method | `workload.rs:72` | Corpus V4 (ACE 0.5.0): floating-point series and sparse-change integers. |
-| `CORPUS_V5` | method | `workload.rs:88` | Corpus V5 (ACE 0.6.1): integer series with small non-zero changes. |
-| `ALL` | method | `workload.rs:92` | Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]), [`Self::CORPUS_V4`] and |
-| `CORPUS_V3` | method | `workload.rs:125` | The 0.4.x corpus (Corpus V3), covered by the 0.4.6 golden file. |
-| `name` | method | `workload.rs:144` | Stable identifier. |
-| `from_name` | method | `workload.rs:179` | Resolves a name; historical aliases (`numeric-u32`, `u64-timestamps-ms`) are accepted. |
-| `generate` | method | `workload.rs:190` | Generates exactly `bytes` bytes of this workload. |
+| `CORPUS_V4` | method | `workload.rs:76` | Corpus V4 (ACE 0.5.0): floating-point series and sparse-change integers. |
+| `CORPUS_V5` | method | `workload.rs:92` | Corpus V5 (ACE 0.6.1): integer series with small non-zero changes and decimal floats. |
+| `ALL` | method | `workload.rs:101` | Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]), [`Self::CORPUS_V4`] and |
+| `CORPUS_V3` | method | `workload.rs:136` | The 0.4.x corpus (Corpus V3), covered by the 0.4.6 golden file. |
+| `name` | method | `workload.rs:155` | Stable identifier. |
+| `from_name` | method | `workload.rs:192` | Resolves a name; historical aliases (`numeric-u32`, `u64-timestamps-ms`) are accepted. |
+| `generate` | method | `workload.rs:203` | Generates exactly `bytes` bytes of this workload. |
 
 ### `ace-cost` (internal)
 
@@ -434,11 +436,13 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `deterministic_sample_ranges` | item | `sampling.rs:104` | Returns stable, non-random sample ranges for a block. |
 | `codec_sample_ranges` | item | `sampling.rs:113` | Returns deterministic sample ranges specialized for the candidate codec and verifier stage. |
 | `stratified_ranges` | item | `sampling.rs:137` | Builds deterministic evenly distributed windows without overlapping the end of the block. |
-| `TimeSeriesEstimate` | item | `time_series.rs:19` | Size estimate of one TS1 layout for one block. |
-| `ratio_to` | method | `time_series.rs:33` | Estimated bytes per input byte (`0.0` for empty input). |
-| `gorilla_layout` | item | `time_series.rs:43` | TS1 Gorilla layout of a float width. |
-| `estimate_gorilla` | item | `time_series.rs:70` | Estimates the Gorilla payload of `input` read as `width` values from the sample windows. |
-| `estimate_run_delta` | item | `time_series.rs:125` | Exact RunDelta payload size of `input` read as `lane_bytes` lanes. |
+| `TimeSeriesEstimate` | item | `time_series.rs:20` | Size estimate of one TS1 layout for one block. |
+| `ratio_to` | method | `time_series.rs:34` | Estimated bytes per input byte (`0.0` for empty input). |
+| `gorilla_layout` | item | `time_series.rs:44` | TS1 Gorilla layout of a float width. |
+| `estimate_gorilla` | item | `time_series.rs:71` | Estimates the Gorilla payload of `input` read as `width` values from the sample windows. |
+| `estimate_run_delta` | item | `time_series.rs:126` | Exact RunDelta payload size of `input` read as `lane_bytes` lanes. |
+| `estimate_alp` | item | `time_series.rs:151` | Exact ALP payload size of `input` read as `width` values (ACE 0.6.1, TS1 mode 4). |
+| `alp_layout` | item | `time_series.rs:162` | TS1 ALP layout of a float width. |
 
 ### `ace-dictionary` (internal)
 
@@ -627,11 +631,11 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `FloatEvidence` | item | `float_route.rs:53` | Float lane evidence collected once by the route classifier. |
 | `FloatFastOutcome` | item | `float_route.rs:64` | Outcome of [`float_fast_decision`]. |
 | `classify_float_lane` | item | `float_route.rs:78` | Adds the Planner V5 Float lane to a V4.3 route decision. |
-| `float_fast_decision` | item | `float_route.rs:148` | FloatFast: encodes the evidence layout once and keeps it if it meets the fallback bound. |
-| `ts1_beats_generic` | item | `float_route.rs:186` | The TS1 dominance rule: relative (≤ 90 % of generic when exact, ≤ 75 % when sampled) and |
-| `generic_decision_bytes` | item | `float_route.rs:203` | Size the generic decision is expected to produce (blended sample size when available). |
-| `apply_time_series_policy` | item | `float_route.rs:232` | Lets the TS1 candidate compete with a finished generic decision. |
-| `time_series_plan` | item | `float_route.rs:286` | The physical plan of a TS1 block: no transforms, no entropy stage. |
+| `float_fast_decision` | item | `float_route.rs:152` | FloatFast: encodes the evidence layout once and keeps it if it meets the fallback bound. |
+| `ts1_beats_generic` | item | `float_route.rs:190` | The TS1 dominance rule: relative (≤ 90 % of generic when exact, ≤ 75 % when sampled) and |
+| `generic_decision_bytes` | item | `float_route.rs:207` | Size the generic decision is expected to produce (blended sample size when available). |
+| `apply_time_series_policy` | item | `float_route.rs:236` | Lets the TS1 candidate compete with a finished generic decision. |
+| `time_series_plan` | item | `float_route.rs:290` | The physical plan of a TS1 block: no transforms, no entropy stage. |
 | `HybridLzPolicy` | item | `hybrid.rs:15` | Profile- and stage-specific bounded micro-trial budget for one LZ candidate. |
 | `for_profile` | method | `hybrid.rs:29` | Returns the bounded micro-trial budget for a profile and verifier stage. |
 | `HybridLzObservation` | item | `hybrid.rs:73` | Diagnostic result emitted by one bounded LZ refinement. |

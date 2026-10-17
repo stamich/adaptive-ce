@@ -484,21 +484,21 @@
       "profiles": [
         {
           "profile": "fast",
-          "ace_sha256": "f16c3287b12f39bc93976d34803f3d76685bc8a0cc33fa729a9fb66e558f496e",
-          "ace_bytes": 269878,
-          "format_minor": 3
+          "ace_sha256": "bde8baa89ad59ebfaea17775f44a339efa965f6b71697194b4d77d9ae754640f",
+          "ace_bytes": 176644,
+          "format_minor": 5
         },
         {
           "profile": "balanced",
-          "ace_sha256": "dd99ef8f51f7c856b00ef6ee3f915ebf53a6425e76aa174e8ed66845fbd4037c",
-          "ace_bytes": 206204,
-          "format_minor": 3
+          "ace_sha256": "3fb04ec1b4e337935715490a4c48a767bd8f9c66055198bef86355a593a2cc23",
+          "ace_bytes": 189572,
+          "format_minor": 5
         },
         {
           "profile": "dense",
-          "ace_sha256": "d201a1570f9ead88743ef3fca086e28b309eed02037f6f8dab5ef664ff58b8eb",
-          "ace_bytes": 201821,
-          "format_minor": 3
+          "ace_sha256": "0262df07863825b6cfb96800d992eb0e3f4c8a36a2ab680e2826d297c7591631",
+          "ace_bytes": 192774,
+          "format_minor": 5
         }
       ],
       "decoded_sha256": "c431bb4b8384a978cab599ef7a7ce6a27326ee902535dc2e5f33ba36f1d091af"
@@ -727,6 +727,56 @@
         }
       ],
       "decoded_sha256": "bb321ea0ef2b75d994d9c018ffff86b65ef678305475e7ed8f7dd2262afe4ac9"
+    },
+    {
+      "workload": "f64-decimal-price",
+      "input_sha256": "d204387a961dca91193b57fce6debdc5fdd206b7144b6cf2ce2470b19e6e03ae",
+      "profiles": [
+        {
+          "profile": "fast",
+          "ace_sha256": "fd1b657e68cb8bdc55aeaeae7b8a2cb0ac6717791f6030780e26c5361826db02",
+          "ace_bytes": 206328,
+          "format_minor": 5
+        },
+        {
+          "profile": "balanced",
+          "ace_sha256": "fd1b657e68cb8bdc55aeaeae7b8a2cb0ac6717791f6030780e26c5361826db02",
+          "ace_bytes": 206328,
+          "format_minor": 5
+        },
+        {
+          "profile": "dense",
+          "ace_sha256": "ae10a227493e41fbfaa585b1ad7ca7e36d5352e2c059f7e732ca6c272b61e244",
+          "ace_bytes": 252130,
+          "format_minor": 5
+        }
+      ],
+      "decoded_sha256": "d204387a961dca91193b57fce6debdc5fdd206b7144b6cf2ce2470b19e6e03ae"
+    },
+    {
+      "workload": "f32-decimal-sensor",
+      "input_sha256": "64dae833f55759f2a627ef595a7b9e090b583d37cb21e57541a9157fc5b16a21",
+      "profiles": [
+        {
+          "profile": "fast",
+          "ace_sha256": "87598e60385c32484b9d064ea71fe869190146150bb5a5a7a520459bedefe830",
+          "ace_bytes": 351895,
+          "format_minor": 3
+        },
+        {
+          "profile": "balanced",
+          "ace_sha256": "541c65194016bfaa8e0e2c75779ac356a3bc554d491c4beeff46465ad7811af5",
+          "ace_bytes": 270932,
+          "format_minor": 3
+        },
+        {
+          "profile": "dense",
+          "ace_sha256": "990be09704d8ca04a3240e5f248a6a34b2a84520108549329f5ee653e4b2d679",
+          "ace_bytes": 268010,
+          "format_minor": 3
+        }
+      ],
+      "decoded_sha256": "64dae833f55759f2a627ef595a7b9e090b583d37cb21e57541a9157fc5b16a21"
     }
   ]
 }

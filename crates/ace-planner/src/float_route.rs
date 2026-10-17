@@ -26,7 +26,7 @@ use ace_core::{
     AceConfig, AceResult, CandidateTier, CodecId, DecodingPlan, EntropyCodecId,
     PhysicalCompressionPlan, PlanCost,
 };
-use ace_cost::{estimate_gorilla, estimate_run_delta, TimeSeriesEstimate};
+use ace_cost::{estimate_alp, estimate_gorilla, estimate_run_delta, TimeSeriesEstimate};
 
 use crate::{
     PlannerDecision, PlannerRoute, PlannerTelemetry, RouteDecision, RouteReason,
@@ -108,7 +108,8 @@ pub fn classify_float_lane(input: &[u8], config: &AceConfig, v4: RouteDecision) 
 }
 
 /// Gorilla estimate at the admitted width, plus the exact RunDelta size of the same lane when
-/// its values mostly repeat; the smaller one wins (ties: Gorilla). `None` on estimator errors.
+/// its values mostly repeat and (0.6.1) the exact ALP size; the smallest wins (ties: Gorilla,
+/// then RunDelta). `None` on estimator errors.
 fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> {
     let gorilla = estimate_gorilla(input, profile.width).ok()?;
     let lane_bytes = profile.width.lane_bytes() as u8;
@@ -118,11 +119,14 @@ fn float_evidence(input: &[u8], profile: FloatProfile) -> Option<FloatEvidence> 
     } else {
         None
     };
-    let estimates = 1 + usize::from(run.is_some());
-    let estimate = match run {
-        Some(run) if run.estimated_bytes < gorilla.estimated_bytes => run,
-        _ => gorilla,
-    };
+    let alp = estimate_alp(input, profile.width).ok();
+    let estimates = 1 + usize::from(run.is_some()) + usize::from(alp.is_some());
+    let mut estimate = gorilla;
+    for candidate in [run, alp].into_iter().flatten() {
+        if candidate.estimated_bytes < estimate.estimated_bytes {
+            estimate = candidate;
+        }
+    }
     Some(FloatEvidence {
         profile,
         estimate,

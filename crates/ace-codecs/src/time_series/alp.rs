@@ -108,6 +108,8 @@ fn digits_of(bits: u64, params: AlpParams, lane_bits: u32) -> Option<i64> {
 }
 
 /// Little-endian lanes of `B` bytes.
+// `chunks_exact` mirrors the other TS1 kernels (see `codec.rs`). `unknown_lints`: clippy < 1.98
+// lacks the lint.
 #[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn lanes<const B: usize>(input: &[u8]) -> impl Iterator<Item = u64> + '_ {
     input.chunks_exact(B).map(ace_core::read_lane::<B>)

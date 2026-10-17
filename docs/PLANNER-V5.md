@@ -131,3 +131,10 @@ block by block (tested in `float_lane.rs`).
   format change (TS1 mode 3, Format 1.4). All 27 earlier workloads keep their bytes;
   `int-geometric-delta` shrinks by 29 %. `int-slow-drift` is the control: NUM1 stays within
   10 % there. Float lanes keep the 80 % rule (`float_route.rs::float_evidence`).
+* **ALP in the float evidence.** For an admitted float block `float_evidence` now also counts the
+  exact ALP size (`ace_cost::estimate_alp`, TS1 mode 4, Format 1.5) next to the Gorilla sample
+  and the exact RunDelta size; the smallest wins (ties: Gorilla, then RunDelta) and the usual
+  dominance rule decides between it and the generic plan. `time_series_estimates` counts it.
+  `f64-financial-price` shrinks by 36 % (FAST) and `f64-decimal-price` (Corpus V5) is stored with
+  ALP in FAST and BALANCED. Known gap, handled by the DENSE rule of this release: in DENSE the
+  generic estimate can be optimistic enough to hide an ALP block that is smaller in reality.

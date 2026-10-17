@@ -4,6 +4,7 @@
 //! |---|---|---|
 //! | Gorilla | the real encoder counted on the float sample windows, scaled to the block | O(256 values) |
 //! | RunDelta | the real encoder counted on the whole block (exact) | O(n), no allocation |
+//! | ALP (0.6.1) | the real encoder counted on the whole block (exact) | O(n), one exception list |
 //!
 //! Both run the codec's own bit-counting path (`ace_codecs::ts1_stream_bits`), so an estimate
 //! can never be based on a different cost model than the encoder. Gorilla on a whole block is
@@ -130,4 +131,37 @@ pub fn estimate_run_delta(input: &[u8], lane_bytes: u8) -> AceResult<TimeSeriesE
         exact: true,
         confidence: 1.0,
     })
+}
+
+/// Exact ALP payload size of `input` read as `width` values (ACE 0.6.1, TS1 mode 4).
+///
+/// # Errors
+///
+/// Propagates [`ace_core::AceError::InvalidTimeSeries`] from the TS1 bit counter; it cannot
+/// occur for the ALP layouts of a [`FloatWidth`].
+///
+/// # Determinism
+///
+/// Runs the TS1 encoder against a bit counter (the `(e, f)` choice is a pure function of the
+/// block), so the estimate is exact and platform independent.
+///
+/// # Invariants
+///
+/// `estimated_bytes == ts1_encode_with(input, layout).len()` and `exact == true`.
+pub fn estimate_alp(input: &[u8], width: FloatWidth) -> AceResult<TimeSeriesEstimate> {
+    let layout = alp_layout(width);
+    Ok(TimeSeriesEstimate {
+        layout,
+        estimated_bytes: ts1_encoded_len(input, layout)? as u64,
+        exact: true,
+        confidence: 1.0,
+    })
+}
+
+/// TS1 ALP layout of a float width.
+pub const fn alp_layout(width: FloatWidth) -> TimeSeriesLayout {
+    match width {
+        FloatWidth::F32 => TimeSeriesLayout::ALP_F32,
+        FloatWidth::F64 => TimeSeriesLayout::ALP_F64,
+    }
 }
