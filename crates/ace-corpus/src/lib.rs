@@ -6,7 +6,8 @@
 //! always produce the same bytes on every platform.
 //!
 //! `generators` holds the 0.4.x corpus (Corpus V3); `float_generators` holds Corpus V4
-//! (floating-point series and sparse-change integers, ACE 0.5.0); `false_positive` holds the
+//! (floating-point series and sparse-change integers, ACE 0.5.0); `v5_generators` holds Corpus V5
+//! (integer series with small non-zero changes, ACE 0.6.1); `false_positive` holds the
 //! Float lane false-positive corpus (not part of [`Workload`], so golden files ignore it).
 //!
 //! **Stability:** internal building block of ACE (not published). Its public items exist for the
@@ -17,6 +18,7 @@ mod false_positive;
 mod float_generators;
 mod generators;
 mod rng;
+mod v5_generators;
 mod workload;
 
 pub use false_positive::*;

@@ -153,3 +153,23 @@ fn explain_matches_compress() {
         |block| block.route.route == PlannerRoute::FloatFast && block.telemetry.float_fast_hit
     ));
 }
+
+/// Integers with geometric step sizes (half the samples repeat) were not a RunDelta candidate
+/// before 0.6.1; with the small-delta admission TS1 wins and the output shrinks by a quarter.
+#[test]
+fn small_delta_run_delta_beats_numeric_on_geometric_steps() {
+    let data = Workload::IntGeometricDelta.generate(BYTES);
+    for profile in [CompressionProfile::Balanced, CompressionProfile::Dense] {
+        let (with, stats) = engine(profile, true).compress_with_stats(&data).unwrap();
+        let without = engine(profile, false).compress(&data).unwrap();
+        assert!(stats.time_series_blocks > 0, "{profile:?}");
+        assert_eq!(minor_version(&with), 4);
+        assert!(
+            with.len() * 4 <= without.len() * 3,
+            "{profile:?}: {} vs {}",
+            with.len(),
+            without.len()
+        );
+        assert_eq!(engine(profile, true).decompress(&with).unwrap(), data);
+    }
+}

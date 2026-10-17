@@ -123,3 +123,11 @@ block by block (tested in `float_lane.rs`).
   such margins common (`int-counter-reset` is 12 KiB against a guessed 84 KiB for RLE); without
   the rule FAST verified the RLE candidate, whose analytical score is lower only because its
   size estimate is a guess, and stored the block at 13 times the size.
+* **RunDelta for small changes.** `run_prefilter` also admits a lane width whose sampled values
+  repeat their predecessor at least half of the time (`MIN_EQUAL_RATIO_SMALL_DELTA`) while at
+  least 95 % of the transitions move by at most 255 in the lane ring (`SMALL_DELTA_MAX`,
+  `MIN_SMALL_DELTA_RATIO`; a u16 wrap `65535 -> 0` is a step of one). The exact RunDelta size
+  and the dominance rule are unchanged, so nothing is chosen unless it is smaller. There is no
+  format change (TS1 mode 3, Format 1.4). All 27 earlier workloads keep their bytes;
+  `int-geometric-delta` shrinks by 29 %. `int-slow-drift` is the control: NUM1 stays within
+  10 % there. Float lanes keep the 80 % rule (`float_route.rs::float_evidence`).

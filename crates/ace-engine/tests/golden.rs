@@ -5,7 +5,7 @@
 //! A mismatch means a change altered planner decisions or encoded bytes (a *semantic* change).
 //!
 //! * `examples/golden/0.6.1/GOLDEN.json` — the reference of ACE 0.6.1: Corpus V3 + V4
-//!   (27 workloads) with the container's format version (1.3 to 1.5).
+//!   (29 workloads) with the container's format version (1.3 to 1.5).
 //! * `examples/golden/0.5.0/GOLDEN.json` — frozen (also the reference of 0.5.1 and 0.6.0).
 //!   0.6.1 changes bytes on purpose for the workloads in [`CHANGED_SINCE_0_5_0`]; every other
 //!   workload must still reproduce these hashes, and the changed ones may only get smaller.
@@ -48,6 +48,10 @@ const CHANGED_SINCE_0_5_0: &[(&str, &str)] = &[
         "Patched FOR: the reset is an exception (Format 1.5)",
     ),
 ];
+
+/// Workloads added after 0.5.0 (Corpus V5): they are not in the frozen files and are guarded by
+/// the 0.6.1 file only.
+const NEW_SINCE_0_5_0: &[&str] = &["int-slow-drift", "int-geometric-delta"];
 
 /// Bytes generated per workload (four 256 KiB blocks).
 const WORKLOAD_BYTES: usize = 1024 * 1024;
@@ -193,11 +197,19 @@ fn assert_frozen(actual: &GoldenFile, path: &PathBuf) {
         serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     for got in &actual.entries {
         assert_eq!(got.decoded_sha256, got.input_sha256, "{}", got.workload);
-        let want = expected
+        let Some(want) = expected
             .entries
             .iter()
             .find(|entry| entry.workload == got.workload)
-            .unwrap_or_else(|| panic!("{} is missing from {}", got.workload, path.display()));
+        else {
+            assert!(
+                NEW_SINCE_0_5_0.contains(&got.workload.as_str()),
+                "{} is missing from {}",
+                got.workload,
+                path.display()
+            );
+            continue;
+        };
         assert_eq!(want.input_sha256, got.input_sha256, "{}", got.workload);
         if CHANGED_SINCE_0_5_0
             .iter()

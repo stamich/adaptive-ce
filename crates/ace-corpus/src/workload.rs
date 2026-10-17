@@ -1,6 +1,6 @@
 //! The closed set of named workloads and their metadata.
 
-use crate::{float_generators, generators};
+use crate::{float_generators, generators, v5_generators};
 
 /// One deterministic synthetic workload.
 ///
@@ -61,6 +61,10 @@ pub enum Workload {
     IntSparseChange,
     /// Corpus V4: u64 counter with periodic resets.
     IntCounterReset,
+    /// Corpus V5: u32 gauge that drifts by ±1 on a quarter of the samples.
+    IntSlowDrift,
+    /// Corpus V5: u32 value with geometric step magnitudes (half the samples repeat).
+    IntGeometricDelta,
 }
 
 impl Workload {
@@ -80,8 +84,12 @@ impl Workload {
         Self::IntCounterReset,
     ];
 
-    /// Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]) followed by [`Self::CORPUS_V4`].
-    pub const ALL: [Workload; 27] = [
+    /// Corpus V5 (ACE 0.6.1): integer series with small non-zero changes.
+    pub const CORPUS_V5: [Workload; 2] = [Self::IntSlowDrift, Self::IntGeometricDelta];
+
+    /// Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]), [`Self::CORPUS_V4`] and
+    /// [`Self::CORPUS_V5`].
+    pub const ALL: [Workload; 29] = [
         Self::Zeros,
         Self::LowCardinality,
         Self::Runs,
@@ -109,6 +117,8 @@ impl Workload {
         Self::F32Sensor,
         Self::IntSparseChange,
         Self::IntCounterReset,
+        Self::IntSlowDrift,
+        Self::IntGeometricDelta,
     ];
 
     /// The 0.4.x corpus (Corpus V3), covered by the 0.4.6 golden file.
@@ -160,6 +170,8 @@ impl Workload {
             Self::F32Sensor => "f32-sensor",
             Self::IntSparseChange => "int-sparse-change",
             Self::IntCounterReset => "int-counter-reset",
+            Self::IntSlowDrift => "int-slow-drift",
+            Self::IntGeometricDelta => "int-geometric-delta",
         }
     }
 
@@ -204,6 +216,8 @@ impl Workload {
             Self::F32Sensor => float_generators::f32_sensor(bytes),
             Self::IntSparseChange => float_generators::int_sparse_change(bytes),
             Self::IntCounterReset => float_generators::int_counter_reset(bytes),
+            Self::IntSlowDrift => v5_generators::int_slow_drift(bytes),
+            Self::IntGeometricDelta => v5_generators::int_geometric_delta(bytes),
         }
     }
 }

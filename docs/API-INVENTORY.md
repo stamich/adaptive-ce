@@ -25,12 +25,12 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | Crate | Kind | Items | Methods | Deprecated |
 |---|---|---|---|---|
 | `ace` | public | 15 | 58 | 0 |
-| `ace-analysis` | internal | 36 | 12 | 0 |
+| `ace-analysis` | internal | 39 | 12 | 0 |
 | `ace-bench` | internal | 29 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 50 | 19 | 0 |
 | `ace-core` | internal | 31 | 20 | 0 |
-| `ace-corpus` | internal | 4 | 13 | 0 |
+| `ace-corpus` | internal | 4 | 14 | 0 |
 | `ace-cost` | internal | 14 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
@@ -161,16 +161,19 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `validate_strong_numeric` | item | `numeric_prefilter.rs:170` | Returns whether a block satisfies the strict NumericFast invariant. |
 | `RepetitionStats` | item | `repetition.rs:3` | Result of sampled repeated-sequence analysis used as a cheap LZ predictor. |
 | `analyze_repetition` | item | `repetition.rs:11` | Estimates repeated-sequence density and match length without running the full LZ matcher. |
-| `RUN_LANE_BYTES` | item | `run_profile.rs:19` | Lane widths (bytes) considered for RunDelta, widest first. |
-| `MIN_EQUAL_RATIO` | item | `run_profile.rs:21` | Minimum fraction of sampled values equal to their predecessor. |
-| `MAX_SPLAT_RATIO` | item | `run_profile.rs:23` | Maximum fraction of sampled values that are a single repeated byte. |
-| `RunProfile` | item | `run_profile.rs:27` | Sampled change statistics of a block read as lanes of one width. |
-| `admitted` | method | `run_profile.rs:41` | True when RunDelta should be considered: values mostly repeat and are not byte runs. |
-| `RunPrefilter` | item | `run_profile.rs:48` | Result of [`run_prefilter`]: the admitted profile of every width in [`RUN_LANE_BYTES`]. |
-| `admitted` | method | `run_profile.rs:56` | Admitted profiles, widest lane first. |
-| `any` | method | `run_profile.rs:61` | True when at least one width was admitted. |
-| `run_profile` | item | `run_profile.rs:68` | Computes the [`RunProfile`] of `input` read as `lane_bytes` lanes (`None` if too short or |
-| `run_prefilter` | item | `run_profile.rs:119` | Keeps every lane width whose profile is [`RunProfile::admitted`]. |
+| `RUN_LANE_BYTES` | item | `run_profile.rs:23` | Lane widths (bytes) considered for RunDelta, widest first. |
+| `MIN_EQUAL_RATIO` | item | `run_profile.rs:25` | Minimum fraction of sampled values equal to their predecessor. |
+| `MIN_EQUAL_RATIO_SMALL_DELTA` | item | `run_profile.rs:27` | Minimum fraction of equal transitions when the changes are small (ACE 0.6.1). |
+| `SMALL_DELTA_MAX` | item | `run_profile.rs:29` | Largest `\|delta\|` (in the lane ring) that counts as a small change. |
+| `MIN_SMALL_DELTA_RATIO` | item | `run_profile.rs:31` | Minimum fraction of sampled transitions with `\|delta\| <= SMALL_DELTA_MAX` (equal ones count). |
+| `MAX_SPLAT_RATIO` | item | `run_profile.rs:33` | Maximum fraction of sampled values that are a single repeated byte. |
+| `RunProfile` | item | `run_profile.rs:37` | Sampled change statistics of a block read as lanes of one width. |
+| `admitted` | method | `run_profile.rs:55` | True when RunDelta should be considered: values mostly repeat (or repeat often and move |
+| `RunPrefilter` | item | `run_profile.rs:65` | Result of [`run_prefilter`]: the admitted profile of every width in [`RUN_LANE_BYTES`]. |
+| `admitted` | method | `run_profile.rs:73` | Admitted profiles, widest lane first. |
+| `any` | method | `run_profile.rs:78` | True when at least one width was admitted. |
+| `run_profile` | item | `run_profile.rs:85` | Computes the [`RunProfile`] of `input` read as `lane_bytes` lanes (`None` if too short or |
+| `run_prefilter` | item | `run_profile.rs:156` | Keeps every lane width whose profile is [`RunProfile::admitted`]. |
 | `RunStats` | item | `runs.rs:3` | Summary of repeated-byte runs discovered during block analysis. |
 | `analyze_runs` | item | `runs.rs:13` | Scans an input slice and returns statistics for repeated-byte runs of length at least four. |
 
@@ -403,12 +406,13 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `new` | method | `rng.rs:36` | Creates a generator; a zero seed is replaced by a fixed non-zero constant. |
 | `next_u64` | method | `rng.rs:47` | Advances the state and returns it. |
 | `Workload` | item | `workload.rs:9` | One deterministic synthetic workload. |
-| `CORPUS_V4` | method | `workload.rs:68` | Corpus V4 (ACE 0.5.0): floating-point series and sparse-change integers. |
-| `ALL` | method | `workload.rs:84` | Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]) followed by [`Self::CORPUS_V4`]. |
-| `CORPUS_V3` | method | `workload.rs:115` | The 0.4.x corpus (Corpus V3), covered by the 0.4.6 golden file. |
-| `name` | method | `workload.rs:134` | Stable identifier. |
-| `from_name` | method | `workload.rs:167` | Resolves a name; historical aliases (`numeric-u32`, `u64-timestamps-ms`) are accepted. |
-| `generate` | method | `workload.rs:178` | Generates exactly `bytes` bytes of this workload. |
+| `CORPUS_V4` | method | `workload.rs:72` | Corpus V4 (ACE 0.5.0): floating-point series and sparse-change integers. |
+| `CORPUS_V5` | method | `workload.rs:88` | Corpus V5 (ACE 0.6.1): integer series with small non-zero changes. |
+| `ALL` | method | `workload.rs:92` | Every workload: the 0.4.x corpus ([`Self::CORPUS_V3`]), [`Self::CORPUS_V4`] and |
+| `CORPUS_V3` | method | `workload.rs:125` | The 0.4.x corpus (Corpus V3), covered by the 0.4.6 golden file. |
+| `name` | method | `workload.rs:144` | Stable identifier. |
+| `from_name` | method | `workload.rs:179` | Resolves a name; historical aliases (`numeric-u32`, `u64-timestamps-ms`) are accepted. |
+| `generate` | method | `workload.rs:190` | Generates exactly `bytes` bytes of this workload. |
 
 ### `ace-cost` (internal)
 
