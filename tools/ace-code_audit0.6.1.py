@@ -8,6 +8,8 @@ Checks (exit 1 on violation):
 * every ``#[allow(...clippy::...)]`` in production code (``crates/*/src`` outside
   ``#[cfg(test)]`` modules) carries a ``//`` justification on the same line, in the comment
   block directly above it, or on the line directly below it (doc comments do not count);
+* no ``#[cfg(test)]`` appears in ``crates/*/src``: tests live in ``crates/<crate>/tests/<module>.rs``
+  and use public items only (``docs/ARCHITECTURE.md``, "Test layout");
 * every ``pub`` item of the public API crate (``PUBLIC_CRATES``: ``ace``) has a doc comment, and
   no ``#[deprecated]`` item remains anywhere in the workspace (deprecated items are removed
   with the 0.6 facade);
@@ -268,6 +270,17 @@ def audit_allows(problems: list[str]) -> list[tuple[str, int, str, str]]:
     return sites
 
 
+def audit_test_layout(problems: list[str]) -> None:
+    """Production sources contain no ``#[cfg(test)]`` item; tests live in ``crates/*/tests``."""
+    for path in rust_sources():
+        for number, line in enumerate(path.read_text().splitlines(), start=1):
+            if re.match(r"\s*#\[cfg\((?:.*\b)?test\b", line):
+                problems.append(
+                    f"{path.relative_to(ROOT)}:{number}: #[cfg(test)] in src; "
+                    "move the tests to crates/<crate>/tests/<module>.rs"
+                )
+
+
 def test_exists(reference: str) -> bool:
     """Whether ``path::function`` names an existing test function."""
     path, _, function = reference.partition("::")
@@ -479,6 +492,7 @@ def main(argv: list[str]) -> int:
     problems: list[str] = []
     unsafe_sites = audit_unsafe(problems)
     allows = audit_allows(problems)
+    audit_test_layout(problems)
     audit_decoder(problems)
     audit_public_api(problems)
     if "--write" in argv:
