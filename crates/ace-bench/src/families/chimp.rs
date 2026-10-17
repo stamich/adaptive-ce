@@ -38,6 +38,9 @@ fn workloads() -> [Workload; 9] {
 }
 
 /// Little-endian binary64 bit patterns of a block (a trailing partial lane is ignored).
+// `chunks_exact` mirrors the TS1 kernels the bytes are compared with. `unknown_lints`: clippy < 1.98
+// lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn lanes(block: &[u8]) -> Vec<u64> {
     block
         .chunks_exact(8)
