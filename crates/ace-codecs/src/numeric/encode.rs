@@ -7,7 +7,7 @@ use ace_core::{AceError, AceResult, NumericWidth};
 
 use super::header::numeric_serialize_payload;
 use super::lane_dispatch::{dispatch_lane, width_of};
-use crate::{estimate_numeric, NumericMode, NumericPayloadInfo};
+use crate::{estimate_numeric, NumericEstimate, NumericMode, NumericPayloadInfo};
 
 /// Error returned when fewer than two complete values exist for the requested width.
 const TOO_SHORT: AceError =
@@ -41,6 +41,37 @@ pub fn numeric_encode_with(
         return Err(TOO_SHORT);
     }
     dispatch_lane!(width, encode_lane(input, mode))
+}
+
+/// Encodes `input` with the `(width, mode)` an [`NumericEstimate`] of this same block chose.
+///
+/// Equal to `numeric_encode_with(input, estimate.width, estimate.mode)` except that a Patched
+/// FOR estimate carries its source mode and packed width, so the encoder does not repeat the
+/// statistics pass the estimate already ran. An estimate of another block still yields a valid
+/// payload (the exceptions are whatever does not fit), just not the estimated size.
+///
+/// # Errors
+///
+/// Same as [`numeric_encode_with`].
+pub fn numeric_encode_estimated(input: &[u8], estimate: &NumericEstimate) -> AceResult<Vec<u8>> {
+    match (estimate.mode, estimate.patch_source) {
+        (NumericMode::Patched, Some(source)) => {
+            if input.len() < estimate.width.bytes() * 2 {
+                return Err(TOO_SHORT);
+            }
+            let hint = Some((source, estimate.bit_width));
+            dispatch_lane!(estimate.width, encode_patched_hinted(input, hint))
+        }
+        _ => numeric_encode_with(input, estimate.width, estimate.mode),
+    }
+}
+
+/// Hinted Patched FOR encoder body (see [`numeric_encode_estimated`]).
+fn encode_patched_hinted<T: Lane>(
+    input: &[u8],
+    hint: Option<(NumericMode, u8)>,
+) -> AceResult<Vec<u8>> {
+    super::patched::encode_patched::<T>(input, hint)
 }
 
 /// Encodes a validated fixed-step block directly as zero-bit-width DoD (header + tail only).
@@ -121,7 +152,7 @@ pub(super) fn base_stream<T: Lane>(values: &[T], mode: NumericMode) -> (T, i64, 
 /// Width-generic encoder body: transform, ZigZag, bit-pack, serialize.
 fn encode_lane<T: Lane>(input: &[u8], mode: NumericMode) -> AceResult<Vec<u8>> {
     if mode == NumericMode::Patched {
-        return super::patched::encode_patched::<T>(input);
+        return super::patched::encode_patched::<T>(input, None);
     }
     let values = read_lanes::<T>(input);
     let tail = &input[values.len() * T::BYTES..];

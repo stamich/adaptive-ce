@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use ace_analysis::{AnalysisLevel, DefaultBlockAnalyzer};
 use ace_codecs::{
-    numeric_encode_fixed_step, numeric_encode_with, ts1_encode_with, TimeSeriesLayout,
+    numeric_encode_estimated, numeric_encode_fixed_step, ts1_encode_with, TimeSeriesLayout,
 };
 use ace_core::{AceConfig, AceResult, CodecId, CompressionProfile, PhysicalCompressionPlan};
 use ace_format::{checksum, BlockHeader, BLOCK_HEADER_SIZE};
@@ -224,7 +224,7 @@ fn encode_selected_plan(
             evidence.tail_bytes,
         )?)
     } else if let Some(estimate) = decision.numeric_estimate {
-        Some(numeric_encode_with(input, estimate.width, estimate.mode)?)
+        Some(numeric_encode_estimated(input, &estimate)?)
     } else {
         None
     };

@@ -97,13 +97,22 @@ pub(crate) fn decode_digits(d: i64, params: AlpParams, lane_bits: u32) -> u64 {
     )
 }
 
+/// `x.round()` as an integer for a finite `|x| < 2^53` (ties away from zero), without the libm
+/// call a baseline x86-64 build makes for `f64::round`. The truncation is exact and so is the
+/// difference to `x`, which makes the comparison with one half exact too.
+fn round_half_away(x: f64) -> i64 {
+    let truncated = x as i64;
+    let fraction = x - truncated as f64;
+    truncated + i64::from(fraction >= 0.5) - i64::from(fraction <= -0.5)
+}
+
 /// The integer for a lane value, `None` when it is not reproduced bit for bit.
 fn digits_of(bits: u64, params: AlpParams, lane_bits: u32) -> Option<i64> {
     let x = widen(bits, lane_bits) * table(&POW10, params.e) * table(&INV_POW10, params.f);
     if !x.is_finite() || x.abs() >= MAX_MAGNITUDE {
         return None;
     }
-    let d = x.round() as i64;
+    let d = round_half_away(x);
     (decode_digits(d, params, lane_bits) == bits).then_some(d)
 }
 
@@ -219,6 +228,11 @@ pub(crate) fn encode_alp<const B: usize, S: BitSink>(input: &[u8], sink: &mut S)
         );
         next = position + 1;
     }
+    if sink.counts_only() {
+        // Every offset has exactly `width` bits: nothing to compute, only to count.
+        sink.skip_bits((count as u64) * u64::from(width));
+        return;
+    }
     let mut pending = exceptions.iter().copied().peekable();
     for (index, bits) in lanes::<B>(input).enumerate() {
         let offset = if pending.next_if_eq(&index).is_some() {
@@ -233,12 +247,11 @@ pub(crate) fn encode_alp<const B: usize, S: BitSink>(input: &[u8], sink: &mut S)
 
 /// True when at least half of a deterministic sample (four windows of 16 consecutive values)
 /// is a decimal: some `10^-e` scaling with `e <= 18` turns the value into an integer that
-/// converts back to the same bits. Noisy full-precision floats fail this cheap test, and fail
-/// it early (the scan stops once more than half of the sample has no such `e`), so callers can
-/// skip the full ALP size count for them.
+/// converts back to the same bits and has fewer than `lane_bits - 8` bits (every f32 is a
+/// 7 - 9 digit decimal, so f32 noise would otherwise always qualify).
 ///
-/// The test is looser than the `(e, f)` choice of the encoder (every value may use its own `e`);
-/// it only decides whether the exact count is worth running, never what is encoded.
+/// Noisy full-precision floats fail early (the scan stops once more than half of the sample has
+/// no such `e`), so callers can skip the exact ALP size count for them.
 ///
 /// `lane_bytes` must be 4 or 8; any other width, and blocks without a complete lane, are `false`.
 pub fn alp_sample_viable(input: &[u8], lane_bytes: u8) -> bool {
@@ -249,13 +262,14 @@ pub fn alp_sample_viable(input: &[u8], lane_bytes: u8) -> bool {
         }
         let lane_bits = (B * 8) as u32;
         let sample = sample_lanes::<B>(input, count);
-        // At most this many values may be non-decimal for `kept * 2 >= len`.
+        let digit_limit = lane_bits - 8;
         let allowed_misses = sample.len() / 2;
         let mut misses = 0usize;
         for &bits in &sample {
-            let decimal = (0..=MAX_EXPONENT).any(|e| {
-                AlpParams::new(u64::from(e), 0)
-                    .is_some_and(|params| digits_of(bits, params, lane_bits).is_some())
+            let decimal = (0..=u64::from(MAX_EXPONENT)).any(|e| {
+                AlpParams::new(e, 0)
+                    .and_then(|params| digits_of(bits, params, lane_bits))
+                    .is_some_and(|d| 64 - d.unsigned_abs().leading_zeros() <= digit_limit)
             });
             if !decimal {
                 misses += 1;

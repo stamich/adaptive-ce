@@ -28,7 +28,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-analysis` | internal | 39 | 12 | 0 |
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
-| `ace-codecs` | internal | 53 | 21 | 0 |
+| `ace-codecs` | internal | 54 | 21 | 0 |
 | `ace-core` | internal | 31 | 20 | 0 |
 | `ace-corpus` | internal | 4 | 14 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
@@ -281,11 +281,12 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `numeric_decode` | item | `numeric/decode.rs:25` | Decodes a NUM1 payload to exactly `expected_size` bytes. |
 | `numeric_encode` | item | `numeric/encode.rs:21` | Encodes bytes with the smallest deterministic FOR/Delta/DoD+BitPack representation. |
 | `numeric_encode_with` | item | `numeric/encode.rs:35` | Encodes bytes with an explicitly chosen lane width and mode. |
-| `numeric_encode_fixed_step` | item | `numeric/encode.rs:57` | Encodes a validated fixed-step block directly as zero-bit-width DoD (header + tail only). |
+| `numeric_encode_estimated` | item | `numeric/encode.rs:56` | Encodes `input` with the `(width, mode)` an [`NumericEstimate`] of this same block chose. |
+| `numeric_encode_fixed_step` | item | `numeric/encode.rs:88` | Encodes a validated fixed-step block directly as zero-bit-width DoD (header + tail only). |
 | `NumericEstimate` | item | `numeric/estimate.rs:14` | Size estimate of one `(width, mode)` NUM1 encoding. |
-| `estimate_numeric` | item | `numeric/estimate.rs:45` | Estimates the best NUM1 representation over every lane width and mode. |
-| `estimate_numeric_for_width` | item | `numeric/estimate.rs:101` | Estimates the best mode for one caller-chosen lane width (`None` below two values). |
-| `estimate_every_mode` | item | `numeric/estimate.rs:106` | Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order. |
+| `estimate_numeric` | item | `numeric/estimate.rs:48` | Estimates the best NUM1 representation over every lane width and mode. |
+| `estimate_numeric_for_width` | item | `numeric/estimate.rs:126` | Estimates the best mode for one caller-chosen lane width (`None` below two values). |
+| `estimate_every_mode` | item | `numeric/estimate.rs:131` | Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order. |
 | `NUMERIC_HEADER_SIZE` | item | `numeric/header.rs:37` | Fixed byte size of the self-describing NUM1 header. |
 | `NumericPayloadInfo` | item | `numeric/header.rs:44` | Header-level description of one NUM1 payload (everything except the packed values). |
 | `NumericPatch` | item | `numeric/header.rs:68` | The Patched FOR part of a NUM1 header (Format 1.5): which stream is patched and how many |
@@ -301,12 +302,12 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `PATCH_SOURCES` | method | `numeric/mode.rs:29` | The base modes whose stream a [`NumericMode::Patched`] payload can patch. |
 | `label` | method | `numeric/mode.rs:32` | Returns a short stable label used by `ace inspect` and benchmark telemetry. |
 | `stream_len` | method | `numeric/mode.rs:46` | Number of packed stream values this mode stores for `value_count` logical integers. |
-| `estimate_patched` | item | `numeric/patched.rs:110` | Exact size of the best Patched FOR payload of `input` for one lane width. |
+| `estimate_patched` | item | `numeric/patched.rs:136` | Exact size of the best Patched FOR payload of `input` for one lane width. |
 | `raw_encode` | item | `raw.rs:4` | Returns a verbatim copy of the source bytes. |
 | `raw_decode` | item | `raw.rs:13` | Validates and reconstructs a RAW payload. |
 | `rle_encode` | item | `rle.rs:9` | Encodes bytes using packet RLE with 1..=128-byte literal and repeated-run packets. |
 | `rle_decode` | item | `rle.rs:44` | Decodes packet RLE while enforcing the caller-provided output size bound. |
-| `alp_sample_viable` | item | `time_series/alp.rs:244` | True when at least half of a deterministic sample (four windows of 16 consecutive values) |
+| `alp_sample_viable` | item | `time_series/alp.rs:257` | True when at least half of a deterministic sample (four windows of 16 consecutive values) |
 | `TimeSeriesLayout` | item | `time_series/codec.rs:16` | Mode plus lane width: everything an encoder needs to know about the wire layout. |
 | `GORILLA_F64` | method | `time_series/codec.rs:26` | Gorilla over IEEE-754 binary64. |
 | `GORILLA_F32` | method | `time_series/codec.rs:31` | Gorilla over IEEE-754 binary32. |
@@ -342,8 +343,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `accepts_lane_bytes` | method | `time_series/mode.rs:30` | Whether `lane_bytes` is a legal lane width for this mode. |
 | `label` | method | `time_series/mode.rs:40` | Stable lower-case label used by `ace inspect` and benchmark telemetry. |
 | `BitSink` | item | `time_series/sink.rs:11` | Destination of LSB-first bit fields. |
-| `BitCounter` | item | `time_series/sink.rs:33` | Counts bits without storing them. |
-| `LimitedBitCounter` | item | `time_series/sink.rs:49` | Counts bits like [`BitCounter`] and reports [`BitSink::exhausted`] once more than `limit` |
+| `BitCounter` | item | `time_series/sink.rs:44` | Counts bits without storing them. |
+| `LimitedBitCounter` | item | `time_series/sink.rs:70` | Counts bits like [`BitCounter`] and reports [`BitSink::exhausted`] once more than `limit` |
 
 ### `ace-core` (internal)
 

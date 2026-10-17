@@ -146,7 +146,27 @@ fn case(id: &str) -> Option<Case> {
             CompressionProfile::Balanced,
             Operation::Range(3_000_000, 65_536),
         ),
-        _ => return None,
+        // Diagnostic ids `compress.<fast|balanced|dense>.<workload name>` (any corpus workload):
+        // not part of the release gates, used to find which workloads a change slows down.
+        other => {
+            let mut parts = other.splitn(3, '.');
+            let (Some("compress"), Some(profile), Some(name)) =
+                (parts.next(), parts.next(), parts.next())
+            else {
+                return None;
+            };
+            let profile = match profile {
+                "fast" => CompressionProfile::Fast,
+                "balanced" => CompressionProfile::Balanced,
+                "dense" => CompressionProfile::Dense,
+                _ => return None,
+            };
+            let workload = Workload::ALL
+                .iter()
+                .copied()
+                .find(|workload| workload.name() == name)?;
+            (workload, profile, Operation::Compress)
+        }
     };
     Some(Case {
         workload,

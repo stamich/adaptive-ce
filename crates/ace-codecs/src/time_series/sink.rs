@@ -18,6 +18,17 @@ pub trait BitSink {
     fn exhausted(&self) -> bool {
         false
     }
+
+    /// True for sinks that only count bits: encoders may then skip computing field values.
+    #[inline]
+    fn counts_only(&self) -> bool {
+        false
+    }
+
+    /// Accounts `bits` bits of unspecified content; only meaningful when
+    /// [`counts_only`](BitSink::counts_only) is true (a writer ignores it).
+    #[inline]
+    fn skip_bits(&mut self, _bits: u64) {}
 }
 
 /// Real writer.
@@ -41,6 +52,16 @@ impl BitSink for BitCounter {
     fn put(&mut self, _value: u64, width: u32) {
         self.bits += width as u64;
     }
+
+    #[inline]
+    fn counts_only(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn skip_bits(&mut self, bits: u64) {
+        self.bits += bits;
+    }
 }
 
 /// Counts bits like [`BitCounter`] and reports [`BitSink::exhausted`] once more than `limit`
@@ -63,5 +84,15 @@ impl BitSink for LimitedBitCounter {
     #[inline]
     fn exhausted(&self) -> bool {
         self.bits > self.limit
+    }
+
+    #[inline]
+    fn counts_only(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn skip_bits(&mut self, bits: u64) {
+        self.bits += bits;
     }
 }
