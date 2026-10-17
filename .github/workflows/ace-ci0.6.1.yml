@@ -17,7 +17,7 @@ jobs:
       - if: failure()
         run: tools/ace-ci-annotate0.6.1.sh ci.log
   fuzz-smoke:
-    # 15 targets x 25 s on every push / PR. The corpus is kept between runs as a CI cache and
+    # 18 targets x 25 s on every push / PR. The corpus is kept between runs as a CI cache and
     # published as an artifact; it is never committed (fuzz/README.md, "Corpus policy").
     runs-on: ubuntu-latest
     steps:

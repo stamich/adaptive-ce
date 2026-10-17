@@ -20,13 +20,16 @@ toolchain and `cargo install cargo-fuzz`).
 | `bitstream_roundtrip` | `ace_bitpack::{BitWriter, BitReader}` | any width sequence round-trips; reads past the end return `None` |
 | `ts1_decode` | TS1 decoder (`ts1_decode`, `ts1_inspect`) | arbitrary payloads rejected or decoded to the declared size, never panic |
 | `ts1_roundtrip` | TS1 encode → decode, every layout | bit-exact (`to_bits`), `ts1_encoded_len` equals the payload size |
+| `alp_decode` | ALP stream decoder behind a valid TS1 header (0.6.1) | stream fields rejected or decoded to the declared size, never panic |
+| `alp_roundtrip` | ALP encode → decode on decimal-shaped and arbitrary series (0.6.1) | bit-exact, exact size counter |
+| `numeric_patched_decode` | NUM1 Patched FOR payloads with fuzzer-placed outliers and byte mutations (0.6.1) | valid payload round-trips; mutated exception section rejected or decoded, never panic |
 
 ## Policy
 
 | When | What | Command | Gate |
 |---|---|---|---|
-| every push / PR (CI job `fuzz-smoke`) | 15 targets x 25 s | `ACE_FUZZ_REQUIRED=1 ./ace-ci0.6.1.sh fuzz-smoke` | no crash, no timeout, no OOM |
-| before every release (reference machine) | 15 targets x 10 min, then `cmin` | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.6.1.sh fuzz` | no crash; result recorded in `examples/baselines/<version>/FUZZ.md` |
+| every push / PR (CI job `fuzz-smoke`) | 18 targets x 25 s | `ACE_FUZZ_REQUIRED=1 ./ace-ci0.6.1.sh fuzz-smoke` | no crash, no timeout, no OOM |
+| before every release (reference machine) | 18 targets x 10 min, then `cmin` | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.6.1.sh fuzz` | no crash; result recorded in `examples/baselines/<version>/FUZZ.md` |
 | any time | one target | `cargo +nightly fuzz run --fuzz-dir fuzz <target> -- -max_total_time=600` | — |
 
 * `fuzz-smoke` / `fuzz` skip with a log line when nightly or `cargo-fuzz` is missing; CI sets

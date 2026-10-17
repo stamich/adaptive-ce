@@ -121,3 +121,24 @@ path = "fuzz_targets/ts1_roundtrip.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "alp_decode"
+path = "fuzz_targets/alp_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "alp_roundtrip"
+path = "fuzz_targets/alp_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "numeric_patched_decode"
+path = "fuzz_targets/numeric_patched_decode.rs"
+test = false
+doc = false
+bench = false

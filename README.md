@@ -116,7 +116,7 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 | Lossless, bit-exact | every block carries the CRC-32C of its bytes; property tests over arbitrary inputs and float bit patterns |
 | Deterministic output | golden SHA-256 files (auto and scalar SIMD), determinism matrix (1 – 32 threads, API paths, processes) |
 | Old files stay readable | frozen files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6 and 0.5.0 decode on every build ([`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)) |
-| Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code, 15 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
+| Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code, 18 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
 | Minimal `unsafe` | only audited SIMD / CRC kernels ([`docs/UNSAFE-AUDIT.md`](docs/UNSAFE-AUDIT.md), [`docs/PANIC-AUDIT.md`](docs/PANIC-AUDIT.md)) |
 
 ## Development
@@ -137,7 +137,7 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 | `examples/golden/` | golden SHA-256 (0.5.0; frozen 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
-| `fuzz/` | `cargo-fuzz` project, 15 targets ([`fuzz/README.md`](fuzz/README.md)) |
+| `fuzz/` | `cargo-fuzz` project, 18 targets ([`fuzz/README.md`](fuzz/README.md)) |
 | `integrations/` | Java / Scala CLI examples |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
 | `TASKS-0.6.0.md`, `MILESTONE-0.6.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
