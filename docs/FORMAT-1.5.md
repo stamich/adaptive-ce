@@ -49,6 +49,10 @@ The writer chooses the source and `b` by exact size: a histogram of the bit leng
 stream value gives the exception count and the high-part width for each `b`, so the estimate
 (`ace_codecs::estimate_patched`) equals the payload length byte for byte. Ties are broken by
 (size, source id, `b`), and Patched is only selected over a base mode when it is strictly smaller.
+The planner includes Patched FOR in its exact numeric estimate (`estimate_numeric`): it is
+considered when the best base mode needs at least 4 bits per value and is selected only when
+strictly smaller. A block that wins with it makes the file Format 1.5; every other block, and
+therefore every file without outliers, is written exactly as by ACE 0.6.0.
 Example: the counter `monotonic-outliers` (step 1, a +100 000 jump every 1024 values) has a
 zero delta-of-delta almost everywhere; mode 4 stores it with `b = 0` and two exceptions per jump
 instead of 17-bit deltas.

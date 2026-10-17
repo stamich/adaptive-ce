@@ -102,14 +102,25 @@ fn round_trips_with_exact_estimates() {
 #[test]
 fn outliers_cost_a_few_bytes_each() {
     let input = monotonic_outliers(65_536);
-    let base = estimate_numeric(&input).unwrap();
+    let base = NumericMode::ALL
+        .into_iter()
+        .map(|mode| {
+            numeric_encode_with(&input, NumericWidth::U32, mode)
+                .unwrap()
+                .len()
+        })
+        .min()
+        .unwrap();
     let patched = estimate_patched(&input, NumericWidth::U32).unwrap();
     assert!(
-        patched.encoded_bytes * 4 < base.encoded_bytes,
-        "patched {} vs base {}",
-        patched.encoded_bytes,
-        base.encoded_bytes
+        patched.encoded_bytes * 4 < base,
+        "patched {} vs base {base}",
+        patched.encoded_bytes
     );
+    // The selection of `estimate_numeric` includes Patched, and only when strictly smaller.
+    let selected = estimate_numeric(&input).unwrap();
+    assert_eq!(selected.mode, NumericMode::Patched);
+    assert_eq!(selected.encoded_bytes, patched.encoded_bytes);
     let info = numeric_inspect(
         &numeric_encode_with(&input, NumericWidth::U32, NumericMode::Patched).unwrap(),
     )
@@ -131,9 +142,10 @@ fn clean_data_gains_nothing() {
         u32_bytes((0..4_096).map(|i| i % 4096 + 100_000)),
         u32_bytes((0..4_096u32).map(|i| i.wrapping_mul(2_654_435_761) >> 20)),
     ] {
-        let base = estimate_numeric(&input).unwrap();
-        let patched = estimate_patched(&input, base.width).unwrap();
-        assert!(patched.encoded_bytes >= base.encoded_bytes);
+        let selected = estimate_numeric(&input).unwrap();
+        assert_ne!(selected.mode, NumericMode::Patched);
+        let patched = estimate_patched(&input, selected.width).unwrap();
+        assert!(patched.encoded_bytes >= selected.encoded_bytes);
     }
 }
 

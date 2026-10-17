@@ -193,6 +193,16 @@ fn evaluate_candidates_internal(
             reduce_numeric_general_candidates(estimated, route_budget.max_generated_candidates);
         if matches!(hybrid_policy, crate::RouteHybridLzPolicy::Disabled) {
             route_budget.max_sampled_candidates = route_budget.max_sampled_candidates.min(1);
+            // Numeric dominates by the profile's margin and is the one candidate that is
+            // verified: its exact size must not lose the single slot to a generic candidate whose
+            // analytical score is better only because its size estimate is a guess. (With
+            // Patched FOR the margin can become large enough for this to matter.)
+            if let Some(position) = estimated
+                .iter()
+                .position(|candidate| matches!(candidate.plan.decoding.codec, CodecId::Numeric))
+            {
+                estimated[..=position].rotate_right(1);
+            }
         }
     }
 

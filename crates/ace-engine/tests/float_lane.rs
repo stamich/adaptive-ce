@@ -66,7 +66,8 @@ fn disabled_float_lane_writes_format_1_3() {
     assert_eq!(minor_version(&encoded), 3);
 }
 
-/// The Float lane never changes a Corpus V3 byte (the 0.4.x corpus stays Format 1.3).
+/// The Float lane never changes a Corpus V3 byte. The 0.4.x corpus stays Format 1.3, except for
+/// the blocks that use Patched FOR (Format 1.5), which the Float lane does not influence.
 #[test]
 fn corpus_v3_is_untouched() {
     for workload in Workload::CORPUS_V3 {
@@ -75,7 +76,11 @@ fn corpus_v3_is_untouched() {
             let with = engine(profile, true).compress(&data).unwrap();
             let without = engine(profile, false).compress(&data).unwrap();
             assert!(with == without, "{} {profile:?}", workload.name());
-            assert_eq!(minor_version(&with), 3);
+            assert!(
+                [3, 5].contains(&minor_version(&with)),
+                "{} {profile:?}",
+                workload.name()
+            );
         }
     }
 }
@@ -98,8 +103,10 @@ fn corpus_v4_never_regresses() {
                 without.len()
             );
             assert_eq!(stats.float_fast_fallbacks, 0, "{}", workload.name());
+            // TS1 needs 1.4; a Patched FOR block (1.5) can appear in any file.
             let expected_minor = if stats.time_series_blocks > 0 { 4 } else { 3 };
-            assert_eq!(minor_version(&with), expected_minor);
+            let minor = minor_version(&with);
+            assert!(minor == expected_minor || minor == 5, "{}", workload.name());
         }
     }
 }

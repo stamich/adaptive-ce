@@ -275,9 +275,9 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `numeric_encode_with` | item | `numeric/encode.rs:35` | Encodes bytes with an explicitly chosen lane width and mode. |
 | `numeric_encode_fixed_step` | item | `numeric/encode.rs:57` | Encodes a validated fixed-step block directly as zero-bit-width DoD (header + tail only). |
 | `NumericEstimate` | item | `numeric/estimate.rs:14` | Size estimate of one `(width, mode)` NUM1 encoding. |
-| `estimate_numeric` | item | `numeric/estimate.rs:34` | Estimates the best NUM1 representation over every lane width and mode. |
-| `estimate_numeric_for_width` | item | `numeric/estimate.rs:50` | Estimates the best mode for one caller-chosen lane width (`None` below two values). |
-| `estimate_every_mode` | item | `numeric/estimate.rs:57` | Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order. |
+| `estimate_numeric` | item | `numeric/estimate.rs:41` | Estimates the best NUM1 representation over every lane width and mode. |
+| `estimate_numeric_for_width` | item | `numeric/estimate.rs:61` | Estimates the best mode for one caller-chosen lane width (`None` below two values). |
+| `estimate_every_mode` | item | `numeric/estimate.rs:76` | Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order. |
 | `NUMERIC_HEADER_SIZE` | item | `numeric/header.rs:37` | Fixed byte size of the self-describing NUM1 header. |
 | `NumericPayloadInfo` | item | `numeric/header.rs:44` | Header-level description of one NUM1 payload (everything except the packed values). |
 | `NumericPatch` | item | `numeric/header.rs:68` | The Patched FOR part of a NUM1 header (Format 1.5): which stream is patched and how many |
@@ -610,7 +610,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `DominancePolicy` | item | `dominance_policy.rs:82` | Product-level dominance policy shared by policy-oracle benchmarks and explain tooling. |
 | `preference` | method | `dominance_policy.rs:87` | Assigns a preference class and reason to one physical plan. |
 | `evaluate_candidates_v4_with_route` | item | `evaluator.rs:23` | Evaluates Planner V4.3 candidates using an already-computed route decision. |
-| `verification_blend_weights` | item | `evaluator.rs:650` | Returns deterministic sample/analytical blending weights for non-LZ candidates in Planner V3.6. |
+| `verification_blend_weights` | item | `evaluator.rs:660` | Returns deterministic sample/analytical blending weights for non-LZ candidates in Planner V3.6. |
 | `evaluate_candidates` | item | `exhaustive.rs:15` | Deterministically executes candidate pipelines and chooses the lowest cost without wall-clock timing. |
 | `evaluate_all_candidates` | item | `exhaustive.rs:35` | Deterministically evaluates every candidate and returns populated cost/score fields in stable input order. |
 | `PlannerFastPath` | item | `fastpath.rs:7` | Deterministic planner shortcut for blocks whose statistics strongly imply one inexpensive plan. |

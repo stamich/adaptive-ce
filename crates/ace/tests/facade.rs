@@ -44,7 +44,7 @@ fn hex(bytes: &[u8]) -> String {
 
 fn golden() -> Golden {
     let path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/golden/0.5.0/GOLDEN.json");
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/golden/0.6.1/GOLDEN.json");
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 
@@ -52,9 +52,9 @@ fn engine(profile: Profile) -> Engine {
     Engine::new(Config::builder().profile(profile).build().unwrap()).unwrap()
 }
 
-/// The facade writes exactly the 0.5.0 bytes for every workload and profile, and reads them back.
+/// The facade writes exactly the 0.6.1 bytes for every workload and profile, and reads them back.
 #[test]
-fn facade_reproduces_the_0_5_0_golden_file() {
+fn facade_reproduces_the_0_6_1_golden_file() {
     let golden = golden();
     assert_eq!(golden.entries.len(), Workload::ALL.len());
     for entry in &golden.entries {

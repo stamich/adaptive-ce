@@ -116,3 +116,24 @@ fn streaming_rejects_size_mismatch() {
     )
     .is_err());
 }
+
+/// A stream that contains a Patched FOR block rewrites its header as Format 1.5 and equals the
+/// in-memory file byte for byte.
+#[test]
+fn streaming_declares_format_1_5_for_patched_blocks() {
+    let data = ace_corpus::Workload::MonotonicOutliers.generate(1 << 20);
+    let mut streamed = Vec::new();
+    let stats = compress_reader_known_size(
+        Cursor::new(&data),
+        Cursor::new(&mut streamed),
+        data.len() as u64,
+        AceConfig::default(),
+        StreamLimits::default(),
+    )
+    .unwrap();
+    assert_eq!(stats.format_minor, 5);
+    assert_eq!(streamed[5], 5);
+    let engine = AceEngine::default_engine();
+    assert_eq!(streamed, engine.compress(&data).unwrap());
+    assert_eq!(engine.decompress(&streamed).unwrap(), data);
+}

@@ -110,3 +110,16 @@ block by block (tested in `float_lane.rs`).
 | FloatFast skips generic analysis, zero fallbacks | `float_lane.rs::constant_f64_uses_float_fast`, benchmark `float-fastpath` |
 | `--disable-float` = V4.3 decision | `float_route.rs::disabled_specialization_is_v4`, `float_lane.rs::disabled_float_lane_writes_format_1_3` |
 | determinism with Float workloads | `determinism_matrix.rs` (f64-step, f64-noisy, int-sparse-change) |
+
+## Changes in ACE 0.6.1
+
+* **Numeric estimate.** `estimate_numeric` (and `estimate_numeric_for_width`, used by FAST with
+  the prefilter's lane width) includes Patched FOR (NUM1 mode 4, [`FORMAT-1.5.md`](FORMAT-1.5.md)).
+  It is considered only when the best base mode needs at least 4 bits per value and is selected
+  only when strictly smaller, so blocks without outliers keep their 0.6.0 plan and bytes.
+* **Dominant Numeric first.** When the exact Numeric size dominates the best generic estimate by
+  the profile's margin (`NumericMargin`: ratio <= 0.70 FAST, 0.80 BALANCED, 0.90 DENSE) the
+  planner verifies a single candidate. That candidate is now always Numeric. Patched FOR makes
+  such margins common (`int-counter-reset` is 12 KiB against a guessed 84 KiB for RLE); without
+  the rule FAST verified the RLE candidate, whose analytical score is lower only because its
+  size estimate is a guess, and stored the block at 13 times the size.

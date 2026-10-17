@@ -22,10 +22,17 @@ pub struct NumericEstimate {
     pub encoded_bytes: usize,
 }
 
+/// The best base mode must need at least this many bits per value before Patched FOR is
+/// considered: below it an exception list cannot repay its section byte and positions, and the
+/// extra statistics pass is skipped on the most compressible blocks.
+const PATCHED_MIN_BASE_BITS: u8 = 4;
+
 /// Estimates the best NUM1 representation over every lane width and mode.
 ///
 /// Ties are broken by smaller payload, then width rank (u32, u64, u16 — preserving pre-0.4.5
-/// decisions), then mode id.
+/// decisions), then mode id. Patched FOR (Format 1.5) is a candidate too, and wins only when it
+/// is strictly smaller than the best base mode, so a block without outliers is encoded exactly
+/// as before.
 ///
 /// # Determinism
 ///
@@ -47,10 +54,22 @@ pub fn estimate_numeric(input: &[u8]) -> Option<NumericEstimate> {
 /// Estimates the best mode for one caller-chosen lane width (`None` below two values).
 ///
 /// Planner FAST passes the prefilter's width hint to avoid scanning the block three times.
+///
+/// The result is the smallest of the three base modes or, when the best base mode needs at
+/// least `PATCHED_MIN_BASE_BITS` (4) bits per value and Patched FOR is strictly smaller, the Patched
+/// estimate ([`crate::estimate_patched`]).
 pub fn estimate_numeric_for_width(input: &[u8], width: NumericWidth) -> Option<NumericEstimate> {
-    estimate_every_mode(input, width)?
+    let base = estimate_every_mode(input, width)?
         .into_iter()
-        .min_by_key(|estimate| (estimate.encoded_bytes, estimate.mode as u8))
+        .min_by_key(|estimate| (estimate.encoded_bytes, estimate.mode as u8))?;
+    if base.bit_width >= PATCHED_MIN_BASE_BITS {
+        if let Some(patched) = crate::estimate_patched(input, width) {
+            if patched.encoded_bytes < base.encoded_bytes {
+                return Some(patched);
+            }
+        }
+    }
+    Some(base)
 }
 
 /// Exact estimates of all three modes for one width, in [`NumericMode::ALL`] order.
