@@ -306,7 +306,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `raw_decode` | item | `raw.rs:13` | Validates and reconstructs a RAW payload. |
 | `rle_encode` | item | `rle.rs:9` | Encodes bytes using packet RLE with 1..=128-byte literal and repeated-run packets. |
 | `rle_decode` | item | `rle.rs:44` | Decodes packet RLE while enforcing the caller-provided output size bound. |
-| `alp_sample_viable` | item | `time_series/alp.rs:239` | True when at most half of a deterministic sample (see [`choose_params`]) survives the best |
+| `alp_sample_viable` | item | `time_series/alp.rs:239` | True when at least half of a deterministic sample (four windows of 16 consecutive values) survives the best |
 | `TimeSeriesLayout` | item | `time_series/codec.rs:16` | Mode plus lane width: everything an encoder needs to know about the wire layout. |
 | `GORILLA_F64` | method | `time_series/codec.rs:26` | Gorilla over IEEE-754 binary64. |
 | `GORILLA_F32` | method | `time_series/codec.rs:31` | Gorilla over IEEE-754 binary32. |

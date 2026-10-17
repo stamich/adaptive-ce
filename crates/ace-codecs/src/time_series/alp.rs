@@ -231,7 +231,7 @@ pub(crate) fn encode_alp<const B: usize, S: BitSink>(input: &[u8], sink: &mut S)
     }
 }
 
-/// True when at most half of a deterministic sample (see [`choose_params`]) survives the best
+/// True when at least half of a deterministic sample (four windows of 16 consecutive values) survives the best
 /// `(e, f)` as an integer, i.e. the block looks like decimals. Noisy full-precision floats fail
 /// this cheap test (about 64 values), so callers can skip the full ALP size count for them.
 ///
