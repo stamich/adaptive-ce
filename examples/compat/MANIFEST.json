@@ -382,5 +382,21 @@
     "profile": "fast",
     "release": "0.5.0",
     "sha256": "c828423d9d6d8e772fa129fe68df02aea52fcb7caf39a94096c52d9d5fa731b0"
+  },
+  "0.6.1/u64-outliers-fast+balanced+dense.ace": {
+    "case": "u64-outliers",
+    "format_minor": 5,
+    "input_sha256": "a655b579f8fb3968e2c4201f82fc40a70e8533aa7e7ec1d07b2ec64c9dd4f635",
+    "profile": "fast+balanced+dense",
+    "release": "0.6.1",
+    "sha256": "402ca6948ce64b52969f8df73215f7201c10eb5011f6fb56997e5e24928c0315"
+  },
+  "0.6.1/f64-decimal-fast+balanced+dense.ace": {
+    "case": "f64-decimal",
+    "format_minor": 5,
+    "input_sha256": "124398b23c1c6ad0c26cb7f6698f9b4edfce8d95dafee73e345927615a39f46e",
+    "profile": "fast+balanced+dense",
+    "release": "0.6.1",
+    "sha256": "da16b06cc19a19994b08d7f3a58b1e032d548ebbd8b50710cb382288da99b1a4"
   }
 }

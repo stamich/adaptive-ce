@@ -19,7 +19,7 @@ const BYTES: usize = 2 * 1024 * 1024;
 
 /// Workloads spanning the generic, structured, both numeric and both Float routes plus
 /// RunDelta on integers.
-const WORKLOADS: [Workload; 7] = [
+const WORKLOADS: [Workload; 11] = [
     Workload::Mixed,
     Workload::StructuredJson,
     Workload::U32Counter,
@@ -27,6 +27,11 @@ const WORKLOADS: [Workload; 7] = [
     Workload::F64Step,
     Workload::F64Noisy,
     Workload::IntSparseChange,
+    // Format 1.5 modes (ACE 0.6.1): Patched FOR, ALP, small-delta RunDelta.
+    Workload::MonotonicOutliers,
+    Workload::IntCounterReset,
+    Workload::F64DecimalPrice,
+    Workload::IntGeometricDelta,
 ];
 
 /// Profiles of the matrix.

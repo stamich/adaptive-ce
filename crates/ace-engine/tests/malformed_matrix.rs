@@ -59,6 +59,24 @@ fn ts1_fixture() -> (Vec<u8>, Vec<u8>) {
     (data, encoded)
 }
 
+/// Format 1.5 fixture: Patched FOR (NUM1 mode 4) and ALP (TS1 mode 4) blocks.
+fn format_1_5_fixture() -> (Vec<u8>, Vec<u8>) {
+    let mut data = Workload::MonotonicOutliers.generate(48 * 1024);
+    data.extend(Workload::F64DecimalPrice.generate(48 * 1024));
+    data.extend(Workload::IntCounterReset.generate(32 * 1024));
+    let engine = AceEngine::new(AceConfig {
+        block_size: BLOCK_SIZE,
+        threads: 1,
+        profile: ace_core::CompressionProfile::Fast,
+        ..AceConfig::default()
+    })
+    .unwrap();
+    let (encoded, stats) = engine.compress_with_stats(&data).unwrap();
+    assert!(stats.ts1_alp_blocks > 0, "fixture lacks ALP blocks");
+    assert_eq!(encoded[5], 5, "fixture must be Format 1.5");
+    (data, encoded)
+}
+
 /// Recomputes the file-header CRC after a deliberate header mutation.
 fn reseal_header(file: &mut [u8]) {
     let crc = checksum(&file[..FILE_HEADER_SIZE - 4]);
@@ -294,6 +312,45 @@ fn ts1_in_format_1_3_is_rejected() {
     file[5] = 3;
     reseal_header(&mut file);
     assert_rejected("TS1 in 1.3", &data, &file);
+}
+
+/// Every truncation of the Format 1.5 fixture is rejected.
+#[test]
+fn format_1_5_truncations_are_rejected() {
+    let (data, valid) = format_1_5_fixture();
+    for length in (0..valid.len()).step_by(3) {
+        assert_rejected(
+            &format!("1.5 truncation to {length}"),
+            &data,
+            &valid[..length],
+        );
+    }
+}
+
+/// Flipping any single byte of the Format 1.5 fixture never produces wrong output or a panic.
+#[test]
+fn format_1_5_single_byte_flip_sweep_never_misdecodes() {
+    let (data, valid) = format_1_5_fixture();
+    for position in 0..valid.len() {
+        let mut file = valid.clone();
+        file[position] ^= 0x01 << (position % 8);
+        assert_sequential_safe("1.5 flip", &data, &file);
+        if position % 11 == 0 {
+            assert_indexed_safe("1.5 flip", &data, &file);
+        }
+    }
+}
+
+/// The 1.5 fixture declared as 1.3 or 1.4 is rejected: its payload modes need 1.5.
+#[test]
+fn format_1_5_payloads_in_older_files_are_rejected() {
+    let (data, valid) = format_1_5_fixture();
+    for minor in [3u8, 4] {
+        let mut file = valid.clone();
+        file[5] = minor;
+        reseal_header(&mut file);
+        assert_rejected(&format!("1.5 payloads in 1.{minor}"), &data, &file);
+    }
 }
 
 /// A forged `original_size` must not drive a huge up-front allocation in `decompress_into`.

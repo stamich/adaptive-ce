@@ -31,6 +31,45 @@ fn deterministic_thread_matrix() {
     }
 }
 
+/// The Format 1.5 modes (Patched FOR, ALP, small-delta RunDelta) and the DENSE-versus-BALANCED
+/// rule produce the same bytes for every worker count.
+#[test]
+fn deterministic_thread_matrix_for_format_1_5() {
+    for workload in [
+        ace_corpus::Workload::MonotonicOutliers,
+        ace_corpus::Workload::IntCounterReset,
+        ace_corpus::Workload::F64DecimalPrice,
+        ace_corpus::Workload::IntGeometricDelta,
+    ] {
+        let data = workload.generate(768 * 1024);
+        for profile in [
+            CompressionProfile::Fast,
+            CompressionProfile::Balanced,
+            CompressionProfile::Dense,
+        ] {
+            let mut reference: Option<Vec<u8>> = None;
+            for threads in [1usize, 2, 4, 8] {
+                let config = AceConfig {
+                    profile,
+                    threads,
+                    block_size: 64 * 1024,
+                    ..AceConfig::default()
+                };
+                let encoded = AceEngine::new(config).unwrap().compress(&data).unwrap();
+                match &reference {
+                    Some(expected) => assert_eq!(
+                        expected,
+                        &encoded,
+                        "{} {profile:?} threads {threads}",
+                        workload.name()
+                    ),
+                    None => reference = Some(encoded),
+                }
+            }
+        }
+    }
+}
+
 /// Verifies that random-access diagnostics report touched blocks and non-zero physical work.
 #[test]
 fn random_access_metrics_are_consistent() {

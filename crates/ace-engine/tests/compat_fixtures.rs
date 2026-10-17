@@ -27,13 +27,15 @@ use sha2::{Digest, Sha256};
 type Generator = fn() -> Vec<u8>;
 
 /// Fixture cases: name and input generator. Never change a generator; add a new case.
-const CASES: [(&str, Generator); 6] = [
+const CASES: [(&str, Generator); 8] = [
     ("text", text),
     ("u32-counter", u32_counter),
     ("binary-runs", binary_runs),
     ("f64-series", f64_series),
     ("u64-sparse", u64_sparse),
     ("random", random),
+    ("u64-outliers", u64_outliers),
+    ("f64-decimal", f64_decimal),
 ];
 
 /// Deterministic xorshift64 generator (never change).
@@ -126,6 +128,36 @@ fn u64_sparse() -> Vec<u8> {
 fn random() -> Vec<u8> {
     let mut rng = XorShift(0xACE0_0006);
     (0..4096).map(|_| (rng.next() >> 24) as u8).collect()
+}
+
+/// 8 192 little-endian u64 values `1 000 000 + 3i` with a `+2^40` jump every 1 000th value
+/// (NUM1 Patched FOR since 0.6.1, Format 1.5).
+fn u64_outliers() -> Vec<u8> {
+    (0u64..8_192)
+        .flat_map(|i| {
+            let jump = if i % 1_000 == 999 { 1u64 << 40 } else { 0 };
+            (1_000_000 + 3 * i + jump).to_le_bytes()
+        })
+        .collect()
+}
+
+/// 8 192 f64 prices `cents / 100` (a random walk) with a NaN, a `-0.0` and an infinity among
+/// them (TS1 ALP since 0.6.1, Format 1.5). `i64` arithmetic, one exact division per value.
+fn f64_decimal() -> Vec<u8> {
+    let mut rng = XorShift(0xACE0_0008);
+    let mut cents = 24_990i64;
+    (0usize..8_192)
+        .flat_map(|i| {
+            cents = (cents + (rng.next() % 41) as i64 - 20).max(1);
+            let value = match i {
+                1_000 => f64::NAN,
+                2_000 => -0.0,
+                3_000 => f64::INFINITY,
+                _ => cents as f64 / 100.0,
+            };
+            value.to_le_bytes()
+        })
+        .collect()
 }
 
 /// One manifest entry.
@@ -229,5 +261,52 @@ fn write_inputs() {
     std::fs::create_dir_all(&dir).unwrap();
     for (name, generate) in CASES {
         std::fs::write(Path::new(&dir).join(format!("{name}.bin")), generate()).unwrap();
+    }
+}
+
+/// Writes the fixtures of the *current* encoder for the cases added in 0.6.1 to
+/// `$ACE_COMPAT_WRITE_FIXTURES/<case>-<profiles>.ace` and prints their manifest entries
+/// (16 KiB blocks, one thread; profiles with identical output share one file). Used once, for
+/// release 0.6.1; the resulting files are then frozen like every other fixture.
+#[test]
+#[ignore = "fixture generation helper"]
+fn write_fixtures_0_6_1() {
+    use ace_core::{AceConfig, CompressionProfile};
+    let Ok(dir) = std::env::var("ACE_COMPAT_WRITE_FIXTURES") else {
+        return;
+    };
+    std::fs::create_dir_all(&dir).unwrap();
+    for case in ["u64-outliers", "f64-decimal"] {
+        let data = input(case);
+        let mut outputs: Vec<(Vec<u8>, Vec<&str>)> = Vec::new();
+        for (name, profile) in [
+            ("fast", CompressionProfile::Fast),
+            ("balanced", CompressionProfile::Balanced),
+            ("dense", CompressionProfile::Dense),
+        ] {
+            let engine = AceEngine::new(AceConfig {
+                block_size: 16_384,
+                profile,
+                threads: 1,
+                ..AceConfig::default()
+            })
+            .unwrap();
+            let file = engine.compress(&data).unwrap();
+            match outputs.iter_mut().find(|(bytes, _)| *bytes == file) {
+                Some((_, names)) => names.push(name),
+                None => outputs.push((file, vec![name])),
+            }
+        }
+        for (file, names) in outputs {
+            let profile = names.join("+");
+            let name = format!("{case}-{profile}.ace");
+            std::fs::write(Path::new(&dir).join(&name), &file).unwrap();
+            println!(
+                "\"0.6.1/{name}\": {{\"case\": \"{case}\", \"format_minor\": {}, \"input_sha256\": \"{}\", \"profile\": \"{profile}\", \"release\": \"0.6.1\", \"sha256\": \"{}\"}}",
+                file[5],
+                sha256(&data),
+                sha256(&file)
+            );
+        }
     }
 }
