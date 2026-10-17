@@ -8,7 +8,7 @@ pub(crate) const MAX_CODE_LEN: u8 = 32;
 /// Bits resolved by one lookup of the primary decoding table.
 ///
 /// 11 bits (2048 entries × 2 bytes) covers every code of typical ACE blocks while staying in L1.
-pub(crate) const LOOKUP_BITS: u8 = 11;
+pub const LOOKUP_BITS: u8 = 11;
 
 /// Derives canonical `(code, length)` pairs from a per-symbol length table.
 ///
