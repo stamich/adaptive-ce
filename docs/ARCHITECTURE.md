@@ -90,8 +90,8 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
 
 | Guard | Protects | Mechanism |
 |---|---|---|
-| Golden SHA-256 | the writer | `examples/golden/0.5.0/` (Corpus V3 + V4, 27 workloads × 3 profiles, with format version) and the frozen `examples/golden/0.4.6/`; checked with the auto and the scalar SIMD backend |
-| Compatibility fixtures | the reader | `examples/compat/` — files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6 and 0.5.0, never regenerated ([`COMPATIBILITY.md`](COMPATIBILITY.md)) |
+| Golden SHA-256 | the writer | `examples/golden/0.6.1/` (Corpus V3 – V5, 31 workloads × 3 profiles, with format version) and the frozen `examples/golden/0.5.0/` and `0.4.6/` (unchanged workloads must match them; the deliberate changes may only shrink); checked with the auto and the scalar SIMD backend |
+| Compatibility fixtures | the reader | `examples/compat/` — files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0 and 0.6.1, never regenerated ([`COMPATIBILITY.md`](COMPATIBILITY.md)) |
 | Determinism matrix | thread / API independence | workloads × profiles × 1 – 32 workers × in-flight batch sizes × `compress` / `compress_to` / streaming |
 | Planner invariants | Planner V5 rules | property tests: TS1 ⇔ selection + dominance rule, NumericFast without Float evidence, selected ∈ candidates, zero full trial encodes, fixed tie-breaks |
 | Malformed input | the decoder | malformed matrix, per-field tests, limits tests, 18 fuzz targets (smoke on every PR, 18 × 10 min per release) |

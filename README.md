@@ -1,6 +1,6 @@
 # Adaptive Compression Engine (ACE)
 
-[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.0.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.0.yml)
+[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.1.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.6.1.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=coverage)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
@@ -42,7 +42,7 @@ cargo build --release                                  # builds the `ace` binary
 ./target/release/ace compress data.bin data.ace        # --profile fast | balanced | dense
 ./target/release/ace decompress data.ace restored.bin
 ./target/release/ace version                           # version, formats, backends, git revision
-./demo/ace-run-demo0.6.0.sh                            # one-minute product tour
+./demo/ace-run-demo0.6.1.sh                            # one-minute product tour
 ```
 
 Requirements: Rust 1.98.1 or newer (MSRV); the repository pins the build toolchain to 1.98.1
@@ -101,7 +101,7 @@ input ─► blocks ─► route (NumericFast | FloatFast | FloatGeneral | Numer
      transforms ─► codec (RAW / RLE / LZ / NUM1 / TS1) ─► entropy (Huffman / rANS / rANS4x)
                                    │
    container: header · blocks (each with CRC-32C) · block index · trailer
-   Format 1.3, or 1.4 when a block uses TS1 (the minimal version the file needs)
+   Format 1.3, 1.4 when a block uses TS1, 1.5 when it uses Patched FOR or ALP (the minimal version the file needs)
 ```
 
 Blocks are independent, so compression runs in parallel and any byte range can be decoded
@@ -115,37 +115,37 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 |---|---|
 | Lossless, bit-exact | every block carries the CRC-32C of its bytes; property tests over arbitrary inputs and float bit patterns |
 | Deterministic output | golden SHA-256 files (auto and scalar SIMD), determinism matrix (1 – 32 threads, API paths, processes) |
-| Old files stay readable | frozen files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6 and 0.5.0 decode on every build ([`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)) |
+| Old files stay readable | frozen files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0 and 0.6.1 decode on every build ([`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)) |
 | Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code, 18 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
 | Minimal `unsafe` | only audited SIMD / CRC kernels ([`docs/UNSAFE-AUDIT.md`](docs/UNSAFE-AUDIT.md), [`docs/PANIC-AUDIT.md`](docs/PANIC-AUDIT.md)) |
 
 ## Development
 
 ```bash
-./ace-build0.6.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
-./ace-ci0.6.0.sh pr | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
-./ace-benchmark0.6.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
-./ace-ab0.6.0.sh /path/to/ace-0.5.1                  # interleaved A/B against the previous release
-./ace-benchmark-compare0.6.0.sh OLD NEW              # any two result files or directories
-./ace-release0.6.0.sh /path/to/ace-0.5.1             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+./ace-build0.6.1.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
+./ace-ci0.6.1.sh pr | fuzz-smoke | fuzz       # CI entry points (GitHub Actions wraps them)
+./ace-benchmark0.6.1.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
+./ace-ab0.6.1.sh /path/to/ace-0.6.0                  # interleaved A/B against the previous release
+./ace-benchmark-compare0.6.1.sh OLD NEW              # any two result files or directories
+./ace-release0.6.1.sh /path/to/ace-0.6.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
 ```
 
 | Path | Content |
 |---|---|
 | `crates/` | 19 crates: the `ace` facade and 18 internal ones ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
-| `ace-*0.6.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
-| `examples/golden/` | golden SHA-256 (0.5.0; frozen 0.4.6) |
+| `ace-*0.6.1.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
+| `examples/golden/` | golden SHA-256 (0.6.1; frozen 0.5.0 and 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
 | `fuzz/` | `cargo-fuzz` project, 18 targets ([`fuzz/README.md`](fuzz/README.md)) |
 | `integrations/` | Java / Scala CLI examples |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
-| `TASKS-0.6.0.md`, `MILESTONE-0.6.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
+| `TASKS-0.6.1.md`, `MILESTONE-0.6.1.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
 
 ## Roadmap
 
-0.6.0 — the `ace` API facade, decode and allocation recovery (this release); 0.6.1 — decimal floats (ALP),
-more numeric modes and Format 1.5;
+0.6.0 — the `ace` API facade, decode and allocation recovery; 0.6.1 — decimal floats (ALP), Patched FOR,
+RunDelta for small deltas, DENSE never larger than BALANCED, Format 1.5 (this release);
 0.7 — C ABI, Java (Panama FFM) and Scala SDK; 0.8 — adaptive segmentation and columnar blocks
 (Format 2.0); 0.9 — integration with AdaptiveDB and GraphNet; 1.0 — stable API and format.
 See [`ROADMAP.md`](ROADMAP.md) and [`CHANGELOG.md`](CHANGELOG.md).

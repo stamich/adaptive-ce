@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.6.1 - Numeric & Float II (Phase B)
+
+Base: 0.6.0. **Bytes change** for blocks that gain a better codec; golden 0.5.0 and 0.4.6 stay
+frozen and are still reproduced by every unchanged workload (changed ones may only shrink).
+Reference: `examples/golden/0.6.1/`. Task order: `TASKS-0.6.1.md`; notes:
+`docs/RELEASE-NOTES-0.6.1.md`; migration: `docs/MIGRATION-0.6-TO-0.6.1.md`.
+
+### Added
+- Format 1.5; the writer declares the lowest version the payloads need.
+- NUM1 mode 4 Patched FOR; TS1 mode 4 ALP (decimal f64 / f32).
+- RunDelta admission for small non-zero deltas (no format change).
+- `Stats` / container counter for ALP blocks; `format-1-5` and `chimp-evaluation` benchmark
+  families, Regression V3 `format15` gates, A/B cases for the changed paths.
+- Corpus V5 (4 workloads), golden 0.6.1 (31 workloads), compat fixtures `examples/compat/0.6.1/`,
+  fuzz targets `alp_decode`, `alp_roundtrip`, `numeric_patched_decode` (18 in total).
+
+### Changed
+- DENSE plans each block as BALANCED too and stores the smaller result (DENSE encode ≈ 0.58×
+  of 0.6.0 speed, never larger than BALANCED).
+- Unit tests moved from `src/` to `crates/<crate>/tests/`; `ace-bench` has a library target; the
+  audit rejects `#[cfg(test)]` in `src/`.
+- Scripts, tools and workflows renamed to 0.6.1 (`ace-ci-0.6.1`); A/B base and stored baseline
+  are 0.6.0.
+
+### Decided
+- Chimp / Chimp128 are not added: 0 of 144 blocks would shrink (rule: at least 5 %).
+
 ## 0.6.0 - 2026-10-16 — API & Performance (Phase A)
 
 Base: 0.5.1. **No byte changes**: golden 0.5.0 is reproduced exactly (auto and
