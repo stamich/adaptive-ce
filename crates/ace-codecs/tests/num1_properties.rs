@@ -32,7 +32,8 @@ fn mode() -> impl Strategy<Value = NumericMode> {
     prop_oneof![
         Just(NumericMode::FrameOfReference),
         Just(NumericMode::Delta),
-        Just(NumericMode::DeltaOfDelta)
+        Just(NumericMode::DeltaOfDelta),
+        Just(NumericMode::Patched)
     ]
 }
 

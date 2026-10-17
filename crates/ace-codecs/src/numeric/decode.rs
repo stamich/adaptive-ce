@@ -10,6 +10,7 @@ use ace_bitpack::{
 use ace_core::{AceError, AceResult};
 
 use super::lane_dispatch::dispatch_lane;
+use super::patched_decode::decode_patched_lane;
 use crate::{numeric_inspect, NumericMode, NumericPayloadInfo, NUMERIC_HEADER_SIZE};
 
 /// Decodes a NUM1 payload to exactly `expected_size` bytes.
@@ -26,11 +27,24 @@ pub fn numeric_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> 
     if info.decoded_len()? != expected_size {
         return Err(AceError::Malformed("numeric decoded size mismatch"));
     }
-    // `numeric_inspect` proved `header + packed + tail == input.len()`.
-    let (packed, tail) = input
+    // `numeric_inspect` proved `header + packed + exception section + tail == input.len()`.
+    let (packed, rest) = input
         .get(NUMERIC_HEADER_SIZE..)
         .and_then(|body| body.split_at_checked(info.packed_bytes))
         .ok_or(AceError::Malformed("numeric payload length mismatch"))?;
+    let section_bytes = info.patch.map_or(0, |patch| patch.section_bytes);
+    let (section, tail) = rest
+        .split_at_checked(section_bytes)
+        .ok_or(AceError::Malformed("numeric payload length mismatch"))?;
+    if let Some(patch) = &info.patch {
+        let mut out = dispatch_lane!(
+            info.width,
+            decode_patched_lane(&info, patch, packed, section)
+        )?;
+        out.extend_from_slice(tail);
+        debug_assert_eq!(out.len(), expected_size);
+        return Ok(out);
+    }
 
     let mut out = if info.bit_width == 0 {
         if !packed.is_empty() {
@@ -88,7 +102,7 @@ fn decode_lane<T: Lane>(info: &NumericPayloadInfo, packed: &[u8]) -> AceResult<V
 fn decode_zero_width<T: Lane>(info: &NumericPayloadInfo) -> Vec<u8> {
     let step = match info.mode {
         NumericMode::DeltaOfDelta => T::from_u64_truncating(info.first_delta as u64),
-        NumericMode::FrameOfReference | NumericMode::Delta => T::default(),
+        NumericMode::FrameOfReference | NumericMode::Delta | NumericMode::Patched => T::default(),
     };
     let mut out = vec![0u8; info.value_count.saturating_mul(T::BYTES)];
     let mut value = T::from_u64_truncating(info.first_value);

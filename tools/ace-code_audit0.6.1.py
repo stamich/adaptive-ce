@@ -51,6 +51,7 @@ DECODER_MODULES = (
     "crates/ace-engine/src/block_pipeline.rs",
     "crates/ace-codecs/src/numeric/header.rs",
     "crates/ace-codecs/src/numeric/decode.rs",
+    "crates/ace-codecs/src/numeric/patched_decode.rs",
     "crates/ace-codecs/src/time_series/header.rs",
     "crates/ace-entropy/src/rans/model.rs",
     "crates/ace-entropy/src/rans4x.rs",
@@ -158,6 +159,15 @@ DECODER_FIELDS = (
      "`max_block_size` (expected size)",
      ("crates/ace-codecs/tests/header_fields.rs::num1_count_fields_reject_zero_max_and_overflow",
       "crates/ace-codecs/tests/header_fields.rs::num1_and_ts1_reject_expected_size_mismatch")),
+    ("NUM1 header (mode 4)", "patch source, exception count (u32), exception width byte",
+     "source is FOR / Delta / DoD; count <= source stream length; width in 1..=lane bits - "
+     "bit width; section length (`checked_add`) known before the total length check", "-",
+     ("crates/ace-codecs/tests/num1_patched.rs::malformed_patched_payloads_are_rejected",)),
+    ("NUM1 exception section", "positions (bit-packed), high parts (bit-packed)",
+     "positions strictly increasing and inside the stream; high parts non-zero; both streams "
+     "validated before the first value is produced", "-",
+     ("crates/ace-codecs/tests/num1_patched.rs::malformed_patched_payloads_are_rejected",
+      "crates/ace-codecs/tests/num1_patched.rs::damaged_payloads_never_panic")),
     ("TS1 header", "magic, version, mode, lane width, flags, reserved",
      "exact; lane width valid for the mode; flags allowed per mode; reserved bytes zero", "-",
      ("crates/ace-codecs/tests/header_fields.rs::ts1_small_fields_are_validated",)),

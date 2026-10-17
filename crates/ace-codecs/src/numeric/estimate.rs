@@ -81,7 +81,7 @@ impl LaneStats {
     /// Exact payload size for `mode`, given the full input length.
     fn estimate(&self, mode: NumericMode, input_len: usize) -> NumericEstimate {
         let bit_width = match mode {
-            NumericMode::FrameOfReference => self.for_bits,
+            NumericMode::FrameOfReference | NumericMode::Patched => self.for_bits,
             NumericMode::Delta => self.delta_bits,
             NumericMode::DeltaOfDelta => self.dod_bits,
         };

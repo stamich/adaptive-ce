@@ -87,33 +87,45 @@ pub fn numeric_encode_fixed_step(
         packed_bytes: 0,
         first_value,
         first_delta,
+        patch: None,
     };
     numeric_serialize_payload(&info, &[], &input[value_bytes..])
 }
 
-/// Width-generic encoder body: transform, ZigZag, bit-pack, serialize.
-fn encode_lane<T: Lane>(input: &[u8], mode: NumericMode) -> AceResult<Vec<u8>> {
-    let values = read_lanes::<T>(input);
-    let tail = &input[values.len() * T::BYTES..];
-    let (first, first_delta, stream): (T, i64, Vec<T>) = match mode {
-        NumericMode::FrameOfReference => {
-            let (base, offsets) = frame_of_reference(&values);
+/// The stream a base mode stores: `(first value or FOR base, first delta, unsigned stream)`.
+///
+/// `NumericMode::Patched` is not a stream of its own and is answered like FOR; callers pass the
+/// *source* mode of a patched payload.
+pub(super) fn base_stream<T: Lane>(values: &[T], mode: NumericMode) -> (T, i64, Vec<T>) {
+    match mode {
+        NumericMode::FrameOfReference | NumericMode::Patched => {
+            let (base, offsets) = frame_of_reference(values);
             (base, 0, offsets)
         }
         NumericMode::Delta => (
             values[0],
             0,
-            delta(&values).into_iter().map(T::zigzag).collect(),
+            delta(values).into_iter().map(T::zigzag).collect(),
         ),
         NumericMode::DeltaOfDelta => {
-            let (first_delta, dod) = delta_of_delta(&values);
+            let (first_delta, dod) = delta_of_delta(values);
             (
                 values[0],
                 T::signed_to_i64(first_delta),
                 dod.into_iter().map(T::zigzag).collect(),
             )
         }
-    };
+    }
+}
+
+/// Width-generic encoder body: transform, ZigZag, bit-pack, serialize.
+fn encode_lane<T: Lane>(input: &[u8], mode: NumericMode) -> AceResult<Vec<u8>> {
+    if mode == NumericMode::Patched {
+        return super::patched::encode_patched::<T>(input);
+    }
+    let values = read_lanes::<T>(input);
+    let tail = &input[values.len() * T::BYTES..];
+    let (first, first_delta, stream) = base_stream(&values, mode);
     let bit_width = max_bit_width(&stream);
     let packed = pack(&stream, bit_width)?;
     let info = NumericPayloadInfo {
@@ -125,6 +137,7 @@ fn encode_lane<T: Lane>(input: &[u8], mode: NumericMode) -> AceResult<Vec<u8>> {
         packed_bytes: packed.len(),
         first_value: first.to_u64(),
         first_delta,
+        patch: None,
     };
     numeric_serialize_payload(&info, &packed, tail)
 }

@@ -32,6 +32,8 @@ wrap-around or an allocation of the forged size
 | Trailer (ACET) | index_offset, index_size (u64) | CRC; `checked_add`; inside the file; size `try_from` and <= 12 + 40 x limit before allocation | `max_index_entries` | `trailer_limits.rs::index_size_above_the_entry_limit_is_refused`<br>`trailer_limits.rs::forged_index_sizes_are_rejected`<br>`index_hardening.rs::trailer_crc_corruption_is_rejected` |
 | NUM1 header | width, mode, bit width, first value / delta | known values; bit width <= lane bits; first value and `|first delta|` fit the lane | - | `header_fields.rs::num1_first_delta_and_bit_width_extremes` |
 | NUM1 header | value_count, tail_bytes, packed_bytes (u32) | `try_from`; header + packed + tail (`checked_add`) == payload; value_count x width + tail (`checked_mul` / `checked_add`) == expected size before allocation | `max_block_size` (expected size) | `header_fields.rs::num1_count_fields_reject_zero_max_and_overflow`<br>`header_fields.rs::num1_and_ts1_reject_expected_size_mismatch` |
+| NUM1 header (mode 4) | patch source, exception count (u32), exception width byte | source is FOR / Delta / DoD; count <= source stream length; width in 1..=lane bits - bit width; section length (`checked_add`) known before the total length check | - | `num1_patched.rs::malformed_patched_payloads_are_rejected` |
+| NUM1 exception section | positions (bit-packed), high parts (bit-packed) | positions strictly increasing and inside the stream; high parts non-zero; both streams validated before the first value is produced | - | `num1_patched.rs::malformed_patched_payloads_are_rejected`<br>`num1_patched.rs::damaged_payloads_never_panic` |
 | TS1 header | magic, version, mode, lane width, flags, reserved | exact; lane width valid for the mode; flags allowed per mode; reserved bytes zero | - | `header_fields.rs::ts1_small_fields_are_validated` |
 | TS1 header | value_count (u32), stream_bits (u32), tail_len (u8) | `try_from`; tail < lane; header + ceil(bits / 8) + tail (`checked_add`) == payload; decoded length (`checked_*`) == expected size before allocation | `max_block_size` (expected size) | `header_fields.rs::ts1_count_fields_reject_zero_max_and_overflow`<br>`header_fields.rs::num1_and_ts1_reject_expected_size_mismatch` |
 | rANS metadata | 256 x u16 frequencies | exactly 512 bytes; sum (u32) == 4096 before prefixes; prefixes `checked_add` in u16 | - | `metadata_fields.rs::rans_frequency_tables_with_bad_sums_are_rejected` |
@@ -53,6 +55,7 @@ arithmetic or narrowing cast into a build failure. Proven-safe sites:
 | `crates/ace-engine/src/block_pipeline.rs` | none |
 | `crates/ace-codecs/src/numeric/header.rs` | none |
 | `crates/ace-codecs/src/numeric/decode.rs` | none |
+| `crates/ace-codecs/src/numeric/patched_decode.rs` | none |
 | `crates/ace-codecs/src/time_series/header.rs` | none |
 | `crates/ace-entropy/src/rans/model.rs` | `:34` Encoder only: `count <= input.len()`, so `count * RANS_SCALE` fits `u64` for any input that fits in memory, `floor <= RANS_SCALE` fits `u16`, and `sum` stays within `256 * RANS_SCALE`. |
 | `crates/ace-entropy/src/rans4x.rs` | `:36` encoder: only `index & 3` and slice lengths |
