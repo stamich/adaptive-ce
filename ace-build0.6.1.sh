@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# ACE 0.6.0 build pipeline: quality gates, tests, release build, docs and the demo.
-# Benchmarks are deliberately NOT part of the build (see ace-benchmark0.6.0.sh).
+# ACE 0.6.1 build pipeline: quality gates, tests, release build, docs and the demo.
+# Benchmarks are deliberately NOT part of the build (see ace-benchmark0.6.1.sh).
 #
-#   ./ace-build0.6.0.sh            full pipeline
-#   ./ace-build0.6.0.sh --no-demo  skip the demo (CI)
+#   ./ace-build0.6.1.sh            full pipeline
+#   ./ace-build0.6.1.sh --no-demo  skip the demo (CI)
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.6.0.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.6.1.sh"
 cd "$ACE_ROOT"
 
 run_demo=1
@@ -36,7 +36,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-it
 
 if (( run_demo )); then
   ace_step "demo"
-  ./demo/ace-run-demo0.6.0.sh
+  ./demo/ace-run-demo0.6.1.sh
 fi
 
 ace_log "build pipeline completed successfully"

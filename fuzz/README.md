@@ -25,8 +25,8 @@ toolchain and `cargo install cargo-fuzz`).
 
 | When | What | Command | Gate |
 |---|---|---|---|
-| every push / PR (CI job `fuzz-smoke`) | 15 targets x 25 s | `ACE_FUZZ_REQUIRED=1 ./ace-ci0.6.0.sh fuzz-smoke` | no crash, no timeout, no OOM |
-| before every release (reference machine) | 15 targets x 10 min, then `cmin` | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.6.0.sh fuzz` | no crash; result recorded in `examples/baselines/<version>/FUZZ.md` |
+| every push / PR (CI job `fuzz-smoke`) | 15 targets x 25 s | `ACE_FUZZ_REQUIRED=1 ./ace-ci0.6.1.sh fuzz-smoke` | no crash, no timeout, no OOM |
+| before every release (reference machine) | 15 targets x 10 min, then `cmin` | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.6.1.sh fuzz` | no crash; result recorded in `examples/baselines/<version>/FUZZ.md` |
 | any time | one target | `cargo +nightly fuzz run --fuzz-dir fuzz <target> -- -max_total_time=600` | — |
 
 * `fuzz-smoke` / `fuzz` skip with a log line when nightly or `cargo-fuzz` is missing; CI sets
@@ -50,6 +50,6 @@ Example (local):
 
 ```bash
 rustup toolchain install nightly && cargo install cargo-fuzz
-./ace-ci0.6.0.sh fuzz-smoke                                  # 15 x 25 s
-ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.6.0.sh fuzz   # release campaign
+./ace-ci0.6.1.sh fuzz-smoke                                  # 15 x 25 s
+ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.6.1.sh fuzz   # release campaign
 ```
