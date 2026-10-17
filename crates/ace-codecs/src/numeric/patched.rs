@@ -38,6 +38,9 @@ pub(crate) fn patched_worth_trying(input: &[u8], width: NumericWidth) -> bool {
 }
 
 /// Width-monomorphized body of [`patched_worth_trying`].
+// `chunks_exact` mirrors the other NUM1 kernels (the width is a trait constant, not a literal).
+// `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn spread_pretest<T: Lane>(input: &[u8]) -> bool {
     let count = input.len() / T::BYTES;
     if count < 4 * SPREAD_CHUNK {
@@ -115,6 +118,9 @@ pub fn estimate_patched(input: &[u8], width: NumericWidth) -> Option<NumericEsti
 }
 
 /// Statistics pass and search over `(source, b)`; `None` below two values.
+// `chunks_exact` mirrors the other NUM1 kernels (the width is a trait constant, not a literal).
+// `unknown_lints`: clippy < 1.98 lacks the lint.
+#[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
 fn plan_patched<T: Lane>(input: &[u8]) -> Option<PatchPlan> {
     let count = input.len() / T::BYTES;
     if count < 2 {
