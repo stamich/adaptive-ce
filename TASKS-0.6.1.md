@@ -73,4 +73,4 @@ tested through the item that uses it, or it becomes `pub` with rustdoc (internal
 | 17 | Fuzz targets cover NUM1 mode 4 and TS1 mode 4 | "Extends the fuzz targets to the new modes" |
 | 18 | Benchmark workloads and Regression V3 gates for `int-counter-reset`, `monotonic-outliers`, decimal floats; A/B base 0.6.0 | "Adds Phase B benchmark gates and workloads" |
 | 19 | `docs/RELEASE-NOTES-0.6.1.md`, `CHANGELOG.md`, `README.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `COMPATIBILITY.md`, `TS1-CODEC.md`, `PLANNER-V5.md`, `MIGRATION-0.6-TO-0.6.1.md`, API inventory | "Documents ACE 0.6.1" |
-| 20 ⏩ | Release run, fuzz campaign, baseline `examples/baselines/0.6.1/`, `docs/PERFORMANCE-0.6.1.md`, tag `v0.6.1` | [`docs/RELEASE.md`](docs/RELEASE.md) |
+| 20 ✅ | Release run, fuzz campaign, baseline `examples/baselines/0.6.1/`, `docs/PERFORMANCE-0.6.1.md` (tag `v0.6.1` is set after the merge) | [`docs/RELEASE.md`](docs/RELEASE.md) |

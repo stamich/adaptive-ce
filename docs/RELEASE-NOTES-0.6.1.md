@@ -75,6 +75,25 @@ Second reference run: 16 of 18 cases pass; FAST encode 0.937× and BALANCED enco
 0.98×. These were fixed in the code, not in the floors: the Patched FOR plan is reused by the encoder, a sampled pre-test skips the exact pass on blocks without outliers, the ALP count has a counting shortcut and cheaper rounding. The floors and their reasons are in [`BENCHMARKS.md`](BENCHMARKS.md).
 Third reference run (32 logical CPUs, 3 batches): 18 of 18 A/B cases pass at their restored floors. FAST encode 0.973×, BALANCED encode 0.981× (identical output), `f64_noisy` 0.997×, `delta-variable` 0.799× (bytes −37 %), `monotonic-outliers` 0.956×, DENSE encode 0.568×, DENSE decode 1.047×, `int-counter-reset` 1.75×, decimal-price encode 1.72× and decode 3.46×; the other cases are 0.97× – 1.00×.
 
+## Release qualification (reference machine)
+
+Ryzen 9 5950X, 32 logical CPUs, performance governor; baseline `examples/baselines/0.6.1/`,
+[`PERFORMANCE-0.6.1.md`](PERFORMANCE-0.6.1.md):
+
+- Regression V3 passes (92 gates, 6 diagnostics, 0 failures); repeatability passes (deterministic
+  values identical over 3 runs × 30 families, macro spread ≤ 2.1 % for compression and ≤ 8.9 % for
+  decompression).
+- Interleaved A/B against 0.6.0: 18 / 18 cases (see above); output is byte-identical wherever the
+  bytes do not change on purpose.
+- Fuzz campaign: 18 targets × 600 s, no crash (`examples/baselines/0.6.1/FUZZ.md`). The two TS1
+  targets logged 5487 s of wall time; a re-run settles whether the host was suspended.
+- Known costs of the new codecs, accepted for the size gain: decoding a Patched FOR block is slower
+  than decoding the plain FOR block it replaces (`delta-variable` decode 861 MB/s against 1 837 MB/s
+  in 0.6.0, for a 37 % smaller output), and DENSE encode plans every block twice (0.57×, engine
+  allocations 18.2 against 11.1 bytes per input byte). Both are candidates for 0.6.2.
+- The tag `v0.6.1` follows the merge ([`RELEASE.md`](RELEASE.md)).
+
 ## Not covered here
 
-Fuzz campaign on the reference machine (18 targets × 10 min, including `alp_decode`, `alp_roundtrip` and `numeric_patched_decode`): no crash, no sanitizer finding. The `ts1_roundtrip` and `ts1_decode` logs both show 5487 s of wall time for a 600 s budget and libFuzzer reported one "slow unit" of 4893 s for `ts1_roundtrip`; both targets stretched by the same amount, which points to the machine being suspended during the run, not to an input. The unit is not part of the archive, so this is not proven; a re-run of the two targets is the check.
+Nothing known; the fuzz targets `alp_decode`, `alp_roundtrip` and `numeric_patched_decode` ran in
+the campaign above.

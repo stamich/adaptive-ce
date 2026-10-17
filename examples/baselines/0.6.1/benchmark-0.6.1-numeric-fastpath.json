@@ -1,0 +1,376 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.6.1",
+  "base": "0.6.0",
+  "scope": "numeric-fastpath",
+  "benchmark_contract_origin": "ace-0.6.1",
+  "generated_at_utc_epoch_seconds": 1792244126,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "false",
+      "git_revision": "68a6a449e95cf00f4fa5e8fb3cff8fe885f3e8e9",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": 4702619,
+      "freq_khz_before": 3887636,
+      "governor": "performance",
+      "logical_cpus": 32,
+      "max_freq_khz": 5084000,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor",
+      "physical_cores": 16
+    },
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      1.64,
+      2.79,
+      2.17
+    ],
+    "loadavg_before": [
+      1.61,
+      2.8,
+      2.17
+    ],
+    "logical_cpus": 32,
+    "memory_bytes": 134959689728,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.12.21-gentoo-dist",
+      "name": "linux"
+    },
+    "physical_cores": 16,
+    "rust": {
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": 33.0,
+    "thermal_c_before": 33.0,
+    "warnings": []
+  },
+  "configuration": {
+    "block_size": 262144,
+    "config_fingerprint": "ced6310344103233",
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3 | 1.4 (minimal version)",
+    "planner_version": "V5",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "threads": 0,
+    "threads_resolved": 32,
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workload_fingerprints": {
+    "u32-counter@16777216": "a0fb0e32b9fe208f8512e2c4b9b5afd46a8ee4a1813d80430649d1c3777bb197",
+    "u64-fixed-step@16777216": "16da4d3fb43c54607d682c43f7c7ecdc80bec31ea012b1a6a44facbec9a92f18"
+  },
+  "workloads": [
+    {
+      "compressed_bytes": 7240,
+      "compression": {
+        "cv_percent": 1.3518670195446232,
+        "max_ns": 2063625,
+        "mean_ns": 1988173.8095238095,
+        "median_mb_s": 8088.410369544305,
+        "median_ns": 1978139.0,
+        "min_ns": 1953293,
+        "p95_ns": 2034498.0,
+        "p99_ns": 2063625.0,
+        "runs": 21,
+        "samples_ns": [
+          1990075,
+          2001649,
+          1969667,
+          1968181,
+          1966975,
+          1965759,
+          2063625,
+          2003063,
+          2000862,
+          1997170,
+          2034498,
+          1961497,
+          2024465,
+          1953293,
+          1975155,
+          1956872,
+          1969987,
+          1980769,
+          1992212,
+          1997737,
+          1978139
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.4282813290673709,
+          "batch_medians_ns": [
+            1969667.0,
+            2000862.0,
+            1978139.0
+          ],
+          "batches": 3,
+          "global_median_ns": 1980769.0,
+          "harness": "v3",
+          "iterations_per_sample": 32,
+          "mad_ns": 16401.0,
+          "median_of_medians_ns": 1978139.0,
+          "outlier_indices": [
+            6
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 26877.46602217632,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "compression_ratio": 2317.2950276243096,
+      "decompression": {
+        "cv_percent": 1.9992736035948262,
+        "max_ns": 1188813,
+        "mean_ns": 1116441.619047619,
+        "median_mb_s": 14414.167685417997,
+        "median_ns": 1110019.0,
+        "min_ns": 1091671,
+        "p95_ns": 1156800.0,
+        "p99_ns": 1188813.0,
+        "runs": 21,
+        "samples_ns": [
+          1188813,
+          1121764,
+          1099837,
+          1091671,
+          1095004,
+          1107776,
+          1096160,
+          1092061,
+          1114164,
+          1125575,
+          1156800,
+          1142945,
+          1122570,
+          1114064,
+          1109288,
+          1110385,
+          1109262,
+          1106696,
+          1110019,
+          1118755,
+          1111665
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.9172815960807879,
+          "batch_medians_ns": [
+            1099837.0,
+            1122570.0,
+            1110019.0
+          ],
+          "batches": 3,
+          "global_median_ns": 1110385.0,
+          "harness": "v3",
+          "iterations_per_sample": 64,
+          "mad_ns": 10548.0,
+          "median_of_medians_ns": 1110019.0,
+          "outlier_indices": [
+            0
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 22320.722589165754,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "path": "planner-v4.3-numeric-fast",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "stage_timing": {
+        "analysis_ns": 1360771,
+        "encoding_ns": 7930,
+        "generic_analysis_ns": 0,
+        "planner_estimated_candidates": 64,
+        "planner_fast_path_blocks": 64,
+        "planner_full_trial_encodes": 0,
+        "planner_sampled_candidates": 0,
+        "planning_ns": 0,
+        "route_classify_ns": 1360771
+      },
+      "workload_id": "u32-counter"
+    },
+    {
+      "compressed_bytes": 7240,
+      "compression": {
+        "cv_percent": 0.8547524996084154,
+        "max_ns": 1827519,
+        "mean_ns": 1786228.142857143,
+        "median_mb_s": 8973.504046769904,
+        "median_ns": 1783027.0,
+        "min_ns": 1764659,
+        "p95_ns": 1812557.0,
+        "p99_ns": 1827519.0,
+        "runs": 21,
+        "samples_ns": [
+          1783027,
+          1766787,
+          1774385,
+          1798988,
+          1803563,
+          1798675,
+          1778774,
+          1779148,
+          1764659,
+          1786009,
+          1793641,
+          1812557,
+          1782162,
+          1827519,
+          1779367,
+          1774869,
+          1794355,
+          1772221,
+          1790160,
+          1774574,
+          1775351
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.16724368167167408,
+          "batch_medians_ns": [
+            1783027.0,
+            1786009.0,
+            1775351.0
+          ],
+          "batches": 3,
+          "global_median_ns": 1782162.0,
+          "harness": "v3",
+          "iterations_per_sample": 32,
+          "mad_ns": 7998.0,
+          "median_of_medians_ns": 1783027.0,
+          "outlier_indices": [
+            13
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 15267.829699780405,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "compression_ratio": 2317.2950276243096,
+      "decompression": {
+        "cv_percent": 1.325193627866607,
+        "max_ns": 1169540,
+        "mean_ns": 1123804.380952381,
+        "median_mb_s": 14346.263201924552,
+        "median_ns": 1115273.0,
+        "min_ns": 1108903,
+        "p95_ns": 1154902.0,
+        "p99_ns": 1169540.0,
+        "runs": 21,
+        "samples_ns": [
+          1139280,
+          1127445,
+          1119778,
+          1119689,
+          1120403,
+          1154902,
+          1169540,
+          1130735,
+          1127587,
+          1115273,
+          1114726,
+          1109900,
+          1121084,
+          1111210,
+          1108903,
+          1110847,
+          1112335,
+          1112910,
+          1121352,
+          1120140,
+          1131853
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.21187637466342318,
+          "batch_medians_ns": [
+            1127445.0,
+            1115273.0,
+            1112910.0
+          ],
+          "batches": 3,
+          "global_median_ns": 1120140.0,
+          "harness": "v3",
+          "iterations_per_sample": 64,
+          "mad_ns": 7447.0,
+          "median_of_medians_ns": 1115273.0,
+          "outlier_indices": [
+            5,
+            6
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 14892.584046066722,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "input_bytes": 16777216,
+      "numeric_blocks": 64,
+      "path": "planner-v4.3-numeric-fast",
+      "plan_distribution": {
+        "numeric+none": 64
+      },
+      "stage_timing": {
+        "analysis_ns": 1192012,
+        "encoding_ns": 9570,
+        "generic_analysis_ns": 0,
+        "planner_estimated_candidates": 64,
+        "planner_fast_path_blocks": 64,
+        "planner_full_trial_encodes": 0,
+        "planner_sampled_candidates": 0,
+        "planning_ns": 0,
+        "route_classify_ns": 1192012
+      },
+      "workload_id": "u64-fixed-step"
+    }
+  ],
+  "repeatability": {
+    "runs": [
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-1",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-2",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-3"
+    ],
+    "rule": "median run per timing object"
+  }
+}
