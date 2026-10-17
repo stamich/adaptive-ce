@@ -210,6 +210,15 @@ to be smaller than BALANCED". The cases where it is larger show that its estimat
 search, are the limit; making DENSE never worse than BALANCED changes planner decisions and
 is therefore a candidate for 0.6.1 with the other Phase B changes.
 
+**0.6.1 follow-up: DENSE is never larger than BALANCED.** The engine plans every DENSE block a
+second time as BALANCED and stores the smaller result (ties keep DENSE), so the guarantee holds
+per block and therefore per file. Effect on the golden workloads (1 MiB each): `zeros` 4 488 ->
+3 448 bytes, `runs` 10 602 -> 9 564, `mixed` 281 768 -> 281 508, `f64-special` 253 222 -> 250 983,
+`f64-decimal-price` (Corpus V5) 252 130 -> 206 328; no other workload changes in DENSE. Cost:
+DENSE encoding includes one BALANCED plan per block (measured with the 0.6.1 release run, see
+`PERFORMANCE-0.6.1.md`); decoding is unaffected. `tests/dense_vs_balanced.rs` checks every corpus
+workload and the false-positive corpus.
+
 ### Float lane families (0.5.0)
 
 | Family | Content | Gates fed |

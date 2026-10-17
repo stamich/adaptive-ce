@@ -136,5 +136,11 @@ block by block (tested in `float_lane.rs`).
   and the exact RunDelta size; the smallest wins (ties: Gorilla, then RunDelta) and the usual
   dominance rule decides between it and the generic plan. `time_series_estimates` counts it.
   `f64-financial-price` shrinks by 36 % (FAST) and `f64-decimal-price` (Corpus V5) is stored with
-  ALP in FAST and BALANCED. Known gap, handled by the DENSE rule of this release: in DENSE the
-  generic estimate can be optimistic enough to hide an ALP block that is smaller in reality.
+  ALP in FAST and BALANCED. In DENSE the generic estimate can be optimistic enough to hide a smaller ALP block; the
+  DENSE rule below makes that harmless.
+* **DENSE never larger than BALANCED.** `encode_block` plans every DENSE block also as BALANCED and
+  stores the smaller framed result (payload + metadata + transform list; ties keep DENSE). The
+  rule is exact, deterministic and independent of the planner's estimates, so it also covers
+  future estimator errors. It changes DENSE bytes only where BALANCED was smaller (`zeros`,
+  `runs`, `mixed`, `f64-special`, `f64-decimal-price`) and costs one extra BALANCED plan per
+  DENSE block. FAST and BALANCED are untouched.

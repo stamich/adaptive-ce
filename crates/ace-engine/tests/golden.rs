@@ -48,6 +48,22 @@ const CHANGED_SINCE_0_5_0: &[(&str, &str)] = &[
         "Patched FOR: the reset is an exception (Format 1.5)",
     ),
     (
+        "zeros",
+        "DENSE never larger than BALANCED: the BALANCED plan is stored (DENSE only)",
+    ),
+    (
+        "runs",
+        "DENSE never larger than BALANCED: the BALANCED plan is stored (DENSE only)",
+    ),
+    (
+        "mixed",
+        "DENSE never larger than BALANCED: the BALANCED plan is stored for some blocks (DENSE only)",
+    ),
+    (
+        "f64-special",
+        "DENSE never larger than BALANCED (DENSE only)",
+    ),
+    (
         "f64-financial-price",
         "ALP: prices with two decimals become integers (Format 1.5)",
     ),
