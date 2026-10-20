@@ -94,6 +94,10 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/src/engine.rs:193` | block |
 | `crates/ace-ffi/src/engine.rs:202` | block |
 | `crates/ace-ffi/src/engine.rs:214` | block |
+| `crates/ace-ffi/src/engine.rs:234` | block |
+| `crates/ace-ffi/src/engine.rs:238` | block |
+| `crates/ace-ffi/src/engine.rs:243` | block |
+| `crates/ace-ffi/src/engine.rs:250` | block |
 | `crates/ace-ffi/src/handle.rs:16` | fn |
 | `crates/ace-ffi/src/handle.rs:19` | block |
 | `crates/ace-ffi/src/handle.rs:32` | fn |
@@ -148,6 +152,9 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/tests/handles.rs:27` | block |
 | `crates/ace-ffi/tests/handles.rs:39` | block |
 | `crates/ace-ffi/tests/handles.rs:49` | block |
+| `crates/ace-ffi/tests/json.rs:43` | block |
+| `crates/ace-ffi/tests/json.rs:47` | block |
+| `crates/ace-ffi/tests/json.rs:50` | block |
 | `crates/ace-ffi/tests/oneshot.rs:25` | block |
 | `crates/ace-ffi/tests/oneshot.rs:38` | block |
 | `crates/ace-ffi/tests/oneshot.rs:47` | block |

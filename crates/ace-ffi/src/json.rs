@@ -2,7 +2,7 @@
 
 use std::fmt::Write as _;
 
-use ace::Stats;
+use ace::{BlockReport, Stats};
 
 /// Appends `text` as a JSON string literal.
 fn push_string(out: &mut String, text: &str) {
@@ -61,4 +61,36 @@ fn json_number(value: f64) -> String {
     } else {
         "0".to_owned()
     }
+}
+
+/// Renders the planner report as a JSON array with one object per block.
+#[must_use]
+pub fn explain_json(reports: &[BlockReport]) -> String {
+    let mut out = String::with_capacity(128 * reports.len() + 2);
+    out.push('[');
+    for (index, report) in reports.iter().enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        let _ = write!(
+            out,
+            "{{\"block_id\":{},\"size\":{},\"route\":",
+            report.block_id, report.size
+        );
+        push_string(&mut out, &report.route);
+        out.push_str(",\"selected\":");
+        push_string(&mut out, &report.selected);
+        out.push_str(",\"reason\":");
+        push_string(&mut out, &report.reason);
+        out.push_str(",\"candidates\":[");
+        for (position, candidate) in report.candidates.iter().enumerate() {
+            if position > 0 {
+                out.push(',');
+            }
+            push_string(&mut out, candidate);
+        }
+        out.push_str("]}");
+    }
+    out.push(']');
+    out
 }

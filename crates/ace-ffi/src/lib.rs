@@ -22,7 +22,8 @@ pub mod stream;
 pub use buffer::{ace_buffer_data, ace_buffer_free, ace_buffer_len, buffer_into_raw, AceBuffer};
 pub use config::{ace_config_default, ace_limits_default, AceConfig, AceLimits};
 pub use engine::{
-    ace_compress, ace_decompress, ace_decompress_into, ace_engine_free, ace_engine_new, AceEngine,
+    ace_compress, ace_decompress, ace_decompress_into, ace_engine_free, ace_engine_new,
+    ace_explain_json, AceEngine,
 };
 pub use last_error::{ace_last_error_block, ace_last_error_len, ace_last_error_ptr};
 pub use range::{

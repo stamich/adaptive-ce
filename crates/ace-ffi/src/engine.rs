@@ -6,7 +6,7 @@ use crate::args::{handle_ref, input_bytes};
 use crate::buffer::{buffer_into_raw, AceBuffer};
 use crate::config::{config_from_raw, limits_from_raw, AceConfig, AceLimits};
 use crate::handle::{clear_out, publish, release};
-use crate::json::stats_json;
+use crate::json::{explain_json, stats_json};
 use crate::last_error::{fail, fail_with};
 use crate::status::{AceStatus, ACE_ERR_BUFFER_TOO_SMALL, ACE_ERR_INVALID_ARGUMENT, ACE_OK};
 
@@ -214,4 +214,42 @@ pub unsafe extern "C" fn ace_decompress_into(
         unsafe { std::ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len()) };
     }
     ACE_OK
+}
+
+/// Reports, per block, which pipeline the planner selects and which it considered, as JSON.
+///
+/// Every candidate is evaluated, so this is much slower than compression. Nothing is written.
+///
+/// # Safety
+///
+/// `engine` must be a live engine; `input` valid for reads of `len` bytes; `out` writable.
+#[no_mangle]
+pub unsafe extern "C" fn ace_explain_json(
+    engine: *const AceEngine,
+    input: *const u8,
+    len: usize,
+    out: *mut *mut AceBuffer,
+) -> AceStatus {
+    // SAFETY: `out` is writable by the caller's contract.
+    if let Err(status) = unsafe { clear_out(out) } {
+        return status;
+    }
+    // SAFETY: live by the caller's contract.
+    let engine = match unsafe { handle_ref(engine, "engine") } {
+        Ok(engine) => engine,
+        Err(status) => return status,
+    };
+    // SAFETY: readable by the caller's contract.
+    let input = match unsafe { input_bytes(input, len) } {
+        Ok(input) => input,
+        Err(status) => return status,
+    };
+    match engine.engine.explain(input) {
+        Ok(reports) => {
+            // SAFETY: validated above.
+            unsafe { out.write(buffer_into_raw(explain_json(&reports).into_bytes())) };
+            ACE_OK
+        }
+        Err(error) => fail_with(&error),
+    }
 }
