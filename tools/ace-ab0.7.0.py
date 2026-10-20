@@ -58,30 +58,36 @@ class Case:
     case_id: str
     required_ratio: float
     stability_limit: float
-    #: True when 0.6.1 changes the produced bytes on purpose (Phase B): the byte-identity check
+    #: True when the candidate changes the produced bytes on purpose: the byte-identity check
     #: is skipped for the case and its speed floor is the documented price of the change.
+    #: No 0.7.0 case sets it (the format and the bytes are those of 0.6.1).
     output_changes: bool = False
 
 
 CASES = [
+    # ACE 0.7.0 writes exactly the bytes of 0.6.1 (Format 1.5 unchanged), so every case must keep
+    # the output byte-identical and no case is allowed to get slower than 0.95x.
     Case("compression.fast.encode", 0.95, 3.0),
     Case("compression.balanced.encode", 0.95, 3.0),
-    # DENSE also plans every block as BALANCED (never larger than BALANCED): about 0.58x.
-    Case("compression.dense.encode", 0.50, 3.0, output_changes=True),
+    # Task 4: DENSE shares the analysis of its BALANCED comparison plan (expected faster).
+    Case("compression.dense.encode", 0.95, 3.0),
     Case("compression.fast.decode", 0.95, 5.0),
     Case("compression.balanced.decode", 0.95, 5.0),
-    Case("compression.dense.decode", 0.95, 5.0, output_changes=True),
+    Case("compression.dense.decode", 0.95, 5.0),
     Case("numeric_fast.u32_counter.encode", 0.95, 3.0),
     Case("numeric_fast.u32_counter.decode", 0.95, 5.0),
     Case("numeric_general.u64_timestamps.encode", 0.95, 3.0),
-    Case("numeric_general.delta_variable.encode", 0.75, 3.0, output_changes=True),
-    # ACE 0.6.1 (Phase B): the changed paths must not get slower, although their bytes differ.
-    Case("numeric_general.monotonic_outliers.encode", 0.70, 3.0, output_changes=True),
-    Case("numeric_general.int_counter_reset.encode", 0.95, 3.0, output_changes=True),
+    Case("numeric_general.delta_variable.encode", 0.95, 3.0),
+    # Task 3: Patched FOR decoding (expected about 2x - 4x faster than 0.6.1).
+    Case("numeric_general.delta_variable.decode", 0.95, 5.0),
+    Case("numeric_general.monotonic_outliers.encode", 0.95, 3.0),
+    Case("numeric_general.monotonic_outliers.decode", 0.95, 5.0),
+    Case("numeric_general.int_counter_reset.encode", 0.95, 3.0),
     Case("float.f64_noisy.encode", 0.95, 3.0),
     Case("float.f64_smooth.encode", 0.95, 3.0),
-    Case("float.f64_decimal_price.encode", 0.95, 3.0, output_changes=True),
-    Case("float.f64_decimal_price.decode", 0.95, 5.0, output_changes=True),
+    Case("float.f64_decimal_price.encode", 0.95, 3.0),
+    # ALP decoding.
+    Case("float.f64_decimal_price.decode", 0.95, 5.0),
     Case("full_decompress.mixed", 0.95, 5.0),
     # warm 64 KiB range: latency <= 110 % of baseline  <=>  speed ratio >= 1 / 1.10.
     Case("random_access.warm_64k", 1.0 / 1.10, 5.0),

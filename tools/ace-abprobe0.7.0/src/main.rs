@@ -105,6 +105,17 @@ fn case(id: &str) -> Option<Case> {
             CompressionProfile::Balanced,
             Operation::Compress,
         ),
+        // ACE 0.7.0 task 3: Patched FOR decoding (the stored bytes are those of 0.6.1).
+        "numeric_general.delta_variable.decode" => (
+            Workload::DeltaVariable,
+            CompressionProfile::Balanced,
+            Operation::Decompress,
+        ),
+        "numeric_general.monotonic_outliers.decode" => (
+            Workload::MonotonicOutliers,
+            CompressionProfile::Balanced,
+            Operation::Decompress,
+        ),
         // ACE 0.6.1 (Phase B): paths whose planning or bytes changed.
         "numeric_general.monotonic_outliers.encode" => (
             Workload::MonotonicOutliers,
@@ -146,14 +157,20 @@ fn case(id: &str) -> Option<Case> {
             CompressionProfile::Balanced,
             Operation::Range(3_000_000, 65_536),
         ),
-        // Diagnostic ids `compress.<fast|balanced|dense>.<workload name>` (any corpus workload):
-        // not part of the release gates, used to find which workloads a change slows down.
+        // Diagnostic ids `compress.<fast|balanced|dense>.<workload name>` and
+        // `decompress.<...>` (any corpus workload): not part of the release gates, used to find
+        // which workloads a change slows down.
         other => {
             let mut parts = other.splitn(3, '.');
-            let (Some("compress"), Some(profile), Some(name)) =
+            let (Some(operation), Some(profile), Some(name)) =
                 (parts.next(), parts.next(), parts.next())
             else {
                 return None;
+            };
+            let operation = match operation {
+                "compress" => Operation::Compress,
+                "decompress" => Operation::Decompress,
+                _ => return None,
             };
             let profile = match profile {
                 "fast" => CompressionProfile::Fast,
@@ -165,7 +182,7 @@ fn case(id: &str) -> Option<Case> {
                 .iter()
                 .copied()
                 .find(|workload| workload.name() == name)?;
-            (workload, profile, Operation::Compress)
+            (workload, profile, operation)
         }
     };
     Some(Case {
