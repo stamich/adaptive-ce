@@ -2,11 +2,21 @@
  * Smoke test of the C ABI: build with `tools/ace-check_c0.7.0.sh`, which compiles this file with
  * -Wall -Wextra -Werror against include/ace.h and links libace_ffi.
  */
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "ace.h"
+
+/* The JVM bindings hard-code these layouts (jvm/ace-native, AceBindings.java). */
+_Static_assert(sizeof(AceConfig) == 56, "AceConfig size");
+_Static_assert(offsetof(AceConfig, profile) == 8, "AceConfig.profile");
+_Static_assert(offsetof(AceConfig, block_size) == 16, "AceConfig.block_size");
+_Static_assert(offsetof(AceConfig, write_index) == 48, "AceConfig.write_index");
+_Static_assert(offsetof(AceConfig, reserved) == 51, "AceConfig.reserved");
+_Static_assert(sizeof(AceLimits) == 56, "AceLimits size");
+_Static_assert(offsetof(AceLimits, max_blocks) == 48, "AceLimits.max_blocks");
 
 #define CHECK(condition)                                                              \
     do {                                                                              \

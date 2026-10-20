@@ -17,6 +17,7 @@ case "${1:-}" in
     python3 tools/ace-code_audit0.7.0.py
     tools/ace-check_header0.7.0.sh
     tools/ace-check_c0.7.0.sh
+    python3 tools/ace-genbindings0.7.0.py --check
     ./ace-benchmark0.7.0.sh release-performance --quick
     ./demo/ace-run-demo0.7.0.sh
     ;;
