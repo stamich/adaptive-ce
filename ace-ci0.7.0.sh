@@ -3,6 +3,9 @@
 #
 #   ./ace-ci0.7.0.sh pr        build gates + code audit + include/ace.h drift check (needs
 #                              cbindgen 0.29.0) + C smoke test (needs a C compiler) + quick release-performance + demo
+#   ./ace-ci0.7.0.sh aarch64   golden bytes of the engine, the facade and the C ABI on this machine
+#                              (ACE_EXPECT_ARCH=aarch64 makes the job fail on any other CPU)
+#   ./ace-ci0.7.0.sh jvm       Gradle build and tests of jvm/ (needs gradle 9.1+ and JDK 22 or newer)
 #   ./ace-ci0.7.0.sh release   full ace-release0.7.0.sh (needs ACE_AB_BASELINE_TREE)
 #   ./ace-ci0.7.0.sh fuzz      all 20 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
 #                              ACE_FUZZ_CMIN=1 minimises every corpus afterwards
@@ -20,6 +23,21 @@ case "${1:-}" in
     python3 tools/ace-genbindings0.7.0.py --check
     ./ace-benchmark0.7.0.sh release-performance --quick
     ./demo/ace-run-demo0.7.0.sh
+    ;;
+  aarch64)
+    if [[ -n "${ACE_EXPECT_ARCH:-}" && "$(uname -m)" != "$ACE_EXPECT_ARCH" && "$(uname -m)" != "arm64" ]]; then
+      ace_die "expected a $ACE_EXPECT_ARCH machine, running on $(uname -m)"
+    fi
+    ace_step "golden bytes on $(uname -m)"
+    cargo test --release -p ace-engine --test golden
+    cargo test --release -p ace --test facade
+    cargo test --release -p ace-ffi --test golden
+    ;;
+  jvm)
+    command -v gradle >/dev/null || ace_die "gradle is not installed"
+    java -version
+    ace_step "gradle build (jvm/)"
+    gradle -p jvm build --no-daemon --console=plain
     ;;
   release)
     [[ -n "${ACE_AB_BASELINE_TREE:-}" ]] || ace_die "set ACE_AB_BASELINE_TREE to the $ACE_BASELINE source tree"
@@ -49,7 +67,7 @@ case "${1:-}" in
     done
     ;;
   *)
-    ace_die "usage: $0 {pr|release|fuzz|fuzz-smoke}"
+    ace_die "usage: $0 {pr|aarch64|jvm|release|fuzz|fuzz-smoke}"
     ;;
 esac
 ace_log "ci '$1' completed"

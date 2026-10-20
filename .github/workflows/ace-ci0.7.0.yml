@@ -23,6 +23,42 @@ jobs:
       - run: set -o pipefail; ./ace-ci0.7.0.sh pr 2>&1 | tee ci.log
       - if: failure()
         run: tools/ace-ci-annotate0.7.0.sh ci.log
+  aarch64:
+    # Native ARM64 runner: the scalar kernels must write the same bytes as x86_64 (the golden
+    # file). The NEON backend is out of scope for 0.7.0; this job checks correctness only.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show && rustc --version
+      - run: set -o pipefail; ACE_EXPECT_ARCH=aarch64 ./ace-ci0.7.0.sh aarch64 2>&1 | tee ci.log
+      - if: failure()
+        run: tools/ace-ci-annotate0.7.0.sh ci.log
+  jvm:
+    # Java and Scala SDKs (jvm/) on the minimum JDK (22, java.lang.foreign final) and on 25 LTS.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [22, 25]
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show && rustc --version
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.1.0
+      - run: set -o pipefail; ./ace-ci0.7.0.sh jvm 2>&1 | tee ci.log
+      - if: failure()
+        run: tools/ace-ci-annotate0.7.0.sh ci.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvm-test-reports-${{ matrix.java }}
+          path: jvm/**/build/reports/tests
+          if-no-files-found: ignore
   fuzz-smoke:
     # 20 targets x 25 s on every push / PR. The corpus is kept between runs as a CI cache and
     # published as an artifact; it is never committed (fuzz/README.md, "Corpus policy").
