@@ -29,6 +29,7 @@ dependencies = [
 name = "ace-bench"
 version = "0.7.0"
 dependencies = [
+ "ace",
  "ace-analysis",
  "ace-bitpack",
  "ace-codecs",
@@ -37,6 +38,7 @@ dependencies = [
  "ace-cost",
  "ace-engine",
  "ace-entropy",
+ "ace-ffi",
  "ace-format",
  "ace-planner",
  "ace-runtime",

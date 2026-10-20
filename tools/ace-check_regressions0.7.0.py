@@ -23,7 +23,7 @@ Governor gate (0.5.1): when the measured run recorded a CPU governor other than
 ``performance`` (for example ``powersave``), a verdict that would be ``pass`` becomes
 ``diagnostic`` (exit 4) — such a run documents the machine but never qualifies a release.
 
-usage: ace-check_regressions0.7.0.py --results DIR [--baselines DIR] [--ab FILE]
+usage: ace-check_regressions0.7.0.py --results DIR [--baselines DIR] [--ab FILE] [--jvm FILE]
                                      [--external NAME=STATUS ...] [--output FILE]
 """
 from __future__ import annotations
@@ -80,6 +80,7 @@ class Inputs:
         self.float_estimator = ours("float-estimator")
         self.float_ablation = ours("float-ablation")
         self.format15 = ours("format-1-5")
+        self.ffi = ours("ffi")
         legacy = baselines / "0.2.1-buildfix1"
         self.quality_compression = lib.load_doc(legacy / "benchmark-0.2.1-buildfix1-compression.json")
         stored = baselines / lib.BASELINE
@@ -243,6 +244,62 @@ def format15_gates(data: Inputs) -> list[Row]:
     return gates
 
 
+#: Limit of the batch MAD (percent) above which an `ffi` ratio is reported UNSTABLE instead of
+#: pass/fail; the JVM side uses its own sample MAD (fewer, longer samples).
+FFI_MAD_LIMIT = 5.0
+FFI_JVM_MAD_LIMIT = 10.0
+
+
+def _ffi_ratio_gate(name: str, facade: Row, candidate_ns: float, candidate_mad: float | None,
+                    required: float, rule: str, candidate_limit: float) -> Row:
+    """Speed of a candidate relative to the Rust facade (``>= required``); UNSTABLE when noisy."""
+    facade_mad = lib.batch_mad_percent(facade)
+    ratio = lib.median_of_medians(facade) / candidate_ns
+    if facade_mad is None or candidate_mad is None:
+        status = lib.SKIPPED
+    elif facade_mad > FFI_MAD_LIMIT or candidate_mad > candidate_limit:
+        status = lib.UNSTABLE
+    else:
+        status = lib.threshold_status(ratio, required, True)
+    return lib.gate(name, "ffi", status, ratio, required, rule, method="relative",
+                    facade_batch_mad_percent=facade_mad, candidate_mad_percent=candidate_mad)
+
+
+def ffi_gates(data: Inputs, jvm: Row | None) -> list[Row]:
+    """C ABI versus the Rust facade (16 MiB mixed), the JVM binding, and call overhead (diagnostic)."""
+    rows = {(row["path"], row["workload_id"]): row for row in data.ffi["workloads"]}
+    gates = [lib.gate("ffi.output_identical", "ffi",
+                      lib.PASS if all(row["identical_output"] for row in rows.values()) else lib.FAIL,
+                      float(sum(1 for row in rows.values() if row["identical_output"])), float(len(rows)),
+                      "the C ABI writes and restores the same bytes as the facade in every row")]
+    for operation in ("compress", "decompress"):
+        row = rows[(operation, "mixed_16m")]
+        c_abi = lib.timing(row, "timing_c_abi")
+        gates.append(_ffi_ratio_gate(
+            f"ffi.c_abi_vs_facade.{operation}_16m", lib.timing(row, "timing_facade"),
+            lib.median_of_medians(c_abi), lib.batch_mad_percent(c_abi), 0.97,
+            ">= 0.97x of the Rust facade", FFI_MAD_LIMIT))
+    for operation in ("compress", "decompress"):
+        name = f"ffi.jvm_vs_facade.{operation}_16m"
+        facade = lib.timing(rows[(operation, "mixed_16m")], "timing_facade")
+        wanted = [r for r in (jvm or {}).get("workloads", []) if r["path"] == operation and r["mode"] == "zero_copy"]
+        if not wanted:
+            gates.append(lib.gate(name, "ffi", lib.SKIPPED, None, 0.90,
+                                  ">= 0.90x of the Rust facade (zero-copy path; requires --jvm)"))
+            continue
+        gates.append(_ffi_ratio_gate(name, facade, float(wanted[0]["median_ns"]), float(wanted[0]["mad_percent"]),
+                                     0.90, ">= 0.90x of the Rust facade (zero-copy path)", FFI_JVM_MAD_LIMIT))
+    # Call overhead: reported, not gated (the floors above are on the large buffers).
+    for (path, workload), row in sorted(rows.items()):
+        if not path.startswith("small_"):
+            continue
+        facade_ns = lib.median_of_medians(lib.timing(row, "timing_facade"))
+        c_abi_ns = lib.median_of_medians(lib.timing(row, "timing_c_abi"))
+        gates.append(lib.gate(f"ffi.overhead.{path}.{workload}", "ffi", lib.DIAGNOSTIC, c_abi_ns / facade_ns, None,
+                              f"C ABI time / facade time per call ({facade_ns:.0f} ns facade)"))
+    return gates
+
+
 def timed_gate(name: str, timing_obj: Row, measured: float, required: float, higher: bool,
                rule: str, limit: float, section: str = "performance") -> Row:
     """Absolute performance gate on a Harness V3 measurement (unstable beats pass/fail)."""
@@ -327,6 +384,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--results", type=pathlib.Path, required=True)
     parser.add_argument("--baselines", type=pathlib.Path, default=pathlib.Path("examples/baselines"))
     parser.add_argument("--ab", type=pathlib.Path)
+    parser.add_argument("--jvm", type=pathlib.Path,
+                        help="JSON of `gradle -p jvm :ace-native:ffiBenchmark` (JVM side of the ffi gates)")
     parser.add_argument("--external", action="append", default=[], metavar="NAME=STATUS")
     parser.add_argument("--output", type=pathlib.Path)
     return parser.parse_args(argv)
@@ -338,7 +397,9 @@ def main(argv: list[str]) -> int:
     external = dict(item.split("=", 1) for item in args.external)
     data = Inputs(args.results, args.baselines)
     ab = lib.load_doc(args.ab) if args.ab else None
+    jvm = lib.load_doc(args.jvm) if args.jvm and args.jvm.exists() else None
     gates = (correctness_gates(data, external) + quality_gates(data) + float_gates(data) + format15_gates(data)
+             + ffi_gates(data, jvm)
              + performance_gates(data, ab)
              + stability_gates(data) + environment_rows(data))
     status = lib.overall_status(gates)
@@ -354,7 +415,8 @@ def main(argv: list[str]) -> int:
         "generated_at_utc_epoch_seconds": int(time.time()),
         "environment": data.release["environment"],
         "configuration": {"regression": "v3", "quick_measurements": data.release["benchmark_methodology"]["quick"],
-                          "ab_document": str(args.ab) if args.ab else None},
+                          "ab_document": str(args.ab) if args.ab else None,
+                          "jvm_document": str(args.jvm) if jvm else None},
         "status": status,
         "workloads": [{"workload_id": "release_gates", "path": f"{lib.MILESTONE}-release-gates",
                        "status": status, "checks": gates}],

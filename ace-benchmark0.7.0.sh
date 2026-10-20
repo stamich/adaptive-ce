@@ -61,9 +61,18 @@ fi
 
 if [[ "$family" == "all" ]]; then
   python3 tools/ace-validate_benchmark_json0.7.0.py "$ACE_RESULTS"/benchmark-${ACE_VERSION}-*.json
+  # JVM side of the ffi gates: measured with Gradle when it is installed, otherwise the
+  # JVM gates are reported as skipped (the verdict is then INCOMPLETE, never PASS).
+  jvm_json="$ACE_RESULTS/ffi-jvm-${ACE_VERSION}.json"
+  if command -v gradle >/dev/null; then
+    gradle -p jvm :ace-native:ffiBenchmark -PffiOut="$jvm_json" --no-daemon --console=plain --quiet || \
+      ace_log "JVM ffi benchmark failed: JVM gates will be skipped"
+  else
+    ace_log "gradle not installed: JVM ffi gates will be skipped"
+  fi
   set +e
   python3 tools/ace-check_regressions0.7.0.py --results "$ACE_RESULTS" \
-    --baselines examples/baselines "${ab_args[@]}"
+    --baselines examples/baselines "${ab_args[@]}" --jvm "$jvm_json"
   status=$?
   set -e
   python3 tools/ace-benchmark_report0.7.0.py "$ACE_RESULTS/benchmark-${ACE_VERSION}-release-performance.json"

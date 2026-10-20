@@ -3,6 +3,7 @@
 mod allocation_profile;
 mod chimp;
 mod compression;
+mod ffi;
 mod float;
 mod format15;
 mod memory;
@@ -15,6 +16,7 @@ mod release;
 pub(crate) use allocation_profile::*;
 pub(crate) use chimp::*;
 pub(crate) use compression::*;
+pub(crate) use ffi::*;
 pub(crate) use float::*;
 pub(crate) use format15::*;
 pub(crate) use memory::*;

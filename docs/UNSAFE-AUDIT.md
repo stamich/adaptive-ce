@@ -42,4 +42,5 @@ golden test passes with and without it, proving byte identity of the accelerated
 | Allocator | Use | Guarantee |
 |---|---|---|
 | `ace-bench/src/alloc.rs` | `memory` and `allocation-profile` families | forwards every `GlobalAlloc` call unchanged to `System`; bookkeeping touches only atomics and never allocates; counting only inside an `AllocationProbe` |
+| `ace-bench/src/families/ffi.rs` | `ffi` family | calls the exported `ace_engine_new`, `ace_compress`, `ace_decompress`, `ace_buffer_*` and `ace_engine_free` of `ace-ffi` exactly as a C host does; every call passes a live engine handle and slices valid for their length, and every `AceBuffer` is released once |
 | `ace-bench/tests/limits_before_allocation.rs` (0.5.1, test binary only) | measures that forged sizes fail before allocation | same forwarding design; tracks live and peak bytes with atomics |

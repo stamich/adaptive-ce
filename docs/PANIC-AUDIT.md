@@ -55,6 +55,12 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-bench/src/alloc.rs:72` | block |
 | `crates/ace-bench/src/alloc.rs:75` | fn |
 | `crates/ace-bench/src/alloc.rs:80` | block |
+| `crates/ace-bench/src/families/ffi.rs:37` | block |
+| `crates/ace-bench/src/families/ffi.rs:49` | block |
+| `crates/ace-bench/src/families/ffi.rs:60` | block |
+| `crates/ace-bench/src/families/ffi.rs:72` | block |
+| `crates/ace-bench/src/families/ffi.rs:111` | block |
+| `crates/ace-bench/src/families/ffi.rs:122` | block |
 | `crates/ace-ffi/src/args.rs:18` | fn |
 | `crates/ace-ffi/src/args.rs:32` | block |
 | `crates/ace-ffi/src/args.rs:44` | fn |
