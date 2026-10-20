@@ -1,5 +1,6 @@
 plugins {
     scala
+    `java-library`
 }
 
 description = "Scala 3 SDK over the ACE native library: Either-based API, scopes and off-heap buffers"

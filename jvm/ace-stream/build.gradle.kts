@@ -1,5 +1,6 @@
 plugins {
     scala
+    `java-library`
 }
 
 description = "InputStream, OutputStream and Iterator adapters over the ACE SDK (no stream-library dependency)"
