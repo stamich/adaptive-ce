@@ -3,3 +3,6 @@
 rootProject.name = "ace-jvm"
 
 include("ace-native", "ace-model", "ace-sdk", "ace-stream", "ace-tier")
+
+include("ace-demo")
+project(":ace-demo").projectDir = file("../demo/jvm")

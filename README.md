@@ -88,8 +88,8 @@ The public API is the `ace` crate: `Engine`, `Config`, `DecodeLimits`, `RangeRea
 and `Error` (with `ErrorKind` to act on). Every other crate is an internal building block
 ([`docs/API-INVENTORY.md`](docs/API-INVENTORY.md)). The example is compiled and run as a
 doctest of `ace`; coming from 0.5: [`docs/MIGRATION-0.5-TO-0.6.md`](docs/MIGRATION-0.5-TO-0.6.md).
-JVM users can call the CLI today (`integrations/`); a C ABI with Java (Panama) and Scala
-bindings is planned for 0.7.
+JVM users call the C ABI (`include/ace.h`) through the Java (Panama) and Scala 3 SDKs in `jvm/`;
+demos in [`demo/jvm/`](demo/jvm/README.md).
 
 ## How it works
 
@@ -139,7 +139,7 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
 | `fuzz/` | `cargo-fuzz` project, 18 targets ([`fuzz/README.md`](fuzz/README.md)) |
-| `integrations/` | Java / Scala CLI examples |
+| `jvm/`, `demo/jvm/` | Java (Panama) and Scala 3 SDKs over the C ABI, and their demos |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
 | `TASKS-0.6.1.md`, `MILESTONE-0.6.1.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
 
