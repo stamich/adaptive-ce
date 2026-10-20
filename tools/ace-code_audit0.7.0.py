@@ -36,6 +36,9 @@ UNSAFE_ALLOWED = {
     "crates/ace-bench/src/alloc.rs",
     "crates/ace-bench/tests/limits_before_allocation.rs",
 }
+#: Directories whose every file may contain ``unsafe`` (still needing ``// SAFETY:``): the C ABI
+#: crate dereferences host pointers in each of its modules and tests.
+UNSAFE_ALLOWED_DIRS = ("crates/ace-ffi/src/", "crates/ace-ffi/tests/")
 UNSAFE_USE = re.compile(r"\bunsafe\s*(\{|impl\b|fn\b)")
 ALLOW = re.compile(r"#\[allow\(((?:[a-z_]+,\s*)*clippy::[a-z_]+(?:,\s*(?:clippy::)?[a-z_]+)*)\)\]")
 HARDENING_LINT = "#![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]"
@@ -228,7 +231,7 @@ def audit_unsafe(problems: list[str]) -> list[tuple[str, int, str]]:
                 continue
             kind = {"{": "block", "impl": "impl", "fn": "fn"}[match.group(1).split()[0]]
             sites.append((relative, index + 1, kind))
-            if relative not in UNSAFE_ALLOWED:
+            if relative not in UNSAFE_ALLOWED and not relative.startswith(UNSAFE_ALLOWED_DIRS):
                 problems.append(f"{relative}:{index + 1}: unsafe outside the audited files")
             if kind in ("block", "impl"):
                 context = "\n".join(lines[max(0, index - 6):index + 1])

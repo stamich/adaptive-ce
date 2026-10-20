@@ -71,3 +71,4 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-bench/tests/limits_before_allocation.rs:61` | block |
 | `crates/ace-bench/tests/limits_before_allocation.rs:64` | fn |
 | `crates/ace-bench/tests/limits_before_allocation.rs:69` | block |
+| `crates/ace-ffi/tests/abi.rs:18` | block |

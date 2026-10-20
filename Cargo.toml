@@ -17,6 +17,7 @@ members = [
   "crates/ace-stream",
   "crates/ace-engine",
   "crates/ace",
+  "crates/ace-ffi",
   "crates/ace-cli",
   "crates/ace-corpus",
   "crates/ace-bench",

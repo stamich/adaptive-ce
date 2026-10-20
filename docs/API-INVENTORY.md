@@ -35,6 +35,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
+| `ace-ffi` | internal | 1 | 0 | 0 |
 | `ace-format` | internal | 33 | 14 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
@@ -543,6 +544,12 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `RANS4X_METADATA_BYTES` | item | `rans4x.rs:12` | Metadata bytes used to store four normalized models and four payload lengths. |
 | `rans4x_encode` | item | `rans4x.rs:37` | Encodes input into four deterministic round-robin rANS lanes. |
 | `rans4x_decode` | item | `rans4x.rs:69` | Decodes four round-robin rANS lanes and restores the original byte order. |
+
+### `ace-ffi` (internal)
+
+| Item | Kind | Location | Summary |
+|---|---|---|---|
+| `ABI_VERSION` | item | `lib.rs:13` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
 
 ### `ace-format` (internal)
 

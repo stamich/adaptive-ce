@@ -143,6 +143,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ace-ffi"
+version = "0.7.0"
+dependencies = [
+ "ace",
+]
+
+[[package]]
 name = "ace-format"
 version = "0.7.0"
 dependencies = [
