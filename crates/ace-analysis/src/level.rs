@@ -21,4 +21,17 @@ impl AnalysisLevel {
             CompressionProfile::Dense => Self::Dense,
         }
     }
+
+    /// True when analysing a block at `self` and at `other` produces the same
+    /// [`ace_core::BlockProfile`], so a caller that needs both may analyse once.
+    ///
+    /// STANDARD and DENSE run the same analysis today ("reserved for future DENSE-only
+    /// features"); FAST skips features and is only equivalent to itself. A DENSE-only feature
+    /// must change this answer, which `tests/analyzer.rs` checks against real data.
+    pub fn same_analysis_as(self, other: Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Fast, Self::Fast) | (Self::Standard | Self::Dense, Self::Standard | Self::Dense)
+        )
+    }
 }

@@ -25,7 +25,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | Crate | Kind | Items | Methods | Deprecated |
 |---|---|---|---|---|
 | `ace` | public | 15 | 58 | 0 |
-| `ace-analysis` | internal | 39 | 12 | 0 |
+| `ace-analysis` | internal | 39 | 13 | 0 |
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 54 | 21 | 0 |
@@ -152,6 +152,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `float_prefilter` | item | `float.rs:399` | Classifies `input` as float data: profiles both widths and keeps the admitted one with the |
 | `AnalysisLevel` | item | `level.rs:5` | Controls how much deterministic feature analysis ACE performs before candidate generation. |
 | `for_profile` | method | `level.rs:17` | Maps a public compression profile to its deterministic analysis budget. |
+| `same_analysis_as` | method | `level.rs:31` | True when analysing a block at `self` and at `other` produces the same |
 | `NumericProfile` | item | `numeric.rs:27` | Statistical description of byte data interpreted as a fixed-width integer sequence. |
 | `analyze_numeric` | item | `numeric.rs:89` | Deterministically detects little-endian 16/32/64-bit numeric structure in arbitrary bytes. |
 | `NumericPrefilter` | item | `numeric_prefilter.rs:29` | Cheap schema-free classification used before the full generic/numeric analyzers. |

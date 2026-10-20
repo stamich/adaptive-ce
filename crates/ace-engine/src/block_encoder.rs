@@ -6,13 +6,15 @@ use ace_analysis::{AnalysisLevel, DefaultBlockAnalyzer};
 use ace_codecs::{
     numeric_encode_estimated, numeric_encode_fixed_step, ts1_encode_with, TimeSeriesLayout,
 };
-use ace_core::{AceConfig, AceResult, CodecId, CompressionProfile, PhysicalCompressionPlan};
+use ace_core::{
+    AceConfig, AceResult, BlockProfile, CodecId, CompressionProfile, PhysicalCompressionPlan,
+};
 use ace_format::{checksum, BlockHeader, BLOCK_HEADER_SIZE};
 use ace_planner::{
     apply_time_series_policy, encode_plan_payload, evaluate_candidates_v4_with_route,
-    float_fast_decision, numeric_fast_decision_from_route, DefaultCompressionPlanner,
-    FloatFastOutcome, PlannerDecision, PlannerRoute, PlannerTelemetry, PlanningContext,
-    TimeSeriesSelection,
+    float_fast_decision, numeric_fast_decision_from_route, same_plan_semantics,
+    DefaultCompressionPlanner, FloatFastOutcome, PlannerDecision, PlannerRoute, PlannerTelemetry,
+    PlanningContext, TimeSeriesSelection,
 };
 
 use crate::block_pipeline::wrap_entropy_metadata;
@@ -56,28 +58,80 @@ fn framed_len(block: &EncodedBlock) -> usize {
     block.payload.len() + block.metadata.len() + block.plan.decoding.transforms.len()
 }
 
+/// Block analysis computed at most once per block and shared by the plans that need an
+/// equivalent one (DENSE plans a block as DENSE and as BALANCED).
+#[derive(Default)]
+struct SharedAnalysis {
+    /// The level the stored profile was computed at, and the profile.
+    computed: Option<(AnalysisLevel, BlockProfile)>,
+}
+
+/// Inherent methods of [`SharedAnalysis`].
+impl SharedAnalysis {
+    /// Analyses `input` at `level`, or returns the stored profile when it is equivalent.
+    /// The `bool` is true when the analysis ran now (its time belongs to the caller).
+    fn get(&mut self, input: &[u8], level: AnalysisLevel) -> (&BlockProfile, bool) {
+        let fresh = !self
+            .computed
+            .as_ref()
+            .is_some_and(|(stored, _)| stored.same_analysis_as(level));
+        if fresh {
+            self.computed = None;
+        }
+        let (_, profile) = self
+            .computed
+            .get_or_insert_with(|| (level, DefaultBlockAnalyzer.analyze_with_level(input, level)));
+        (profile, fresh)
+    }
+}
+
+/// One block planned with one profile, ready to be encoded.
+struct PlannedBlock {
+    /// Planner V5 route decision.
+    context: PlanningContext,
+    /// Selected plan with its estimates.
+    decision: PlannerDecision,
+    /// Time spent so far.
+    timings: BlockTimings,
+}
+
 /// Encodes block `id`; the DENSE profile never stores a block larger than BALANCED would (0.6.1).
 ///
 /// DENSE plans with a wider and slower search, but its estimates are not exact, so on some data
 /// (zero blocks, long runs, decimal floats) the search settles on a plan that is a little larger
 /// than the one BALANCED picks. The block is therefore also planned as BALANCED and the smaller
-/// result is stored; ties keep the DENSE block. The cost is one extra BALANCED plan per block,
-/// which the slowest profile can afford.
+/// result is stored; ties keep the DENSE block.
+///
+/// Both plans share one block analysis (the two levels analyse identically), and when they
+/// select the same encoding the block is encoded once, so the second plan costs little more than
+/// its candidate search.
 ///
 /// # Determinism
 ///
 /// Both encodings are pure functions of `(config, input)` and the comparison is on exact stored
 /// sizes, so the choice is the same on every platform and thread count.
 pub(crate) fn encode_block(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
-    let dense = encode_block_with_profile(config, id, input)?;
+    let mut analysis = SharedAnalysis::default();
+    let dense_plan = plan_for_profile(config, input, &mut analysis)?;
     if config.profile != CompressionProfile::Dense {
-        return Ok(dense);
+        return encode_planned(config, id, input, dense_plan);
     }
     let balanced_config = AceConfig {
         profile: CompressionProfile::Balanced,
         ..config.clone()
     };
-    let balanced = encode_block_with_profile(&balanced_config, id, input)?;
+    let balanced_plan = plan_for_profile(&balanced_config, input, &mut analysis)?;
+    if same_encoding(&dense_plan, &balanced_plan) {
+        // Same bytes by construction: encode once and account for both searches.
+        let planning = balanced_plan.timings;
+        let mut winner = encode_planned(config, id, input, dense_plan)?;
+        winner.timings.route_classify += planning.route_classify;
+        winner.timings.generic_analysis += planning.generic_analysis;
+        winner.timings.planning += planning.planning;
+        return Ok(winner);
+    }
+    let dense = encode_planned(config, id, input, dense_plan)?;
+    let balanced = encode_planned(&balanced_config, id, input, balanced_plan)?;
     let balanced_wins = framed_len(&balanced) < framed_len(&dense);
     let (mut winner, loser) = if balanced_wins {
         (balanced, dense)
@@ -91,15 +145,48 @@ pub(crate) fn encode_block(config: &AceConfig, id: u64, input: &[u8]) -> AceResu
     Ok(winner)
 }
 
-/// Encodes block `id` with one authoritative Planner V5 routing decision.
-fn encode_block_with_profile(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
+/// True when encoding both planned blocks is guaranteed to produce the same bytes: the same plan
+/// semantics, the same NUM1 estimate or TS1 selection, and the same fast-path evidence.
+fn same_encoding(a: &PlannedBlock, b: &PlannedBlock) -> bool {
+    same_plan_semantics(&a.decision.plan, &b.decision.plan)
+        && a.decision.numeric_estimate == b.decision.numeric_estimate
+        && a.decision.time_series == b.decision.time_series
+        && a.decision.telemetry.fast_path_hit == b.decision.telemetry.fast_path_hit
+        && a.context.route.numeric_fast_evidence == b.context.route.numeric_fast_evidence
+}
+
+/// Plans block `input` with `config.profile` using one authoritative Planner V5 routing decision.
+fn plan_for_profile(
+    config: &AceConfig,
+    input: &[u8],
+    analysis: &mut SharedAnalysis,
+) -> AceResult<PlannedBlock> {
     // Route classification and strict NumericFast validation happen exactly once.
     let context = PlanningContext::classify(input, config);
     let mut timings = BlockTimings {
         route_classify: context.route_classify_time,
         ..BlockTimings::default()
     };
-    let mut decision = plan_block(config, input, &context, &mut timings)?;
+    let decision = plan_block(config, input, &context, analysis, &mut timings)?;
+    Ok(PlannedBlock {
+        context,
+        decision,
+        timings,
+    })
+}
+
+/// Encodes a planned block (payload, entropy metadata, RAW fallback) and builds its header.
+fn encode_planned(
+    config: &AceConfig,
+    id: u64,
+    input: &[u8],
+    planned: PlannedBlock,
+) -> AceResult<EncodedBlock> {
+    let PlannedBlock {
+        context,
+        mut decision,
+        mut timings,
+    } = planned;
     // The TS1 selection (with a FloatFast payload) is moved into the encoder, not copied.
     let time_series = decision.time_series.take();
     let time_series_layout = time_series.as_ref().map(|s| s.estimate.layout);
@@ -153,6 +240,7 @@ fn plan_block(
     config: &AceConfig,
     input: &[u8],
     context: &PlanningContext,
+    analysis: &mut SharedAnalysis,
     timings: &mut BlockTimings,
 ) -> AceResult<PlannerDecision> {
     if let Some(decision) = numeric_fast_decision_from_route(input, &context.route) {
@@ -170,18 +258,19 @@ fn plan_block(
     let float_fast_time = planning_started.elapsed();
 
     let analysis_started = Instant::now();
-    let profile =
-        DefaultBlockAnalyzer.analyze_with_level(input, AnalysisLevel::for_profile(config.profile));
-    timings.generic_analysis = analysis_started.elapsed();
+    let (profile, analysed_now) = analysis.get(input, AnalysisLevel::for_profile(config.profile));
+    if analysed_now {
+        timings.generic_analysis = analysis_started.elapsed();
+    }
 
     let planning_started = Instant::now();
     let candidates = DefaultCompressionPlanner.candidates_for_route(
-        &profile,
+        profile,
         config,
         context.route.candidate_route(),
     );
     let decision =
-        evaluate_candidates_v4_with_route(input, &profile, &candidates, config, &context.route)?;
+        evaluate_candidates_v4_with_route(input, profile, &candidates, config, &context.route)?;
     let mut decision = apply_time_series_policy(input, decision, &context.route, config)?;
     decision.telemetry.float_fast_fallback = float_fast_fallback;
     timings.planning = float_fast_time + planning_started.elapsed();

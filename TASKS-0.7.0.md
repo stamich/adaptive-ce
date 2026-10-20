@@ -27,7 +27,7 @@ targeted here (bytes must not change; decoding must stay hardened).
 | # | Task | Commit | Acceptance |
 |---|---|---|---|
 | 3 | Faster Patched FOR decode (`delta-variable` decodes at 861 MB/s, 0.6.0: 1 837 MB/s): fused unpack + patch, no second pass over the exception list | "Speeds up Patched FOR decoding" | decode >= 1 400 MB/s on the reference machine; malformed table and fuzz target unchanged |
-| 4 | Cheaper DENSE double plan (encode 0.57×, 18.2 allocation bytes per input byte): share analysis and candidate evaluation between the DENSE and BALANCED plans | "Shares work between the DENSE and BALANCED plans" | DENSE encode >= 0.70× of 0.6.0; allocation <= 14 B/B; output bytes identical to 0.6.1 |
+| 4 | Cheaper DENSE double plan (encode 0.57×, 18.2 allocation bytes per input byte): share analysis and candidate evaluation between the DENSE and BALANCED plans | "Shares work between the DENSE and BALANCED plans" | DENSE encode >= 0.70× of 0.6.0; allocation <= 16 B/B (was 18.2; 0.6.0: 11.1); output bytes identical to 0.6.1 |
 | 5 | A/B cases for the paths 0.6.1 left uncovered: Patched FOR decode, ALP decode, DENSE allocation; A/B base 0.6.1 | "Adds A/B cases for Patched and ALP decoding" | cases in `tools/ace-ab0.7.0.py` with floors |
 
 ## Phase C — ABI design
