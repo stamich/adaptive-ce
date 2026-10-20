@@ -4,12 +4,16 @@ import io.ace.ffi.AceBindings;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Locates and binds the {@code ace_ffi} native library, once per JVM.
@@ -69,6 +73,42 @@ public final class NativeLibrary {
         return new String(bytes.asSlice(0, length).toArray(ValueLayout.JAVA_BYTE), StandardCharsets.UTF_8);
     }
 
+    /**
+     * The platform directory under {@code /native/} in the JAR: {@code linux-x86_64},
+     * {@code linux-aarch64}, {@code macos-aarch64} or {@code windows-x86_64}.
+     */
+    static String platformDirectory() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        String osName = os.contains("win") ? "windows" : os.contains("mac") || os.contains("darwin") ? "macos" : "linux";
+        String archName = arch.equals("amd64") || arch.equals("x86_64") ? "x86_64"
+                : arch.equals("aarch64") || arch.equals("arm64") ? "aarch64" : arch;
+        return osName + "-" + archName;
+    }
+
+    /**
+     * Copies the library packaged at {@code /native/<platform>/<file>} to a temporary file that is
+     * deleted on exit.
+     *
+     * @return the file, or {@code null} when the class loader has no such resource
+     * @throws IOException when the copy fails
+     */
+    static Path extractPackaged(ClassLoader loader, String platform, String fileName) throws IOException {
+        String resource = "native/" + platform + "/" + fileName;
+        try (InputStream in = loader == null ? null : loader.getResourceAsStream(resource)) {
+            if (in == null) {
+                return null;
+            }
+            int dot = fileName.lastIndexOf('.');
+            String suffix = dot < 0 ? "" : fileName.substring(dot);
+            String prefix = dot < 0 ? fileName : fileName.substring(0, dot);
+            Path file = Files.createTempFile(prefix + "-", suffix);
+            file.toFile().deleteOnExit();
+            Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
+            return file;
+        }
+    }
+
     private static Loaded load() {
         Loaded current = loaded;
         if (current == null) {
@@ -98,6 +138,17 @@ public final class NativeLibrary {
                 continue;
             }
             return new Loaded(AceBindings.bind(SymbolLookup.libraryLookup(file, Arena.global())), file.toString());
+        }
+
+        try {
+            Path extracted = extractPackaged(NativeLibrary.class.getClassLoader(), platformDirectory(), fileName);
+            if (extracted != null) {
+                return new Loaded(AceBindings.bind(SymbolLookup.libraryLookup(extracted, Arena.global())),
+                        "packaged in the JAR, extracted to " + extracted);
+            }
+            attempts.add("/native/" + platformDirectory() + "/" + fileName + " in the JAR (not packaged)");
+        } catch (IOException e) {
+            attempts.add("the packaged library could not be extracted (" + e.getMessage() + ")");
         }
 
         try {
