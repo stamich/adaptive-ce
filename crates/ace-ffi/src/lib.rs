@@ -3,7 +3,7 @@
 //! This crate exports the `ace_*` functions declared in `include/ace.h`. The conventions every
 //! function follows are in `docs/NATIVE-INTEROP.md`, the function list in `docs/FFI.md`.
 //!
-//! **Stability:** the exported C symbols are the contract (ABI version [`ABI_VERSION`]). The Rust
+//! **Stability:** the exported C symbols are the contract (ABI version [`ACE_ABI_VERSION`]). The Rust
 //! items of this crate are an implementation detail and are not published.
 
 use std::ffi::c_char;
@@ -36,7 +36,7 @@ pub use stream::{ace_compress_stream, ace_decompress_stream, AceReadFn, AceWrite
 
 /// Version of the C ABI. Bumped when a function is removed or a signature, status value or
 /// struct layout changes; adding a function does not change it.
-pub const ABI_VERSION: u32 = 1;
+pub const ACE_ABI_VERSION: u32 = 1;
 
 /// NUL-terminated crate version handed out by [`ace_engine_version`].
 static ENGINE_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
@@ -47,7 +47,7 @@ static ENGINE_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 /// function.
 #[no_mangle]
 pub extern "C" fn ace_abi_version() -> u32 {
-    ABI_VERSION
+    ACE_ABI_VERSION
 }
 
 /// Returns the crate version as a NUL-terminated string with static storage duration.

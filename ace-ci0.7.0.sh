@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Vendor-neutral CI entry point for ACE 0.7.0.
 #
-#   ./ace-ci0.7.0.sh pr        build gates + code audit + quick release-performance + demo
+#   ./ace-ci0.7.0.sh pr        build gates + code audit + include/ace.h drift check (needs
+#                              cbindgen 0.29.0) + quick release-performance + demo
 #   ./ace-ci0.7.0.sh release   full ace-release0.7.0.sh (needs ACE_AB_BASELINE_TREE)
 #   ./ace-ci0.7.0.sh fuzz      all 18 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
 #                              ACE_FUZZ_CMIN=1 minimises every corpus afterwards
@@ -14,6 +15,7 @@ case "${1:-}" in
   pr)
     ./ace-build0.7.0.sh --no-demo
     python3 tools/ace-code_audit0.7.0.py
+    tools/ace-check_header0.7.0.sh
     ./ace-benchmark0.7.0.sh release-performance --quick
     ./demo/ace-run-demo0.7.0.sh
     ;;

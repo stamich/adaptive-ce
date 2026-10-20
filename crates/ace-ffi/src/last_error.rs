@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use crate::status::{status_of, AceStatus};
 
 /// Block number reported when the last error concerns no block.
-pub const NO_BLOCK: u64 = u64::MAX;
+pub const ACE_NO_BLOCK: u64 = u64::MAX;
 
 struct LastError {
     message: Vec<u8>,
@@ -14,7 +14,7 @@ struct LastError {
 
 thread_local! {
     static LAST: RefCell<LastError> = const {
-        RefCell::new(LastError { message: Vec::new(), block: NO_BLOCK })
+        RefCell::new(LastError { message: Vec::new(), block: ACE_NO_BLOCK })
     };
 }
 
@@ -25,7 +25,7 @@ fn store(message: &str, block: Option<u64>) {
         if let Ok(mut last) = slot.try_borrow_mut() {
             last.message.clear();
             last.message.extend_from_slice(message.as_bytes());
-            last.block = block.unwrap_or(NO_BLOCK);
+            last.block = block.unwrap_or(ACE_NO_BLOCK);
         }
     });
 }
@@ -69,6 +69,6 @@ pub extern "C" fn ace_last_error_len() -> usize {
 /// `UINT64_MAX` when it concerns no block.
 #[no_mangle]
 pub extern "C" fn ace_last_error_block() -> u64 {
-    LAST.try_with(|slot| slot.try_borrow().map_or(NO_BLOCK, |l| l.block))
-        .unwrap_or(NO_BLOCK)
+    LAST.try_with(|slot| slot.try_borrow().map_or(ACE_NO_BLOCK, |l| l.block))
+        .unwrap_or(ACE_NO_BLOCK)
 }

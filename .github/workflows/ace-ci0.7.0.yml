@@ -13,6 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup show && rustc --version && cargo clippy --version
+      - uses: actions/cache@v4
+        id: cbindgen
+        with:
+          path: ~/.cargo/bin/cbindgen
+          key: cbindgen-0.29.0
+      - if: steps.cbindgen.outputs.cache-hit != 'true'
+        run: cargo install cbindgen --locked --version 0.29.0
       - run: set -o pipefail; ./ace-ci0.7.0.sh pr 2>&1 | tee ci.log
       - if: failure()
         run: tools/ace-ci-annotate0.7.0.sh ci.log

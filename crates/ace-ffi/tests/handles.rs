@@ -3,7 +3,7 @@
 use std::thread;
 
 use ace::ErrorKind;
-use ace_ffi::last_error::{fail, fail_with, NO_BLOCK};
+use ace_ffi::last_error::{fail, fail_with, ACE_NO_BLOCK};
 use ace_ffi::{
     ace_buffer_data, ace_buffer_free, ace_buffer_len, ace_last_error_block, ace_last_error_len,
     ace_last_error_ptr, buffer_into_raw, status_of, ACE_ERR_CHECKSUM, ACE_ERR_INTERNAL,
@@ -78,7 +78,7 @@ fn fail_records_message_and_returns_status() {
     let status = fail(ACE_ERR_INVALID_ARGUMENT, "bad argument");
     assert_eq!(status, ACE_ERR_INVALID_ARGUMENT);
     assert_eq!(last_message(), "bad argument");
-    assert_eq!(ace_last_error_block(), NO_BLOCK);
+    assert_eq!(ace_last_error_block(), ACE_NO_BLOCK);
 }
 
 #[test]
@@ -100,7 +100,10 @@ fn facade_error_carries_its_block_number() {
     assert_eq!(status, status_of(error.kind()));
     assert!(!last_message().is_empty());
     if status == ACE_ERR_CHECKSUM {
-        assert_eq!(ace_last_error_block(), error.block_id().unwrap_or(NO_BLOCK));
+        assert_eq!(
+            ace_last_error_block(),
+            error.block_id().unwrap_or(ACE_NO_BLOCK)
+        );
     }
 }
 

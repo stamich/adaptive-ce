@@ -566,10 +566,10 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `publish` | item | `handle.rs:46` | Stores `value` as a new handle in `out` and returns [`ACE_OK`]. |
 | `stats_json` | item | `json.rs:28` | Renders `stats` as one JSON object with the members of the documented schema. |
 | `explain_json` | item | `json.rs:68` | Renders the planner report as a JSON array with one object per block. |
-| `NO_BLOCK` | item | `last_error.rs:8` | Block number reported when the last error concerns no block. |
+| `ACE_NO_BLOCK` | item | `last_error.rs:8` | Block number reported when the last error concerns no block. |
 | `fail` | item | `last_error.rs:36` | Records `message` as the last error of this thread and returns `status`. |
 | `fail_with` | item | `last_error.rs:42` | Records a facade error (message and block number) and returns its status code. |
-| `ABI_VERSION` | item | `lib.rs:39` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `ACE_ABI_VERSION` | item | `lib.rs:39` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
 | `AceRangeReader` | item | `range.rs:22` | An open indexed ACE file. Not thread-safe: it keeps a one-block cache. |
 | `AceStatus` | item | `status.rs:6` | Result of a fallible call: [`ACE_OK`] or one of the `ACE_ERR_*` values. |
 | `ACE_OK` | item | `status.rs:9` | The call succeeded. |

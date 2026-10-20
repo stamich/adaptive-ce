@@ -90,7 +90,7 @@ An engine is immutable and may be shared by any number of threads.
 
 | Function | Description |
 |---|---|
-| `AceStatus ace_compress(const AceEngine *e, const uint8_t *in, size_t len, AceBuffer **out, AceBuffer **stats_json)` | Compresses `in`. `stats_json` may be `NULL`; otherwise it receives the [Stats JSON](#stats-json). |
+| `AceStatus ace_compress(const AceEngine *e, const uint8_t *in, size_t len, AceBuffer **out, AceBuffer **stats_json_out)` | Compresses `in`. `stats_json_out` may be `NULL`; otherwise it receives the [Stats JSON](#stats-json). |
 | `AceStatus ace_decompress(const AceEngine *e, const uint8_t *in, size_t len, AceBuffer **out)` | Decompresses a complete ACE file under the engine's limits. |
 | `AceStatus ace_decompress_into(const AceEngine *e, const uint8_t *in, size_t len, uint8_t *out, size_t capacity, size_t *written)` | Decompresses into a caller buffer. `*written` receives the decoded size; if `capacity` is smaller the call returns `ACE_ERR_BUFFER_TOO_SMALL` and writes nothing to `out`. |
 | `AceStatus ace_explain_json(const AceEngine *e, const uint8_t *in, size_t len, AceBuffer **out)` | Per-block planner report; slow. |
@@ -99,7 +99,7 @@ An engine is immutable and may be shared by any number of threads.
 
 | Function | Description |
 |---|---|
-| `AceStatus ace_compress_stream(const AceEngine *e, uint64_t size, AceReadFn read, void *read_ctx, AceWriteFn write, void *write_ctx, AceBuffer **stats_json)` | Reads exactly `size` bytes from `read` and writes the ACE file to `write`. `stats_json` may be `NULL`. |
+| `AceStatus ace_compress_stream(const AceEngine *e, uint64_t size, AceReadFn read, void *read_ctx, AceWriteFn write, void *write_ctx, AceBuffer **stats_json_out)` | Reads exactly `size` bytes from `read` and writes the ACE file to `write`. `stats_json_out` may be `NULL`. |
 | `AceStatus ace_decompress_stream(const AceEngine *e, AceReadFn read, void *read_ctx, AceWriteFn write, void *write_ctx)` | Decodes block by block; memory use is bounded by the block size, not the file size. |
 
 The callbacks are invoked on the calling thread, from inside the call. A callback must not call into ACE. If a callback fails, the ACE call returns `ACE_ERR_IO` and the last error says which callback.

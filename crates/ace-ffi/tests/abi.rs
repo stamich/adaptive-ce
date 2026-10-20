@@ -2,12 +2,12 @@
 
 use std::ffi::CStr;
 
-use ace_ffi::{ace_abi_version, ace_engine_version, ABI_VERSION};
+use ace_ffi::{ace_abi_version, ace_engine_version, ACE_ABI_VERSION};
 
 #[test]
 fn abi_version_is_one() {
     assert_eq!(ace_abi_version(), 1);
-    assert_eq!(ace_abi_version(), ABI_VERSION);
+    assert_eq!(ace_abi_version(), ACE_ABI_VERSION);
 }
 
 #[test]
