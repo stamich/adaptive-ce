@@ -8,12 +8,20 @@
 
 use std::ffi::c_char;
 
+pub mod args;
 pub mod buffer;
+pub mod config;
+pub mod engine;
 pub mod handle;
+pub mod json;
 pub mod last_error;
 pub mod status;
 
 pub use buffer::{ace_buffer_data, ace_buffer_free, ace_buffer_len, buffer_into_raw, AceBuffer};
+pub use config::{ace_config_default, ace_limits_default, AceConfig, AceLimits};
+pub use engine::{
+    ace_compress, ace_decompress, ace_decompress_into, ace_engine_free, ace_engine_new, AceEngine,
+};
 pub use last_error::{ace_last_error_block, ace_last_error_len, ace_last_error_ptr};
 pub use status::*;
 

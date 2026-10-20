@@ -27,6 +27,8 @@ pub const ACE_ERR_IO: AceStatus = 8;
 pub const ACE_ERR_PANIC: AceStatus = 9;
 /// A state the library believes impossible; a bug.
 pub const ACE_ERR_INTERNAL: AceStatus = 10;
+/// A caller-provided output buffer is too small; the required size is reported.
+pub const ACE_ERR_BUFFER_TOO_SMALL: AceStatus = 11;
 
 /// Maps a facade [`ErrorKind`] to its status code.
 ///

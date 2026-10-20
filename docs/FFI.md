@@ -22,9 +22,9 @@ typedef struct AceRangeReader AceRangeReader;  // random access into one ACE fil
 typedef struct AceConfig {
     size_t   struct_size;      // set to sizeof(AceConfig); ace_config_default does it
     uint32_t profile;          // 0 FAST, 1 BALANCED (default), 2 DENSE
-    uint64_t block_size;       // bytes; 0 keeps the library default (1 MiB)
+    uint64_t block_size;       // bytes; 0 keeps the library default (256 KiB)
     uint64_t threads;          // 0 = one per available core
-    uint64_t memory_budget;    // bytes; 0 = no budget
+    uint64_t memory_budget;    // bytes; 0 keeps the library default (256 MiB)
     uint32_t block_size_policy;// 0 fixed (default), 1 auto
     uint32_t access_hint;      // 0 sequential, 1 balanced (default), 2 random access
     uint8_t  write_index;      // non-zero writes the block index (needed for range reads)
@@ -33,6 +33,7 @@ typedef struct AceConfig {
     uint8_t  reserved[5];      // must be zero
 } AceConfig;
 
+// A limit of 0 keeps the library default; ace_limits_default fills the explicit values.
 typedef struct AceLimits {
     size_t   struct_size;
     uint64_t max_output_size;
@@ -91,6 +92,7 @@ An engine is immutable and may be shared by any number of threads.
 |---|---|
 | `AceStatus ace_compress(const AceEngine *e, const uint8_t *in, size_t len, AceBuffer **out, AceBuffer **stats_json)` | Compresses `in`. `stats_json` may be `NULL`; otherwise it receives the [Stats JSON](#stats-json). |
 | `AceStatus ace_decompress(const AceEngine *e, const uint8_t *in, size_t len, AceBuffer **out)` | Decompresses a complete ACE file under the engine's limits. |
+| `AceStatus ace_decompress_into(const AceEngine *e, const uint8_t *in, size_t len, uint8_t *out, size_t capacity, size_t *written)` | Decompresses into a caller buffer. `*written` receives the decoded size; if `capacity` is smaller the call returns `ACE_ERR_BUFFER_TOO_SMALL` and writes nothing to `out`. |
 | `AceStatus ace_explain_json(const AceEngine *e, const uint8_t *in, size_t len, AceBuffer **out)` | Per-block planner report; slow. |
 
 ### Streaming

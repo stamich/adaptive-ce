@@ -42,6 +42,7 @@ an error whose number is part of the ABI and never changes meaning.
 | `ACE_ERR_IO` | 8 | `Io` |
 | `ACE_ERR_PANIC` | 9 | an internal panic that was caught at the boundary |
 | `ACE_ERR_INTERNAL` | 10 | a bug: a state the library believes impossible |
+| `ACE_ERR_BUFFER_TOO_SMALL` | 11 | a caller-provided output buffer is too small; the required size is reported |
 
 New statuses may be appended. A binding maps an unknown value to a generic error and keeps the
 number in the message.
