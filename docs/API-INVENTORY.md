@@ -35,7 +35,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
-| `ace-ffi` | internal | 1 | 0 | 0 |
+| `ace-ffi` | internal | 23 | 0 | 0 |
 | `ace-format` | internal | 33 | 14 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
@@ -549,7 +549,29 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `ABI_VERSION` | item | `lib.rs:13` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `AceBuffer` | item | `buffer.rs:8` | Bytes produced by ACE, released with [`ace_buffer_free`]. |
+| `buffer_into_raw` | item | `buffer.rs:14` | Moves `bytes` into a new buffer handle owned by the caller. |
+| `into_raw` | item | `handle.rs:7` | Moves `value` to the heap and returns the pointer the host keeps. |
+| `release` | item | `handle.rs:16` | Drops a handle created by [`into_raw`]; null is ignored. |
+| `clear_out` | item | `handle.rs:32` | Validates an out-parameter and sets it to null, so a failing call leaves null behind. |
+| `publish` | item | `handle.rs:46` | Stores `value` as a new handle in `out` and returns [`ACE_OK`]. |
+| `NO_BLOCK` | item | `last_error.rs:8` | Block number reported when the last error concerns no block. |
+| `fail` | item | `last_error.rs:36` | Records `message` as the last error of this thread and returns `status`. |
+| `fail_with` | item | `last_error.rs:42` | Records a facade error (message and block number) and returns its status code. |
+| `ABI_VERSION` | item | `lib.rs:22` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `AceStatus` | item | `status.rs:6` | Result of a fallible call: [`ACE_OK`] or one of the `ACE_ERR_*` values. |
+| `ACE_OK` | item | `status.rs:9` | The call succeeded. |
+| `ACE_ERR_INVALID_ARGUMENT` | item | `status.rs:11` | An argument is invalid: a null pointer, a bad struct size, a zero block size, a reversed range. |
+| `ACE_ERR_NOT_ACE_FILE` | item | `status.rs:13` | The input does not start with the ACE signature. |
+| `ACE_ERR_UNSUPPORTED` | item | `status.rs:15` | The input uses a feature this build cannot read (a newer format, an unknown codec). |
+| `ACE_ERR_CORRUPT` | item | `status.rs:17` | The data is damaged or hostile. |
+| `ACE_ERR_CHECKSUM` | item | `status.rs:19` | A checksum does not match. |
+| `ACE_ERR_LIMIT_EXCEEDED` | item | `status.rs:21` | A decode limit was exceeded; nothing was allocated for the offending size. |
+| `ACE_ERR_BLOCK_NOT_FOUND` | item | `status.rs:23` | A block number is outside the file. |
+| `ACE_ERR_IO` | item | `status.rs:25` | Reading or writing failed. |
+| `ACE_ERR_PANIC` | item | `status.rs:27` | A Rust panic was caught at the boundary. |
+| `ACE_ERR_INTERNAL` | item | `status.rs:29` | A state the library believes impossible; a bug. |
+| `status_of` | item | `status.rs:36` | Maps a facade [`ErrorKind`] to its status code. |
 
 ### `ace-format` (internal)
 

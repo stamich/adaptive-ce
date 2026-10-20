@@ -55,6 +55,15 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-bench/src/alloc.rs:72` | block |
 | `crates/ace-bench/src/alloc.rs:75` | fn |
 | `crates/ace-bench/src/alloc.rs:80` | block |
+| `crates/ace-ffi/src/buffer.rs:29` | block |
+| `crates/ace-ffi/src/buffer.rs:40` | block |
+| `crates/ace-ffi/src/buffer.rs:51` | block |
+| `crates/ace-ffi/src/handle.rs:16` | fn |
+| `crates/ace-ffi/src/handle.rs:19` | block |
+| `crates/ace-ffi/src/handle.rs:32` | fn |
+| `crates/ace-ffi/src/handle.rs:37` | block |
+| `crates/ace-ffi/src/handle.rs:46` | fn |
+| `crates/ace-ffi/src/handle.rs:48` | block |
 | `crates/ace-simd/src/avx2.rs:13` | fn |
 | `crates/ace-simd/src/avx2.rs:20` | block |
 | `crates/ace-simd/src/avx2.rs:33` | fn |
@@ -72,3 +81,7 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-bench/tests/limits_before_allocation.rs:64` | fn |
 | `crates/ace-bench/tests/limits_before_allocation.rs:69` | block |
 | `crates/ace-ffi/tests/abi.rs:18` | block |
+| `crates/ace-ffi/tests/handles.rs:19` | block |
+| `crates/ace-ffi/tests/handles.rs:27` | block |
+| `crates/ace-ffi/tests/handles.rs:39` | block |
+| `crates/ace-ffi/tests/handles.rs:49` | block |

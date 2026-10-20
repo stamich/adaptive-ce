@@ -8,6 +8,15 @@
 
 use std::ffi::c_char;
 
+pub mod buffer;
+pub mod handle;
+pub mod last_error;
+pub mod status;
+
+pub use buffer::{ace_buffer_data, ace_buffer_free, ace_buffer_len, buffer_into_raw, AceBuffer};
+pub use last_error::{ace_last_error_block, ace_last_error_len, ace_last_error_ptr};
+pub use status::*;
+
 /// Version of the C ABI. Bumped when a function is removed or a signature, status value or
 /// struct layout changes; adding a function does not change it.
 pub const ABI_VERSION: u32 = 1;
