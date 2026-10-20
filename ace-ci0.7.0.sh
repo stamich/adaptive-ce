@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Vendor-neutral CI entry point for ACE 0.6.1.
+# Vendor-neutral CI entry point for ACE 0.7.0.
 #
-#   ./ace-ci0.6.1.sh pr        build gates + code audit + quick release-performance + demo
-#   ./ace-ci0.6.1.sh release   full ace-release0.6.1.sh (needs ACE_AB_BASELINE_TREE)
-#   ./ace-ci0.6.1.sh fuzz      all 18 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
+#   ./ace-ci0.7.0.sh pr        build gates + code audit + quick release-performance + demo
+#   ./ace-ci0.7.0.sh release   full ace-release0.7.0.sh (needs ACE_AB_BASELINE_TREE)
+#   ./ace-ci0.7.0.sh fuzz      all 18 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
 #                              ACE_FUZZ_CMIN=1 minimises every corpus afterwards
-#   ./ace-ci0.6.1.sh fuzz-smoke  all 18 fuzz targets, ACE_FUZZ_SMOKE_SECONDS each (default 25)
+#   ./ace-ci0.7.0.sh fuzz-smoke  all 18 fuzz targets, ACE_FUZZ_SMOKE_SECONDS each (default 25)
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.6.1.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.7.0.sh"
 cd "$ACE_ROOT"
 
 case "${1:-}" in
   pr)
-    ./ace-build0.6.1.sh --no-demo
-    python3 tools/ace-code_audit0.6.1.py
-    ./ace-benchmark0.6.1.sh release-performance --quick
-    ./demo/ace-run-demo0.6.1.sh
+    ./ace-build0.7.0.sh --no-demo
+    python3 tools/ace-code_audit0.7.0.py
+    ./ace-benchmark0.7.0.sh release-performance --quick
+    ./demo/ace-run-demo0.7.0.sh
     ;;
   release)
     [[ -n "${ACE_AB_BASELINE_TREE:-}" ]] || ace_die "set ACE_AB_BASELINE_TREE to the $ACE_BASELINE source tree"
-    ./ace-release0.6.1.sh "$ACE_AB_BASELINE_TREE"
+    ./ace-release0.7.0.sh "$ACE_AB_BASELINE_TREE"
     ;;
   fuzz|fuzz-smoke)
     # Without nightly + cargo-fuzz the mode is skipped locally; CI sets ACE_FUZZ_REQUIRED=1 so

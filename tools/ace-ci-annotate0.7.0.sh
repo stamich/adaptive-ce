@@ -2,7 +2,7 @@
 # Re-emits the failure lines of a CI log as GitHub `::error::` annotations (at most 40), so a
 # failed job explains itself in the check-run summary.
 #
-#   tools/ace-ci-annotate0.6.1.sh LOG
+#   tools/ace-ci-annotate0.7.0.sh LOG
 set -euo pipefail
 log="${1:?usage: $0 LOG}"
 [[ -f "$log" ]] || exit 0
