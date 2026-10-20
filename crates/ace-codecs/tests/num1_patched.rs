@@ -149,6 +149,29 @@ fn clean_data_gains_nothing() {
     }
 }
 
+/// The in-place patching of the decoder: exceptions on the first and the last stream value and
+/// on every seventh value in between are restored exactly.
+#[test]
+fn dense_exceptions_including_both_ends_round_trip() {
+    let count = 5000usize;
+    let values: Vec<u32> = (0..count)
+        .map(|index| match index {
+            0 => 900_000,
+            last if last == count - 1 => 800_000,
+            seventh if seventh % 7 == 0 => 70_000 + (seventh as u32 % 11),
+            small => 5 + (small as u32 % 3),
+        })
+        .collect();
+    let bytes = u32_bytes(values);
+    let payload = patched(&bytes, NumericWidth::U32);
+    let info = numeric_inspect(&payload).unwrap();
+    assert_eq!(info.mode, NumericMode::Patched);
+    assert!(info
+        .patch
+        .is_some_and(|patch| patch.exception_count > count / 8));
+    assert_eq!(numeric_decode(&payload, bytes.len()).unwrap(), bytes);
+}
+
 /// The exception section and header of the two-spike payload, for the malformed table.
 fn two_spike_payload() -> (Vec<u8>, usize) {
     let input = two_spikes();
