@@ -23,6 +23,17 @@ val buildNative = tasks.register<Exec>("buildNative") {
     onlyIf { !project.hasProperty("skipNativeBuild") && !project.hasProperty("aceNativeDir") }
 }
 
+val buildCorpus = tasks.register<Exec>("buildCorpus") {
+    group = "build"
+    description = "Builds the ace-corpus workload generator that the golden tests run."
+    workingDir = rootDir.parentFile
+    commandLine("cargo", "build", "--release", "-p", "ace-corpus")
+    onlyIf { !project.hasProperty("skipNativeBuild") }
+}
+
+val aceCorpusBin: String = providers.gradleProperty("aceCorpusBin")
+    .orElse(rootDir.parentFile.resolve("target/release/ace-corpus").path).get()
+
 subprojects {
     group = "io.ace"
     version = aceVersion
@@ -55,11 +66,12 @@ subprojects {
 
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
-            dependsOn(buildNative)
+            dependsOn(buildNative, buildCorpus)
             // Panama needs native access; the property tells the loader where the library is.
             jvmArgs("--enable-native-access=ALL-UNNAMED")
             systemProperty("ace.native.path", aceNativeDir)
             systemProperty("ace.repo.root", rootDir.parentFile.path)
+            systemProperty("ace.corpus.bin", aceCorpusBin)
             testLogging {
                 events("failed", "skipped")
                 exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
