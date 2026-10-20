@@ -1,13 +1,13 @@
 # ACE release process
 
-Canonical process of the current release line (0.5.x). Earlier checklists:
+Canonical process of the current release line (0.7.x). Earlier checklists:
 [`history/`](history/) (`RELEASE-CHECKLIST-0.4.6.md`, `RELEASE-CHECKLIST-0.5.0.md`).
 
 ## 1. Automatic pipeline
 
 ```bash
-git worktree add ../ace-0.5.1 v0.5.1            # the previous release, for the interleaved A/B
-./ace-release0.7.0.sh ../ace-0.5.1              # on the reference machine, performance governor
+git worktree add ../ace-0.6.1 v0.6.1            # the previous release, for the interleaved A/B
+./ace-release0.7.0.sh ../ace-0.6.1              # on the reference machine, performance governor
 ```
 
 `ace-release0.7.0.sh` runs every step below, records each in
@@ -18,10 +18,10 @@ git worktree add ../ace-0.5.1 v0.5.1            # the previous release, for the 
 | 1 | `ace-build0.7.0.sh`: fmt, clippy `-D warnings`, check, tests, release build, rustdoc (public and private items) | 0 warnings |
 | 2 | `tools/ace-code_audit0.7.0.py`: `unsafe` placement and `// SAFETY:`, justified clippy allowances, decoder audit (lints present, every referenced test and fuzz target exists) | no violation |
 | 3 | `cargo test --release` (property budget 10 000) incl. `--ignored` large-file tests | all pass |
-| 4 | golden SHA-256 0.5.0 and frozen 0.4.6, auto and `ACE_SIMD=scalar` | identical bytes |
+| 4 | golden SHA-256 0.6.1 and the frozen 0.5.0 and 0.4.6, auto and `ACE_SIMD=scalar` | identical bytes |
 | 5 | CLI determinism: 10 processes × threads × SIMD backend, mixed + f64-noisy | one SHA-256 |
-| 6 | `ace-benchmark0.7.0.sh all --repeat 3` | repeatability PASS |
-| 7 | interleaved A/B vs the previous release + Regression V3 (Unstable → ≤ 2 re-measurements) | PASS (`diagnostic` on a non-`performance` governor is not a pass) |
+| 6 | `ace-benchmark0.7.0.sh all --repeat 3` (includes the `ffi` family and, when Gradle is installed, the JVM benchmark) | repeatability PASS |
+| 7 | interleaved A/B vs the previous release + Regression V3 incl. the `ffi` gates (Unstable → ≤ 2 re-measurements) | PASS (`diagnostic` on a non-`performance` governor is not a pass) |
 | 8 | `docs/PERFORMANCE-0.7.0.md` from the results | generated |
 | 9 | demo | < 1 min, no error |
 | 10 | deterministic source archive, built twice | same SHA-256, script-name audit |
@@ -44,7 +44,7 @@ release.
 | Determinism (threads 1 – 32, in-flight batches, API paths, processes, backends) | identical | `determinism_matrix`, step 5 |
 | Planner V5 invariants, fixed tie-breaks | PASS | `v5_invariants`, `tie_break` |
 | CLI (invalid input, closed pipe, `ace version`) | PASS | `crates/ace-cli/tests/cli.rs` |
-| Fuzz smoke 15 × 25 s | 0 crashes | CI `fuzz-smoke` job |
+| Fuzz smoke 20 × 25 s | 0 crashes | CI `fuzz-smoke` job |
 | Fuzz campaign 15 × 10 min (*manual*) | 0 crashes | `examples/baselines/<version>/FUZZ.md` |
 | Quality, Float lane, stability, performance vs the previous release | PASS | Regression V3 + A/B |
 | Repeatability (3 runs) | deterministic values identical, macro spread ≤ 5 % (decompression ≤ 15 %) | `benchmark-<version>-repeatability.json` |
@@ -53,7 +53,10 @@ release.
 
 ## 3. Manual steps (reference machine: AMD Ryzen 9 5950X)
 
-1. Set the `performance` governor, stop other work, run the pipeline (section 1).
+1. Set the `performance` governor, stop other work, run the pipeline (section 1). Install Gradle
+   and JDK 22 or newer first, so that the JVM side of the `ffi` gates is measured; without them
+   the verdict is `incomplete`. CI covers the JVM tests (`jvm` job, JDK 22 and 25), the header and
+   bindings drift, the C smoke test and the aarch64 golden check on every push.
 2. Fuzz campaign, recorded as `examples/baselines/<version>/FUZZ.md`:
    `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.7.0.sh fuzz`.
 3. Publish the baseline: copy the median documents of step 6 (`examples/results/benchmark-*.json`,
@@ -63,7 +66,7 @@ release.
 4. Merge, then tag the merge commit:
 
    ```bash
-   git tag -a v0.7.0 -m "ACE 0.7.0 — Numeric & Float II" -m "$(cat dist/RELEASE-REPORT.md)"
+   git tag -a v0.7.0 -m "ACE 0.7.0 — Embedding" -m "$(cat dist/RELEASE-REPORT.md)"
    git push origin v0.7.0
    ```
 

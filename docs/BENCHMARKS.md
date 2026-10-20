@@ -1,6 +1,6 @@
 # ACE benchmarks (Harness V3, schema 2.2)
 
-Canonical methodology of the current release (0.5.1). Earlier versions:
+Canonical methodology of the current release (0.7.0; the methodology is that of 0.5.1, families and gates of later releases are marked). Earlier versions:
 [`history/`](history/) (`BENCHMARK-METHODOLOGY-0.4.6.md`, `BENCHMARK-METHODOLOGY-0.5.0.md`).
 Harness V3 dates from 0.4.6, the Float lane families and gates from 0.5.0; 0.5.1 adds
 schema 2.2, three-run repeatability, the governor gate and the `allocation-profile` family
@@ -9,10 +9,10 @@ schema 2.2, three-run repeatability, the governor gate and the `allocation-profi
 ## Running
 
 ```bash
-./ace-benchmark0.6.0.sh all                     # every family + validation + Regression V3
-./ace-benchmark0.6.0.sh all --repeat 3          # release baseline: three runs, repeatability, medians
-./ace-benchmark0.6.0.sh release-performance --quick   # smoke (1 batch; never a release verdict)
-./ace-ab0.6.0.sh /path/to/ace-0.5.0             # interleaved A/B against the previous release
+./ace-benchmark0.7.0.sh all                     # every family + validation + Regression V3
+./ace-benchmark0.7.0.sh all --repeat 3          # release baseline: three runs, repeatability, medians
+./ace-benchmark0.7.0.sh release-performance --quick   # smoke (1 batch; never a release verdict)
+./ace-ab0.7.0.sh /path/to/ace-0.6.1             # interleaved A/B against the previous release
 ```
 
 ## Why (0.4.6)
@@ -284,7 +284,7 @@ geometric delta 1.47x, FAST encode 34.8x the disabled lane, ALP 335 / 1093 MB/s,
 735 / 1261 MB/s. All `format15` gates pass there. The ALP and Patched speed floors (150 / 300 and
 200 / 300 MB/s) stay as set; they can be raised with the next baseline.
 
-Interleaved A/B against 0.6.0 (`tools/ace-ab0.6.1.py`, base tag `v0.6.0`) gets cases for every
+Interleaved A/B against 0.6.0 (0.6.1; the tool is now `tools/ace-ab0.7.0.py`, base tag `v0.6.0`) gets cases for every
 path whose planning changed. Byte-identical cases keep the 0.95 floor; cases whose bytes change
 on purpose are flagged `output_changes` (no identity check) and carry the documented price of
 the change:
@@ -309,6 +309,37 @@ within 25 % of the best base size and only when 16-value chunks of some source d
 8 bits; ALP is counted only for blocks that are not FloatFast-dominant and whose 64-value sample
 is at least half decimal-shaped. Without the ALP rule FAST encode of `f64-constant` fell to 4.4x
 the disabled lane (gate: 5x); with it 17x.
+
+### `ffi` (0.7.0): what the bindings cost
+
+Family `ffi` (`ace-bench ffi`) runs the same operations through the Rust facade (`ace::Engine`)
+and through the exported `ace_*` functions of `ace-ffi` (called exactly as a C host calls them),
+and compares the bytes:
+
+| Row | Content |
+|---|---|
+| `compress`, `decompress` (`mixed_16m`) | the mixed 16 MiB workload; each row has `timing_facade` and `timing_c_abi` |
+| `small_compress`, `small_decompress` (`mixed_64b`, `mixed_1024b`, `mixed_16384b`) | buffers where the fixed cost of a call is visible |
+
+The C ABI side reads the length of the output buffer and releases it without copying the bytes (a
+host that wraps the buffer does not copy either); copying 16 MiB would measure `memcpy`. The
+JVM side is measured by `FfiBenchmark` (`gradle -p jvm :ace-native:ffiBenchmark -PffiOut=<file>`),
+whose JSON is passed to Regression V3 with `--jvm` (`ace-benchmark0.7.0.sh all` runs it when
+Gradle is installed). It reports the zero-copy path (off-heap input, result left in the native
+buffer, the gated one) and the `byte[]` path (copies 16 MiB in and out; informational).
+
+Gates (section `ffi`, speed relative to the Rust facade):
+
+| Gate | Threshold |
+|---|---|
+| `ffi.output_identical` | the C ABI writes and restores the same bytes in every row |
+| `ffi.c_abi_vs_facade.compress_16m`, `.decompress_16m` | ≥ 0.97× |
+| `ffi.jvm_vs_facade.compress_16m`, `.decompress_16m` (zero-copy path) | ≥ 0.90× (skipped without `--jvm`: the verdict is then `incomplete`) |
+| `ffi.overhead.small_*` | diagnostic: C ABI time ÷ facade time per call |
+
+A ratio whose batch MAD exceeds 5 % (JVM: 10 %) is reported `unstable`, not as a failure. The
+thresholds are estimates fixed before the first reference run; the reference run may justify
+different ones, which are then recorded here.
 
 ### Float gates (Regression V3, 0.5.0)
 

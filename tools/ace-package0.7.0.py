@@ -33,13 +33,15 @@ PREFIX = f"ACE-{VERSION}"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 
 #: Directory names never packaged, wherever they appear.
-EXCLUDED_DIRS = {"target", "__pycache__", ".git", ".idea", ".vscode", "artifacts", "dist"}
+EXCLUDED_DIRS = {"target", "__pycache__", ".git", ".idea", ".vscode", "artifacts", "dist", ".gradle"}
 #: Paths (relative, POSIX) never packaged.
 EXCLUDED_PATHS = {"examples/corpus", "fuzz/corpus"}
 #: File-name patterns never packaged.
 EXCLUDED_FILES = [re.compile(p) for p in (r"^\.DS_Store$", r"\.pyc$", r"~$", r"\.swp$")]
 #: Generated results never packaged (only examples/results/README.md is kept).
 EXCLUDED_RESULTS = re.compile(r"^examples/results/(?!README\.md$)")
+#: Gradle build output of the JVM modules (jvm/<module>/build, demo/jvm/build).
+EXCLUDED_GRADLE_BUILD = re.compile(r"^(jvm/[^/]+|demo/jvm)/build(/|$)")
 #: Scripts and tools must carry the product prefix and version in their names.
 NAMED_GLOBS = ("*.sh", "demo/*.sh", "tools/*.py", "tools/*.sh")
 #: Versioned files of an older milestone must not survive in the tree.
@@ -53,7 +55,7 @@ def is_excluded(relative: pathlib.PurePosixPath) -> bool:
         return True
     if any(text == path or text.startswith(path + "/") for path in EXCLUDED_PATHS):
         return True
-    if EXCLUDED_RESULTS.match(text):
+    if EXCLUDED_RESULTS.match(text) or EXCLUDED_GRADLE_BUILD.match(text):
         return True
     return any(pattern.search(relative.name) for pattern in EXCLUDED_FILES)
 
