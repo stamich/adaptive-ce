@@ -158,6 +158,13 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/tests/boundary.rs:122` | block |
 | `crates/ace-ffi/tests/boundary.rs:137` | block |
 | `crates/ace-ffi/tests/boundary.rs:140` | block |
+| `crates/ace-ffi/tests/golden.rs:52` | block |
+| `crates/ace-ffi/tests/golden.rs:63` | block |
+| `crates/ace-ffi/tests/golden.rs:71` | block |
+| `crates/ace-ffi/tests/golden.rs:79` | block |
+| `crates/ace-ffi/tests/golden.rs:95` | block |
+| `crates/ace-ffi/tests/golden.rs:126` | block |
+| `crates/ace-ffi/tests/golden.rs:158` | block |
 | `crates/ace-ffi/tests/handles.rs:19` | block |
 | `crates/ace-ffi/tests/handles.rs:27` | block |
 | `crates/ace-ffi/tests/handles.rs:39` | block |

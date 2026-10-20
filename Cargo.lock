@@ -147,6 +147,10 @@ name = "ace-ffi"
 version = "0.7.0"
 dependencies = [
  "ace",
+ "ace-corpus",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

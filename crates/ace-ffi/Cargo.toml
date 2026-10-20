@@ -17,6 +17,12 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 [dependencies]
 ace = { path = "../ace", features = ["explain"] }
 
+[dev-dependencies]
+ace-corpus = { path = "../ace-corpus" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
 # The only production crate besides `ace-simd` that may contain `unsafe`: it exports C symbols,
 # so it dereferences pointers handed over by the host (docs/FFI.md, docs/UNSAFE-AUDIT.md).
 # Every other lint matches the workspace table.
