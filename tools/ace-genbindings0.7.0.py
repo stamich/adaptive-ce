@@ -33,11 +33,11 @@ JAVA_TYPE = {"LONG": "long", "INT": "int", "BYTE": "byte", "ADDRESS": "MemorySeg
 SIZE = {"LONG": 8, "INT": 4, "BYTE": 1, "ADDRESS": 8}
 
 
-def camel(name: str, upper_first: bool = False) -> str:
-    """``ace_range_read`` -> ``aceRangeRead``."""
+def camel(name: str) -> str:
+    """``ace_range_read`` -> ``aceRangeRead``; ``AceReadFn`` -> ``aceReadFn``."""
     parts = name.split("_")
-    head = parts[0] if not upper_first else parts[0].capitalize()
-    return head + "".join(part.capitalize() for part in parts[1:])
+    head = parts[0][:1].lower() + parts[0][1:]
+    return head + "".join(part[:1].upper() + part[1:] for part in parts[1:])
 
 
 def snake_upper(name: str) -> str:

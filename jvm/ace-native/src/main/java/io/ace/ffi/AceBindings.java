@@ -135,7 +135,7 @@ public final class AceBindings {
     /** Native signature of {@link AceReadFn}. */
     public static final FunctionDescriptor ACE_READ_FN_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG);
     /** Creates a native function pointer that calls {@code function}; it lives as long as {@code arena}. */
-    public static MemorySegment AceReadFnStub(AceReadFn function, Arena arena) {
+    public static MemorySegment aceReadFnStub(AceReadFn function, Arena arena) {
         try {
             MethodHandle handle = MethodHandles.lookup().findVirtual(AceReadFn.class, "apply",
                     MethodType.methodType(long.class, MemorySegment.class, MemorySegment.class, long.class)).bindTo(function);
@@ -155,7 +155,7 @@ public final class AceBindings {
     /** Native signature of {@link AceWriteFn}. */
     public static final FunctionDescriptor ACE_WRITE_FN_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG);
     /** Creates a native function pointer that calls {@code function}; it lives as long as {@code arena}. */
-    public static MemorySegment AceWriteFnStub(AceWriteFn function, Arena arena) {
+    public static MemorySegment aceWriteFnStub(AceWriteFn function, Arena arena) {
         try {
             MethodHandle handle = MethodHandles.lookup().findVirtual(AceWriteFn.class, "apply",
                     MethodType.methodType(int.class, MemorySegment.class, MemorySegment.class, long.class)).bindTo(function);
