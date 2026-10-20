@@ -9,6 +9,7 @@
 val aceVersion: String by project
 val aceJavaRelease: String by project
 val junitVersion: String by project
+val scalaVersion: String by project
 
 val aceNativeDir: String = providers.gradleProperty("aceNativeDir")
     .orElse(rootDir.parentFile.resolve("target/release").path).get()
@@ -41,6 +42,15 @@ subprojects {
             "testImplementation"(platform("org.junit:junit-bom:$junitVersion"))
             "testImplementation"("org.junit.jupiter:junit-jupiter")
             "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+        }
+
+        plugins.withType<ScalaPlugin> {
+            dependencies {
+                "implementation"("org.scala-lang:scala3-library_3:$scalaVersion")
+            }
+            tasks.withType<ScalaCompile>().configureEach {
+                scalaCompileOptions.additionalParameters = listOf("-deprecation", "-feature", "-unchecked")
+            }
         }
 
         tasks.withType<Test>().configureEach {
