@@ -5,6 +5,7 @@ use ace::Engine;
 use crate::args::{handle_ref, input_bytes};
 use crate::buffer::{buffer_into_raw, AceBuffer};
 use crate::config::{config_from_raw, limits_from_raw, AceConfig, AceLimits};
+use crate::guard::{guard, guard_value};
 use crate::handle::{clear_out, publish, release};
 use crate::json::{explain_json, stats_json};
 use crate::last_error::{fail, fail_with};
@@ -29,32 +30,34 @@ pub unsafe extern "C" fn ace_engine_new(
     limits: *const AceLimits,
     out: *mut *mut AceEngine,
 ) -> AceStatus {
-    // SAFETY: `out` is writable by the caller's contract.
-    if let Err(status) = unsafe { clear_out(out) } {
-        return status;
-    }
-    // SAFETY: readable by the caller's contract.
-    let config = match unsafe { config_from_raw(config) } {
-        Ok(config) => config,
-        Err(status) => return status,
-    };
-    // SAFETY: readable by the caller's contract.
-    let limits = match unsafe { limits_from_raw(limits) } {
-        Ok(limits) => limits,
-        Err(status) => return status,
-    };
-    match Engine::new(config) {
-        // SAFETY: `out` was validated above.
-        Ok(engine) => unsafe {
-            publish(
-                out,
-                AceEngine {
-                    engine: engine.with_decode_limits(limits),
-                },
-            )
-        },
-        Err(error) => fail_with(&error),
-    }
+    guard(|| {
+        // SAFETY: `out` is writable by the caller's contract.
+        if let Err(status) = unsafe { clear_out(out) } {
+            return status;
+        }
+        // SAFETY: readable by the caller's contract.
+        let config = match unsafe { config_from_raw(config) } {
+            Ok(config) => config,
+            Err(status) => return status,
+        };
+        // SAFETY: readable by the caller's contract.
+        let limits = match unsafe { limits_from_raw(limits) } {
+            Ok(limits) => limits,
+            Err(status) => return status,
+        };
+        match Engine::new(config) {
+            // SAFETY: `out` was validated above.
+            Ok(engine) => unsafe {
+                publish(
+                    out,
+                    AceEngine {
+                        engine: engine.with_decode_limits(limits),
+                    },
+                )
+            },
+            Err(error) => fail_with(&error),
+        }
+    })
 }
 
 /// Releases an engine. Accepts null.
@@ -65,8 +68,10 @@ pub unsafe extern "C" fn ace_engine_new(
 /// using it may be running on another thread.
 #[no_mangle]
 pub unsafe extern "C" fn ace_engine_free(engine: *mut AceEngine) {
-    // SAFETY: the caller guarantees `engine` is null or live and not used again.
-    unsafe { release(engine) };
+    guard_value((), || {
+        // SAFETY: the caller guarantees `engine` is null or live and not used again.
+        unsafe { release(engine) };
+    });
 }
 
 /// Compresses `len` bytes at `input` into a new buffer.
@@ -86,38 +91,42 @@ pub unsafe extern "C" fn ace_compress(
     out: *mut *mut AceBuffer,
     stats_json_out: *mut *mut AceBuffer,
 ) -> AceStatus {
-    // SAFETY: `out` is writable by the caller's contract.
-    if let Err(status) = unsafe { clear_out(out) } {
-        return status;
-    }
-    if !stats_json_out.is_null() {
-        // SAFETY: non-null and writable by the caller's contract.
-        if let Err(status) = unsafe { clear_out(stats_json_out) } {
+    guard(|| {
+        // SAFETY: `out` is writable by the caller's contract.
+        if let Err(status) = unsafe { clear_out(out) } {
             return status;
         }
-    }
-    // SAFETY: live by the caller's contract.
-    let engine = match unsafe { handle_ref(engine, "engine") } {
-        Ok(engine) => engine,
-        Err(status) => return status,
-    };
-    // SAFETY: readable by the caller's contract.
-    let input = match unsafe { input_bytes(input, len) } {
-        Ok(input) => input,
-        Err(status) => return status,
-    };
-    match engine.engine.compress_with_stats(input) {
-        Ok((bytes, stats)) => {
-            if !stats_json_out.is_null() {
-                // SAFETY: validated above.
-                unsafe { stats_json_out.write(buffer_into_raw(stats_json(&stats).into_bytes())) };
+        if !stats_json_out.is_null() {
+            // SAFETY: non-null and writable by the caller's contract.
+            if let Err(status) = unsafe { clear_out(stats_json_out) } {
+                return status;
             }
-            // SAFETY: validated above.
-            unsafe { out.write(buffer_into_raw(bytes)) };
-            ACE_OK
         }
-        Err(error) => fail_with(&error),
-    }
+        // SAFETY: live by the caller's contract.
+        let engine = match unsafe { handle_ref(engine, "engine") } {
+            Ok(engine) => engine,
+            Err(status) => return status,
+        };
+        // SAFETY: readable by the caller's contract.
+        let input = match unsafe { input_bytes(input, len) } {
+            Ok(input) => input,
+            Err(status) => return status,
+        };
+        match engine.engine.compress_with_stats(input) {
+            Ok((bytes, stats)) => {
+                if !stats_json_out.is_null() {
+                    // SAFETY: validated above.
+                    unsafe {
+                        stats_json_out.write(buffer_into_raw(stats_json(&stats).into_bytes()))
+                    };
+                }
+                // SAFETY: validated above.
+                unsafe { out.write(buffer_into_raw(bytes)) };
+                ACE_OK
+            }
+            Err(error) => fail_with(&error),
+        }
+    })
 }
 
 /// Decompresses a complete ACE file into a new buffer, under the engine's decode limits.
@@ -133,28 +142,30 @@ pub unsafe extern "C" fn ace_decompress(
     len: usize,
     out: *mut *mut AceBuffer,
 ) -> AceStatus {
-    // SAFETY: `out` is writable by the caller's contract.
-    if let Err(status) = unsafe { clear_out(out) } {
-        return status;
-    }
-    // SAFETY: live by the caller's contract.
-    let engine = match unsafe { handle_ref(engine, "engine") } {
-        Ok(engine) => engine,
-        Err(status) => return status,
-    };
-    // SAFETY: readable by the caller's contract.
-    let input = match unsafe { input_bytes(input, len) } {
-        Ok(input) => input,
-        Err(status) => return status,
-    };
-    match engine.engine.decompress(input) {
-        Ok(bytes) => {
-            // SAFETY: validated above.
-            unsafe { out.write(buffer_into_raw(bytes)) };
-            ACE_OK
+    guard(|| {
+        // SAFETY: `out` is writable by the caller's contract.
+        if let Err(status) = unsafe { clear_out(out) } {
+            return status;
         }
-        Err(error) => fail_with(&error),
-    }
+        // SAFETY: live by the caller's contract.
+        let engine = match unsafe { handle_ref(engine, "engine") } {
+            Ok(engine) => engine,
+            Err(status) => return status,
+        };
+        // SAFETY: readable by the caller's contract.
+        let input = match unsafe { input_bytes(input, len) } {
+            Ok(input) => input,
+            Err(status) => return status,
+        };
+        match engine.engine.decompress(input) {
+            Ok(bytes) => {
+                // SAFETY: validated above.
+                unsafe { out.write(buffer_into_raw(bytes)) };
+                ACE_OK
+            }
+            Err(error) => fail_with(&error),
+        }
+    })
 }
 
 /// Decompresses into a caller-provided buffer.
@@ -176,44 +187,46 @@ pub unsafe extern "C" fn ace_decompress_into(
     capacity: usize,
     written: *mut usize,
 ) -> AceStatus {
-    if written.is_null() {
-        return fail(ACE_ERR_INVALID_ARGUMENT, "written pointer is null");
-    }
-    // SAFETY: non-null and writable by the caller's contract.
-    unsafe { written.write(0) };
-    if capacity > 0 && out.is_null() {
-        return fail(ACE_ERR_INVALID_ARGUMENT, "output pointer is null");
-    }
-    // SAFETY: live by the caller's contract.
-    let engine = match unsafe { handle_ref(engine, "engine") } {
-        Ok(engine) => engine,
-        Err(status) => return status,
-    };
-    // SAFETY: readable by the caller's contract.
-    let input = match unsafe { input_bytes(input, len) } {
-        Ok(input) => input,
-        Err(status) => return status,
-    };
-    let bytes = match engine.engine.decompress(input) {
-        Ok(bytes) => bytes,
-        Err(error) => return fail_with(&error),
-    };
-    // SAFETY: non-null and writable.
-    unsafe { written.write(bytes.len()) };
-    if bytes.len() > capacity {
-        return fail(
-            ACE_ERR_BUFFER_TOO_SMALL,
-            &format!(
-                "output buffer holds {capacity} bytes, {} are needed",
-                bytes.len()
-            ),
-        );
-    }
-    if !bytes.is_empty() {
-        // SAFETY: `out` is valid for `capacity >= bytes.len()` bytes and cannot overlap `bytes`.
-        unsafe { std::ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len()) };
-    }
-    ACE_OK
+    guard(|| {
+        if written.is_null() {
+            return fail(ACE_ERR_INVALID_ARGUMENT, "written pointer is null");
+        }
+        // SAFETY: non-null and writable by the caller's contract.
+        unsafe { written.write(0) };
+        if capacity > 0 && out.is_null() {
+            return fail(ACE_ERR_INVALID_ARGUMENT, "output pointer is null");
+        }
+        // SAFETY: live by the caller's contract.
+        let engine = match unsafe { handle_ref(engine, "engine") } {
+            Ok(engine) => engine,
+            Err(status) => return status,
+        };
+        // SAFETY: readable by the caller's contract.
+        let input = match unsafe { input_bytes(input, len) } {
+            Ok(input) => input,
+            Err(status) => return status,
+        };
+        let bytes = match engine.engine.decompress(input) {
+            Ok(bytes) => bytes,
+            Err(error) => return fail_with(&error),
+        };
+        // SAFETY: non-null and writable.
+        unsafe { written.write(bytes.len()) };
+        if bytes.len() > capacity {
+            return fail(
+                ACE_ERR_BUFFER_TOO_SMALL,
+                &format!(
+                    "output buffer holds {capacity} bytes, {} are needed",
+                    bytes.len()
+                ),
+            );
+        }
+        if !bytes.is_empty() {
+            // SAFETY: `out` is valid for `capacity >= bytes.len()` bytes and cannot overlap `bytes`.
+            unsafe { std::ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len()) };
+        }
+        ACE_OK
+    })
 }
 
 /// Reports, per block, which pipeline the planner selects and which it considered, as JSON.
@@ -230,26 +243,28 @@ pub unsafe extern "C" fn ace_explain_json(
     len: usize,
     out: *mut *mut AceBuffer,
 ) -> AceStatus {
-    // SAFETY: `out` is writable by the caller's contract.
-    if let Err(status) = unsafe { clear_out(out) } {
-        return status;
-    }
-    // SAFETY: live by the caller's contract.
-    let engine = match unsafe { handle_ref(engine, "engine") } {
-        Ok(engine) => engine,
-        Err(status) => return status,
-    };
-    // SAFETY: readable by the caller's contract.
-    let input = match unsafe { input_bytes(input, len) } {
-        Ok(input) => input,
-        Err(status) => return status,
-    };
-    match engine.engine.explain(input) {
-        Ok(reports) => {
-            // SAFETY: validated above.
-            unsafe { out.write(buffer_into_raw(explain_json(&reports).into_bytes())) };
-            ACE_OK
+    guard(|| {
+        // SAFETY: `out` is writable by the caller's contract.
+        if let Err(status) = unsafe { clear_out(out) } {
+            return status;
         }
-        Err(error) => fail_with(&error),
-    }
+        // SAFETY: live by the caller's contract.
+        let engine = match unsafe { handle_ref(engine, "engine") } {
+            Ok(engine) => engine,
+            Err(status) => return status,
+        };
+        // SAFETY: readable by the caller's contract.
+        let input = match unsafe { input_bytes(input, len) } {
+            Ok(input) => input,
+            Err(status) => return status,
+        };
+        match engine.engine.explain(input) {
+            Ok(reports) => {
+                // SAFETY: validated above.
+                unsafe { out.write(buffer_into_raw(explain_json(&reports).into_bytes())) };
+                ACE_OK
+            }
+            Err(error) => fail_with(&error),
+        }
+    })
 }

@@ -51,7 +51,7 @@ struct Source {
     fail_after: Option<usize>,
 }
 
-unsafe extern "C" fn read_callback(ctx: *mut c_void, buf: *mut u8, capacity: usize) -> i64 {
+unsafe extern "C-unwind" fn read_callback(ctx: *mut c_void, buf: *mut u8, capacity: usize) -> i64 {
     // SAFETY: `ctx` is the `Source` the test passed and outlives the call.
     let source = unsafe { &mut *ctx.cast::<Source>() };
     if source
@@ -67,13 +67,17 @@ unsafe extern "C" fn read_callback(ctx: *mut c_void, buf: *mut u8, capacity: usi
     count as i64
 }
 
-unsafe extern "C" fn write_callback(ctx: *mut c_void, buf: *const u8, len: usize) -> AceStatus {
+unsafe extern "C-unwind" fn write_callback(
+    ctx: *mut c_void,
+    buf: *const u8,
+    len: usize,
+) -> AceStatus {
     // SAFETY: `ctx` is the `Vec` the test passed; `buf` holds `len` bytes.
     unsafe { (*ctx.cast::<Vec<u8>>()).extend_from_slice(std::slice::from_raw_parts(buf, len)) };
     ACE_OK
 }
 
-unsafe extern "C" fn failing_write(_: *mut c_void, _: *const u8, _: usize) -> AceStatus {
+unsafe extern "C-unwind" fn failing_write(_: *mut c_void, _: *const u8, _: usize) -> AceStatus {
     ACE_ERR_IO
 }
 

@@ -12,6 +12,7 @@ pub mod args;
 pub mod buffer;
 pub mod config;
 pub mod engine;
+pub mod guard;
 pub mod handle;
 pub mod json;
 pub mod last_error;

@@ -35,7 +35,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
-| `ace-ffi` | internal | 36 | 0 | 0 |
+| `ace-ffi` | internal | 38 | 0 | 0 |
 | `ace-format` | internal | 33 | 14 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
@@ -551,13 +551,15 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 |---|---|---|---|
 | `input_bytes` | item | `args.rs:18` | Borrows `len` bytes at `ptr` for the duration of a call. |
 | `handle_ref` | item | `args.rs:44` | Borrows a handle for the duration of a call. |
-| `AceBuffer` | item | `buffer.rs:8` | Bytes produced by ACE, released with [`ace_buffer_free`]. |
-| `buffer_into_raw` | item | `buffer.rs:14` | Moves `bytes` into a new buffer handle owned by the caller. |
-| `AceConfig` | item | `config.rs:13` | Compression settings. See `docs/FFI.md`. |
-| `AceLimits` | item | `config.rs:41` | Decode limits. A field of 0 keeps the library default. See `docs/FFI.md`. |
-| `config_from_raw` | item | `config.rs:168` | Converts the caller's `AceConfig` (null = defaults) into a validated facade [`Config`]. |
-| `limits_from_raw` | item | `config.rs:224` | Converts the caller's `AceLimits` (null = defaults) into facade [`DecodeLimits`]. |
-| `AceEngine` | item | `engine.rs:14` | A compression engine. Immutable after creation, so any number of threads may share it. |
+| `AceBuffer` | item | `buffer.rs:9` | Bytes produced by ACE, released with [`ace_buffer_free`]. |
+| `buffer_into_raw` | item | `buffer.rs:15` | Moves `bytes` into a new buffer handle owned by the caller. |
+| `AceConfig` | item | `config.rs:14` | Compression settings. See `docs/FFI.md`. |
+| `AceLimits` | item | `config.rs:42` | Decode limits. A field of 0 keeps the library default. See `docs/FFI.md`. |
+| `config_from_raw` | item | `config.rs:173` | Converts the caller's `AceConfig` (null = defaults) into a validated facade [`Config`]. |
+| `limits_from_raw` | item | `config.rs:229` | Converts the caller's `AceLimits` (null = defaults) into facade [`DecodeLimits`]. |
+| `AceEngine` | item | `engine.rs:15` | A compression engine. Immutable after creation, so any number of threads may share it. |
+| `guard_value` | item | `guard.rs:27` | Runs `body`; if it panics, records the panic as the last error and returns `on_panic`. |
+| `guard` | item | `guard.rs:39` | [`guard_value`] for functions that return a status: a panic becomes [`ACE_ERR_PANIC`]. |
 | `into_raw` | item | `handle.rs:7` | Moves `value` to the heap and returns the pointer the host keeps. |
 | `release` | item | `handle.rs:16` | Drops a handle created by [`into_raw`]; null is ignored. |
 | `clear_out` | item | `handle.rs:32` | Validates an out-parameter and sets it to null, so a failing call leaves null behind. |
@@ -567,8 +569,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `NO_BLOCK` | item | `last_error.rs:8` | Block number reported when the last error concerns no block. |
 | `fail` | item | `last_error.rs:36` | Records `message` as the last error of this thread and returns `status`. |
 | `fail_with` | item | `last_error.rs:42` | Records a facade error (message and block number) and returns its status code. |
-| `ABI_VERSION` | item | `lib.rs:38` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
-| `AceRangeReader` | item | `range.rs:21` | An open indexed ACE file. Not thread-safe: it keeps a one-block cache. |
+| `ABI_VERSION` | item | `lib.rs:39` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `AceRangeReader` | item | `range.rs:22` | An open indexed ACE file. Not thread-safe: it keeps a one-block cache. |
 | `AceStatus` | item | `status.rs:6` | Result of a fallible call: [`ACE_OK`] or one of the `ACE_ERR_*` values. |
 | `ACE_OK` | item | `status.rs:9` | The call succeeded. |
 | `ACE_ERR_INVALID_ARGUMENT` | item | `status.rs:11` | An argument is invalid: a null pointer, a bad struct size, a zero block size, a reversed range. |
@@ -583,8 +585,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ACE_ERR_INTERNAL` | item | `status.rs:29` | A state the library believes impossible; a bug. |
 | `ACE_ERR_BUFFER_TOO_SMALL` | item | `status.rs:31` | A caller-provided output buffer is too small; the required size is reported. |
 | `status_of` | item | `status.rs:38` | Maps a facade [`ErrorKind`] to its status code. |
-| `AceReadFn` | item | `stream.rs:17` | Host callback that supplies input: stores up to `capacity` bytes in `buf` and returns how many |
-| `AceWriteFn` | item | `stream.rs:22` | Host callback that receives output: consumes `len` bytes at `buf` and returns `ACE_OK`, or any |
+| `AceReadFn` | item | `stream.rs:18` | Host callback that supplies input: stores up to `capacity` bytes in `buf` and returns how many |
+| `AceWriteFn` | item | `stream.rs:23` | Host callback that receives output: consumes `len` bytes at `buf` and returns `ACE_OK`, or any |
 
 ### `ace-format` (internal)
 

@@ -4,6 +4,7 @@ use std::mem::size_of;
 
 use ace::{AccessHint, BlockSizePolicy, Config, DecodeLimits, Profile};
 
+use crate::guard::guard_value;
 use crate::last_error::fail;
 use crate::status::{AceStatus, ACE_ERR_INVALID_ARGUMENT};
 
@@ -95,10 +96,12 @@ impl AceLimits {
 /// `out` must be null or valid for a write of one `AceConfig`.
 #[no_mangle]
 pub unsafe extern "C" fn ace_config_default(out: *mut AceConfig) {
-    if !out.is_null() {
-        // SAFETY: non-null and writable by the caller's contract.
-        unsafe { out.write(AceConfig::defaults()) };
-    }
+    guard_value((), || {
+        if !out.is_null() {
+            // SAFETY: non-null and writable by the caller's contract.
+            unsafe { out.write(AceConfig::defaults()) };
+        }
+    });
 }
 
 /// Fills `out` with the default decode limits, including `struct_size`. Does nothing for null.
@@ -108,10 +111,12 @@ pub unsafe extern "C" fn ace_config_default(out: *mut AceConfig) {
 /// `out` must be null or valid for a write of one `AceLimits`.
 #[no_mangle]
 pub unsafe extern "C" fn ace_limits_default(out: *mut AceLimits) {
-    if !out.is_null() {
-        // SAFETY: non-null and writable by the caller's contract.
-        unsafe { out.write(AceLimits::defaults()) };
-    }
+    guard_value((), || {
+        if !out.is_null() {
+            // SAFETY: non-null and writable by the caller's contract.
+            unsafe { out.write(AceLimits::defaults()) };
+        }
+    });
 }
 
 /// Copies the part of `*source` that both sides know over `target`.

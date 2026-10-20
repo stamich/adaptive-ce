@@ -114,7 +114,7 @@ ABI v1 ships with 0.7.0. The ABI version is independent of the file format versi
 ### 7. Panics and unwinding
 
 No Rust panic crosses the boundary. Every exported function runs its body under
-`catch_unwind` and reports a caught panic as `ACE_ERR_PANIC`. The library is built with
+`catch_unwind` and reports a caught panic as `ACE_ERR_PANIC`. This includes a panic that a Rust host callback unwinds into ACE (the callback types are `extern "C-unwind"`; a C host callback never unwinds). The `ace_last_error_*` accessors and the two version functions cannot fail and are not wrapped, so a wrapper never overwrites the message they report. The library is built with
 `panic = "unwind"` so the catch works; a panic hook is not installed by ACE.
 
 ### 8. Memory and limits
