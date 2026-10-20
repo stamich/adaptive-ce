@@ -35,7 +35,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
-| `ace-ffi` | internal | 38 | 0 | 0 |
+| `ace-ffi` | internal | 40 | 0 | 0 |
 | `ace-format` | internal | 33 | 14 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
@@ -558,6 +558,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `config_from_raw` | item | `config.rs:173` | Converts the caller's `AceConfig` (null = defaults) into a validated facade [`Config`]. |
 | `limits_from_raw` | item | `config.rs:229` | Converts the caller's `AceLimits` (null = defaults) into facade [`DecodeLimits`]. |
 | `AceEngine` | item | `engine.rs:15` | A compression engine. Immutable after creation, so any number of threads may share it. |
+| `decode` | item | `fuzzing.rs:77` | Garbage through `ace_decompress`, `ace_decompress_into` and the range functions. |
+| `handles` | item | `fuzzing.rs:168` | Random sequences of valid and invalid calls over engines, buffers and readers. |
 | `guard_value` | item | `guard.rs:27` | Runs `body`; if it panics, records the panic as the last error and returns `on_panic`. |
 | `guard` | item | `guard.rs:39` | [`guard_value`] for functions that return a status: a panic becomes [`ACE_ERR_PANIC`]. |
 | `into_raw` | item | `handle.rs:7` | Moves `value` to the heap and returns the pointer the host keeps. |
@@ -569,7 +571,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ACE_NO_BLOCK` | item | `last_error.rs:8` | Block number reported when the last error concerns no block. |
 | `fail` | item | `last_error.rs:36` | Records `message` as the last error of this thread and returns `status`. |
 | `fail_with` | item | `last_error.rs:42` | Records a facade error (message and block number) and returns its status code. |
-| `ACE_ABI_VERSION` | item | `lib.rs:39` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `ACE_ABI_VERSION` | item | `lib.rs:40` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
 | `AceRangeReader` | item | `range.rs:22` | An open indexed ACE file. Not thread-safe: it keeps a one-block cache. |
 | `AceStatus` | item | `status.rs:6` | Result of a fallible call: [`ACE_OK`] or one of the `ACE_ERR_*` values. |
 | `ACE_OK` | item | `status.rs:9` | The call succeeded. |
