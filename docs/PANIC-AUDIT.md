@@ -246,3 +246,39 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/tests/stream_range.rs:339` | block |
 | `crates/ace-ffi/tests/stream_range.rs:352` | block |
 | `crates/ace-ffi/tests/stream_range.rs:356` | block |
+
+## C ABI entry points (`crates/ace-ffi`)
+
+No Rust panic may unwind into the host (`docs/NATIVE-INTEROP.md`, rule 7): every exported
+function runs under `guard` / `guard_value` except the infallible accessors.
+
+**26** exported functions, **21** guarded, **5** infallible accessors, **26** called by a test.
+
+| Function | File | Panic guard | Tested |
+|---|---|---|---|
+| `ace_buffer_data` | `crates/ace-ffi/src/buffer.rs` | yes | yes |
+| `ace_buffer_len` | `crates/ace-ffi/src/buffer.rs` | yes | yes |
+| `ace_buffer_free` | `crates/ace-ffi/src/buffer.rs` | yes | yes |
+| `ace_config_default` | `crates/ace-ffi/src/config.rs` | yes | yes |
+| `ace_limits_default` | `crates/ace-ffi/src/config.rs` | yes | yes |
+| `ace_engine_new` | `crates/ace-ffi/src/engine.rs` | yes | yes |
+| `ace_engine_free` | `crates/ace-ffi/src/engine.rs` | yes | yes |
+| `ace_compress` | `crates/ace-ffi/src/engine.rs` | yes | yes |
+| `ace_decompress` | `crates/ace-ffi/src/engine.rs` | yes | yes |
+| `ace_decompress_into` | `crates/ace-ffi/src/engine.rs` | yes | yes |
+| `ace_explain_json` | `crates/ace-ffi/src/engine.rs` | yes | yes |
+| `ace_last_error_ptr` | `crates/ace-ffi/src/last_error.rs` | no (infallible) | yes |
+| `ace_last_error_len` | `crates/ace-ffi/src/last_error.rs` | no (infallible) | yes |
+| `ace_last_error_block` | `crates/ace-ffi/src/last_error.rs` | no (infallible) | yes |
+| `ace_abi_version` | `crates/ace-ffi/src/lib.rs` | no (infallible) | yes |
+| `ace_engine_version` | `crates/ace-ffi/src/lib.rs` | no (infallible) | yes |
+| `ace_range_open` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_range_open_path` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_range_len` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_range_block_count` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_range_read` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_range_read_block` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_range_last_stats` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_range_free` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_compress_stream` | `crates/ace-ffi/src/stream.rs` | yes | yes |
+| `ace_decompress_stream` | `crates/ace-ffi/src/stream.rs` | yes | yes |

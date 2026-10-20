@@ -17,6 +17,11 @@ Checks (exit 1 on violation):
   every test named in the decoder field table (``DECODER_FIELDS``) and every fuzz target named
   for the unlinted hot loops (``HOT_LOOPS``) exists.
 
+* every ``#[no_mangle]`` function of ``crates/ace-ffi`` runs under ``guard`` / ``guard_value``
+  (panic containment) unless it is one of the ``FFI_INFALLIBLE`` accessors, is declared in
+  ``include/ace.h``, is called by a test in ``crates/ace-ffi/tests``, and the fuzz targets
+  ``ffi_decode`` and ``ffi_handles`` exist.
+
 Writes the generated ``docs/PANIC-AUDIT.md``, ``docs/DECODER-AUDIT.md`` and
 ``docs/API-INVENTORY.md`` (``--write``).
 
@@ -453,7 +458,8 @@ def render_api() -> str:
     return "\n".join(lines) + "\n"
 
 
-def render(allows: list[tuple[str, int, str, str]], unsafe_sites: list[tuple[str, int, str]]) -> str:
+def render(allows: list[tuple[str, int, str, str]], unsafe_sites: list[tuple[str, int, str]],
+           ffi_rows: list[tuple[str, str, bool, bool]]) -> str:
     """Markdown of the generated panic audit."""
     panic_allows = [site for site in allows if any(lint in site[2] for lint in PANIC_LINTS)]
     lines = [
@@ -485,6 +491,16 @@ def render(allows: list[tuple[str, int, str, str]], unsafe_sites: list[tuple[str
     lines += ["", "## `unsafe` inventory (details: `docs/UNSAFE-AUDIT.md`)", "",
               "| Location | Kind |", "|---|---|"]
     lines += [f"| `{f}:{n}` | {k} |" for f, n, k in unsafe_sites]
+    lines += ["", "## C ABI entry points (`crates/ace-ffi`)", "",
+              "No Rust panic may unwind into the host (`docs/NATIVE-INTEROP.md`, rule 7): every exported",
+              "function runs under `guard` / `guard_value` except the infallible accessors.", "",
+              f"**{len(ffi_rows)}** exported functions, "
+              f"**{sum(1 for r in ffi_rows if r[2])}** guarded, "
+              f"**{sum(1 for r in ffi_rows if not r[2])}** infallible accessors, "
+              f"**{sum(1 for r in ffi_rows if r[3])}** called by a test.", "",
+              "| Function | File | Panic guard | Tested |", "|---|---|---|---|"]
+    lines += [f"| `{n}` | `{f}` | {'yes' if g else 'no (infallible)'} | {'yes' if t else 'no'} |"
+              for n, f, g, t in ffi_rows]
     return "\n".join(lines) + "\n"
 
 
@@ -500,6 +516,56 @@ def audit_public_api(problems: list[str]) -> None:
                 problems.append(f"{file}:{number}: public item `{item}` has no doc comment")
 
 
+#: Exported functions that cannot fail and therefore are not wrapped in a panic guard: a guard
+#: would overwrite the last-error message they report.
+FFI_INFALLIBLE = {
+    "ace_abi_version", "ace_engine_version",
+    "ace_last_error_ptr", "ace_last_error_len", "ace_last_error_block",
+}
+FFI_FUZZ_TARGETS = ("ffi_decode", "ffi_handles")
+
+
+def ffi_entry_points() -> list[tuple[str, str, bool]]:
+    """Exported C functions of ``ace-ffi`` as ``(name, file, guarded)``."""
+    found = []
+    for path in sorted((ROOT / "crates" / "ace-ffi" / "src").glob("*.rs")):
+        lines = path.read_text().splitlines()
+        for index, line in enumerate(lines):
+            if line.strip() != "#[no_mangle]":
+                continue
+            signature = lines[index + 1]
+            name = signature.split("fn ", 1)[1].split("(", 1)[0].strip()
+            end = index + 1
+            while end < len(lines) and lines[end] != "}":
+                end += 1
+            body = "\n".join(lines[index + 1:end])
+            guarded = "guard(" in body or "guard_value(" in body
+            found.append((name, path.relative_to(ROOT).as_posix(), guarded))
+    return found
+
+
+def audit_ffi(problems: list[str]) -> list[tuple[str, str, bool, bool]]:
+    """Checks the C ABI crate; returns ``(name, file, guarded, tested)`` per entry point."""
+    header = (ROOT / "include" / "ace.h").read_text()
+    tests = "\n".join(p.read_text() for p in sorted((ROOT / "crates" / "ace-ffi" / "tests").glob("*.rs")))
+    tests += (ROOT / "crates" / "ace-ffi" / "src" / "fuzzing.rs").read_text()
+    rows = []
+    for name, file, guarded in ffi_entry_points():
+        if not guarded and name not in FFI_INFALLIBLE:
+            problems.append(f"{file}: `{name}` is exported without guard()/guard_value()")
+        if re.search(rf"\b{name}\(", header) is None:
+            problems.append(f"include/ace.h: `{name}` is not declared")
+        tested = re.search(rf"\b{name}\b", tests) is not None
+        if not tested:
+            problems.append(f"crates/ace-ffi/tests: `{name}` is never called by a test")
+        rows.append((name, file, guarded, tested))
+    cargo = (ROOT / "fuzz" / "Cargo.toml").read_text()
+    for target in FFI_FUZZ_TARGETS:
+        if not (ROOT / "fuzz" / "fuzz_targets" / f"{target}.rs").exists() or f'name = "{target}"' not in cargo:
+            problems.append(f"fuzz: target `{target}` is missing")
+    return rows
+
+
 def main(argv: list[str]) -> int:
     """Run the audit; with ``--write`` regenerate the Markdown report."""
     problems: list[str] = []
@@ -508,9 +574,10 @@ def main(argv: list[str]) -> int:
     audit_test_layout(problems)
     audit_decoder(problems)
     audit_public_api(problems)
+    ffi_rows = audit_ffi(problems)
     if "--write" in argv:
         target = ROOT / "docs" / "PANIC-AUDIT.md"
-        target.write_text(render(allows, unsafe_sites))
+        target.write_text(render(allows, unsafe_sites, ffi_rows))
         print(f"written {target.relative_to(ROOT)}")
         target = ROOT / "docs" / "DECODER-AUDIT.md"
         target.write_text(render_decoder(allows))

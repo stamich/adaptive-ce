@@ -10,10 +10,10 @@ Canonical audit of the current release (0.7.0). Earlier versions: [`history/`](h
 | `ace-ffi` (production, 0.7.0) | exports the C ABI of `include/ace.h`: it dereferences pointers and function pointers handed over by the host | `unsafe_op_in_unsafe_fn = deny`, `undocumented_unsafe_blocks = deny`, `missing_safety_doc = deny`, panic lints |
 | `ace-bench` (benchmark harness and its tests, not shipped as a library) | counting `GlobalAlloc` | `unsafe_op_in_unsafe_fn = deny`, `undocumented_unsafe_blocks = deny`, `missing_safety_doc = deny` |
 
-**0.7.0 adds the `ace-ffi` crate**, the only place with `unsafe` outside `ace-simd`. Every exported function is `unsafe extern "C"` with a `# Safety` section, every `unsafe` block has a `// SAFETY:` comment, and the audit allows `unsafe` in `crates/ace-ffi/src/` and `crates/ace-ffi/tests/` only. The rules the host must follow are in [FFI.md](FFI.md) and [NATIVE-INTEROP.md](NATIVE-INTEROP.md).
+**0.7.0 adds the `ace-ffi` crate**, the only place with `unsafe` outside `ace-simd`. Every exported function is `unsafe extern "C"` with a `# Safety` section, every `unsafe` block has a `// SAFETY:` comment, and the audit allows `unsafe` in `crates/ace-ffi/src/` and `crates/ace-ffi/tests/` only. The rules the host must follow are in [FFI.md](FFI.md) and [NATIVE-INTEROP.md](NATIVE-INTEROP.md). The audit script also checks the C ABI crate: every exported function runs under `guard` / `guard_value` (except five infallible accessors), is declared in `include/ace.h` and is called by a test, and the fuzz targets `ffi_decode` and `ffi_handles` exist; the table is in [PANIC-AUDIT.md](PANIC-AUDIT.md).
 
 0.5.0 and 0.5.1 added no production `unsafe`. 0.5.1 adds one test-only allocator
-(`crates/ace-bench/tests/limits_before_allocation.rs`, see below). `tools/ace-code_audit0.6.0.py`
+(`crates/ace-bench/tests/limits_before_allocation.rs`, see below). `tools/ace-code_audit0.7.0.py`
 scans production code, build scripts and tests and fails if `unsafe` appears outside the
 audited files or without a `// SAFETY:` comment; the generated inventory is in
 [`PANIC-AUDIT.md`](PANIC-AUDIT.md).
