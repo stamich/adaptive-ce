@@ -15,7 +15,9 @@ pub mod engine;
 pub mod handle;
 pub mod json;
 pub mod last_error;
+pub mod range;
 pub mod status;
+pub mod stream;
 
 pub use buffer::{ace_buffer_data, ace_buffer_free, ace_buffer_len, buffer_into_raw, AceBuffer};
 pub use config::{ace_config_default, ace_limits_default, AceConfig, AceLimits};
@@ -23,7 +25,12 @@ pub use engine::{
     ace_compress, ace_decompress, ace_decompress_into, ace_engine_free, ace_engine_new, AceEngine,
 };
 pub use last_error::{ace_last_error_block, ace_last_error_len, ace_last_error_ptr};
+pub use range::{
+    ace_range_block_count, ace_range_free, ace_range_last_stats, ace_range_len, ace_range_open,
+    ace_range_open_path, ace_range_read, ace_range_read_block, AceRangeReader,
+};
 pub use status::*;
+pub use stream::{ace_compress_stream, ace_decompress_stream, AceReadFn, AceWriteFn};
 
 /// Version of the C ABI. Bumped when a function is removed or a signature, status value or
 /// struct layout changes; adding a function does not change it.

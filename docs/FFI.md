@@ -126,6 +126,7 @@ fewer or more than `size` bytes gives `ACE_ERR_CORRUPT`.
 | `AceStatus ace_range_block_count(const AceRangeReader *r, uint64_t *out)` | Number of blocks. |
 | `AceStatus ace_range_read(AceRangeReader *r, uint64_t start, uint64_t end, AceBuffer **out)` | Original bytes `[start, end)`. |
 | `AceStatus ace_range_read_block(AceRangeReader *r, uint64_t block, AceBuffer **out)` | One whole block. |
+| `AceStatus ace_range_last_stats(const AceRangeReader *r, uint64_t *logical, uint64_t *physical, uint64_t *blocks)` | Work of the last `ace_range_read`: bytes asked for, compressed bytes read, blocks decoded. Any output may be `NULL`. |
 | `void ace_range_free(AceRangeReader *r)` | Releases it; accepts `NULL`. |
 
 A reader keeps a one-block cache, so it is used by one thread at a time. Open one reader per

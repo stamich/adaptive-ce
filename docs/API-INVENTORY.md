@@ -35,7 +35,7 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
-| `ace-ffi` | internal | 32 | 0 | 0 |
+| `ace-ffi` | internal | 35 | 0 | 0 |
 | `ace-format` | internal | 33 | 14 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
@@ -566,7 +566,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `NO_BLOCK` | item | `last_error.rs:8` | Block number reported when the last error concerns no block. |
 | `fail` | item | `last_error.rs:36` | Records `message` as the last error of this thread and returns `status`. |
 | `fail_with` | item | `last_error.rs:42` | Records a facade error (message and block number) and returns its status code. |
-| `ABI_VERSION` | item | `lib.rs:30` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `ABI_VERSION` | item | `lib.rs:37` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `AceRangeReader` | item | `range.rs:21` | An open indexed ACE file. Not thread-safe: it keeps a one-block cache. |
 | `AceStatus` | item | `status.rs:6` | Result of a fallible call: [`ACE_OK`] or one of the `ACE_ERR_*` values. |
 | `ACE_OK` | item | `status.rs:9` | The call succeeded. |
 | `ACE_ERR_INVALID_ARGUMENT` | item | `status.rs:11` | An argument is invalid: a null pointer, a bad struct size, a zero block size, a reversed range. |
@@ -581,6 +582,8 @@ ACE 0.6.0 removed the `#[deprecated]` entry points of 0.5.1 and narrowed nothing
 | `ACE_ERR_INTERNAL` | item | `status.rs:29` | A state the library believes impossible; a bug. |
 | `ACE_ERR_BUFFER_TOO_SMALL` | item | `status.rs:31` | A caller-provided output buffer is too small; the required size is reported. |
 | `status_of` | item | `status.rs:38` | Maps a facade [`ErrorKind`] to its status code. |
+| `AceReadFn` | item | `stream.rs:17` | Host callback that supplies input: stores up to `capacity` bytes in `buf` and returns how many |
+| `AceWriteFn` | item | `stream.rs:22` | Host callback that receives output: consumes `len` bytes at `buf` and returns `ACE_OK`, or any |
 
 ### `ace-format` (internal)
 
