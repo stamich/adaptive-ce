@@ -14,3 +14,7 @@ dist/
 lcov.info
 clippy-report.json
 .scannerwork/
+
+# JVM build output
+jvm/.gradle/
+jvm/**/build/

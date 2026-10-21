@@ -1,0 +1,43 @@
+[package]
+name = "ace-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "C ABI of the Adaptive Compression Engine (include/ace.h)"
+publish = false
+
+[lib]
+# `cdylib` for dynamic loading (the JVM binding), `staticlib` for C/C++ hosts, `rlib` so the
+# integration tests in `tests/` can call the exported functions as ordinary Rust.
+name = "ace_ffi"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+ace = { path = "../ace", features = ["explain"] }
+
+[dev-dependencies]
+ace-corpus = { path = "../ace-corpus" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+# The only production crate besides `ace-simd` that may contain `unsafe`: it exports C symbols,
+# so it dereferences pointers handed over by the host (docs/FFI.md, docs/UNSAFE-AUDIT.md).
+# Every other lint matches the workspace table.
+[lints.rust]
+missing_docs = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+dbg_macro = "deny"
+missing_errors_doc = "deny"
+missing_safety_doc = "deny"
+undocumented_unsafe_blocks = "deny"

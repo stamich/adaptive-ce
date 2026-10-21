@@ -7,7 +7,7 @@
 //!   mode 4), block by block like the engine.
 //! * `summary` — DENSE is never larger than BALANCED on any corpus workload.
 //!
-//! The gates live in `tools/ace-check_regressions0.6.1.py` (section `format15`).
+//! The gates live in `tools/ace-check_regressions0.7.0.py` (section `format15`).
 
 use ace_codecs::{numeric_decode, numeric_encode_with, NumericMode, TimeSeriesLayout};
 use ace_core::NumericWidth;

@@ -6,7 +6,7 @@
 | 0.5.x | maintenance | defects only: decoder, security, compatibility, critical regressions | unchanged |
 | **0.6.0** | API & Performance (Phase A) | one `ace` facade crate (`Engine`, `Config` and `ConfigBuilder`, `DecodeLimits` with a builder, `RangeReader`, `Stats`, `Error`), internal crates hidden, deprecated items removed, MSRV 1.98.1, readers name the ACE version a newer file needs, decode and allocation recovery, public-corpus benchmark family | 1.3 / 1.4, bytes = 0.5.1 |
 | **0.6.1** ✅ | Numeric & Float II (Phase B) | RunDelta / NUM1 for small non-zero deltas; Patched FOR; ALP decimal floats; Chimp / Chimp128 measured at codec level and kept only if at least 5 % more blocks shrink than with the best existing choice; earlier TS1 decision; DENSE never larger than BALANCED (see `docs/BENCHMARKS.md`); Chimp not added (0 of 144 blocks), see `docs/RELEASE-NOTES-0.6.1.md` | **1.5** (new modes) |
-| **0.7.0** | Embedding | `ace-ffi` (C ABI v1, opaque handles, error codes, `catch_unwind` at the boundary, generated `include/ace.h`), Java SDK on Panama FFM (JDK 25 LTS), Scala 3 wrapper, native packaging, multi-platform CI (aarch64: NEON / scalar) | unchanged |
+| **0.7.0** ✅ | Embedding | `ace-ffi` (C ABI v1, opaque handles, error codes, `catch_unwind` at the boundary, generated `include/ace.h`), Java SDK on Panama (JDK 22+, tested on 22 and 25), Scala 3 SDK (model, Either-based API, streams, tier policy), native packaging in the JAR, `ffi` benchmark gates, native aarch64 CI (scalar kernels). Not in 0.7.0: NEON backend, macOS / Windows native builds | unchanged, bytes = 0.6.1 |
 | **0.8.0** | Storage-engine features | adaptive segmentation (codec per segment inside a block), columnar blocks (several streams per block, optional schema hints), `WorkerScratch` reuse, trained dictionaries, context shared between blocks of a segment (random access kept) | **2.0** (consider the major version then) |
 | **0.9.0** | Platform integration | page / segment codec API for AdaptiveDB, profiles per storage tier, async / streaming API, metrics (`tracing` / OpenTelemetry), deterministic mode for GraphNet | unchanged |
 | **1.0.0** | Stable | frozen Rust API, C ABI v1 and format; LTS policy for 1.x; crates.io / Maven Central | stable |
@@ -31,6 +31,15 @@ segments, which needs ACE's deterministic bytes).
 
 The integration concept itself (module boundaries, existing APIs, CDC format) is a separate
 document written after reviewing the AdaptiveDB and GraphNet repositories.
+
+## 0.7.0 - Embedding (done)
+
+The bytes of 0.6.1 through a C ABI (`include/ace.h`, ABI version 1), a Java SDK on Panama and a
+Scala 3 SDK (`jvm/`), with the checks that keep the bindings honest: generated header and
+bindings with drift checks in CI, the golden file reproduced by C, Java and Scala, two fuzz
+targets, extended unsafe / panic audits, the `ffi` benchmark gates and native aarch64 CI.
+Left for later: the NEON backend (0.8 candidates), native builds for macOS and Windows, a
+Maven Central release (1.0), the platform bridges to AdaptiveDB and GraphNet (0.9).
 
 ## 0.5.1 - Hardened Release Candidate (done)
 

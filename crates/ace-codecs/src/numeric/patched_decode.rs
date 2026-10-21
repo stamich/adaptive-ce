@@ -25,8 +25,8 @@ pub(super) fn decode_patched_lane<T: Lane>(
     section: &[u8],
 ) -> AceResult<Vec<u8>> {
     let stream_len = patch.source.stream_len(info.value_count);
-    let low = unpack_iter::<T>(packed, stream_len, info.bit_width)?;
     if patch.exception_count == 0 {
+        let low = unpack_iter::<T>(packed, stream_len, info.bit_width)?;
         return reconstruct(info, patch.source, low);
     }
 
@@ -54,59 +54,22 @@ pub(super) fn decode_patched_lane<T: Lane>(
         return Err(AceError::Malformed("numeric exception without high bits"));
     }
 
-    let mut positions = positions()?;
-    let mut highs = highs()?;
-    let patched = PatchedStream {
-        stream: low,
-        pending: positions.next().zip(highs.next()),
-        positions,
-        highs,
-        index: 0,
-        shift: u32::from(info.bit_width),
-    };
-    reconstruct(info, patch.source, patched)
-}
-
-/// The low-part stream with the exception high parts or-ed in at their positions.
-struct PatchedStream<T, S, P, H> {
-    /// Packed low parts, one per stream value.
-    stream: S,
-    /// Remaining exception positions (strictly increasing).
-    positions: P,
-    /// Remaining exception high parts.
-    highs: H,
-    /// The next exception: `(position, high part)`.
-    pending: Option<(u64, T)>,
-    /// Index of the value `next` yields.
-    index: u64,
-    /// Packed width: how far a high part is shifted left.
-    shift: u32,
-}
-
-/// Iterator implementation of [`PatchedStream`].
-impl<T, S, P, H> Iterator for PatchedStream<T, S, P, H>
-where
-    T: Lane,
-    S: Iterator<Item = T>,
-    P: Iterator<Item = u64>,
-    H: Iterator<Item = T>,
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        let low = self.stream.next()?;
-        let value = match self.pending {
-            Some((position, high)) if position == self.index => {
-                self.pending = self.positions.next().zip(self.highs.next());
-                // `numeric_inspect` proved `shift + high bits <= lane bits`, so nothing is lost.
-                let high = high.to_u64().checked_shl(self.shift).unwrap_or(0);
-                T::from_u64_truncating(low.to_u64() | high)
-            }
-            _ => low,
-        };
-        self.index = self.index.saturating_add(1);
-        Some(value)
+    // The exceptions are sparse: unpack the low parts in one bulk pass and or the high parts in
+    // at their positions afterwards, instead of checking every value for a pending exception.
+    let mut values: Vec<T> = unpack_iter::<T>(packed, stream_len, info.bit_width)?.collect();
+    let shift = u32::from(info.bit_width);
+    for (position, high) in positions()?.zip(highs()?) {
+        let slot = usize::try_from(position)
+            .ok()
+            .and_then(|index| values.get_mut(index))
+            .ok_or(AceError::Malformed(
+                "numeric exception positions out of order",
+            ))?;
+        // `numeric_inspect` proved `shift + high bits <= lane bits`, so nothing is lost.
+        let high = high.to_u64().checked_shl(shift).unwrap_or(0);
+        *slot = T::from_u64_truncating(slot.to_u64() | high);
     }
+    reconstruct(info, patch.source, values.into_iter())
 }
 
 /// Inverse transform of the source mode over the (patched) stream, written as lanes.

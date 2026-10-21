@@ -1,0 +1,445 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.7.0",
+  "base": "0.6.1",
+  "scope": "planner-route",
+  "benchmark_contract_origin": "ace-0.7.0",
+  "generated_at_utc_epoch_seconds": 1792587607,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "false",
+      "git_revision": "3492a07fb6e384a6407d12159e68be25c9bae08c",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": 3901257,
+      "freq_khz_before": 3922546,
+      "governor": "performance",
+      "logical_cpus": 32,
+      "max_freq_khz": 5084000,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor",
+      "physical_cores": 16
+    },
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      1.33,
+      2.26,
+      1.99
+    ],
+    "loadavg_before": [
+      1.39,
+      2.31,
+      2.0
+    ],
+    "logical_cpus": 32,
+    "memory_bytes": 134959706112,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.12.21-gentoo-dist",
+      "name": "linux"
+    },
+    "physical_cores": 16,
+    "rust": {
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": 34.0,
+    "thermal_c_before": 34.0,
+    "warnings": []
+  },
+  "configuration": {
+    "block_size": 262144,
+    "config_fingerprint": "ced6310344103233",
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3 | 1.4 (minimal version)",
+    "planner_version": "V5",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "threads": 0,
+    "threads_resolved": 32,
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workload_fingerprints": {
+    "delta-variable@16777216": "ee9f9b140b8a4556911ea66885be4bf42ee5f6dcf21099e7754d4a353a182f8f",
+    "mixed@16777216": "564dcb740257d0f549d7c751a025d887c58e51eecf2024af153ea1d91dc2b1b3",
+    "random@16777216": "d59fcee807ed4a3b1febe4dc393ca64f7d4e4faeedcb9e1a927dee8712fc20d5",
+    "u32-counter@16777216": "a0fb0e32b9fe208f8512e2c4b9b5afd46a8ee4a1813d80430649d1c3777bb197",
+    "u64-timestamps@16777216": "662892bb1feb72c38cc970c0d52b92d15aab91eecd42b97601db329f5e4c89b7"
+  },
+  "workloads": [
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 1.0,
+      "prefilter_likely_numeric": true,
+      "prefilter_strong_numeric": true,
+      "prefilter_width": "Some(U32)",
+      "reason": "StrongFixedStepNumeric",
+      "route": "numeric-fast",
+      "route_timing": {
+        "cv_percent": 1.2728479148663925,
+        "max_ns": 967339,
+        "mean_ns": 926057.5714285715,
+        "median_mb_s": 17369.34722736367,
+        "median_ns": 921163.0,
+        "min_ns": 917777,
+        "p95_ns": 951209.0,
+        "p99_ns": 967339.0,
+        "runs": 21,
+        "samples_ns": [
+          918805,
+          920796,
+          919522,
+          920743,
+          918737,
+          925192,
+          935724,
+          951209,
+          967339,
+          924482,
+          924136,
+          925284,
+          920558,
+          920516,
+          921163,
+          922194,
+          926602,
+          917777,
+          918708,
+          928489,
+          919233
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.045594536471829636,
+          "batch_medians_ns": [
+            920743.0,
+            924482.0,
+            921163.0
+          ],
+          "batches": 3,
+          "global_median_ns": 921163.0,
+          "harness": "v3",
+          "iterations_per_sample": 64,
+          "mad_ns": 2455.0,
+          "median_of_medians_ns": 921163.0,
+          "outlier_indices": [
+            6,
+            7,
+            8
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 11787.304488390924,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "u32-counter"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.8499999642372131,
+      "prefilter_likely_numeric": true,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U64)",
+      "reason": "NumericCandidate",
+      "route": "numeric-general",
+      "route_timing": {
+        "cv_percent": 0.4595801936658245,
+        "max_ns": 3102,
+        "mean_ns": 3051.0476190476193,
+        "median_mb_s": 5254515.599343185,
+        "median_ns": 3045.0,
+        "min_ns": 3041,
+        "p95_ns": 3070.0,
+        "p99_ns": 3102.0,
+        "runs": 21,
+        "samples_ns": [
+          3053,
+          3043,
+          3044,
+          3042,
+          3102,
+          3070,
+          3045,
+          3043,
+          3042,
+          3042,
+          3049,
+          3045,
+          3041,
+          3044,
+          3048,
+          3061,
+          3041,
+          3066,
+          3043,
+          3053,
+          3055
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.06568144499178982,
+          "batch_medians_ns": [
+            3045.0,
+            3043.0,
+            3053.0
+          ],
+          "batches": 3,
+          "global_median_ns": 3045.0,
+          "harness": "v3",
+          "iterations_per_sample": 32768,
+          "mad_ns": 3.0,
+          "median_of_medians_ns": 3045.0,
+          "outlier_indices": [
+            4,
+            5,
+            15,
+            17
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 14.022010556455577,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "u64-timestamps"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.8499999642372131,
+      "prefilter_likely_numeric": true,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U32)",
+      "reason": "NumericCandidate",
+      "route": "numeric-general",
+      "route_timing": {
+        "cv_percent": 0.2634706311550982,
+        "max_ns": 3060,
+        "mean_ns": 3036.714285714286,
+        "median_mb_s": 5277044.854881266,
+        "median_ns": 3032.0,
+        "min_ns": 3027,
+        "p95_ns": 3045.0,
+        "p99_ns": 3060.0,
+        "runs": 21,
+        "samples_ns": [
+          3030,
+          3033,
+          3045,
+          3043,
+          3039,
+          3037,
+          3044,
+          3060,
+          3030,
+          3032,
+          3027,
+          3045,
+          3041,
+          3028,
+          3030,
+          3029,
+          3032,
+          3041,
+          3027,
+          3040,
+          3038
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.0,
+          "batch_medians_ns": [
+            3039.0,
+            3032.0,
+            3032.0
+          ],
+          "batches": 3,
+          "global_median_ns": 3037.0,
+          "harness": "v3",
+          "iterations_per_sample": 32768,
+          "mad_ns": 7.0,
+          "median_of_medians_ns": 3032.0,
+          "outlier_indices": [],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 8.000850294948462,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "delta-variable"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.949999988079071,
+      "prefilter_likely_numeric": false,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U32)",
+      "reason": "PrefilterRejected",
+      "route": "generic",
+      "route_timing": {
+        "cv_percent": 0.43942120015156383,
+        "max_ns": 3091,
+        "mean_ns": 3034.9523809523807,
+        "median_mb_s": 5278785.879247773,
+        "median_ns": 3031.0,
+        "min_ns": 3027,
+        "p95_ns": 3046.0,
+        "p99_ns": 3091.0,
+        "runs": 21,
+        "samples_ns": [
+          3036,
+          3034,
+          3034,
+          3034,
+          3030,
+          3091,
+          3041,
+          3034,
+          3027,
+          3031,
+          3029,
+          3027,
+          3032,
+          3030,
+          3028,
+          3031,
+          3028,
+          3031,
+          3027,
+          3033,
+          3046
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.03299241174529858,
+          "batch_medians_ns": [
+            3034.0,
+            3030.0,
+            3031.0
+          ],
+          "batches": 3,
+          "global_median_ns": 3031.0,
+          "harness": "v3",
+          "iterations_per_sample": 32768,
+          "mad_ns": 3.0,
+          "median_of_medians_ns": 3031.0,
+          "outlier_indices": [
+            5,
+            20
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 13.336224176409411,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "mixed"
+    },
+    {
+      "path": "planner-v4.3-route",
+      "prefilter_confidence": 0.4498533606529236,
+      "prefilter_likely_numeric": false,
+      "prefilter_strong_numeric": false,
+      "prefilter_width": "Some(U32)",
+      "reason": "PrefilterRejected",
+      "route": "generic",
+      "route_timing": {
+        "cv_percent": 1.1454816955171034,
+        "max_ns": 3199,
+        "mean_ns": 3054.190476190476,
+        "median_mb_s": 5252790.544977019,
+        "median_ns": 3046.0,
+        "min_ns": 3030,
+        "p95_ns": 3090.0,
+        "p99_ns": 3199.0,
+        "runs": 21,
+        "samples_ns": [
+          3049,
+          3064,
+          3199,
+          3047,
+          3058,
+          3055,
+          3048,
+          3035,
+          3041,
+          3041,
+          3036,
+          3037,
+          3039,
+          3030,
+          3090,
+          3031,
+          3046,
+          3060,
+          3043,
+          3052,
+          3037
+        ],
+        "stable_timing": {
+          "batch_mad_percent": 0.29546946815495734,
+          "batch_medians_ns": [
+            3055.0,
+            3037.0,
+            3046.0
+          ],
+          "batches": 3,
+          "global_median_ns": 3046.0,
+          "harness": "v3",
+          "iterations_per_sample": 16384,
+          "mad_ns": 9.0,
+          "median_of_medians_ns": 3046.0,
+          "outlier_indices": [
+            2,
+            14
+          ],
+          "samples_per_batch": 7,
+          "stability": "stable"
+        },
+        "stddev_ns": 34.98519285098856,
+        "unstable_measurement": false,
+        "warmup_iterations": 5
+      },
+      "workload_id": "random"
+    }
+  ],
+  "repeatability": {
+    "runs": [
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-1",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-2",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-3"
+    ],
+    "rule": "median run per timing object"
+  }
+}

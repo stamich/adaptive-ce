@@ -17,6 +17,7 @@ members = [
   "crates/ace-stream",
   "crates/ace-engine",
   "crates/ace",
+  "crates/ace-ffi",
   "crates/ace-cli",
   "crates/ace-corpus",
   "crates/ace-bench",
@@ -32,7 +33,7 @@ debug = false
 panic = "unwind"
 
 [workspace.package]
-version = "0.6.1"
+version = "0.7.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/stamich/adaptive-ce"

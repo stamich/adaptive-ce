@@ -1,6 +1,6 @@
 # ACE security and resource model
 
-Applies to the current release (0.5.1). All serialized lengths and counts are untrusted.
+Applies to the current release (0.7.0). All serialized lengths and counts are untrusted.
 Decoders validate configured limits (`ace_core::DecodeLimits`) **before** allocating block,
 dictionary, index or output buffers; the type documents which reader applies which limit, and
 [`DECODER-AUDIT.md`](DECODER-AUDIT.md) lists every field with its validation, limit and tests.
@@ -12,6 +12,18 @@ input) privately to the maintainer through a GitHub security advisory of the rep
 rather than a public issue. Include the input file (or how to produce it), the command or API
 call and the ACE version (`ace version` prints version, git revision and backends). Every
 confirmed case becomes a regression test before the fix is released.
+
+## C ABI trust boundary (0.7.0)
+
+The compressed bytes a host passes to `ace_decompress`, `ace_decompress_stream` and the range
+readers are untrusted and get exactly the validation of the Rust API. The pointers, lengths and
+handles are the host's responsibility: the library rejects what it can check (null, an invalid
+`struct_size`, a length that overflows, a handle of the wrong state) and cannot detect a dangling
+pointer or a double release. Hosts that decode untrusted data set `max_output_size` (and the other
+`AceLimits`), as with `DecodeLimits` in Rust. No Rust panic crosses the boundary: it is reported
+as `ACE_ERR_PANIC`, and callbacks that unwind are contained. The Java and Scala SDKs close native
+handles deterministically and release forgotten ones with a `Cleaner`; they never hand a native
+pointer out beyond the owning object. Rules: [`NATIVE-INTEROP.md`](NATIVE-INTEROP.md).
 
 ## Validation
 
@@ -52,17 +64,18 @@ size, so a forged value cannot change what is decoded (tested).
 | TS1 header and stream fields one by one (magic, version, mode, lane, flags, reserved, counts, `stream_bits`, `L + M > W`, missing terminator, trailing bits) | `crates/ace-codecs/src/time_series/tests.rs`, `crates/ace-codecs/tests/ts1_properties.rs` |
 | resource limits and forged `original_size` (no large pre-allocation) | same file |
 | property tests (budget via `PROPTEST_CASES`; release 10 000) | `ace-engine/tests/properties.rs`, `ace-codecs/tests/num1_properties.rs`, `ace-codecs/tests/ts1_properties.rs` (arbitrary f64 / f32 bits incl. NaN payloads, ±0, subnormals), `ace-bitpack/tests/property.rs` |
-| 18 fuzz targets (0.5.0: `ts1_decode`, `ts1_roundtrip`, `bitstream_roundtrip`) | `fuzz/README.md` |
+| 20 fuzz targets (0.5.0: `ts1_decode`, `ts1_roundtrip`, `bitstream_roundtrip`; 0.7.0: `ffi_decode`, `ffi_handles`) | `fuzz/README.md` |
 | 10 000 random ranges, concurrent readers, out-of-bounds ranges | `ace-engine/tests/random_access_stress.rs` |
 | 1 GiB streaming and 256 MiB indexed files (`--ignored`) | `ace-stream/tests/large_files.rs` |
-| `unsafe` confined to audited kernels | [`UNSAFE-AUDIT.md`](UNSAFE-AUDIT.md), `tools/ace-code_audit0.6.0.py` |
+| `unsafe` confined to audited kernels and the C ABI crate | [`UNSAFE-AUDIT.md`](UNSAFE-AUDIT.md), `tools/ace-code_audit0.7.0.py` |
+| (0.7.0) C ABI: no panic crosses the boundary, null pointers, null-with-nonzero-length, bad `struct_size` and oversized lengths rejected with a status; releasing `NULL` is a no-op while a double release is undefined and documented; decode limits across the boundary | `crates/ace-ffi/tests/boundary.rs`, `handles.rs`, [`PANIC-AUDIT.md`](PANIC-AUDIT.md) (C ABI table), [`NATIVE-INTEROP.md`](NATIVE-INTEROP.md) |
 | no `unwrap` / `expect` / `panic!` / `unreachable!` in production code | [`PANIC-AUDIT.md`](PANIC-AUDIT.md), workspace clippy lints |
 | (0.5.1) checked arithmetic and explicit narrowing in every parser module | `clippy::arithmetic_side_effects` + `cast_possible_truncation` per module, [`DECODER-AUDIT.md`](DECODER-AUDIT.md) |
 | (0.5.1) every count / size field at 0, `u32::MAX`, `u64::MAX` and overflowing values | `ace-format/tests/index_hardening.rs`, `ace-codecs/tests/header_fields.rs`, `ace-entropy/tests/metadata_fields.rs`, `ace-index/tests/trailer_limits.rs` |
 | (0.5.1) every `DecodeLimits` field enforced by the sequential, streamed and indexed readers | `ace-engine/tests/decode_limits.rs` |
 | (0.5.1) forged sizes fail before allocation (peak live bytes measured by a counting allocator) | `ace-bench/tests/limits_before_allocation.rs` |
 | (0.5.1) files written by 0.2.1 – 0.5.0 still decode | `examples/compat/`, `ace-engine/tests/compat_fixtures.rs` |
-| (0.5.1) fuzz smoke (15 × 25 s) on every push; release campaign 15 × 10 min | `fuzz/README.md` |
+| fuzz smoke (20 × 25 s) on every push; release campaign 20 × 10 min | `fuzz/README.md` |
 
 A malformed file must be rejected by at least one reader and misdecoded by none: the
 sequential decoder stops after the declared, CRC-checked blocks, so damage confined to the

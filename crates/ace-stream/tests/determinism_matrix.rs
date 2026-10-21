@@ -3,7 +3,7 @@
 //! byte-identical containers.
 //!
 //! The SIMD axis is covered by running the golden test with `ACE_SIMD=scalar` (the backend
-//! choice is process-wide), and the process axis by `ace-release0.6.1.sh`, which hashes the
+//! choice is process-wide), and the process axis by `ace-release0.7.0.sh`, which hashes the
 //! output of repeated CLI invocations.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 

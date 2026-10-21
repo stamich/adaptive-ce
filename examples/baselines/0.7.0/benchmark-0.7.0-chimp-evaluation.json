@@ -1,0 +1,196 @@
+{
+  "schema_version": "2.2",
+  "project": "ace",
+  "milestone": "0.7.0",
+  "base": "0.6.1",
+  "scope": "chimp-evaluation",
+  "benchmark_contract_origin": "ace-0.7.0",
+  "generated_at_utc_epoch_seconds": 1792588341,
+  "environment": {
+    "ace_simd_override": null,
+    "arch": "x86_64",
+    "build": {
+      "codegen_units": "16",
+      "debug_assertions": false,
+      "git_dirty": "false",
+      "git_revision": "3492a07fb6e384a6407d12159e68be25c9bae08c",
+      "lto": "false",
+      "opt_level": "3",
+      "profile": "release",
+      "rustflags": "",
+      "target_features": "fxsr,sse,sse2"
+    },
+    "build_profile": "release",
+    "cpu": {
+      "features": {
+        "avx2": true,
+        "sse4_2": true
+      },
+      "freq_khz_after": 550000,
+      "freq_khz_before": 3950231,
+      "governor": "performance",
+      "logical_cpus": 32,
+      "max_freq_khz": 5084000,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor",
+      "physical_cores": 16
+    },
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "crc32c_backend": "sse4.2-3way",
+    "loadavg_after": [
+      1.11,
+      1.2,
+      1.49
+    ],
+    "loadavg_before": [
+      1.03,
+      1.19,
+      1.48
+    ],
+    "logical_cpus": 32,
+    "memory_bytes": 134959706112,
+    "os": "linux",
+    "os_info": {
+      "kernel": "6.12.21-gentoo-dist",
+      "name": "linux"
+    },
+    "physical_cores": 16,
+    "rust": {
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)",
+      "target": "x86_64-unknown-linux-gnu"
+    },
+    "simd_backend": "Avx2",
+    "target_features": "fxsr,sse,sse2",
+    "thermal_c_after": 35.0,
+    "thermal_c_before": 35.0,
+    "warnings": []
+  },
+  "configuration": {
+    "block_size": 262144,
+    "config_fingerprint": "ced6310344103233",
+    "default_block_size_bytes": 262144,
+    "format_version": "1.3 | 1.4 (minimal version)",
+    "planner_version": "V5",
+    "runs": 21,
+    "simd_backend": "Avx2",
+    "threads": 0,
+    "threads_resolved": 32,
+    "warmup_iterations": 5
+  },
+  "benchmark_methodology": {
+    "aggregation": "median-of-medians",
+    "batches": 3,
+    "calibration": "doubling",
+    "default_stable_batch_mad_percent": 5.0,
+    "harness": "v3",
+    "max_iterations_per_sample": 1048576,
+    "min_sample_time_ms": 50.0,
+    "outlier_rule": "median +- 3*1.4826*MAD (reported, not removed)",
+    "quick": false,
+    "samples_per_batch": 7,
+    "stability_statistic": "batch_mad_percent",
+    "warmups": 5
+  },
+  "workload_fingerprints": {
+    "f64-constant@4194304": "87056f3e55ac009601948e38a139f45795be45b99f5b4cc237fa94278f893371",
+    "f64-decimal-price@4194304": "920e88aba3aced4c6988b26e2bb2fc204858e8120891a8872c9368f768f96a2f",
+    "f64-financial-price@4194304": "d514beabab4659cea81024d9062167ddfe56a3f34ff655ed0656891e480a6261",
+    "f64-noisy@4194304": "f10850dc3f5f55fe6c6d6ad67015dcd192853672275a6ce44ac38525cd202bd9",
+    "f64-random@4194304": "6036a3fa2351d21c00242150d75709d52fa5f6edf0d6de5509e7f180e9fe011c",
+    "f64-sensor-temperature@4194304": "0894349d365bdccf212ba379ee57ff96047a9b247ae7be1743ee867d03acde2d",
+    "f64-smooth@4194304": "70bf2cdab5e3ec266d609cffe42cbfdebb5a3b2c5a9d44ef5577a6d89062c9c9",
+    "f64-special@4194304": "d37e0be9fa575d7a1dc1ffc03fe3d4798328189f5679da4ad77321bd718e60ac",
+    "f64-step@4194304": "8c569dcd304c6d451c78649a9b327e041c0ae51bf793726bd9c361834491690f"
+  },
+  "workloads": [
+    {
+      "best_existing_bytes": 512,
+      "best_with_chimp_bytes": 512,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-constant"
+    },
+    {
+      "best_existing_bytes": 4720,
+      "best_with_chimp_bytes": 4720,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-step"
+    },
+    {
+      "best_existing_bytes": 1543912,
+      "best_with_chimp_bytes": 1543912,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-smooth"
+    },
+    {
+      "best_existing_bytes": 136964,
+      "best_with_chimp_bytes": 136964,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-sensor-temperature"
+    },
+    {
+      "best_existing_bytes": 701040,
+      "best_with_chimp_bytes": 701040,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-financial-price"
+    },
+    {
+      "best_existing_bytes": 2818608,
+      "best_with_chimp_bytes": 2818608,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-noisy"
+    },
+    {
+      "best_existing_bytes": 4194304,
+      "best_with_chimp_bytes": 4194304,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-random"
+    },
+    {
+      "best_existing_bytes": 1045598,
+      "best_with_chimp_bytes": 1045598,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-special"
+    },
+    {
+      "best_existing_bytes": 807488,
+      "best_with_chimp_bytes": 807488,
+      "blocks": 16,
+      "blocks_where_chimp_is_smaller": 0,
+      "path": "chimp_evaluation",
+      "workload_id": "f64-decimal-price"
+    },
+    {
+      "add_chimp": false,
+      "blocks": 144,
+      "blocks_where_chimp_is_smaller": 0,
+      "blocks_where_the_engine_beats_every_bare_codec": 48,
+      "path": "chimp_decision",
+      "rule_min_share": 0.05,
+      "share": 0.0,
+      "workload_id": "all"
+    }
+  ],
+  "repeatability": {
+    "runs": [
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-1",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-2",
+      "/home/michal/RustroverProjects/adaptive-ce/examples/results/run-3"
+    ],
+    "rule": "median run per timing object"
+  }
+}

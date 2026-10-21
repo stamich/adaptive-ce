@@ -21,6 +21,8 @@ ace-stream = { path = "../ace-stream" }
 ace-simd = { path = "../ace-simd" }
 ace-runtime = { path = "../ace-runtime" }
 ace-corpus = { path = "../ace-corpus" }
+ace = { path = "../ace" }
+ace-ffi = { path = "../ace-ffi" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

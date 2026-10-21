@@ -1,0 +1,35 @@
+{
+  "version": "0.7.0",
+  "accepted": true,
+  "purpose": "baseline of 0.7.0 (stored-result diagnostics; release gates use the interleaved A/B against the 0.6.1 source tree)",
+  "machine_fingerprint": {
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "physical_cores": 16,
+    "logical_cpus": 32,
+    "memory": "128 GiB",
+    "os": "linux",
+    "arch": "x86_64",
+    "simd_backend": "Avx2",
+    "crc32c_backend": "sse4.2-3way",
+    "cpu_governor": "performance",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)"
+  },
+  "git_revision": "3492a07fb6e384a6407d12159e68be25c9bae08c",
+  "methodology": "schema 2.2, Harness V3 (5 warm-ups, 3 x 7 batches, >= 50 ms per sample, median-of-medians), repeatability over 3 complete runs x 31 families, interleaved A/B vs the 0.6.1 source tree (3 batches per side, alternating order), JVM side of the ffi gates from `gradle -p jvm :ace-native:ffiBenchmark`",
+  "verdict": {
+    "regression_v3": "pass",
+    "gates": {
+      "pass": 99,
+      "diagnostic": 12,
+      "fail": 0,
+      "unstable": 0,
+      "skipped": 0
+    },
+    "repeatability": "pass, deterministic values identical over 3 runs x 31 families; macro spread <= 5 % (compression, observed maximum 1.8 %) / <= 15 % (decompression, observed maximum 11.6 %)",
+    "ab_vs_0_6_1": "pass, 20 / 20 cases, minimum speed ratio 0.991 (numeric_fast.u32_counter decode), byte-identical output on every case",
+    "ffi": "pass; C ABI vs Rust facade on 16 MiB: compress 1.008x, decompress 1.008x (gate >= 0.97x); JVM zero-copy vs facade: compress 1.020x, decompress 0.936x (gate >= 0.90x)",
+    "fuzz": "20 / 20 targets, no crash (4,663,141,184 executions, FUZZ.md)"
+  },
+  "files": "benchmark-0.7.0-<family>.json (incl. regression, repeatability, ffi), ab-0.7.0-vs-0.6.1.json and ffi-jvm-0.7.0.json, unchanged from the run",
+  "note": "reference run of the 0.7.0 release on the author's workstation (performance governor, 37 C); code revision 3492a07, clean tree. 0.7.0 writes the same bytes as 0.6.1, so the A/B compares speed only. JVM zero-copy decompress varies between 0.90x and 0.97x of the facade over runs (the 3.4 ms call includes the native buffer's shared-arena release); the 0.90x gate held in this run (0.936x), see docs/PERFORMANCE-0.7.0.md."
+}

@@ -16,6 +16,7 @@ ace-codecs = { path = "../crates/ace-codecs" }
 ace-bitpack = { path = "../crates/ace-bitpack" }
 ace-cost = { path = "../crates/ace-cost" }
 ace-entropy = { path = "../crates/ace-entropy" }
+ace-ffi = { path = "../crates/ace-ffi" }
 
 [[bin]]
 name = "container_decode"
@@ -139,6 +140,20 @@ bench = false
 [[bin]]
 name = "numeric_patched_decode"
 path = "fuzz_targets/numeric_patched_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ffi_decode"
+path = "fuzz_targets/ffi_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ffi_handles"
+path = "fuzz_targets/ffi_handles.rs"
 test = false
 doc = false
 bench = false

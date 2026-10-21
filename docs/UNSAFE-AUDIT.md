@@ -1,16 +1,19 @@
 # ACE unsafe audit
 
-Canonical audit of the current release (0.5.1). Earlier versions: [`history/`](history/).
+Canonical audit of the current release (0.7.0). Earlier versions: [`history/`](history/).
 
-`unsafe_code = "forbid"` is a workspace lint. Two crates override it:
+`unsafe_code = "forbid"` is a workspace lint. Three crates override it:
 
 | Crate | Why | Lints kept |
 |---|---|---|
 | `ace-simd` (production) | runtime-dispatched x86_64 kernels | `unsafe_op_in_unsafe_fn = deny`, `clippy::undocumented_unsafe_blocks = deny`, `missing_safety_doc = deny`, panic lints |
-| `ace-bench` (benchmark harness and its tests, not shipped as a library) | counting `GlobalAlloc` | `unsafe_op_in_unsafe_fn = deny`, `undocumented_unsafe_blocks = deny`, `missing_safety_doc = deny` |
+| `ace-ffi` (production, 0.7.0) | exports the C ABI of `include/ace.h`: it dereferences pointers and function pointers handed over by the host | `unsafe_op_in_unsafe_fn = deny`, `undocumented_unsafe_blocks = deny`, `missing_safety_doc = deny`, panic lints |
+| `ace-bench` (benchmark harness and its tests, not shipped as a library) | counting `GlobalAlloc`; the `ffi` family calls the exported C functions | `unsafe_op_in_unsafe_fn = deny`, `undocumented_unsafe_blocks = deny`, `missing_safety_doc = deny` |
 
-**0.5.0 and 0.5.1 add no production `unsafe`.** 0.5.1 adds one test-only allocator
-(`crates/ace-bench/tests/limits_before_allocation.rs`, see below). `tools/ace-code_audit0.6.0.py`
+**0.7.0 adds the `ace-ffi` crate**, the only place with `unsafe` outside `ace-simd`. Every exported function is `unsafe extern "C"` with a `# Safety` section, every `unsafe` block has a `// SAFETY:` comment, and the audit allows `unsafe` in `crates/ace-ffi/src/` and `crates/ace-ffi/tests/` only. The rules the host must follow are in [FFI.md](FFI.md) and [NATIVE-INTEROP.md](NATIVE-INTEROP.md). The audit script also checks the C ABI crate: every exported function runs under `guard` / `guard_value` (except five infallible accessors), is declared in `include/ace.h` and is called by a test, and the fuzz targets `ffi_decode` and `ffi_handles` exist; the table is in [PANIC-AUDIT.md](PANIC-AUDIT.md).
+
+0.5.0 and 0.5.1 added no production `unsafe`. 0.5.1 adds one test-only allocator
+(`crates/ace-bench/tests/limits_before_allocation.rs`, see below). `tools/ace-code_audit0.7.0.py`
 scans production code, build scripts and tests and fails if `unsafe` appears outside the
 audited files or without a `// SAFETY:` comment; the generated inventory is in
 [`PANIC-AUDIT.md`](PANIC-AUDIT.md).
@@ -39,4 +42,5 @@ golden test passes with and without it, proving byte identity of the accelerated
 | Allocator | Use | Guarantee |
 |---|---|---|
 | `ace-bench/src/alloc.rs` | `memory` and `allocation-profile` families | forwards every `GlobalAlloc` call unchanged to `System`; bookkeeping touches only atomics and never allocates; counting only inside an `AllocationProbe` |
+| `ace-bench/src/families/ffi.rs` | `ffi` family | calls the exported `ace_engine_new`, `ace_compress`, `ace_decompress`, `ace_buffer_*` and `ace_engine_free` of `ace-ffi` exactly as a C host does; every call passes a live engine handle and slices valid for their length, and every `AceBuffer` is released once |
 | `ace-bench/tests/limits_before_allocation.rs` (0.5.1, test binary only) | measures that forged sizes fail before allocation | same forwarding design; tracks live and peak bytes with atomics |

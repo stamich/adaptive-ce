@@ -4,11 +4,11 @@ What each ACE release promises about files, APIs, toolchains and benchmark docum
 
 ## Format
 
-ACE 0.6.1 reads Format 1.0 – 1.5 and writes the **minimal** version a file needs: 1.3 unless the
+ACE 0.7.0 reads Format 1.0 – 1.5 and writes the **minimal** version a file needs: 1.3 unless the
 file contains a TS1 block (1.4, [`FORMAT-1.4.md`](FORMAT-1.4.md)) or a payload of a Format 1.5
 mode (1.5, [`FORMAT-1.5.md`](FORMAT-1.5.md); the version is a property of the payload).
 
-| File format | ACE 0.4.x reader | ACE 0.5.x – 0.6.0 reader | ACE 0.6.1 reader |
+| File format | ACE 0.4.x reader | ACE 0.5.x – 0.6.0 reader | ACE 0.6.1 – 0.7.0 reader |
 |---|---|---|---|
 | 1.0 | supported | supported | supported |
 | 1.1 | supported | supported | supported |
@@ -99,6 +99,23 @@ Details per field: [`DECODER-AUDIT.md`](DECODER-AUDIT.md).
   people).
 * The `ace` CLI keeps its commands and options within a minor series; new commands are
   additive. Exit status: 0 success (also when stdout is closed early), 1 error, 2 usage error.
+
+## C ABI and JVM
+
+* The C ABI has its own version, `ace_abi_version()` (**1** in 0.7.0), independent of the file
+  format and of the crate version. Within ABI 1 functions and status values are never removed or
+  renumbered; additive changes (a function, a status value, a trailing struct field behind
+  `struct_size`) do not change the version. A removed function, a changed signature or status
+  meaning, or a changed struct layout bumps it, and the bindings refuse to load a library with
+  another ABI version ([`NATIVE-INTEROP.md`](NATIVE-INTEROP.md), rule 6;
+  [`FFI.md`](FFI.md), compatibility rules).
+* `include/ace.h` is generated and drift-checked; the Java bindings are generated from it
+  (`tools/ace-genbindings0.7.0.py --check`).
+* The bytes written through the C ABI, Java and Scala are those of the Rust API for the same
+  configuration (golden 0.6.1).
+* JVM: JDK 22 or newer (`java.lang.foreign` is final from 22), tested on 22 and 25; Scala 3.3 LTS
+  (the artifacts do not use features of later Scala 3 releases). The Java and Scala packages
+  (`io.ace.*`) follow the 0.x rule of the Rust API: additive within a minor series.
 
 ## Toolchain
 

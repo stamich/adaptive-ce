@@ -24,3 +24,38 @@ fn fast_level_preserves_planner_features() {
         standard.incompressibility_score
     );
 }
+
+/// `same_analysis_as` is only true for levels whose profiles really are equal (the DENSE
+/// double plan of the engine relies on it to analyse a block once).
+#[test]
+fn levels_that_claim_equivalence_produce_equal_profiles() {
+    let levels = [
+        AnalysisLevel::Fast,
+        AnalysisLevel::Standard,
+        AnalysisLevel::Dense,
+    ];
+    let inputs: Vec<Vec<u8>> = vec![
+        (0..65536).map(|i| ((i * 17) % 251) as u8).collect(),
+        vec![0u8; 4096],
+        (0..30000).map(|i| (i / 7) as u8).collect(),
+        b"the quick brown fox jumps over the lazy dog. ".repeat(900),
+        Vec::new(),
+    ];
+    let analyzer = DefaultBlockAnalyzer;
+    for input in &inputs {
+        for a in levels {
+            for b in levels {
+                if a.same_analysis_as(b) {
+                    assert_eq!(
+                        analyzer.analyze_with_level(input, a),
+                        analyzer.analyze_with_level(input, b),
+                        "{a:?} vs {b:?} on {} bytes",
+                        input.len()
+                    );
+                }
+            }
+        }
+    }
+    assert!(AnalysisLevel::Standard.same_analysis_as(AnalysisLevel::Dense));
+    assert!(!AnalysisLevel::Fast.same_analysis_as(AnalysisLevel::Dense));
+}

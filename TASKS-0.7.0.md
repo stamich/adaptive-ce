@@ -1,0 +1,106 @@
+# ACE 0.7.0 — implementation order (Embedding: C ABI, Java / Scala SDK)
+
+Base: 0.6.1. Concept: `ROADMAP.md` (0.7.0); interop conventions shared with AdaptiveDB's
+`include/adb.h` (ABI v9) and the planned GraphNet C ABI.
+Rules for every task: `cargo clippy --workspace --all-targets -- -D warnings` clean, rustdoc on
+every item, one task = one commit, **no `#[cfg(test)]` module in any `src/` file** (tests live in
+`crates/<crate>/tests/`; JVM tests in `jvm/<module>/src/test/`), and every file written by
+0.2.1 – 0.6.1 still decodes byte for byte (`examples/compat/` is never regenerated).
+This release **does not change bytes**: Format stays 1.5 and `examples/golden/0.6.1/` stays the
+reference — every binding (Rust, C, Java, Scala) must reproduce it.
+`unsafe` stays confined to audited files: `ace-simd` (existing) and the new `ace-ffi` (task 8).
+Status: ✅ done in this release · ⏩ executed by the release pipeline / manually on the reference
+machine.
+
+## Phase A — version
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 1 | Version 0.7.0, `MILESTONE-0.7.0.json`, this file; 0.6.1 summaries → `docs/history/`; stored baseline and A/B base = 0.6.1 | "Bumps version to 0.7.0" | `ace version` = 0.7.0 |
+| 2 | Scripts / tools / workflows renamed to 0.7.0 | "Renames scripts and tools to 0.7.0" | package name audit |
+
+## Phase B — carry-overs from 0.6.1
+
+The 0.6.1 reference run left two measured costs, both accepted for the size gain and both
+targeted here (bytes must not change; decoding must stay hardened).
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 3 | Faster Patched FOR decode (`delta-variable` decodes at 861 MB/s, 0.6.0: 1 837 MB/s): fused unpack + patch, no second pass over the exception list | "Speeds up Patched FOR decoding" | decode >= 1 400 MB/s on the reference machine; malformed table and fuzz target unchanged |
+| 4 | Cheaper DENSE double plan (encode 0.57×, 18.2 allocation bytes per input byte): share analysis and candidate evaluation between the DENSE and BALANCED plans | "Shares work between the DENSE and BALANCED plans" | DENSE encode >= 0.70× of 0.6.0; allocation <= 16 B/B (was 18.2; 0.6.0: 11.1); output bytes identical to 0.6.1 |
+| 5 | A/B cases for the paths 0.6.1 left uncovered: Patched FOR decode, ALP decode, DENSE allocation; A/B base 0.6.1 | "Adds A/B cases for Patched and ALP decoding" | cases in `tools/ace-ab0.7.0.py` with floors |
+
+## Phase C — ABI design
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 6 | `docs/NATIVE-INTEROP.md`: shared conventions — status codes, thread-local last error, opaque handles with release functions, text / buffer handles, ABI version check at load, `*_json` for structured data, library loading and JAR layout; aligned with `adb.h` | "Documents the native interop conventions" | review against AdaptiveDB ABI v9; no ACE-specific deviation without a reason |
+| 7 | `docs/FFI.md`: C ABI v1 (function list, ownership table, threading contract, error table, version policy: `ACE_ABI_VERSION`, additive changes only within a major ABI) | "Specifies the C ABI v1" | every function has ownership, thread-safety and error behavior stated |
+| 8 | `crates/ace-ffi` (cdylib + staticlib + rlib) with its own lint override for `unsafe`; audit scripts know the new unsafe boundary; `ace_abi_version`, `ace_engine_version` | "Adds the ace-ffi crate" | `ace-code_audit` lists ace-ffi unsafe sites, workspace `unsafe_code = forbid` unchanged elsewhere |
+
+## Phase D — `ace-ffi`
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 9 | Status enum, thread-local last error (`ace_last_error_ptr` / `_len`), engine and config handles with create / release, null and double-release safe | "Adds handles, status codes and last error to the C ABI" | misuse never crashes |
+| 10 | One-shot `ace_compress` / `ace_decompress` into library-owned buffer handles (`ace_buffer_data` / `_len` / `_free`), `ace_decompress_into` for caller-provided output buffers (`ACE_ERR_BUFFER_TOO_SMALL`), and the Stats JSON (`stats_json_out`) | "Adds one-shot compress and decompress to the C ABI" | output equals the Rust facade byte for byte |
+| 11 | Streaming and random access: `ace_compress_stream` / `ace_decompress_stream` with read and write callbacks, `AceRangeReader` (`ace_range_open`, `_open_path`, `_read`, `_read_block`, `_last_stats`); `AceLimits` across the boundary | "Adds streaming and range reads to the C ABI" | range read equals `RangeReader` |
+| 12 | The planner report as JSON (`ace_explain_json`); the Stats JSON of task 10 and the report get a pinned key order and a documented schema (`docs/FFI.md`) | "Exposes Stats through the C ABI" | JSON schema documented, stable key order |
+| 13 | `catch_unwind` on every entry point (panic → `ACE_INTERNAL`), pointer / length validation, size-overflow checks, no unwinding across the boundary | "Hardens the C ABI boundary" | a panic injected by a test hook returns `ACE_INTERNAL` |
+| 14 | `include/ace.h` generated by cbindgen and checked in; CI fails when the checked-in header differs from the generated one | "Generates and verifies include/ace.h" | drift job in `ace-ci0.7.0` |
+
+## Phase E — tests, fuzzing, audit
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 15 | `crates/ace-ffi/tests/`: every function through the `extern "C"` API, misuse matrix (null, double release, use after close, huge lengths), determinism over threads; a C smoke program built and run in CI | "Tests the C ABI" | golden 0.6.1 reproduced through the C ABI |
+| 16 | Fuzz targets `ffi_decode` (garbage through `ace_decompress` / range reads) and `ffi_handles` (random call sequences) | "Adds fuzz targets for the C ABI" | 20 targets in `fuzz/` |
+| 17 | `docs/UNSAFE-AUDIT` and `docs/PANIC-AUDIT` extended to `ace-ffi`; every `unsafe` block has a SAFETY comment checked by the audit script | "Extends the audits to ace-ffi" | audit passes |
+
+## Phase F — JVM
+
+Toolchain follows AdaptiveDB: JDK 22 (`java.lang.foreign` final) as minimum, tested on 25 LTS,
+Scala 3.3.8 LTS, Gradle Kotlin DSL, packages `io.ace.*`. ACE does not depend on AdaptiveDB or
+GraphNet; the tier bridge (task 21) only offers neutral types.
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 18 | `jvm/` Gradle build; Panama bindings generated from `include/ace.h` with jextract (no hand-written `MethodHandle` list); ABI version check at load | "Adds the JVM build and generated bindings" | regenerating the bindings changes nothing |
+| 19 | `ace-java`: `Engine`, `Config` builder, `DecodeLimits`, `RangeReader`, `Stats`; status → exceptions; `Arena`-scoped native memory, `MemorySegment` zero-copy plus `byte[]` convenience, `Cleaner` as a safety net for forgotten `close()` | "Adds the Java SDK" | no native leak in the misuse tests |
+| 20 | `ace-scala`: `Using`-style scopes, `Either[AceError, A]` results, typed `Config`, off-heap input and output; `ace-scala-stream` module with `InputStream` / `OutputStream` / `Iterator` adapters | "Adds the Scala 3 SDK" | core module has no stream-library dependency |
+| 21 | `ace-scala-tier`: compression profile per storage tier (hot / warm / cold) and `Stats` → neutral metrics (ratio, encode and decode ns per byte) that a tier-economics evaluator can consume | "Adds the tier policy and metrics bridge" | no dependency on AdaptiveDB |
+| 22 | Native packaging: library inside the JAR (`linux-x86_64`; `linux-aarch64` when built in CI), extracted loader, `ACE_NATIVE_PATH` override, ABI check | "Packages the native library with the JAR" | works from a clean directory |
+| 23 | JVM tests: round trips, misuse (double close, use after close), cross-language golden — Java and Scala reproduce `examples/golden/0.6.1/` SHA-256 | "Tests the JVM SDK against the golden file" | identical bytes |
+
+## Phase G — platform, qualification, release
+
+| # | Task | Commit | Acceptance |
+|---|---|---|---|
+| 24 | CI: native aarch64 runner (scalar kernels, correctness only) reproduces the golden bytes; Java job (JDK 22 and 25); NEON backend explicitly out of scope | "Adds aarch64 and JVM jobs to CI" | green on both architectures |
+| 25 | Remove `integrations/` (`java-demo`, `scala-demo`); replacement demo on the new SDK in `demo/`; README and docs updated | "Replaces the integrations demos with the SDK" | no reference to `integrations/` remains |
+| 26 | Benchmark family `ffi`: Rust facade vs C ABI vs JVM on the mixed 16 MiB workload and small buffers (call overhead); A/B gates; Regression V3 | "Adds FFI overhead benchmarks and gates" | C ABI >= 0.97× of the Rust facade on 16 MiB; JVM >= 0.90× |
+| 27 | `docs/RELEASE-NOTES-0.7.0.md`, `CHANGELOG.md`, `README.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `FFI.md`, `MIGRATION-0.6.1-TO-0.7.0.md`, API inventory | "Documents ACE 0.7.0" | doc audit passes |
+| 28 ✅ | Release run, fuzz campaign (20 targets, plus a re-run of `ts1_decode` / `ts1_roundtrip`), baseline `examples/baselines/0.7.0/`, `docs/PERFORMANCE-0.7.0.md`, tag `v0.7.0` (set by the owner after the merge) | [`docs/RELEASE.md`](docs/RELEASE.md) | Regression V3 pass; A/B vs 0.6.1 pass |
+
+## Decisions recorded here
+
+- aarch64 is for the determinism promise (same bytes on every architecture), not for speed; no
+  NEON backend and no timing gates on ARM in 0.7.0.
+- AdaptiveDB calls ACE as a Rust crate, not through the C ABI; the SDK serves standalone JVM
+  clients, tools and GraphNet. The Scala tier bridge is the only AdaptiveDB-shaped piece.
+- No Maven Central and no crates.io before 1.0.
+- Implemented module names differ from the plan above: `ace-java` is `jvm/ace-native` (it also
+  holds the generated Panama bindings), `ace-scala` is split into `jvm/ace-model` (pure types)
+  and `jvm/ace-sdk`, `ace-scala-stream` is `jvm/ace-stream`, `ace-scala-tier` is `jvm/ace-tier`.
+  Bindings are generated from `include/ace.h` by `tools/ace-genbindings0.7.0.py` instead of
+  jextract, so the build needs no extra JDK tool.
+- The JVM gate of task 26 is on the zero-copy path (off-heap input, result left in the native
+  buffer); the `byte[]` convenience path copies 16 MiB twice and is reported only. The thresholds
+  0.97× / 0.90× are estimates to be confirmed by the first reference run.
+- The aarch64 job runs the golden tests of the engine, the facade and the C ABI; the A/B and
+  benchmark gates stay x86_64-only.
+
+## Out of scope
+
+Columnar blocks, adaptive segmentation, trained dictionaries (0.8.0); async API and metrics
+exporters (0.9.0); any change of the on-disk format.
