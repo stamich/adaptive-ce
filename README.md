@@ -34,7 +34,7 @@ and, coming from 0.6.1, [`docs/MIGRATION-0.6.1-TO-0.7.0.md`](docs/MIGRATION-0.6.
 | rarely changing values | TS1 RunDelta (Elias-gamma runs + ZigZag deltas) | sparse-change integers: ≈ 235× |
 | incompressible data | stored RAW (never larger than the input plus framing) | random: 1.0× |
 
-Measured numbers and methodology: [`docs/PERFORMANCE-0.6.1.md`](docs/PERFORMANCE-0.6.1.md)
+Measured numbers and methodology: [`docs/PERFORMANCE-0.7.0.md`](docs/PERFORMANCE-0.7.0.md)
 (reference machine AMD Ryzen 9 5950X; 0.7.0 writes the same bytes), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start
