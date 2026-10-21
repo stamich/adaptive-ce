@@ -83,7 +83,7 @@ for attempt in 1 2 3; do
   ./ace-ab0.7.0.sh "$baseline_tree" "${ab_flags[@]}" || true
   set +e
   python3 tools/ace-check_regressions0.7.0.py --results "$ACE_RESULTS" --baselines examples/baselines \
-    --ab "$ab_json" "${externals[@]}" > "$work/regression.log"
+    --ab "$ab_json" --jvm "$ACE_RESULTS/ffi-jvm-${ACE_VERSION}.json" "${externals[@]}" > "$work/regression.log"
   status=$?
   set -e
   tail -n +1 "$work/regression.log" | head -n 1
