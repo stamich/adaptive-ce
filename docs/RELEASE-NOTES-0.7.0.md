@@ -89,6 +89,20 @@ confined to speed measurements of the existing paths, which the interleaved A/B 
 
 ## Qualification
 
-The release run (Regression V3, interleaved A/B against 0.6.1, fuzz campaign, baseline
-`examples/baselines/0.7.0/`, `docs/PERFORMANCE-0.7.0.md`) is executed on the reference machine
-by the release owner ([`RELEASE.md`](RELEASE.md)); this document is completed with its verdicts.
+Release run on the reference machine (AMD Ryzen 9 5950X, `performance` governor, revision
+3492a07, clean tree); details in [`PERFORMANCE-0.7.0.md`](PERFORMANCE-0.7.0.md), data in
+`examples/baselines/0.7.0/`.
+
+| Check | Verdict |
+|---|---|
+| Regression V3 | **pass**: 99 pass, 12 diagnostic, 0 fail / unstable / skipped |
+| Interleaved A/B vs 0.6.1 | **pass**, 20 / 20 cases, minimum ratio 0.991, byte-identical output |
+| Repeatability | **pass**, 3 runs × 31 families, deterministic values identical |
+| C ABI vs Rust facade (16 MiB) | compress 1.008×, decompress 1.008× (gate ≥ 0.97×) |
+| JVM zero-copy vs facade (16 MiB) | compress 1.020×, decompress 0.936× (gate ≥ 0.90×) |
+| Fuzz | 20 / 20 targets × 600 s, no crash, 4.66 × 10⁹ executions; the 0.6.1 `ts1_*` wall-time anomaly did not reproduce ([`FUZZ.md`](../examples/baselines/0.7.0/FUZZ.md)) |
+
+JVM zero-copy decompression moved between 0.90× and 0.97× of the facade over the qualification
+runs: a native buffer returned to the caller is released through a shared arena, which costs
+0.1 – 0.4 ms on a 3.4 ms call. The 0.90× gate held in the release run; it is not a throughput
+regression of the C ABI, which matches the facade.

@@ -37,10 +37,11 @@ SDK. Task order: `TASKS-0.7.0.md`; notes: `docs/RELEASE-NOTES-0.7.0.md`; migrati
 - `integrations/` (CLI-based `java-demo` and `scala-demo`), replaced by `demo/jvm/`.
 
 ### Release qualification (manual, reference machine)
-- Regression V3, interleaved A/B against 0.6.1, repeatability, the fuzz campaign (20 targets, plus
-  a re-run of `ts1_decode` / `ts1_roundtrip`), baseline `examples/baselines/0.7.0/` and
-  `docs/PERFORMANCE-0.7.0.md` are produced by the release owner (`docs/RELEASE.md`); the tag
-  `v0.7.0` follows the merge.
+- Regression V3 pass (99 pass, 12 diagnostic, 0 fail), interleaved A/B against 0.6.1 pass (20 / 20,
+  minimum 0.991), repeatability pass, fuzz 20 / 20 targets without a crash (`ts1_*` wall-time
+  anomaly of 0.6.1 did not reproduce); C ABI 1.008× and JVM zero-copy 1.020× / 0.936×
+  (compress / decompress) of the Rust facade. Baseline `examples/baselines/0.7.0/`,
+  `docs/PERFORMANCE-0.7.0.md`. The tag `v0.7.0` follows the merge.
 
 ## 0.6.1 - Numeric & Float II (Phase B)
 

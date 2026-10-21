@@ -80,7 +80,7 @@ GraphNet; the tier bridge (task 21) only offers neutral types.
 | 25 | Remove `integrations/` (`java-demo`, `scala-demo`); replacement demo on the new SDK in `demo/`; README and docs updated | "Replaces the integrations demos with the SDK" | no reference to `integrations/` remains |
 | 26 | Benchmark family `ffi`: Rust facade vs C ABI vs JVM on the mixed 16 MiB workload and small buffers (call overhead); A/B gates; Regression V3 | "Adds FFI overhead benchmarks and gates" | C ABI >= 0.97× of the Rust facade on 16 MiB; JVM >= 0.90× |
 | 27 | `docs/RELEASE-NOTES-0.7.0.md`, `CHANGELOG.md`, `README.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `FFI.md`, `MIGRATION-0.6.1-TO-0.7.0.md`, API inventory | "Documents ACE 0.7.0" | doc audit passes |
-| 28 ⏩ | Release run, fuzz campaign (20 targets, plus a re-run of `ts1_decode` / `ts1_roundtrip`), baseline `examples/baselines/0.7.0/`, `docs/PERFORMANCE-0.7.0.md`, tag `v0.7.0` | [`docs/RELEASE.md`](docs/RELEASE.md) | Regression V3 pass; A/B vs 0.6.1 pass |
+| 28 ✅ | Release run, fuzz campaign (20 targets, plus a re-run of `ts1_decode` / `ts1_roundtrip`), baseline `examples/baselines/0.7.0/`, `docs/PERFORMANCE-0.7.0.md`, tag `v0.7.0` (set by the owner after the merge) | [`docs/RELEASE.md`](docs/RELEASE.md) | Regression V3 pass; A/B vs 0.6.1 pass |
 
 ## Decisions recorded here
 
