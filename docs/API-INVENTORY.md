@@ -40,7 +40,7 @@ its `extern "C"` functions are the interface.
 | `ace-ffi` | internal | 40 | 0 | 0 |
 | `ace-format` | internal | 56 | 28 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
-| `ace-planner` | internal | 60 | 28 | 0 |
+| `ace-planner` | internal | 65 | 29 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
 | `ace-simd` | internal | 8 | 0 | 0 |
 | `ace-stream` | internal | 4 | 0 | 0 |
@@ -784,6 +784,12 @@ its `extern "C"` functions are the interface.
 | `candidate_eligibility` | method | `route_policy.rs:159` | Returns whether a candidate may participate in the selected production route. |
 | `candidate_allowed` | method | `route_policy.rs:200` | Convenience predicate used by production filtering and route-aware oracle code. |
 | `budget` | method | `route_policy.rs:213` | Returns the route's initial work budget before Numeric dominance is measured. |
+| `AlphabetBucket` | item | `segmenter.rs:37` | Coarse alphabet size of a window: the number of distinct byte values, bucketed. |
+| `WindowClass` | item | `segmenter.rs:53` | What a window looks like to the planner: the route it would be given and its alphabet. |
+| `SegmenterConfig` | item | `segmenter.rs:65` | Window and segment sizes of the segmenter. |
+| `validate` | method | `segmenter.rs:98` | Checks the relations the algorithm relies on. |
+| `classify_window` | item | `segmenter.rs:131` | Classifies one window: the planner route plus the alphabet bucket. |
+| `segment_boundaries` | item | `segmenter.rs:158` | Cuts `input` into segments and returns their byte ranges, which tile `0..input.len()`. |
 
 ### `ace-runtime` (internal)
 
