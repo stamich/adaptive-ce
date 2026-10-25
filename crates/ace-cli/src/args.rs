@@ -47,7 +47,7 @@ pub enum Command {
         #[arg(long)]
         disable_float: bool,
     },
-    /// Decompresses one ACE 1.0 – 1.5 file.
+    /// Decompresses one ACE 1.0 – 1.6 file.
     Decompress { input: String, output: String },
     /// Prints file and per-block physical metadata without decoding payloads.
     Inspect {

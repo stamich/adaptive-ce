@@ -1,4 +1,4 @@
-//! ACE container format 1.0–1.5: headers, block index, trailer, checksums and block I/O.
+//! ACE container format 1.0–1.6: headers, block index, trailer, checksums and block I/O.
 //!
 //! * `header` — file and block headers (encode/decode).
 //! * `index` — AIDX block index and ACET trailer.

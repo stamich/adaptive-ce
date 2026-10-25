@@ -65,6 +65,8 @@ pub struct CompressionStats {
     pub columnar_blocks: u64,
     /// Column streams inside those blocks.
     pub column_streams: u64,
+    /// Blocks (including segments and columns) stored with a preset dictionary.
+    pub dictionary_blocks: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
     /// Time spent in route prefilter/classification/full NumericFast validation.
@@ -111,6 +113,9 @@ impl CompressionStats {
             EntropyCodecId::Rans => self.rans_blocks += 1,
             EntropyCodecId::Rans4x => self.rans4x_blocks += 1,
             EntropyCodecId::None => {}
+        }
+        if plan.decoding.dictionary.is_some() {
+            self.dictionary_blocks += 1;
         }
         if plan.decoding.transforms.contains(&TransformId::DeltaByte) {
             self.delta_blocks += 1;

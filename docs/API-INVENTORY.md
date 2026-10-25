@@ -31,14 +31,14 @@ its `extern "C"` functions are the interface.
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 56 | 21 | 0 |
-| `ace-core` | internal | 36 | 33 | 0 |
+| `ace-core` | internal | 38 | 34 | 0 |
 | `ace-corpus` | internal | 6 | 20 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
 | `ace-dictionary` | internal | 8 | 9 | 0 |
-| `ace-engine` | internal | 9 | 22 | 0 |
+| `ace-engine` | internal | 9 | 24 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-ffi` | internal | 40 | 0 | 0 |
-| `ace-format` | internal | 56 | 28 | 0 |
+| `ace-format` | internal | 55 | 28 | 0 |
 | `ace-index` | internal | 1 | 5 | 0 |
 | `ace-planner` | internal | 64 | 28 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
@@ -383,10 +383,13 @@ its `extern "C"` functions are the interface.
 | `SegmentationConfig` | item | `config.rs:22` | Window and segment sizes of adaptive segmentation (Format 1.6, `SEG1`). |
 | `validate` | method | `config.rs:54` | Checks the relations the segmenter relies on. |
 | `AceConfig` | item | `config.rs:76` | Runtime configuration of the ACE encoder. |
-| `aligned_block_size` | method | `config.rs:119` | `block_size` adjusted to the configuration: with a [`Schema`] it is rounded to whole |
-| `DictionaryId` | item | `dictionary.rs:3` | Stable dictionary identifier stored in ACE format metadata. |
-| `DictionaryScope` | item | `dictionary.rs:7` | Lifetime and reuse scope of one compression dictionary. |
-| `DictionaryRef` | item | `dictionary.rs:20` | Decoder-facing dictionary reference embedded into one block plan. |
+| `aligned_block_size` | method | `config.rs:123` | `block_size` adjusted to the configuration: with a [`Schema`] it is rounded to whole |
+| `MAX_DICTIONARY_BYTES` | item | `dictionary.rs:6` | Largest dictionary the format can reference: the LZ window (`docs/FORMAT-1.6.md`). |
+| `DictionaryId` | item | `dictionary.rs:10` | Stable dictionary identifier stored in ACE format metadata. |
+| `DictionaryScope` | item | `dictionary.rs:14` | Lifetime and reuse scope of one compression dictionary. |
+| `DictionaryRef` | item | `dictionary.rs:27` | Decoder-facing dictionary reference embedded into one block plan. |
+| `EncoderDictionary` | item | `dictionary.rs:41` | A dictionary the encoder may use, with how blocks refer to it (ACE 0.8, Format 1.6). |
+| `validate` | method | `dictionary.rs:58` | Checks the scope and the size. |
 | `AceError` | item | `error.rs:5` | Unified error type returned by ACE components. |
 | `AceResult` | item | `error.rs:71` | Convenience result type used throughout ACE. |
 | `DecodeLimits` | item | `limits.rs:24` | Hard decoder limits used before any attacker-controlled allocation is performed. |
@@ -431,9 +434,9 @@ its `extern "C"` functions are the interface.
 | `align_block_size` | method | `schema.rs:123` | Rounds `block_size` down to a whole number of records, and up to one record when it is |
 | `widths` | method | `schema.rs:132` | The column widths, in record order. |
 | `CompressionStats` | item | `stats.rs:8` | Aggregate telemetry produced by one compression operation. |
-| `compression_ratio` | method | `stats.rs:89` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
-| `record_selected_plan` | method | `stats.rs:98` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
-| `record_plan` | method | `stats.rs:122` | Increments the stable counter associated with one selected physical plan. |
+| `compression_ratio` | method | `stats.rs:91` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
+| `record_selected_plan` | method | `stats.rs:100` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
+| `record_plan` | method | `stats.rs:127` | Increments the stable counter associated with one selected physical plan. |
 | `FORMAT_MAJOR` | item | `version.rs:6` | Current major format version. |
 | `FORMAT_MINOR` | item | `version.rs:10` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the |
 | `FORMAT_MINOR_STORAGE` | item | `version.rs:14` | First minor version that has segmented (`SEG1`) and columnar (`COL1`) blocks and the |
@@ -527,37 +530,39 @@ its `extern "C"` functions are the interface.
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `wrap_entropy_metadata` | item | `block_pipeline.rs:28` | Prepends the primary-stream length to entropy model metadata when the coder requires it. |
-| `block_format_minor` | item | `block_pipeline.rs:53` | Minor format version a block needs, given its codec, entropy coder and stored payload. |
-| `split_entropy_metadata` | item | `block_pipeline.rs:68` | Splits stored block metadata into `(entropy model metadata, primary stream length)`. |
+| `wrap_entropy_metadata` | item | `block_pipeline.rs:30` | Prepends the primary-stream length to entropy model metadata when the coder requires it. |
+| `block_format_minor` | item | `block_pipeline.rs:55` | Minor format version a block needs, given its codec, entropy coder and stored payload. |
+| `split_entropy_metadata` | item | `block_pipeline.rs:70` | Splits stored block metadata into `(entropy model metadata, primary stream length)`. |
 | `FixedBlockChunker` | item | `chunker.rs:3` | Deterministic fixed-size block splitter retained by ACE 0.2.1. |
 | `new` | method | `chunker.rs:10` | Creates a chunker or returns `None` for a zero block size. |
 | `chunks` | method | `chunker.rs:14` | Returns an iterator over independent fixed-size source blocks. |
-| `PREALLOCATION_CAP_BYTES` | item | `engine.rs:25` | Upper bound on the output capacity [`AceEngine::decompress_into`] reserves up front from |
-| `AceEngine` | item | `engine.rs:29` | Public façade of the ACE compression engine. |
-| `new` | method | `engine.rs:45` | Creates an engine with explicit encoder configuration and default decoder limits. |
-| `default_engine` | method | `engine.rs:74` | Creates an engine using default settings. |
-| `with_decode_limits` | method | `engine.rs:82` | Replaces decoder resource limits. |
-| `config` | method | `engine.rs:88` | Returns a read-only view of encoder configuration. |
-| `compress` | method | `engine.rs:98` | Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a |
-| `compress_with_stats` | method | `engine.rs:117` | Compresses bytes and returns both the file image and detailed telemetry. |
-| `compress_to` | method | `engine.rs:165` | Compresses source bytes and writes the finished ACE file to an arbitrary sink. |
-| `decompress` | method | `engine.rs:180` | Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes. |
-| `decompress_into` | method | `engine.rs:200` | Decompresses an in-memory ACE file into a caller-owned buffer and returns the number |
-| `decompress_from` | method | `engine.rs:219` | Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer. |
-| `explain` | method | `engine.rs:271` | Produces deterministic planner explanations (every candidate fully evaluated) without |
+| `PREALLOCATION_CAP_BYTES` | item | `engine.rs:34` | Upper bound on the output capacity [`AceEngine::decompress_into`] reserves up front from |
+| `AceEngine` | item | `engine.rs:38` | Public façade of the ACE compression engine. |
+| `new` | method | `engine.rs:56` | Creates an engine with explicit encoder configuration and default decoder limits. |
+| `default_engine` | method | `engine.rs:89` | Creates an engine using default settings. |
+| `with_dictionaries` | method | `engine.rs:104` | Sets the registry that blocks of scope `External` are resolved from when decoding. |
+| `with_decode_limits` | method | `engine.rs:110` | Replaces decoder resource limits. |
+| `config` | method | `engine.rs:116` | Returns a read-only view of encoder configuration. |
+| `compress` | method | `engine.rs:126` | Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a |
+| `compress_with_stats` | method | `engine.rs:145` | Compresses bytes and returns both the file image and detailed telemetry. |
+| `compress_to` | method | `engine.rs:211` | Compresses source bytes and writes the finished ACE file to an arbitrary sink. |
+| `decompress` | method | `engine.rs:226` | Decompresses an in-memory ACE 1.0 – 1.6 file into reconstructed bytes. |
+| `decompress_into` | method | `engine.rs:246` | Decompresses an in-memory ACE file into a caller-owned buffer and returns the number |
+| `decompress_from` | method | `engine.rs:265` | Reads, validates and sequentially decompresses ACE 1.0–1.6 blocks to a writer. |
+| `explain` | method | `engine.rs:326` | Produces deterministic planner explanations (every candidate fully evaluated) without |
 | `BlockExplanation` | item | `explain.rs:10` | Planner explanation for one input block. |
-| `RangeAccessMetrics` | item | `indexed.rs:10` | Physical work implied by one logical random-access range request. |
-| `physical_to_logical_ratio` | method | `indexed.rs:29` | Returns physical serialized bytes read divided by logical reconstructed bytes requested. |
-| `overread_ratio` | method | `indexed.rs:38` | Backward-compatible alias for the pre-0.3 metric name. |
-| `AceIndexedDecoder` | item | `indexed.rs:44` | High-level random-access decoder backed by the serialized ACE 1.1/1.2 block index. |
-| `open` | method | `indexed.rs:58` | Opens and validates an indexed ACE stream. |
-| `decode_block` | method | `indexed.rs:69` | Decodes exactly one independent block by stable block identifier. |
-| `range_metrics` | method | `indexed.rs:85` | Returns physical-read diagnostics for a logical range without decoding it. |
-| `read_range` | method | `indexed.rs:114` | Decodes only blocks intersecting the requested logical byte range and trims boundary blocks. |
-| `read_range_with_metrics` | method | `indexed.rs:129` | Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup. |
-| `original_size` | method | `indexed.rs:281` | Returns the total reconstructed size of the file in bytes. |
-| `block_count` | method | `indexed.rs:286` | Returns the number of indexed independent blocks. |
+| `RangeAccessMetrics` | item | `indexed.rs:12` | Physical work implied by one logical random-access range request. |
+| `physical_to_logical_ratio` | method | `indexed.rs:31` | Returns physical serialized bytes read divided by logical reconstructed bytes requested. |
+| `overread_ratio` | method | `indexed.rs:40` | Backward-compatible alias for the pre-0.3 metric name. |
+| `AceIndexedDecoder` | item | `indexed.rs:46` | High-level random-access decoder backed by the serialized ACE 1.1/1.2 block index. |
+| `open` | method | `indexed.rs:62` | Opens and validates an indexed ACE stream. |
+| `with_dictionaries` | method | `indexed.rs:76` | Sets the registry that blocks of scope `External` are resolved from (Format 1.6). |
+| `decode_block` | method | `indexed.rs:87` | Decodes exactly one independent block by stable block identifier. |
+| `range_metrics` | method | `indexed.rs:105` | Returns physical-read diagnostics for a logical range without decoding it. |
+| `read_range` | method | `indexed.rs:134` | Decodes only blocks intersecting the requested logical byte range and trims boundary blocks. |
+| `read_range_with_metrics` | method | `indexed.rs:149` | Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup. |
+| `original_size` | method | `indexed.rs:310` | Returns the total reconstructed size of the file in bytes. |
+| `block_count` | method | `indexed.rs:315` | Returns the number of indexed independent blocks. |
 
 ### `ace-entropy` (internal)
 
@@ -664,7 +669,6 @@ its `extern "C"` functions are the interface.
 | `split_columns` | item | `column.rs:275` | Splits `data` into one stream per column plus the tail of an incomplete last record. |
 | `join_columns` | item | `column.rs:302` | The exact inverse of [`split_columns`]: interleaves the streams record by record and appends |
 | `DICTIONARY_SECTION_MAGIC` | item | `dictionary_section.rs:27` | Magic bytes that open the dictionary section. |
-| `MAX_DICTIONARY_BYTES` | item | `dictionary_section.rs:31` | Largest dictionary the format allows: the LZ window. Bytes before the last 65 535 of a longer |
 | `EmbeddedDictionary` | item | `dictionary_section.rs:38` | A dictionary stored in the file. |
 | `encode_dictionary_section` | item | `dictionary_section.rs:50` | Serializes a dictionary section. |
 | `read_dictionary_section` | item | `dictionary_section.rs:95` | Reads and validates a dictionary section from `reader`. |
@@ -676,11 +680,11 @@ its `extern "C"` functions are the interface.
 | `FILE_FLAG_HAS_DICTIONARIES` | item | `header.rs:30` | File flag (Format 1.6): the dictionary section (`ADIC`) follows the file header and blocks may |
 | `SUPPORTED_FILE_FLAGS` | item | `header.rs:32` | Set of format-1.1…1.4 flags understood by ACE. |
 | `BLOCK_FLAG_HAS_DICTIONARY` | item | `header.rs:34` | Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors. |
-| `FileHeader` | item | `header.rs:38` | Fixed ACE file header shared by formats 1.0 – 1.5. |
+| `FileHeader` | item | `header.rs:38` | Fixed ACE file header shared by formats 1.0 – 1.6. |
 | `BlockHeader` | item | `header.rs:54` | Fixed and variable decoder metadata for one ACE block. |
 | `minimal_minor_version` | item | `header.rs:84` | Minor version a writer must declare for a file whose blocks each need the minor version |
 | `encode_file_header` | item | `header.rs:94` | Serializes a file header, including a CRC32C over its first 28 bytes. |
-| `decode_file_header` | item | `header.rs:115` | Parses and validates a format 1.0 – 1.5 file header. |
+| `decode_file_header` | item | `header.rs:115` | Parses and validates a format 1.0 – 1.6 file header. |
 | `block_descriptor_size` | item | `header.rs:171` | Returns the variable descriptor byte count implied by a fixed block header. |
 | `encode_block_header` | item | `header.rs:189` | Serializes one block header and its variable transform/dictionary descriptors. |
 | `decode_block_header` | item | `header.rs:229` | Parses one fixed block header and its caller-supplied variable descriptors. |
@@ -733,12 +737,12 @@ its `extern "C"` functions are the interface.
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `AceIndexReader` | item | `index_reader.rs:30` | Seekable parser that loads the ACE block index once and can fetch individual encoded blocks. |
-| `open` | method | `index_reader.rs:49` | Opens a seekable ACE file, loads its trailer (Format 1.1 and later) and validates the block index. |
-| `read_encoded_block` | method | `index_reader.rs:125` | Reads one indexed encoded block without decoding its compression pipeline. |
-| `read_block_header_only` | method | `index_reader.rs:153` | Reads only the header of an indexed block (fixed part and descriptors) and returns it with |
-| `read_within_block` | method | `index_reader.rs:180` | Reads `len` bytes that start `offset` bytes after the first byte of an indexed block. |
-| `into_inner` | method | `index_reader.rs:207` | Returns the wrapped seekable reader. |
+| `AceIndexReader` | item | `index_reader.rs:31` | Seekable parser that loads the ACE block index once and can fetch individual encoded blocks. |
+| `open` | method | `index_reader.rs:52` | Opens a seekable ACE file, loads its trailer (Format 1.1 and later) and validates the block index. |
+| `read_encoded_block` | method | `index_reader.rs:136` | Reads one indexed encoded block without decoding its compression pipeline. |
+| `read_block_header_only` | method | `index_reader.rs:164` | Reads only the header of an indexed block (fixed part and descriptors) and returns it with |
+| `read_within_block` | method | `index_reader.rs:191` | Reads `len` bytes that start `offset` bytes after the first byte of an indexed block. |
+| `into_inner` | method | `index_reader.rs:218` | Returns the wrapped seekable reader. |
 
 ### `ace-planner` (internal)
 
@@ -866,7 +870,7 @@ its `extern "C"` functions are the interface.
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `decompress_stream` | item | `decoder.rs:13` | Sequentially decompresses an ACE 1.0–1.5 stream into a writer with explicit limits. |
+| `decompress_stream` | item | `decoder.rs:13` | Sequentially decompresses an ACE 1.0–1.6 stream into a writer with explicit limits. |
 | `compress_reader_known_size` | item | `encoder.rs:35` | Compresses a reader into one indexed ACE stream using bounded block memory. |
 | `StreamLimits` | item | `limits.rs:5` | Resource limits applied to a bounded streaming operation. |
 | `StreamingStats` | item | `limits.rs:28` | Aggregate telemetry produced by the bounded streaming encoder. |

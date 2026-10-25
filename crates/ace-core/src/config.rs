@@ -1,4 +1,4 @@
-use crate::{AccessHint, AceError, AceResult, BlockSizePolicy, Schema};
+use crate::{AccessHint, AceError, AceResult, BlockSizePolicy, EncoderDictionary, Schema};
 
 /// Planner profile that changes the relative importance of compressed size and runtime cost.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,6 +109,10 @@ pub struct AceConfig {
     /// a columnar block. The schema is never guessed: the caller states it. A columnar block is
     /// stored only when it is smaller than the row-wise block by a margin.
     pub schema: Option<Schema>,
+    /// Preset dictionary for the LZ codec (ACE 0.8, Format 1.6); `None` (the default) writes no
+    /// dictionary. A block uses the dictionary only when that makes it smaller; with scope
+    /// `File` it is embedded only when the file saves more than the section costs.
+    pub dictionary: Option<EncoderDictionary>,
 }
 
 /// Inherent methods of [`AceConfig`].
@@ -144,6 +148,7 @@ impl Default for AceConfig {
             enable_float_specialization: true,
             segmentation: None,
             schema: None,
+            dictionary: None,
         }
     }
 }

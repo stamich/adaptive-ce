@@ -33,7 +33,7 @@ pub const SUPPORTED_FILE_FLAGS: u16 = FILE_FLAG_HAS_INDEX | FILE_FLAG_HAS_DICTIO
 /// Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors.
 pub const BLOCK_FLAG_HAS_DICTIONARY: u8 = 0x01;
 
-/// Fixed ACE file header shared by formats 1.0 – 1.5.
+/// Fixed ACE file header shared by formats 1.0 – 1.6.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileHeader {
     /// Minor format version: read from disk, or chosen by the writer (`FORMAT_MINOR_BASE` up to
@@ -105,7 +105,7 @@ pub fn encode_file_header(header: &FileHeader) -> [u8; FILE_HEADER_SIZE] {
     bytes
 }
 
-/// Parses and validates a format 1.0 – 1.5 file header.
+/// Parses and validates a format 1.0 – 1.6 file header.
 ///
 /// # Errors
 ///

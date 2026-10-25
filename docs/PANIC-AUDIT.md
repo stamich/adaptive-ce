@@ -39,7 +39,7 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-entropy/src/rans/model.rs:34` | `clippy::arithmetic_side_effects, clippy::cast_possible_truncation` | Encoder only: `count <= input.len()`, so `count * RANS_SCALE` fits `u64` for any input that fits in memory, `floor <= RANS_SCALE` fits `u16`, and `sum` stays within `256 * RANS_SCALE`. |
 | `crates/ace-entropy/src/rans4x.rs:36` | `clippy::arithmetic_side_effects` | encoder: only `index & 3` and slice lengths |
 | `crates/ace-format/src/header.rs:188` | `clippy::arithmetic_side_effects, clippy::cast_possible_truncation` | encoder: see Invariants |
-| `crates/ace-index/src/index_reader.rs:18` | `clippy::arithmetic_side_effects, clippy::cast_possible_wrap` | constant: -28 |
+| `crates/ace-index/src/index_reader.rs:19` | `clippy::arithmetic_side_effects, clippy::cast_possible_wrap` | constant: -28 |
 | `crates/ace-simd/src/crc32c.rs:111` | `unknown_lints, clippy::chunks_exact_to_as_chunks` | `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1 hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks` lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint. |
 | `crates/ace-simd/src/crc32c.rs:168` | `unknown_lints, clippy::chunks_exact_to_as_chunks` | See the note on the SSE4.2 kernel: `chunks_exact` keeps the structure of the audited kernel. |
 

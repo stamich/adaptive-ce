@@ -3,7 +3,11 @@
 use std::io::{Cursor, Read, Write};
 
 use ace_analysis::{analyze_numeric, recommend_block_size, AnalysisLevel, DefaultBlockAnalyzer};
-use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, CompressionStats, DecodeLimits};
+use ace_core::{
+    AceConfig, AceError, AceResult, BlockSizePolicy, CompressionStats, DecodeLimits,
+    DictionaryScope,
+};
+use ace_dictionary::DictionaryRegistry;
 use ace_format::{AceReader, FileHeader};
 use ace_planner::{
     apply_time_series_policy, evaluate_all_candidates, evaluate_candidates_v4_with_route,
@@ -15,10 +19,15 @@ use rayon::prelude::*;
 use crate::block_encoder::encode_block;
 use crate::block_pipeline::decode_encoded_block;
 use crate::container::assemble_container;
+use crate::dictionaries::DictionaryView;
 use crate::{BlockExplanation, FixedBlockChunker};
 
 /// Largest input prefix sampled by the `Auto` block-size policy.
 const AUTO_POLICY_SAMPLE_BYTES: usize = 4 * 1024 * 1024;
+
+/// Bytes the dictionary section adds besides the dictionary itself: the magic, the count, the
+/// entry header (id, length, CRC-32C) and the section CRC-32C (`docs/FORMAT-1.6.md`).
+const EMBEDDED_DICTIONARY_OVERHEAD: u64 = 4 + 4 + 16 + 4;
 
 /// Upper bound on the output capacity [`AceEngine::decompress_into`] reserves up front from
 /// the untrusted file header; larger outputs simply grow the buffer while decoding.
@@ -31,6 +40,8 @@ pub struct AceEngine {
     config: AceConfig,
     /// Decoder resource limits.
     limits: DecodeLimits,
+    /// Dictionaries that blocks of scope `External` are resolved from when decoding.
+    registry: DictionaryRegistry,
 }
 
 /// Inherent methods of [`AceEngine`].
@@ -40,8 +51,8 @@ impl AceEngine {
     /// # Errors
     ///
     /// [`AceError::InvalidConfig`] when the block size is zero or exceeds `u32::MAX`, when the
-    /// segmentation configuration or the schema is invalid, or when the runtime configuration (threads, memory
-    /// budget) is invalid.
+    /// segmentation configuration, the schema or the dictionary is invalid, or when the runtime
+    /// configuration (threads, memory budget) is invalid.
     pub fn new(config: AceConfig) -> AceResult<Self> {
         if config.block_size == 0 || config.block_size > u32::MAX as usize {
             return Err(AceError::InvalidConfig(
@@ -60,10 +71,14 @@ impl AceEngine {
                 ));
             }
         }
+        if let Some(dictionary) = &config.dictionary {
+            dictionary.validate()?;
+        }
         RuntimeConfig::from_ace(&config)?;
         Ok(Self {
             config,
             limits: DecodeLimits::default(),
+            registry: DictionaryRegistry::new(),
         })
     }
 
@@ -75,7 +90,20 @@ impl AceEngine {
         Self {
             config: AceConfig::default(),
             limits: DecodeLimits::default(),
+            registry: DictionaryRegistry::new(),
         }
+    }
+
+    /// Sets the registry that blocks of scope `External` are resolved from when decoding.
+    ///
+    /// A file written with an external dictionary stores only its id; the reader must have the
+    /// same bytes under that id, otherwise decoding fails with
+    /// [`AceError::MissingDictionary`]. Dictionaries embedded in a file (scope `File`) need no
+    /// registry. The dictionary of the engine's own configuration is always resolvable, so an
+    /// engine reads back what it wrote.
+    pub fn with_dictionaries(mut self, registry: DictionaryRegistry) -> Self {
+        self.registry = registry;
+        self
     }
 
     /// Replaces decoder resource limits.
@@ -146,11 +174,29 @@ impl AceEngine {
             block_count: blocks.len() as u64,
             ..Default::default()
         };
+        // An embedded dictionary costs its own bytes once per file. When the blocks save less
+        // than that, the file is smaller without it, so the input is encoded again without a
+        // dictionary (rare: a small input or a dictionary that fits the data badly).
+        if let Some(dictionary) = &self.config.dictionary {
+            let saved: u64 = blocks.iter().map(|block| block.dictionary_saved).sum();
+            let section = dictionary.bytes.len() as u64 + EMBEDDED_DICTIONARY_OVERHEAD;
+            if dictionary.scope == DictionaryScope::File && saved > 0 && saved <= section {
+                let mut config = self.config.clone();
+                config.dictionary = None;
+                return Self {
+                    config,
+                    limits: self.limits.clone(),
+                    registry: self.registry.clone(),
+                }
+                .compress_with_stats(input);
+            }
+        }
         let output = assemble_container(
             blocks,
             input.len(),
             block_size,
             self.config.write_index,
+            self.config.dictionary.as_ref(),
             &mut stats,
         )?;
         Ok((output, stats))
@@ -172,7 +218,7 @@ impl AceEngine {
         Ok(stats)
     }
 
-    /// Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes.
+    /// Decompresses an in-memory ACE 1.0 – 1.6 file into reconstructed bytes.
     ///
     /// # Errors
     ///
@@ -210,7 +256,7 @@ impl AceEngine {
         Ok(out.len())
     }
 
-    /// Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer.
+    /// Reads, validates and sequentially decompresses ACE 1.0–1.6 blocks to a writer.
     ///
     /// # Errors
     ///
@@ -234,6 +280,14 @@ impl AceEngine {
             return Err(AceError::ResourceLimitExceeded("block count"));
         }
         let mut total = 0u64;
+        // Cloned because reading blocks borrows the reader mutably; the section is at most a
+        // few dictionaries of 64 KiB.
+        let embedded = ace.dictionaries().to_vec();
+        let dictionaries = DictionaryView::new(
+            &embedded,
+            &self.registry,
+            self.config.dictionary.as_ref(),
+        );
         for expected_id in 0..file.block_count {
             let (header, metadata, payload) = ace.read_block()?;
             if header.block_id != expected_id {
@@ -245,6 +299,7 @@ impl AceEngine {
                 &payload,
                 file.minor_version,
                 &self.limits,
+                &dictionaries,
             )?;
             writer.write_all(&block)?;
             total = total

@@ -10,8 +10,9 @@ use std::io::{Read, Seek, SeekFrom};
 use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_format::{
     checksum, decode_file_header, decode_index, decode_trailer, read_block_header,
-    read_serialized_block, BlockHeader, BlockIndex, FileHeader, SerializedBlock, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE, INDEX_ENTRY_SIZE,
-    INDEX_HEADER_SIZE, TRAILER_SIZE,
+    read_dictionary_section, read_serialized_block, BlockHeader, BlockIndex, EmbeddedDictionary,
+    FileHeader, SerializedBlock, FILE_FLAG_HAS_DICTIONARIES, FILE_FLAG_HAS_INDEX,
+    FILE_HEADER_SIZE, INDEX_ENTRY_SIZE, INDEX_HEADER_SIZE, TRAILER_SIZE,
 };
 
 /// Seek offset of the trailer from the end of the file.
@@ -34,6 +35,8 @@ pub struct AceIndexReader<R: Read + Seek> {
     pub file_header: FileHeader,
     /// Validated sorted block index.
     pub index: BlockIndex,
+    /// Dictionaries of the file's dictionary section (Format 1.6); empty for files without one.
+    pub dictionaries: Vec<EmbeddedDictionary>,
     /// Limits applied while parsing blocks.
     limits: DecodeLimits,
 }
@@ -59,6 +62,13 @@ impl<R: Read + Seek> AceIndexReader<R> {
         if file_header.original_size > limits.max_output_size {
             return Err(AceError::ResourceLimitExceeded("file output size"));
         }
+        // The section sits right behind the file header; block offsets are absolute, so the
+        // index is not affected by it.
+        let dictionaries = if file_header.flags & FILE_FLAG_HAS_DICTIONARIES != 0 {
+            read_dictionary_section(&mut reader, &limits)?
+        } else {
+            Vec::new()
+        };
         if file_header.block_count > limits.max_block_count() {
             return Err(AceError::ResourceLimitExceeded("block count"));
         }
@@ -112,6 +122,7 @@ impl<R: Read + Seek> AceIndexReader<R> {
             reader,
             file_header,
             index,
+            dictionaries,
             limits,
         })
     }

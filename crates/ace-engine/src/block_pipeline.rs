@@ -9,7 +9,7 @@
 // narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
 #![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
-use ace_codecs::{decode_codec, payload_minor_version};
+use ace_codecs::{decode_codec, lz_decode_with_dictionary, payload_minor_version};
 use ace_core::{
     AceError, AceResult, CodecId, DecodeLimits, EntropyCodecId, FORMAT_MAJOR,
     PRIMARY_LENGTH_PREFIX_BYTES,
@@ -19,6 +19,8 @@ use ace_format::{
     checksum, join_columns, parse_inner_block, BlockHeader, ColumnTable, SegmentTable,
 };
 use ace_transforms::invert_transform;
+
+use crate::dictionaries::DictionaryView;
 
 /// Prepends the primary-stream length to entropy model metadata when the coder requires it.
 ///
@@ -99,12 +101,18 @@ fn max_primary_len(original_size: usize) -> usize {
 /// `minor_version` is the minor format version of the file: a payload that uses a feature
 /// newer than the file declares (for example a NUM1 mode 4 stream in a 1.4 file) is rejected
 /// with [`AceError::UnsupportedVersion`] before it is decoded.
+///
+/// A block with a dictionary descriptor (Format 1.6) must use the LZ codec; the dictionary is
+/// looked up in `dictionaries` and the LZ stream is decoded with it as preset history
+/// ([`lz_decode_with_dictionary`]). A descriptor in a file below 1.6 is
+/// [`AceError::MissingDictionary`], since no release writes one.
 pub(crate) fn decode_encoded_block(
     header: &BlockHeader,
     metadata: &[u8],
     payload: &[u8],
     minor_version: u8,
     limits: &DecodeLimits,
+    dictionaries: &DictionaryView<'_>,
 ) -> AceResult<Vec<u8>> {
     let original_size = header.original_size as usize;
     if original_size > limits.max_block_size {
@@ -112,16 +120,41 @@ pub(crate) fn decode_encoded_block(
     }
     match header.codec {
         CodecId::Segmented => {
-            return decode_segmented_block(header, metadata, payload, minor_version, limits)
+            return decode_segmented_block(
+                header,
+                metadata,
+                payload,
+                minor_version,
+                limits,
+                dictionaries,
+            )
         }
         CodecId::Columnar => {
-            return decode_columnar_block(header, metadata, payload, minor_version, limits)
+            return decode_columnar_block(
+                header,
+                metadata,
+                payload,
+                minor_version,
+                limits,
+                dictionaries,
+            )
         }
         _ => {}
     }
-    if let Some(dictionary) = header.dictionary {
-        return Err(AceError::MissingDictionary(dictionary.id.0));
-    }
+    let dictionary = match header.dictionary {
+        None => None,
+        Some(reference) => {
+            if minor_version < ace_core::FORMAT_MINOR_STORAGE {
+                return Err(AceError::MissingDictionary(reference.id.0));
+            }
+            if header.codec != CodecId::Lz {
+                return Err(AceError::Malformed(
+                    "dictionary on a codec that does not use one",
+                ));
+            }
+            Some(dictionaries.resolve(reference, limits)?)
+        }
+    };
     let (entropy_metadata, primary_size) =
         split_entropy_metadata(header.entropy, metadata, payload.len())?;
     if primary_size > max_primary_len(original_size) {
@@ -135,7 +168,12 @@ pub(crate) fn decode_encoded_block(
             minor: minor_version,
         });
     }
-    let mut stage = decode_codec(header.codec, &primary, original_size)?;
+    let mut stage = match &dictionary {
+        Some(dictionary) => {
+            lz_decode_with_dictionary(&primary, dictionary.as_slice(), original_size)?
+        }
+        None => decode_codec(header.codec, &primary, original_size)?,
+    };
     for &transform in header.transforms.iter().rev() {
         stage = invert_transform(transform, &stage)?;
     }
@@ -169,6 +207,7 @@ fn decode_segmented_block(
     payload: &[u8],
     minor_version: u8,
     limits: &DecodeLimits,
+    dictionaries: &DictionaryView<'_>,
 ) -> AceResult<Vec<u8>> {
     check_bare_container(header, metadata, minor_version)?;
     let original_size = header.original_size as usize;
@@ -192,6 +231,7 @@ fn decode_segmented_block(
             segment_size,
             minor_version,
             limits,
+            dictionaries,
         )?);
     }
     if out.len() != original_size {
@@ -218,10 +258,18 @@ pub(crate) fn decode_inner_block(
     original_size: u32,
     minor_version: u8,
     limits: &DecodeLimits,
+    dictionaries: &DictionaryView<'_>,
 ) -> AceResult<Vec<u8>> {
     let (header, metadata, payload) =
         parse_inner_block(bytes, block_id, original_size, minor_version, limits)?;
-    decode_encoded_block(&header, &metadata, &payload, minor_version, limits)
+    decode_encoded_block(
+        &header,
+        &metadata,
+        &payload,
+        minor_version,
+        limits,
+        dictionaries,
+    )
 }
 
 /// Checks that a container block (`SEG1` or `COL1`) is allowed in a file of `minor_version` and
@@ -271,6 +319,7 @@ fn decode_columnar_block(
     payload: &[u8],
     minor_version: u8,
     limits: &DecodeLimits,
+    dictionaries: &DictionaryView<'_>,
 ) -> AceResult<Vec<u8>> {
     check_bare_container(header, metadata, minor_version)?;
     let original_size = header.original_size as usize;
@@ -291,6 +340,7 @@ fn decode_columnar_block(
             stream_size,
             minor_version,
             limits,
+            dictionaries,
         )?);
     }
     let widths: Vec<u16> = table.columns.iter().map(|column| column.spec.width).collect();

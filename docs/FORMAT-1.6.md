@@ -153,6 +153,12 @@ Only the LZ codec uses a dictionary in 1.6; any other codec with a descriptor is
 file with only `External` references has no `ADIC` section but is still 1.6, because an older
 reader would answer `MissingDictionary` for a reason it cannot explain.
 
+*Writer rule.* A dictionary is an engine-level candidate (`DICTIONARIES.md`): a block, segment or
+column is written with a dictionary descriptor only when the LZ form with the dictionary is smaller
+than the planned block by at least `min_gain_bytes`, descriptor included, and never for a NUM1 or
+TS1 block. The `ADIC` section is written only when a block uses a `File` dictionary and the blocks
+together save more than the section costs; otherwise the file is the file without a dictionary.
+
 *Meaning.* The dictionary bytes are the history that precedes the block: LZ matches may point
 back into the last 65 535 bytes of `dictionary ‖ output`. The decoder starts with the dictionary
 as the first bytes of its output buffer and removes them at the end. Distances must stay inside

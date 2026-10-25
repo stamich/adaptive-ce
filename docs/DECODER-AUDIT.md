@@ -65,7 +65,7 @@ arithmetic or narrowing cast into a build failure. Proven-safe sites:
 | `crates/ace-format/src/dictionary_section.rs` | none |
 | `crates/ace-format/src/segment.rs` | none |
 | `crates/ace-format/src/column.rs` | none |
-| `crates/ace-index/src/index_reader.rs` | `:18` constant: -28 |
+| `crates/ace-index/src/index_reader.rs` | `:19` constant: -28 |
 | `crates/ace-engine/src/block_pipeline.rs` | none |
 | `crates/ace-codecs/src/numeric/header.rs` | none |
 | `crates/ace-codecs/src/numeric/decode.rs` | none |

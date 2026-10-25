@@ -1,4 +1,6 @@
 use crate::block_pipeline::{decode_encoded_block, decode_inner_block};
+use crate::dictionaries::DictionaryView;
+use ace_dictionary::DictionaryRegistry;
 use ace_core::{AceError, AceResult, CodecId, DecodeLimits, EntropyCodecId};
 use ace_format::{SegmentTable, INDEX_FLAG_SEGMENTED, SEGMENT_HEADER_SIZE};
 use ace_index::AceIndexReader;
@@ -44,6 +46,8 @@ impl RangeAccessMetrics {
 pub struct AceIndexedDecoder<R: Read + Seek> {
     indexed: AceIndexReader<R>,
     limits: DecodeLimits,
+    /// Dictionaries that blocks of scope `External` are resolved from.
+    registry: DictionaryRegistry,
 }
 
 /// Inherent methods of [`AceIndexedDecoder`].
@@ -57,7 +61,21 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
     /// [`AceError::Io`]; files without an index (Format 1.0) are rejected.
     pub fn open(reader: R, limits: DecodeLimits) -> AceResult<Self> {
         let indexed = AceIndexReader::open(reader, limits.clone())?;
-        Ok(Self { indexed, limits })
+        Ok(Self {
+            indexed,
+            limits,
+            registry: DictionaryRegistry::new(),
+        })
+    }
+
+    /// Sets the registry that blocks of scope `External` are resolved from (Format 1.6).
+    ///
+    /// Dictionaries embedded in the file (scope `File`) are read by [`Self::open`] and need no
+    /// registry; a block that names an external dictionary the registry lacks fails with
+    /// [`AceError::MissingDictionary`].
+    pub fn with_dictionaries(mut self, registry: DictionaryRegistry) -> Self {
+        self.registry = registry;
+        self
     }
 
     /// Decodes exactly one independent block by stable block identifier.
@@ -68,12 +86,14 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
     /// [`crate::AceEngine::decompress_into`].
     pub fn decode_block(&mut self, block_id: u64) -> AceResult<Vec<u8>> {
         let (header, metadata, payload) = self.indexed.read_encoded_block(block_id)?;
+        let dictionaries = DictionaryView::new(&self.indexed.dictionaries, &self.registry, None);
         decode_encoded_block(
             &header,
             &metadata,
             &payload,
             self.indexed.file_header.minor_version,
             &self.limits,
+            &dictionaries,
         )
     }
 
@@ -267,7 +287,16 @@ impl<R: Read + Seek> AceIndexedDecoder<R> {
             )?;
             let segment_size = u32::try_from(logical.len())
                 .map_err(|_| AceError::ResourceLimitExceeded("segment size"))?;
-            let decoded = decode_inner_block(&bytes, index as u64, segment_size, minor, &self.limits)?;
+            let dictionaries =
+                DictionaryView::new(&self.indexed.dictionaries, &self.registry, None);
+            let decoded = decode_inner_block(
+                &bytes,
+                index as u64,
+                segment_size,
+                minor,
+                &self.limits,
+                &dictionaries,
+            )?;
             let from = block_range.start.max(logical.start) - logical.start;
             let to = block_range.end.min(logical.end) - logical.start;
             part.bytes.extend_from_slice(&decoded[from..to]);

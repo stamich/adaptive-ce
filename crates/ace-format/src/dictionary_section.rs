@@ -27,8 +27,8 @@ use crate::checksum;
 pub const DICTIONARY_SECTION_MAGIC: [u8; 4] = *b"ADIC";
 
 /// Largest dictionary the format allows: the LZ window. Bytes before the last 65 535 of a longer
-/// dictionary could never be matched.
-pub const MAX_DICTIONARY_BYTES: usize = 65_535;
+/// dictionary could never be matched. (Defined in `ace-core`, re-exported here.)
+pub use ace_core::MAX_DICTIONARY_BYTES;
 
 /// Size of the fixed part of a dictionary entry: id (8), length (4), CRC-32C (4).
 const ENTRY_HEADER_SIZE: usize = 16;
