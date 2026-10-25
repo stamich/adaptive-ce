@@ -1,10 +1,11 @@
 package io.ace.sdk
 
-import io.ace.{AceException, Engine, RangeReader as JReader}
+import io.ace.{AceException, Dictionary as JDictionary, Engine, RangeReader as JReader}
 import io.ace.model.*
 
 import java.lang.foreign.MemorySegment
 import java.nio.file.Path
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 /** Runs a native call and turns the library's failures into [[AceError]] values. */
@@ -21,51 +22,71 @@ def guarded[A](body: => A): Either[AceError, A] =
 /** Entry points of the SDK. */
 object Ace:
 
-  /** Opens a codec. The caller closes it; prefer [[Ace.use]]. */
-  def open(config: AceConfig = AceConfig.Default, limits: DecodeLimits = DecodeLimits.Default): Either[AceError, AceCodec] =
-    (config.validate ++ limits.validate) match
-      case Nil => guarded(new AceCodec(Engine.create(Convert.config(config), Convert.limits(limits))))
+  /**
+   * Opens a codec. The caller closes it; prefer [[Ace.use]].
+   *
+   * `dictionaries` are the external dictionaries the codec resolves when it reads files written
+   * with [[DictionaryScope.External]]; the dictionary of `config` is always available.
+   */
+  def open(
+      config: AceConfig = AceConfig.Default,
+      limits: DecodeLimits = DecodeLimits.Default,
+      dictionaries: Seq[AceDictionary] = Nil
+  ): Either[AceError, AceCodec] =
+    (config.validate ++ limits.validate ++ dictionaries.flatMap(_.validate)) match
+      case Nil =>
+        guarded(
+          new AceCodec(
+            Engine.create(
+              Convert.config(config),
+              Convert.limits(limits),
+              dictionaries.map(Convert.javaDictionary).asJava
+            ),
+            config
+          )
+        )
       case problems => Left(AceError.InvalidArgument(problems.mkString("; ")))
 
   /** Opens a codec, runs `body` with it and always closes it. */
-  def use[A](config: AceConfig = AceConfig.Default, limits: DecodeLimits = DecodeLimits.Default)(
+  def use[A](
+      config: AceConfig = AceConfig.Default,
+      limits: DecodeLimits = DecodeLimits.Default,
+      dictionaries: Seq[AceDictionary] = Nil
+  )(
       body: AceCodec => Either[AceError, A]
   ): Either[AceError, A] =
-    open(config, limits).flatMap { codec =>
+    open(config, limits, dictionaries).flatMap { codec =>
       try body(codec)
       finally codec.close()
     }
+
+  /**
+   * A dictionary with the given content; its id is derived from the bytes.
+   *
+   * @return [[AceError.InvalidArgument]] unless there are 1 to 65 535 bytes
+   */
+  def dictionary(bytes: Array[Byte]): Either[AceError, AceDictionary] =
+    guarded(Convert.dictionary(JDictionary.of(bytes)))
+
+  /**
+   * Trains a dictionary of about `size` bytes (64 to 65 535) from typical inputs of one data
+   * source; 100 to 1 000 samples are usually enough. Deterministic: the same samples in the same
+   * order give the same dictionary on every machine.
+   */
+  def trainDictionary(samples: Seq[Array[Byte]], size: Int): Either[AceError, AceDictionary] =
+    guarded(Convert.dictionary(JDictionary.train(samples.asJava, size)))
 
   /** The version of the native library. */
   def nativeVersion: Either[AceError, String] = guarded(io.ace.NativeLibrary.engineVersion())
 
 /** An open engine. Safe to share between threads. */
-final class AceCodec private[sdk] (private[sdk] val engine: Engine) extends AutoCloseable:
+final class AceCodec private[sdk] (private[sdk] val engine: Engine, configured: AceConfig) extends AutoCloseable:
 
   /** The underlying Java engine, for adapters in other modules of the SDK. */
   def javaEngine: Engine = engine
 
-  def config: AceConfig = scalaConfig
-
-  private lazy val scalaConfig: AceConfig =
-    val c = engine.config()
-    AceConfig(
-      profile = c.profile.ordinal match
-        case 0 => Profile.Fast
-        case 1 => Profile.Balanced
-        case _ => Profile.Dense,
-      blockSize = c.blockSize,
-      threads = c.threads,
-      memoryBudget = c.memoryBudget,
-      sizePolicy = if c.blockSizePolicy.ordinal == 0 then SizePolicy.Fixed else SizePolicy.Auto,
-      accessHint = c.accessHint.ordinal match
-        case 0 => AccessHint.Sequential
-        case 1 => AccessHint.Balanced
-        case _ => AccessHint.RandomAccess,
-      writeIndex = c.writeIndex,
-      numericSpecialization = c.numericSpecialization,
-      floatSpecialization = c.floatSpecialization
-    )
+  /** The settings this codec was opened with. */
+  def config: AceConfig = configured
 
   def compress(input: Array[Byte]): Either[AceError, Array[Byte]] = guarded(engine.compress(input))
 

@@ -98,3 +98,26 @@ its id. A `Schema` of `Column`s and a `Segmentation` are set the same way on the
 nothing on the reading side. In C the same options are the `dictionary`, `schema` and
 segmentation members of `AceConfig`, and `ace_engine_new_ex` takes the external dictionaries of a
 reader.
+
+## From Scala (`jvm/ace-schema`)
+
+`ace-model` and `ace-sdk` carry the three features on `AceConfig` (`schema`, `dictionary`,
+`segmentation`), and `Ace.open(config, limits, dictionaries)` takes the external dictionaries a
+reader resolves. The `ace-schema` module is the policy layer on top:
+
+```scala
+final case class Trade(time: ULong, price: Double, quantity: UInt, side: Boolean) derives RecordCodec
+
+val codec = summon[RecordCodec[Trade]]           // schema: u64, f64, u32, 1 byte; 21 bytes per record
+val dictionary = Ace.trainDictionary(samples, 4096).toOption.get
+val store = DictionaryStore.directory(Path.of("/var/lib/app/dictionaries"))
+store.put(dictionary)
+
+val policy = StorageProfiles.forRecords[Trade](Some(dictionary))     // hot, warm and cold settings
+val tiers = StorageProfiles.openTiers(policy, store)                  // readers find the dictionary
+```
+
+The schema and the byte layout of a `RecordCodec` come from the same field list, so they cannot
+disagree. Hot and warm data use the dictionary as external (the store is at hand); cold data embeds
+it, so an archive stays readable without the store, and turns segmentation on. The directory store
+writes one checksummed file per dictionary and reports a damaged file instead of returning it.
