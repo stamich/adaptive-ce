@@ -38,7 +38,7 @@ its `extern "C"` functions are the interface.
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-ffi` | internal | 40 | 0 | 0 |
-| `ace-format` | internal | 33 | 14 | 0 |
+| `ace-format` | internal | 38 | 16 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
@@ -601,6 +601,11 @@ its `extern "C"` functions are the interface.
 | `SerializedBlock` | item | `block_io.rs:17` | One serialized block: parsed header, entropy metadata and encoded payload. |
 | `read_serialized_block` | item | `block_io.rs:32` | Reads one block from `reader` positioned at its first header byte. |
 | `checksum` | item | `checksum.rs:7` | Computes CRC32C for ACE headers, indexes and reconstructed block payloads. |
+| `DICTIONARY_SECTION_MAGIC` | item | `dictionary_section.rs:27` | Magic bytes that open the dictionary section. |
+| `MAX_DICTIONARY_BYTES` | item | `dictionary_section.rs:31` | Largest dictionary the format allows: the LZ window. Bytes before the last 65 535 of a longer |
+| `EmbeddedDictionary` | item | `dictionary_section.rs:38` | A dictionary stored in the file. |
+| `encode_dictionary_section` | item | `dictionary_section.rs:50` | Serializes a dictionary section. |
+| `read_dictionary_section` | item | `dictionary_section.rs:95` | Reads and validates a dictionary section from `reader`. |
 | `MAGIC` | item | `header.rs:12` | Four-byte ACE format-v1 magic preserved from milestone 0.1. |
 | `FORMAT_MINOR_BASE` | item | `header.rs:19` | Minor version written for files that use no Format 1.4 feature, so they stay readable by |
 | `FILE_HEADER_SIZE` | item | `header.rs:21` | Serialized file-header size in bytes. |
@@ -633,18 +638,20 @@ its `extern "C"` functions are the interface.
 | `decode_index` | item | `index.rs:123` | Parses and validates a complete block-index section. |
 | `encode_trailer` | item | `index.rs:193` | Serializes an end-of-file trailer and protects its first 24 bytes with CRC32C. |
 | `decode_trailer` | item | `index.rs:210` | Parses and validates an end-of-file trailer. |
-| `AceReader` | item | `reader.rs:12` | Streaming ACE reader that validates structural limits before allocating block buffers. |
-| `new` | method | `reader.rs:24` | Creates a reader with explicit decoder resource limits. |
-| `read_file_header` | method | `reader.rs:37` | Reads and validates the fixed file header and records its minor format version. |
-| `read_block` | method | `reader.rs:53` | Reads one block and returns header, entropy metadata and encoded payload. |
-| `into_inner` | method | `reader.rs:58` | Returns the wrapped reader after parsing is complete. |
-| `AceWriter` | item | `writer.rs:16` | Streaming ACE writer: file header, blocks, then (optionally) block index and trailer. |
-| `new` | method | `writer.rs:30` | Creates a writer over an arbitrary byte sink. |
-| `write_file_header` | method | `writer.rs:44` | Writes the global file header. |
-| `write_block` | method | `writer.rs:56` | Writes one block (header, entropy metadata, payload) and records its index entry. |
-| `bytes_written` | method | `writer.rs:87` | Number of bytes written so far. |
-| `finish` | method | `writer.rs:97` | Appends the block index and trailer when `write_index` is set, flushes and returns the |
-| `into_inner` | method | `writer.rs:113` | Returns the wrapped sink without writing an index. |
+| `AceReader` | item | `reader.rs:13` | Streaming ACE reader that validates structural limits before allocating block buffers. |
+| `new` | method | `reader.rs:27` | Creates a reader with explicit decoder resource limits. |
+| `read_file_header` | method | `reader.rs:44` | Reads and validates the fixed file header and records its minor format version. When the |
+| `dictionaries` | method | `reader.rs:62` | The dictionaries of the file's dictionary section, in id order; empty before |
+| `read_block` | method | `reader.rs:71` | Reads one block and returns header, entropy metadata and encoded payload. |
+| `into_inner` | method | `reader.rs:76` | Returns the wrapped reader after parsing is complete. |
+| `AceWriter` | item | `writer.rs:17` | Streaming ACE writer: file header, blocks, then (optionally) block index and trailer. |
+| `new` | method | `writer.rs:31` | Creates a writer over an arbitrary byte sink. |
+| `write_file_header` | method | `writer.rs:45` | Writes the global file header. |
+| `write_dictionary_section` | method | `writer.rs:57` | Writes the dictionary section (`ADIC`, Format 1.6). Call it directly after |
+| `write_block` | method | `writer.rs:72` | Writes one block (header, entropy metadata, payload) and records its index entry. |
+| `bytes_written` | method | `writer.rs:103` | Number of bytes written so far. |
+| `finish` | method | `writer.rs:113` | Appends the block index and trailer when `write_index` is set, flushes and returns the |
+| `into_inner` | method | `writer.rs:129` | Returns the wrapped sink without writing an index. |
 
 ### `ace-index` (internal)
 

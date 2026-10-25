@@ -8,8 +8,9 @@ use std::io::Write;
 use ace_core::{AceError, AceResult};
 
 use crate::{
-    checksum, encode_block_header, encode_file_header, encode_index, encode_trailer, BlockHeader,
-    BlockIndex, BlockIndexEntry, FileHeader, FileTrailer,
+    checksum, encode_block_header, encode_dictionary_section, encode_file_header, encode_index,
+    encode_trailer, BlockHeader, BlockIndex, BlockIndexEntry, EmbeddedDictionary, FileHeader,
+    FileTrailer,
 };
 
 /// Streaming ACE writer: file header, blocks, then (optionally) block index and trailer.
@@ -43,6 +44,21 @@ impl<W: Write> AceWriter<W> {
     /// [`AceError::Io`] when the sink fails.
     pub fn write_file_header(&mut self, header: &FileHeader) -> AceResult<()> {
         self.write_all(&encode_file_header(header))
+    }
+
+    /// Writes the dictionary section (`ADIC`, Format 1.6). Call it directly after
+    /// [`Self::write_file_header`] and only when the header has `HAS_DICTIONARIES`; the bytes
+    /// count towards the file offsets of the blocks and of the index.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::InvalidConfig`] for an invalid dictionary list (see
+    /// [`encode_dictionary_section`]) and [`AceError::Io`] when the sink fails.
+    pub fn write_dictionary_section(
+        &mut self,
+        dictionaries: &[EmbeddedDictionary],
+    ) -> AceResult<()> {
+        self.write_all(&encode_dictionary_section(dictionaries)?)
     }
 
     /// Writes one block (header, entropy metadata, payload) and records its index entry.

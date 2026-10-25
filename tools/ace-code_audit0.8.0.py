@@ -57,6 +57,7 @@ DECODER_MODULES = (
     "crates/ace-format/src/header.rs",
     "crates/ace-format/src/index.rs",
     "crates/ace-format/src/block_io.rs",
+    "crates/ace-format/src/dictionary_section.rs",
     "crates/ace-index/src/index_reader.rs",
     "crates/ace-engine/src/block_pipeline.rs",
     "crates/ace-codecs/src/numeric/header.rs",
@@ -101,10 +102,10 @@ HOT_LOOPS = (
 #: ``path::function``; the audit fails when it does not exist.
 DECODER_FIELDS = (
     ("File header", "magic, major / minor version",
-     "exact magic; major 1, minor <= 4", "-",
+     "exact magic; major 1, minor <= 6", "-",
      ("crates/ace-engine/tests/malformed_matrix.rs::mutation_table_is_rejected",
       "crates/ace-format/tests/format_1_4.rs::file_headers_1_0_to_1_5_are_readable")),
-    ("File header", "flags (u16)", "only known bits (1.1+), else `UnsupportedFeature`", "-",
+    ("File header", "flags (u16)", "only known bits (1.1+), else `UnsupportedFeature`; HAS_DICTIONARIES needs 1.6", "-",
      ("crates/ace-engine/tests/malformed_matrix.rs::mutation_table_is_rejected",)),
     ("File header", "default_block_size (u32)", "informational; never sizes an allocation", "-",
      ("crates/ace-engine/tests/malformed_matrix.rs::informational_block_size_field_does_not_affect_decoding",)),
@@ -202,6 +203,19 @@ DECODER_FIELDS = (
      "exactly 256 bytes; valid canonical code; truncation is an error; only zero padding (< 8 "
      "bits) may remain; empty output needs an empty payload", "expected size",
      ("crates/ace-entropy/tests/metadata_fields.rs::scalar_coders_reject_extreme_output_sizes",)),
+    ("Dictionary section (ADIC)", "count (u32)",
+     "<= limit before the first entry is read; zero and a wrong magic are malformed",
+     "`max_dictionaries`",
+     ("crates/ace-format/tests/dictionary_section.rs::forged_sizes_fail_before_they_are_read",
+      "crates/ace-format/tests/dictionary_section.rs::magic_ordering_and_empty_entries_are_malformed")),
+    ("Dictionary section (ADIC)", "length (u32)",
+     "`try_from`; 1 ..= min(limit, 65 535) before the buffer is allocated",
+     "`max_dictionary_size`",
+     ("crates/ace-format/tests/dictionary_section.rs::forged_sizes_fail_before_they_are_read",)),
+    ("Dictionary section (ADIC)", "ids, per-dictionary and section CRC-32C",
+     "ids strictly increasing; both checksums verified; the section is consumed exactly", "-",
+     ("crates/ace-format/tests/dictionary_section.rs::every_single_byte_flip_is_rejected",
+      "crates/ace-format/tests/dictionary_section.rs::truncation_is_an_error_at_every_length")),
 )
 
 

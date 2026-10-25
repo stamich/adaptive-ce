@@ -16,8 +16,8 @@ wrap-around or an allocation of the forged size
 
 | Structure | Field | Validation | Limit | Tests |
 |---|---|---|---|---|
-| File header | magic, major / minor version | exact magic; major 1, minor <= 4 | - | `malformed_matrix.rs::mutation_table_is_rejected`<br>`format_1_4.rs::file_headers_1_0_to_1_5_are_readable` |
-| File header | flags (u16) | only known bits (1.1+), else `UnsupportedFeature` | - | `malformed_matrix.rs::mutation_table_is_rejected` |
+| File header | magic, major / minor version | exact magic; major 1, minor <= 6 | - | `malformed_matrix.rs::mutation_table_is_rejected`<br>`format_1_4.rs::file_headers_1_0_to_1_5_are_readable` |
+| File header | flags (u16) | only known bits (1.1+), else `UnsupportedFeature`; HAS_DICTIONARIES needs 1.6 | - | `malformed_matrix.rs::mutation_table_is_rejected` |
 | File header | default_block_size (u32) | informational; never sizes an allocation | - | `malformed_matrix.rs::informational_block_size_field_does_not_affect_decoding` |
 | File header | original_size (u64) | <= limit; reservation capped by `PREALLOCATION_CAP_BYTES`; must equal the sum of the blocks | `max_output_size` | `malformed_matrix.rs::forged_original_size_is_not_preallocated`<br>`limits_before_allocation.rs::forged_original_size_fails_before_allocation` |
 | File header | block_count (u64) | <= limit before the first block; ids sequential; equals the index entry count | `max_index_entries` (`max_block_count()`) | `decode_limits.rs::block_count_limit`<br>`malformed_matrix.rs::mutation_table_is_rejected` |
@@ -40,6 +40,9 @@ wrap-around or an allocation of the forged size
 | rANS stream | state + renormalization bytes | initial state >= L; reads via `get`; no trailing bytes; final state == L; empty output needs an empty payload | expected size | `metadata_fields.rs::scalar_coders_reject_extreme_output_sizes` |
 | rANS4x metadata | 4 x u32 lane lengths | `try_from`; `checked_add` sum == payload; lanes split with `split_at_checked`; lane output sizes computed without overflow | expected size | `metadata_fields.rs::rans4x_lane_lengths_reject_zero_max_and_overflow` |
 | Huffman metadata | 256 code lengths + stream | exactly 256 bytes; valid canonical code; truncation is an error; only zero padding (< 8 bits) may remain; empty output needs an empty payload | expected size | `metadata_fields.rs::scalar_coders_reject_extreme_output_sizes` |
+| Dictionary section (ADIC) | count (u32) | <= limit before the first entry is read; zero and a wrong magic are malformed | `max_dictionaries` | `dictionary_section.rs::forged_sizes_fail_before_they_are_read`<br>`dictionary_section.rs::magic_ordering_and_empty_entries_are_malformed` |
+| Dictionary section (ADIC) | length (u32) | `try_from`; 1 ..= min(limit, 65 535) before the buffer is allocated | `max_dictionary_size` | `dictionary_section.rs::forged_sizes_fail_before_they_are_read` |
+| Dictionary section (ADIC) | ids, per-dictionary and section CRC-32C | ids strictly increasing; both checksums verified; the section is consumed exactly | - | `dictionary_section.rs::every_single_byte_flip_is_rejected`<br>`dictionary_section.rs::truncation_is_an_error_at_every_length` |
 
 ## Parser modules under the arithmetic lints
 
@@ -51,6 +54,7 @@ arithmetic or narrowing cast into a build failure. Proven-safe sites:
 | `crates/ace-format/src/header.rs` | `:188` encoder: see Invariants |
 | `crates/ace-format/src/index.rs` | none |
 | `crates/ace-format/src/block_io.rs` | none |
+| `crates/ace-format/src/dictionary_section.rs` | none |
 | `crates/ace-index/src/index_reader.rs` | `:18` constant: -28 |
 | `crates/ace-engine/src/block_pipeline.rs` | none |
 | `crates/ace-codecs/src/numeric/header.rs` | none |

@@ -13,6 +13,7 @@
 
 mod block_io;
 mod checksum;
+mod dictionary_section;
 mod header;
 mod index;
 mod reader;
@@ -20,6 +21,7 @@ mod writer;
 
 pub use block_io::*;
 pub use checksum::*;
+pub use dictionary_section::*;
 pub use header::*;
 pub use index::*;
 pub use reader::*;
