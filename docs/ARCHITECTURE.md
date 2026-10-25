@@ -36,7 +36,7 @@ public API and with `--document-private-items`). Public fallible functions docum
 | `ace-cost` | internal | analytical estimators, deterministic sampling, quality envelope, TS1 estimators |
 | `ace-planner` | internal | routes (Generic, NumericGeneral, NumericFast, FloatGeneral, FloatFast), candidate generation, V4.3 evaluator, TS1 policy, telemetry |
 | `ace-runtime` | internal | bounded parallel runtime configuration, worker scratch |
-| `ace-simd` | internal | runtime-dispatched AVX2 scans and SSE4.2 CRC-32C (`ACE_SIMD=scalar` override); `unsafe` |
+| `ace-simd` | internal | runtime-dispatched AVX2 / NEON scans and SSE4.2 / ARMv8 CRC-32C (`ACE_SIMD=scalar` override); `unsafe` |
 | `ace-ffi` | C ABI | `cdylib` + `staticlib` + `rlib` exporting the 26 `ace_*` functions of `include/ace.h` over the `ace` facade (status codes, thread-local last error, opaque handles, `catch_unwind` guards); the other place with production `unsafe` ([`FFI.md`](FFI.md), [`NATIVE-INTEROP.md`](NATIVE-INTEROP.md)) |
 | `ace-dictionary` | internal | dictionary identity / registry seam (no trained dictionaries yet) |
 | `ace-corpus` | internal | deterministic synthetic workloads (Corpus V3 + V4, false-positive corpus) |

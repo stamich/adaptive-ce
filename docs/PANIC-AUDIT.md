@@ -40,7 +40,8 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-entropy/src/rans4x.rs:36` | `clippy::arithmetic_side_effects` | encoder: only `index & 3` and slice lengths |
 | `crates/ace-format/src/header.rs:182` | `clippy::arithmetic_side_effects, clippy::cast_possible_truncation` | encoder: see Invariants |
 | `crates/ace-index/src/index_reader.rs:18` | `clippy::arithmetic_side_effects, clippy::cast_possible_wrap` | constant: -28 |
-| `crates/ace-simd/src/crc32c.rs:108` | `unknown_lints, clippy::chunks_exact_to_as_chunks` | `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1 hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks` lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint. |
+| `crates/ace-simd/src/crc32c.rs:111` | `unknown_lints, clippy::chunks_exact_to_as_chunks` | `chunks_exact` is kept on purpose: this hot kernel stays codegen-identical in the 0.5.1 hardening release (hot loops showed layout-sensitive timings in the 0.5.0 A/B); `as_chunks` lands in 0.6 with an interleaved A/B run. `unknown_lints`: clippy < 1.98 lacks the lint. |
+| `crates/ace-simd/src/crc32c.rs:168` | `unknown_lints, clippy::chunks_exact_to_as_chunks` | See the note on the SSE4.2 kernel: `chunks_exact` keeps the structure of the audited kernel. |
 
 ## `unsafe` inventory (details: `docs/UNSAFE-AUDIT.md`)
 
@@ -161,9 +162,17 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-simd/src/avx2.rs:20` | block |
 | `crates/ace-simd/src/avx2.rs:33` | fn |
 | `crates/ace-simd/src/avx2.rs:38` | block |
-| `crates/ace-simd/src/crc32c.rs:68` | block |
-| `crates/ace-simd/src/scan.rs:11` | block |
-| `crates/ace-simd/src/scan.rs:22` | block |
+| `crates/ace-simd/src/crc32c.rs:66` | block |
+| `crates/ace-simd/src/crc32c.rs:71` | block |
+| `crates/ace-simd/src/crc32c.rs:169` | fn |
+| `crates/ace-simd/src/neon.rs:30` | fn |
+| `crates/ace-simd/src/neon.rs:39` | block |
+| `crates/ace-simd/src/neon.rs:62` | fn |
+| `crates/ace-simd/src/neon.rs:67` | block |
+| `crates/ace-simd/src/scan.rs:13` | block |
+| `crates/ace-simd/src/scan.rs:19` | block |
+| `crates/ace-simd/src/scan.rs:30` | block |
+| `crates/ace-simd/src/scan.rs:36` | block |
 | `crates/ace-bench/tests/limits_before_allocation.rs:45` | impl |
 | `crates/ace-bench/tests/limits_before_allocation.rs:46` | fn |
 | `crates/ace-bench/tests/limits_before_allocation.rs:49` | block |

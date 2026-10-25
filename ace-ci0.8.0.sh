@@ -3,7 +3,8 @@
 #
 #   ./ace-ci0.8.0.sh pr        build gates + code audit + include/ace.h drift check (needs
 #                              cbindgen 0.29.0) + C smoke test (needs a C compiler) + quick release-performance + demo
-#   ./ace-ci0.8.0.sh aarch64   golden bytes of the engine, the facade and the C ABI on this machine
+#   ./ace-ci0.8.0.sh aarch64   NEON selected and equal to scalar; golden bytes of the engine, the facade
+#                              and the C ABI on this machine, with NEON and with ACE_SIMD=scalar
 #                              (ACE_EXPECT_ARCH=aarch64 makes the job fail on any other CPU)
 #   ./ace-ci0.8.0.sh jvm       Gradle build and tests of jvm/ (needs gradle 9.1+ and JDK 22 or newer)
 #   ./ace-ci0.8.0.sh native    C ABI tests and the Java SDK tests on this OS (macOS, Windows, Linux);
@@ -30,10 +31,18 @@ case "${1:-}" in
     if [[ -n "${ACE_EXPECT_ARCH:-}" && "$(uname -m)" != "$ACE_EXPECT_ARCH" && "$(uname -m)" != "arm64" ]]; then
       ace_die "expected a $ACE_EXPECT_ARCH machine, running on $(uname -m)"
     fi
-    ace_step "golden bytes on $(uname -m)"
+    ace_step "SIMD kernels on $(uname -m): NEON must be selected and agree with the scalar code"
+    cargo test --release -p ace-simd
+    cargo build --release -p ace-cli
+    "$(ace_bin ace)" version | tee /dev/stderr | grep -q "simd backend:   Neon" \
+      || ace_die "the NEON backend was not selected on this machine"
+    ace_step "golden bytes on $(uname -m) (NEON)"
     cargo test --release -p ace-engine --test golden
     cargo test --release -p ace --test facade
     cargo test --release -p ace-ffi --test golden
+    ace_step "golden bytes on $(uname -m) (ACE_SIMD=scalar)"
+    ACE_SIMD=scalar cargo test --release -p ace-engine --test golden
+    ACE_SIMD=scalar cargo test --release -p ace-ffi --test golden
     ;;
   jvm)
     command -v gradle >/dev/null || ace_die "gradle is not installed"

@@ -24,8 +24,8 @@ jobs:
       - if: failure()
         run: tools/ace-ci-annotate0.8.0.sh ci.log
   aarch64:
-    # Native ARM64 runner: the scalar kernels must write the same bytes as x86_64 (the golden
-    # file). The NEON backend arrives in 0.8.0 (task 4); until then this job checks correctness only.
+    # Native ARM64 runner: the NEON kernels and the scalar kernels (ACE_SIMD=scalar) must both
+    # write the same bytes as x86_64 (the golden file), and NEON must be the selected backend.
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4

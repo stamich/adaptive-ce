@@ -36,6 +36,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 UNSAFE_ALLOWED = {
     "crates/ace-simd/src/avx2.rs",
+    "crates/ace-simd/src/neon.rs",
     "crates/ace-simd/src/crc32c.rs",
     "crates/ace-simd/src/scan.rs",
     "crates/ace-bench/src/alloc.rs",

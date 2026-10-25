@@ -764,12 +764,12 @@ its `extern "C"` functions are the interface.
 |---|---|---|---|
 | `SIMD_OVERRIDE_ENV` | item | `backend.rs:11` | Environment variable that selects the backend (`scalar` forces portable code). |
 | `SimdBackend` | item | `backend.rs:15` | SIMD implementation selected at runtime (reported by diagnostics and benchmarks). |
-| `selected_backend` | item | `backend.rs:23` | Returns the SIMD backend selected on this host (after the override). |
-| `scalar_forced` | item | `backend.rs:32` | True when `ACE_SIMD=scalar` was set when ACE first queried the backend (read once). |
-| `crc32c_hardware` | item | `crc32c.rs:61` | Returns the CRC32C of `bytes` using SSE4.2, or `None` when the CPU lacks SSE4.2 or |
-| `crc32c_backend_name` | item | `crc32c.rs:78` | Name of the CRC32C implementation in use (`"sse4.2-3way"` or `"portable"`), for telemetry. |
-| `count_zeroes` | item | `scan.rs:6` | Counts zero bytes. |
-| `common_prefix_len` | item | `scan.rs:17` | Returns the length of the common prefix of two slices (bounded by the shorter one). |
+| `selected_backend` | item | `backend.rs:25` | Returns the SIMD backend selected on this host (after the override). |
+| `scalar_forced` | item | `backend.rs:36` | True when `ACE_SIMD=scalar` was set when ACE first queried the backend (read once). |
+| `crc32c_hardware` | item | `crc32c.rs:62` | Returns the CRC32C of `bytes` with the hardware instructions of this CPU (SSE4.2 on x86_64, |
+| `crc32c_backend_name` | item | `crc32c.rs:79` | Name of the CRC32C implementation in use (`"sse4.2-3way"`, `"armv8-crc-3way"` or |
+| `count_zeroes` | item | `scan.rs:8` | Counts zero bytes. |
+| `common_prefix_len` | item | `scan.rs:25` | Returns the length of the common prefix of two slices (bounded by the shorter one). |
 
 ### `ace-stream` (internal)
 
