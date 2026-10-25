@@ -59,6 +59,7 @@ DECODER_MODULES = (
     "crates/ace-format/src/block_io.rs",
     "crates/ace-format/src/dictionary_section.rs",
     "crates/ace-format/src/segment.rs",
+    "crates/ace-format/src/column.rs",
     "crates/ace-index/src/index_reader.rs",
     "crates/ace-engine/src/block_pipeline.rs",
     "crates/ace-codecs/src/numeric/header.rs",
@@ -232,6 +233,24 @@ DECODER_FIELDS = (
      "at least one block header; the sum equals the payload tail exactly (checked add)", "-",
      ("crates/ace-format/tests/segment.rs::table_is_validated_against_the_block",
       "crates/ace-format/tests/segment.rs::random_tables_tile_the_block")),
+    ("Column table (COL1)", "column count (u16)",
+     "1 ..= limit before the table is read; wrong magic, version, flags and reserved fields are "
+     "malformed",
+     "`max_columns`",
+     ("crates/ace-format/tests/column.rs::limits_apply_before_any_allocation",
+      "crates/ace-format/tests/column.rs::table_is_validated_against_the_block")),
+    ("Column table (COL1)", "record_size, record_count, tail_len (u32)",
+     "record size <= limit, non-zero counts, tail < record; `record_count x record_size + "
+     "tail_len` computed with checked arithmetic and equal to the outer block size",
+     "`max_block_size`",
+     ("crates/ace-format/tests/column.rs::limits_apply_before_any_allocation",
+      "crates/ace-format/tests/column.rs::table_is_validated_against_the_block")),
+    ("Column table (COL1)", "width (u16), kind (u8), serialized_len (u32)",
+     "widths non-zero, allowed for the kind and summing to the record size; lengths at least a "
+     "block header and summing (with the tail) to the payload remainder", "-",
+     ("crates/ace-format/tests/column.rs::table_is_validated_against_the_block",
+      "crates/ace-format/tests/column.rs::width_must_fit_the_kind",
+      "crates/ace-format/tests/column.rs::truncation_and_trailing_bytes_are_errors")),
 )
 
 

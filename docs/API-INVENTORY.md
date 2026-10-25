@@ -38,7 +38,7 @@ its `extern "C"` functions are the interface.
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-ffi` | internal | 40 | 0 | 0 |
-| `ace-format` | internal | 46 | 20 | 0 |
+| `ace-format` | internal | 56 | 28 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
@@ -603,6 +603,24 @@ its `extern "C"` functions are the interface.
 | `serialize_block` | item | `block_io.rs:66` | Serializes one block exactly as [`crate::AceWriter::write_block`] writes it to a file: the |
 | `parse_inner_block` | item | `block_io.rs:82` | Parses one inner block of a segmented or columnar block (Format 1.6) from `bytes`. |
 | `checksum` | item | `checksum.rs:7` | Computes CRC32C for ACE headers, indexes and reconstructed block payloads. |
+| `COLUMN_MAGIC` | item | `column.rs:27` | Magic bytes that open a columnar payload. |
+| `COLUMN_HEADER_SIZE` | item | `column.rs:30` | Size of the fixed part of the payload. |
+| `COLUMN_ENTRY_SIZE` | item | `column.rs:33` | Size of one column table entry. |
+| `ColumnKind` | item | `column.rs:38` | What a column holds. It does not change decoding (every inner block describes itself); it |
+| `id` | method | `column.rs:52` | The byte stored in the table. |
+| `from_id` | method | `column.rs:65` | Parses the table byte. |
+| `accepts_width` | method | `column.rs:76` | Whether `width` is allowed for this kind. |
+| `ColumnSpec` | item | `column.rs:87` | One column of a schema: its width in bytes and what it holds. |
+| `ColumnEntry` | item | `column.rs:96` | A table row: the column plus the size of its serialized inner block. |
+| `ColumnTable` | item | `column.rs:105` | A validated column table with the positions it implies. |
+| `parse` | method | `column.rs:129` | Parses and validates the table at the start of `payload`. |
+| `data_offset` | method | `column.rs:227` | Offset of the first inner block in the payload. |
+| `stream_sizes` | method | `column.rs:233` | Reconstructed size of each column stream: `record_count × width`. |
+| `payload_ranges` | method | `column.rs:244` | The bytes of each inner block within the payload, in column order. |
+| `tail_range` | method | `column.rs:258` | The tail bytes within the payload (they close the payload). |
+| `encode_column_payload` | item | `column.rs:278` | Builds a `COL1` payload. |
+| `split_columns` | item | `column.rs:333` | Splits `data` into one stream per column plus the tail of an incomplete last record. |
+| `join_columns` | item | `column.rs:360` | The exact inverse of [`split_columns`]: interleaves the streams record by record and appends |
 | `DICTIONARY_SECTION_MAGIC` | item | `dictionary_section.rs:27` | Magic bytes that open the dictionary section. |
 | `MAX_DICTIONARY_BYTES` | item | `dictionary_section.rs:31` | Largest dictionary the format allows: the LZ window. Bytes before the last 65 535 of a longer |
 | `EmbeddedDictionary` | item | `dictionary_section.rs:38` | A dictionary stored in the file. |
