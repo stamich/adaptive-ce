@@ -5,12 +5,19 @@
 //!   the encode / decode timing of the columnar configuration.
 //! * `segmented` rows — a 3 MiB block made of JSON, counters and random bytes, compressed with
 //!   and without segmentation (one block, so the container choice is isolated).
+//! * `dictionary` rows — small blocks of JSON records compressed without a dictionary, with one
+//!   embedded in the file and with one the file only names; the dictionary is trained from
+//!   samples that are not part of the measured input.
 //! * `summary` — how many record workloads missed the 10 % target.
 //!
 //! Every row verifies its round trip. The gates live in `tools/ace-check_regressions0.8.0.py`
 //! (section `storage`).
 
-use ace_core::{ColumnKind, ColumnSpec, Schema, SegmentationConfig};
+use ace_core::{
+    ColumnKind, ColumnSpec, DictionaryScope, EncoderDictionary, Schema, SegmentationConfig,
+};
+use ace_dictionary::{train_dictionary, Dictionary, DictionaryRegistry, TrainerConfig};
+use std::sync::Arc;
 use ace_corpus::{FieldKind, RecordWorkload, Workload};
 
 use super::float::profile_name;
@@ -135,6 +142,72 @@ fn segmented_row() -> Result<Value, Box<dyn std::error::Error>> {
     Ok(row.build())
 }
 
+/// Size of the blocks of the `dictionary` rows: what a small-object store writes.
+const DICTIONARY_BLOCK: usize = 4096;
+/// Bytes of JSON the dictionary is trained from (never part of the measured input).
+const TRAINING: usize = 256 * 1024;
+/// Bytes of JSON that are compressed.
+const DICTIONARY_INPUT: usize = 768 * 1024;
+/// Size of the trained dictionary.
+const DICTIONARY_SIZE: usize = 4096;
+
+/// The `dictionary` rows: none, embedded and external on 4 KiB blocks of JSON.
+fn dictionary_rows() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let corpus = generate(Workload::StructuredJson, TRAINING + DICTIONARY_INPUT);
+    let (training, data) = corpus.split_at(TRAINING);
+    let samples: Vec<&[u8]> = training.chunks(512).collect();
+    let bytes = train_dictionary(
+        &samples,
+        &TrainerConfig {
+            dictionary_size: DICTIONARY_SIZE,
+            segment_len: 64,
+            ..TrainerConfig::default()
+        },
+    )?;
+    let id = ace_dictionary::dictionary_id_of(&bytes);
+    let mut registry = DictionaryRegistry::new();
+    registry.insert(Dictionary::new(id, DictionaryScope::External, bytes.clone()));
+    let base = AceConfig {
+        threads: 1,
+        block_size: DICTIONARY_BLOCK,
+        ..AceConfig::default()
+    };
+    let plain = AceEngine::new(base.clone())?.compress(data)?;
+    let mut rows = Vec::new();
+    for (kind, scope) in [
+        ("embedded", DictionaryScope::File),
+        ("external", DictionaryScope::External),
+    ] {
+        let engine = AceEngine::new(AceConfig {
+            dictionary: Some(EncoderDictionary {
+                id,
+                scope,
+                bytes: Arc::from(bytes.clone()),
+            }),
+            ..base.clone()
+        })?
+        .with_dictionaries(registry.clone());
+        let (encode, (file, stats)) = measure(|| Ok(engine.compress_with_stats(data)?))?;
+        let (decode, restored) = measure(|| Ok(engine.decompress(&file)?))?;
+        assert_eq!(restored, data, "{kind} dictionary roundtrip");
+        let mut row = JsonObjectBuilder::new();
+        row.field("workload_id", format!("json-4k-{kind}"))
+            .field("path", "dictionary")
+            .field("scope", kind)
+            .field("input_bytes", data.len())
+            .field("plain_bytes", plain.len())
+            .field("dictionary_bytes", file.len())
+            .field("dictionary_size", bytes.len())
+            .field("gain_vs_plain", plain.len() as f64 / file.len().max(1) as f64)
+            .field("format_minor", file[5])
+            .field("dictionary_blocks", stats.dictionary_blocks)
+            .value("encode", timing_json(&encode, data.len()))
+            .value("decode", timing_json(&decode, data.len()));
+        rows.push(row.build());
+    }
+    Ok(rows)
+}
+
 /// `storage`: columnar gains, the segmentation fixture and the 10 % target summary.
 pub(crate) fn storage_family() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let mut rows = Vec::new();
@@ -150,6 +223,7 @@ pub(crate) fn storage_family() -> Result<Vec<Value>, Box<dyn std::error::Error>>
         }
     }
     rows.push(segmented_row()?);
+    rows.extend(dictionary_rows()?);
     let mut summary = JsonObjectBuilder::new();
     summary
         .field("workload_id", "summary")

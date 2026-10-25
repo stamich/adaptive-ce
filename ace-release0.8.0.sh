@@ -45,10 +45,10 @@ record "Planner V5 invariants and fixed tie-breaks" PASS "crates/ace-planner/tes
 record "Determinism up to 32 workers" PASS "crates/ace-stream/tests/determinism_matrix.rs"
 record "CLI end to end (invalid input, closed pipe, version)" PASS "crates/ace-cli/tests/cli.rs"
 
-ace_step "4/12 golden SHA-256: 0.5.0 (Corpus V3 + V4) and frozen 0.4.6 (auto and ACE_SIMD=scalar)"
-cargo test --release -p ace-engine --test golden
-ACE_SIMD=scalar cargo test --release -p ace-engine --test golden
-record "Golden SHA-256 0.5.0 + frozen 0.4.6 (auto + scalar)" PASS "crates/ace-engine/tests/golden.rs"
+ace_step "4/12 golden SHA-256: 0.5.0 (Corpus V3 + V4), frozen 0.4.6 and the Format 1.6 workloads of 0.8.0 (auto and ACE_SIMD=scalar)"
+cargo test --release -p ace-engine --test golden --test golden_storage
+ACE_SIMD=scalar cargo test --release -p ace-engine --test golden --test golden_storage
+record "Golden SHA-256 0.5.0 + frozen 0.4.6 + 0.8.0 storage (auto + scalar)" PASS "crates/ace-engine/tests/golden.rs, golden_storage.rs"
 
 ace_step "5/12 determinism across processes and backends"
 work="$ACE_ROOT/target/release-$ACE_VERSION"; rm -rf "$work"; mkdir -p "$work"

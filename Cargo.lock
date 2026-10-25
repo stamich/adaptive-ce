@@ -37,6 +37,7 @@ dependencies = [
  "ace-core",
  "ace-corpus",
  "ace-cost",
+ "ace-dictionary",
  "ace-engine",
  "ace-entropy",
  "ace-ffi",

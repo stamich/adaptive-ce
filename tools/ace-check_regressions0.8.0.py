@@ -8,7 +8,7 @@ Sections:
   determinism matrix, format readers, malformed matrix, ...);
 * ``quality``     -- Planner V4.3 policy recall/regret and compression ratios (unchanged);
 * ``format15``    -- Phase B (0.6.1): Patched FOR, ALP, small-delta RunDelta, DENSE <= BALANCED.
-* ``storage``     -- ACE 0.8.0: columnar blocks on the record corpus and the segmentation fixture.
+* ``storage``     -- ACE 0.8.0: columnar blocks on the record corpus, the segmentation fixture and preset dictionaries.
 * ``float``       -- Planner V5 Float lane (0.5.0): zero false positives, Corpus V3 identity,
   zero FloatFast fallbacks, never larger than the disabled lane, ratio targets, estimator
   accuracy, codec-level TS1 speed and the FloatFast speedup measured in the same run;
@@ -247,7 +247,7 @@ def format15_gates(data: Inputs) -> list[Row]:
 
 
 def storage_gates(data: Inputs) -> list[Row]:
-    """ACE 0.8.0: columnar blocks (>= 10 % smaller than row-wise) and segmentation."""
+    """ACE 0.8.0: columnar blocks (>= 10 % smaller than row-wise), segmentation and dictionaries."""
     columnar = [r for r in data.storage["workloads"] if r.get("path") == "columnar"]
     summary = lib.find_row(data.storage, workload_id="summary")
     segmented = lib.find_row(data.storage, workload_id="segmented-mixed-3m")
@@ -260,6 +260,13 @@ def storage_gates(data: Inputs) -> list[Row]:
         threshold("storage.segmented_used", "storage", float(segmented["segments"]), 2.0, True,
                   ">= 2 segments on the fixture"),
     ]
+    for row in [r for r in data.storage["workloads"] if r.get("path") == "dictionary"]:
+        gates.append(threshold(
+            f"storage.{row['workload_id']}_gain", "storage", float(row["gain_vs_plain"]), 1.5, True,
+            ">= 1.5x the same 4 KiB blocks without a dictionary (JSON, provisional)"))
+        gates.append(threshold(
+            f"storage.{row['workload_id']}_used", "storage", float(row["dictionary_blocks"]),
+            float(int(row["input_bytes"]) // 4096), True, "every 4 KiB block was coded with the dictionary"))
     for row in columnar:
         if row["profile"] != "balanced":
             continue

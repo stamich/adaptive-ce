@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.8.0 - Storage engine (segments, columns, dictionaries)
+
+Base: 0.7.0. **Format 1.6 is additive and the default configuration writes the bytes of 0.7.0**
+(golden 0.6.1 is reproduced by every binding); a file is 1.6 only when it uses a segmented block,
+a columnar block or a dictionary. Task order: `TASKS-0.8.0.md`; notes:
+`docs/RELEASE-NOTES-0.8.0.md`; migration: `docs/MIGRATION-0.7.0-TO-0.8.0.md`; format:
+`docs/FORMAT-1.6.md`.
+
+### Added
+- Format 1.6: codec 5 `Segmented` (SEG1), codec 6 `Columnar` (COL1), the `ADIC` dictionary section;
+  segments and columns are inner blocks; reader gate and `DecodeLimits` for segments, columns and
+  dictionaries.
+- Adaptive segmentation: deterministic segmenter, per-segment plans, used only when smaller by a
+  margin, decoded by every reader, segment-level range reads.
+- Columnar blocks: `Schema` / `Column` / `ColumnKind`, record transpose, per-column codec by kind,
+  blocks aligned to whole records.
+- Preset dictionaries: deterministic trainer (`ace-dictionary`), LZ with dictionary history,
+  embedded (`File`) and external scopes, `MissingDictionary`.
+- Facade and CLI: `Dictionary::train`, `Config` options `schema`, `segmentation`, `dictionary`,
+  `external_dictionary`, `Engine::with_dictionaries`; `ace train`, `--schema`, `--segments`,
+  `--dictionary`, `--external-dictionary`.
+- C ABI 1.1 (`ace_abi_minor()` = 1): `AceDictionary`, `AceSchema`, `ace_engine_new_ex`; `AceConfig`
+  grew to 112 bytes behind `struct_size`; the 26 functions of 1.0 are unchanged.
+- Java SDK: `Dictionary`, `Schema`, `Column`, `ColumnKind`, `Segmentation`, builder options.
+  Scala: model types, `Ace.open(config, limits, dictionaries)`, new module `jvm/ace-schema`
+  (`RecordCodec`, `DictionaryStore`, `StorageProfiles`).
+- NEON backend for aarch64; native libraries for macOS (aarch64) and Windows (x86_64) in CI.
+- Golden `examples/golden/0.8.0/`, compatibility fixtures `examples/compat/0.8.0/`, fuzz targets
+  `seg_decode` and `col_decode` (22 in total).
+- Benchmark family `storage` (columnar, segmented, dictionary) and Regression V3 section
+  `storage`; JVM `decompressInto` diagnostic.
+
+### Changed
+- Encoder buffers live per worker (LZ tables for large inputs, borrowed planner input): allocated
+  bytes per input byte on mixed 4 MiB fall from 5.94 / 8.15 / 15.6 to 3.07 / 5.05 / 8.16 (Fast /
+  Balanced / Dense), bytes identical.
+- Scripts, tools and workflows renamed to 0.8.0; A/B base and stored baseline are 0.7.0.
+- Tests moved out of `src/` into `crates/<crate>/tests/`; the code audit enforces it.
+
+### Release qualification (manual, reference machine)
+- Pending (task 28): Regression V3 pass, interleaved A/B against 0.7.0, three-run repeatability,
+  22-target fuzz campaign, baseline `examples/baselines/0.8.0/`, `docs/PERFORMANCE-0.8.0.md`,
+  tag `v0.8.0`.
+
 ## 0.7.0 - Embedding (C ABI, Java / Scala SDK)
 
 Base: 0.6.1. **No byte changes**: Format 1.5 and the planner are untouched; golden 0.6.1

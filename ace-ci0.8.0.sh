@@ -37,12 +37,12 @@ case "${1:-}" in
     "$(ace_bin ace)" version | tee /dev/stderr | grep -q "simd backend:   Neon" \
       || ace_die "the NEON backend was not selected on this machine"
     ace_step "golden bytes on $(uname -m) (NEON)"
-    cargo test --release -p ace-engine --test golden
+    cargo test --release -p ace-engine --test golden --test golden_storage
     cargo test --release -p ace --test facade
-    cargo test --release -p ace-ffi --test golden
+    cargo test --release -p ace-ffi --test golden --test golden_storage
     ace_step "golden bytes on $(uname -m) (ACE_SIMD=scalar)"
-    ACE_SIMD=scalar cargo test --release -p ace-engine --test golden
-    ACE_SIMD=scalar cargo test --release -p ace-ffi --test golden
+    ACE_SIMD=scalar cargo test --release -p ace-engine --test golden --test golden_storage
+    ACE_SIMD=scalar cargo test --release -p ace-ffi --test golden --test golden_storage
     ;;
   jvm)
     command -v gradle >/dev/null || ace_die "gradle is not installed"

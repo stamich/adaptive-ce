@@ -17,12 +17,13 @@ stores the result in a self-describing container with a block index for random a
 The same input and configuration always produce the same bytes, on every machine, thread count
 and SIMD backend. Every byte read from a file is validated before it is trusted.
 
-**Current release: 0.7.0 — Embedding.** A C ABI (`include/ace.h`, `libace_ffi`), a Java SDK on
-Panama and a Scala 3 SDK let JVM and C programs use ACE. The bytes are those of 0.6.1 (Format 1.5:
-Patched frame-of-reference for integers with outliers, ALP for decimal floats, small-delta
-RunDelta, DENSE never larger than BALANCED), reproduced through every binding. Files written by
-every earlier version stay readable. See [`docs/RELEASE-NOTES-0.7.0.md`](docs/RELEASE-NOTES-0.7.0.md)
-and, coming from 0.6.1, [`docs/MIGRATION-0.6.1-TO-0.7.0.md`](docs/MIGRATION-0.6.1-TO-0.7.0.md).
+**Current release: 0.8.0 — Storage engine.** Blocks that mix kinds of data are split into segments,
+fixed-size records are stored column by column, and trained preset dictionaries shrink small blocks
+(Format 1.6, additive). Without these options ACE writes exactly the bytes of 0.7.0, reproduced
+through every binding (Rust, C ABI 1.1, Java, Scala). Files written by every earlier version stay
+readable; older readers reject only a file that actually uses a 1.6 feature. See
+[`docs/RELEASE-NOTES-0.8.0.md`](docs/RELEASE-NOTES-0.8.0.md) and, coming from 0.7.0,
+[`docs/MIGRATION-0.7.0-TO-0.8.0.md`](docs/MIGRATION-0.7.0-TO-0.8.0.md).
 
 ## What it does well
 
@@ -34,8 +35,12 @@ and, coming from 0.6.1, [`docs/MIGRATION-0.6.1-TO-0.7.0.md`](docs/MIGRATION-0.6.
 | rarely changing values | TS1 RunDelta (Elias-gamma runs + ZigZag deltas) | sparse-change integers: ≈ 235× |
 | incompressible data | stored RAW (never larger than the input plus framing) | random: 1.0× |
 
+| fixed-size records (tables, telemetry, events) | with a schema: transposed, one codec per column (Format 1.6) | 1.5× – 5.7× smaller than the row-wise block |
+| small blocks of similar data (JSON messages) | LZ with a preset dictionary, embedded or external (Format 1.6) | 4 KiB JSON blocks: ≈ 2.3× smaller |
+
 Measured numbers and methodology: [`docs/PERFORMANCE-0.7.0.md`](docs/PERFORMANCE-0.7.0.md)
-(reference machine AMD Ryzen 9 5950X; 0.7.0 writes the same bytes), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+(reference machine AMD Ryzen 9 5950X; 0.8.0 writes the same bytes by default; the 0.8.0 reference run
+is pending), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start
 
@@ -165,31 +170,32 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 ./ace-build0.8.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
 ./ace-ci0.8.0.sh pr | aarch64 | jvm | fuzz-smoke | fuzz   # CI entry points (GitHub Actions wraps them)
 ./ace-benchmark0.8.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
-./ace-ab0.8.0.sh /path/to/ace-0.6.1                  # interleaved A/B against the previous release
+./ace-ab0.8.0.sh /path/to/ace-0.7.0                  # interleaved A/B against the previous release
 ./ace-benchmark-compare0.8.0.sh OLD NEW              # any two result files or directories
-./ace-release0.8.0.sh /path/to/ace-0.6.1             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+./ace-release0.8.0.sh /path/to/ace-0.7.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
 gradle -p jvm build                                  # Java and Scala SDKs (JDK 22+, builds libace_ffi)
 ```
 
 | Path | Content |
 |---|---|
 | `crates/` | 20 crates: the `ace` facade, 18 internal ones and `ace-ffi` (the C ABI) ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
-| `ace-*0.7.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
+| `ace-*0.8.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
 | `include/` | `ace.h`, the C header (generated, drift-checked in CI) |
-| `examples/golden/` | golden SHA-256 (0.6.1, reproduced by 0.7.0; frozen 0.5.0 and 0.4.6) |
+| `examples/golden/` | golden SHA-256 (0.6.1 and 0.8.0, reproduced by 0.8.0; frozen 0.5.0 and 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
 | `fuzz/` | `cargo-fuzz` project, 22 targets ([`fuzz/README.md`](fuzz/README.md)) |
 | `jvm/`, `demo/jvm/` | Java (Panama) and Scala 3 SDKs over the C ABI, and their demos |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
-| `TASKS-0.7.0.md`, `MILESTONE-0.7.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
+| `TASKS-0.8.0.md`, `MILESTONE-0.8.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
 
 ## Roadmap
 
 0.6.0 — the `ace` API facade, decode and allocation recovery; 0.6.1 — decimal floats (ALP), Patched FOR,
 RunDelta for small deltas, DENSE never larger than BALANCED, Format 1.5;
-0.7.0 — C ABI, Java (Panama) and Scala SDK (this release); 0.8 — adaptive segmentation and columnar blocks
-(Format 2.0); 0.9 — integration with AdaptiveDB and GraphNet; 1.0 — stable API and format.
+0.7.0 — C ABI, Java (Panama) and Scala SDK; 0.8.0 — segments, columnar blocks and preset dictionaries,
+Format 1.6 (this release); 0.9 — integration with AdaptiveDB and GraphNet, shared context between
+blocks; 1.0 — stable API and format.
 See [`ROADMAP.md`](ROADMAP.md) and [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License

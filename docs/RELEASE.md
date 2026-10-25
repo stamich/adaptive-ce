@@ -1,28 +1,28 @@
 # ACE release process
 
-Canonical process of the current release line (0.7.x). Earlier checklists:
+Canonical process of the current release line (0.8.x). Earlier checklists:
 [`history/`](history/) (`RELEASE-CHECKLIST-0.4.6.md`, `RELEASE-CHECKLIST-0.5.0.md`).
 
 ## 1. Automatic pipeline
 
 ```bash
-git worktree add ../ace-0.6.1 v0.6.1            # the previous release, for the interleaved A/B
-./ace-release0.8.0.sh ../ace-0.6.1              # on the reference machine, performance governor
+git worktree add ../ace-0.7.0 v0.7.0            # the previous release, for the interleaved A/B
+./ace-release0.8.0.sh ../ace-0.7.0              # on the reference machine, performance governor
 ```
 
 `ace-release0.8.0.sh` runs every step below, records each in
-`examples/results/release-checklist-0.7.0.md`, and writes the distribution to `dist/`:
+`examples/results/release-checklist-0.8.0.md`, and writes the distribution to `dist/`:
 
 | # | Step | Gate |
 |---|---|---|
 | 1 | `ace-build0.8.0.sh`: fmt, clippy `-D warnings`, check, tests, release build, rustdoc (public and private items) | 0 warnings |
 | 2 | `tools/ace-code_audit0.8.0.py`: `unsafe` placement and `// SAFETY:`, justified clippy allowances, decoder audit (lints present, every referenced test and fuzz target exists) | no violation |
 | 3 | `cargo test --release` (property budget 10 000) incl. `--ignored` large-file tests | all pass |
-| 4 | golden SHA-256 0.6.1 and the frozen 0.5.0 and 0.4.6, auto and `ACE_SIMD=scalar` | identical bytes |
+| 4 | golden SHA-256 0.6.1 and 0.8.0 and the frozen 0.5.0 and 0.4.6, auto and `ACE_SIMD=scalar` | identical bytes |
 | 5 | CLI determinism: 10 processes × threads × SIMD backend, mixed + f64-noisy | one SHA-256 |
 | 6 | `ace-benchmark0.8.0.sh all --repeat 3` (includes the `ffi` family and, when Gradle is installed, the JVM benchmark) | repeatability PASS |
-| 7 | interleaved A/B vs the previous release + Regression V3 incl. the `ffi` gates (Unstable → ≤ 2 re-measurements) | PASS (`diagnostic` on a non-`performance` governor is not a pass) |
-| 8 | `docs/PERFORMANCE-0.7.0.md` from the results | generated |
+| 7 | interleaved A/B vs the previous release + Regression V3 incl. the `ffi` and `storage` gates (Unstable → ≤ 2 re-measurements) | PASS (`diagnostic` on a non-`performance` governor is not a pass) |
+| 8 | `docs/PERFORMANCE-0.8.0.md` from the results | generated |
 | 9 | demo | < 1 min, no error |
 | 10 | deterministic source archive, built twice | same SHA-256, script-name audit |
 | 11 | unpack the archive, run the tests and the golden check from it | PASS |
@@ -66,8 +66,8 @@ release.
 4. Merge, then tag the merge commit:
 
    ```bash
-   git tag -a v0.7.0 -m "ACE 0.7.0 — Embedding" -m "$(cat dist/RELEASE-REPORT.md)"
-   git push origin v0.7.0
+   git tag -a v0.8.0 -m "ACE 0.8.0 — Storage engine" -m "$(cat dist/RELEASE-REPORT.md)"
+   git push origin v0.8.0
    ```
 
 5. Attach `dist/*` to the GitHub release.
