@@ -158,6 +158,16 @@ back into the last 65 535 bytes of `dictionary ‖ output`. The decoder starts w
 as the first bytes of its output buffer and removes them at the end. Distances must stay inside
 `dictionary ‖ output`, so a reference before the dictionary is `InvalidLzReference`.
 
+### Trainer (non-normative)
+
+The format does not say how a dictionary is made; any byte string of 1 – 65 535 bytes is valid.
+`ace_dictionary::train_dictionary` (ACE 0.8.0) builds one from samples: it counts, for every 8-byte
+substring, in how many samples it occurs, copies the 64-byte segments with the highest total count
+(each substring is counted once, so shared content is not selected twice) and puts the best segment
+last, where LZ distances are smallest. The result depends only on the samples, their order and the
+`TrainerConfig`, with no randomness, so the same samples give the same bytes on every host.
+`dictionary_id_of` derives a stable id (FNV-1a 64 of the content) for it.
+
 ## Payload-aware minimal version
 
 | Block / file | Needs |

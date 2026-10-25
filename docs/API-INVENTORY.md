@@ -34,7 +34,7 @@ its `extern "C"` functions are the interface.
 | `ace-core` | internal | 36 | 33 | 0 |
 | `ace-corpus` | internal | 6 | 20 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
-| `ace-dictionary` | internal | 3 | 8 | 0 |
+| `ace-dictionary` | internal | 8 | 9 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-ffi` | internal | 40 | 0 | 0 |
@@ -514,6 +514,12 @@ its `extern "C"` functions are the interface.
 | `remove` | method | `registry.rs:31` | Removes a dictionary and returns its immutable handle when present. |
 | `len` | method | `registry.rs:36` | Returns the number of registered dictionaries. |
 | `is_empty` | method | `registry.rs:41` | Returns true when no dictionaries are registered. |
+| `MAX_TRAINED_DICTIONARY_SIZE` | item | `trainer.rs:38` | Largest dictionary the trainer produces: the cap of the container format and of the LZ window. |
+| `MAX_TRAINING_INPUT` | item | `trainer.rs:42` | Largest value of [`TrainerConfig::max_sample_bytes`], which bounds the memory of the trainer |
+| `TrainerConfig` | item | `trainer.rs:46` | Parameters of [`train_dictionary`]. |
+| `validate` | method | `trainer.rs:77` | Checks that every field is inside its documented range. |
+| `train_dictionary` | item | `trainer.rs:188` | Trains a dictionary from `samples`. |
+| `dictionary_id_of` | item | `trainer.rs:296` | A stable identifier for dictionary `bytes`: FNV-1a (64 bit) of the content. |
 
 ### `ace-engine` (internal)
 
