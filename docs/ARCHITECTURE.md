@@ -95,7 +95,7 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
 | Compatibility fixtures | the reader | `examples/compat/` — files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0 and 0.6.1, never regenerated ([`COMPATIBILITY.md`](COMPATIBILITY.md)) |
 | Determinism matrix | thread / API independence | workloads × profiles × 1 – 32 workers × in-flight batch sizes × `compress` / `compress_to` / streaming |
 | Planner invariants | Planner V5 rules | property tests: TS1 ⇔ selection + dominance rule, NumericFast without Float evidence, selected ∈ candidates, zero full trial encodes, fixed tie-breaks |
-| Malformed input | the decoder | malformed matrix, per-field tests, limits tests, 20 fuzz targets (smoke on every PR, 20 × 10 min per release) |
+| Malformed input | the decoder | malformed matrix, per-field tests, limits tests, 21 fuzz targets (smoke on every PR, 21 × 10 min per release) |
 | Benchmarks | performance | Harness V3, Regression V3, interleaved A/B, three-run repeatability ([`BENCHMARKS.md`](BENCHMARKS.md)) |
 
 ## 6. Testing layers

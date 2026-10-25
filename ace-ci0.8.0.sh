@@ -10,9 +10,9 @@
 #   ./ace-ci0.8.0.sh native    C ABI tests and the Java SDK tests on this OS (macOS, Windows, Linux);
 #                              the library is built for this machine and packaged under native/<os>-<arch>/
 #   ./ace-ci0.8.0.sh release   full ace-release0.8.0.sh (needs ACE_AB_BASELINE_TREE)
-#   ./ace-ci0.8.0.sh fuzz      all 20 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
+#   ./ace-ci0.8.0.sh fuzz      all 21 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
 #                              ACE_FUZZ_CMIN=1 minimises every corpus afterwards
-#   ./ace-ci0.8.0.sh fuzz-smoke  all 20 fuzz targets, ACE_FUZZ_SMOKE_SECONDS each (default 25)
+#   ./ace-ci0.8.0.sh fuzz-smoke  all 21 fuzz targets, ACE_FUZZ_SMOKE_SECONDS each (default 25)
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tools/ace-common0.8.0.sh"
 cd "$ACE_ROOT"
@@ -78,7 +78,7 @@ case "${1:-}" in
       seconds="${ACE_FUZZ_SECONDS:-60}"
     fi
     targets=$(cargo +nightly fuzz list --fuzz-dir fuzz)
-    [[ $(wc -w <<<"$targets") -eq 20 ]] || ace_die "expected 20 fuzz targets, found: $targets"
+    [[ $(wc -w <<<"$targets") -eq 21 ]] || ace_die "expected 21 fuzz targets, found: $targets"
     for target in $targets; do
       ace_step "$1 $target (${seconds}s)"
       cargo +nightly fuzz run --fuzz-dir fuzz "$target" -- -max_total_time="$seconds"
