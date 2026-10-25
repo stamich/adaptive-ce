@@ -15,7 +15,7 @@ use ace_core::{
     PRIMARY_LENGTH_PREFIX_BYTES,
 };
 use ace_entropy::decode_entropy_cow;
-use ace_format::{checksum, BlockHeader};
+use ace_format::{checksum, parse_inner_block, BlockHeader, SegmentTable};
 use ace_transforms::invert_transform;
 
 /// Prepends the primary-stream length to entropy model metadata when the coder requires it.
@@ -108,6 +108,9 @@ pub(crate) fn decode_encoded_block(
     if original_size > limits.max_block_size {
         return Err(AceError::ResourceLimitExceeded("block output size"));
     }
+    if header.codec == CodecId::Segmented {
+        return decode_segmented_block(header, metadata, payload, minor_version, limits);
+    }
     if let Some(dictionary) = header.dictionary {
         return Err(AceError::MissingDictionary(dictionary.id.0));
     }
@@ -135,4 +138,78 @@ pub(crate) fn decode_encoded_block(
         return Err(AceError::ChecksumMismatch(header.block_id));
     }
     Ok(stage)
+}
+
+/// Decodes a segmented block (`SEG1`, Format 1.6): validates the segment table against the outer
+/// header, decodes every inner block with the ordinary block pipeline and concatenates the
+/// segments in order.
+///
+/// The outer block must be a bare container: no entropy stage, transform, dictionary or
+/// metadata of its own. The outer `payload_crc32c` covers the whole reconstructed block, so a
+/// table that was altered consistently still cannot produce output that passes.
+///
+/// # Errors
+///
+/// [`AceError::UnsupportedVersion`] when `minor_version` predates Format 1.6,
+/// [`AceError::Malformed`] for an outer block with stages of its own or any table or inner
+/// block violation (see [`SegmentTable::parse`] and [`parse_inner_block`]),
+/// [`AceError::ResourceLimitExceeded`] for segments beyond `limits`, the error of the inner
+/// block's own decoding, and [`AceError::ChecksumMismatch`] for the outer checksum.
+fn decode_segmented_block(
+    header: &BlockHeader,
+    metadata: &[u8],
+    payload: &[u8],
+    minor_version: u8,
+    limits: &DecodeLimits,
+) -> AceResult<Vec<u8>> {
+    if minor_version < ace_core::FORMAT_MINOR_STORAGE {
+        return Err(AceError::UnsupportedVersion {
+            major: FORMAT_MAJOR,
+            minor: minor_version,
+        });
+    }
+    if header.entropy != EntropyCodecId::None
+        || !header.transforms.is_empty()
+        || header.dictionary.is_some()
+        || !metadata.is_empty()
+    {
+        return Err(AceError::Malformed("segmented block with stages of its own"));
+    }
+    let original_size = header.original_size as usize;
+    let table = SegmentTable::parse(payload, original_size, limits)?;
+    // `original_size` is within `max_block_size` (checked by the caller).
+    let mut out = Vec::with_capacity(original_size);
+    for (index, (stored, logical)) in table
+        .payload_ranges()
+        .into_iter()
+        .zip(table.logical_ranges())
+        .enumerate()
+    {
+        let bytes = payload
+            .get(stored)
+            .ok_or(AceError::Malformed("segment outside the payload"))?;
+        let segment_size = u32::try_from(logical.len())
+            .map_err(|_| AceError::ResourceLimitExceeded("segment size"))?;
+        let (inner_header, inner_metadata, inner_payload) = parse_inner_block(
+            bytes,
+            index as u64,
+            segment_size,
+            minor_version,
+            limits,
+        )?;
+        out.extend_from_slice(&decode_encoded_block(
+            &inner_header,
+            &inner_metadata,
+            &inner_payload,
+            minor_version,
+            limits,
+        )?);
+    }
+    if out.len() != original_size {
+        return Err(AceError::Malformed("decoded block size mismatch"));
+    }
+    if checksum(&out) != header.payload_crc32c {
+        return Err(AceError::ChecksumMismatch(header.block_id));
+    }
+    Ok(out)
 }
