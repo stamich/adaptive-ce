@@ -26,12 +26,12 @@ its `extern "C"` functions are the interface.
 
 | Crate | Kind | Items | Methods | Deprecated |
 |---|---|---|---|---|
-| `ace` | public | 15 | 58 | 0 |
+| `ace` | public | 18 | 69 | 0 |
 | `ace-analysis` | internal | 39 | 13 | 0 |
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 54 | 21 | 0 |
-| `ace-core` | internal | 36 | 31 | 0 |
+| `ace-core` | internal | 36 | 33 | 0 |
 | `ace-corpus` | internal | 4 | 14 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
@@ -55,21 +55,23 @@ its `extern "C"` functions are the interface.
 | `AccessHint` | item | `config.rs:39` | The expected way the file will be read; consulted by [`BlockSizePolicy::Auto`]. |
 | `Config` | item | `config.rs:51` | Validated compression settings. Create with [`Config::builder`] or [`Config::default`]. |
 | `builder` | method | `config.rs:58` | Starts a builder initialised with the defaults. |
-| `block_size` | method | `config.rs:66` | Target size of each independent block, in bytes. |
-| `profile` | method | `config.rs:72` | The effort profile. |
-| `threads` | method | `config.rs:82` | Worker threads; zero means one per logical CPU. |
-| `write_index` | method | `config.rs:88` | Whether a block index is written (needed for random access). |
-| `ConfigBuilder` | item | `config.rs:99` | Builds a [`Config`]. Every setter is optional; [`build`](Self::build) validates the result. |
-| `block_size` | method | `config.rs:106` | Target size of each independent block (default 256 KiB). Must be non-zero and fit `u32`. |
-| `profile` | method | `config.rs:113` | Encoder effort (default [`Profile::Balanced`]). |
-| `threads` | method | `config.rs:125` | Worker threads; zero (the default) means one per logical CPU. Output is identical |
-| `memory_budget` | method | `config.rs:132` | Soft cap on the memory used by blocks in flight (default 256 MiB). |
-| `write_index` | method | `config.rs:140` | Writes the block index and trailer (default `true`). Without it the file can only be |
-| `block_size_policy` | method | `config.rs:147` | Fixed or automatic block size (default [`BlockSizePolicy::Fixed`]). |
-| `access_hint` | method | `config.rs:157` | Expected access pattern (default [`AccessHint::Balanced`]). |
-| `numeric_specialization` | method | `config.rs:168` | Enables the integer pipelines (FOR, delta, delta-of-delta; default `true`). |
-| `float_specialization` | method | `config.rs:176` | Enables the floating-point and time-series pipelines (default `true`). `false` |
-| `build` | method | `config.rs:187` | Validates the settings. |
+| `block_size` | method | `config.rs:67` | Target size of each independent block, in bytes. With a [`Schema`] this is rounded to a |
+| `profile` | method | `config.rs:73` | The effort profile. |
+| `threads` | method | `config.rs:83` | Worker threads; zero means one per logical CPU. |
+| `schema` | method | `config.rs:89` | The record layout of columnar blocks, if one was set. |
+| `write_index` | method | `config.rs:95` | Whether a block index is written (needed for random access). |
+| `ConfigBuilder` | item | `config.rs:106` | Builds a [`Config`]. Every setter is optional; [`build`](Self::build) validates the result. |
+| `block_size` | method | `config.rs:113` | Target size of each independent block (default 256 KiB). Must be non-zero and fit `u32`. |
+| `profile` | method | `config.rs:120` | Encoder effort (default [`Profile::Balanced`]). |
+| `threads` | method | `config.rs:132` | Worker threads; zero (the default) means one per logical CPU. Output is identical |
+| `memory_budget` | method | `config.rs:139` | Soft cap on the memory used by blocks in flight (default 256 MiB). |
+| `write_index` | method | `config.rs:147` | Writes the block index and trailer (default `true`). Without it the file can only be |
+| `block_size_policy` | method | `config.rs:154` | Fixed or automatic block size (default [`BlockSizePolicy::Fixed`]). |
+| `access_hint` | method | `config.rs:164` | Expected access pattern (default [`AccessHint::Balanced`]). |
+| `numeric_specialization` | method | `config.rs:175` | Enables the integer pipelines (FOR, delta, delta-of-delta; default `true`). |
+| `float_specialization` | method | `config.rs:183` | Enables the floating-point and time-series pipelines (default `true`). `false` |
+| `schema` | method | `config.rs:192` | Stores the file as columns of fixed-size records (default: row-wise). The block size is |
+| `build` | method | `config.rs:203` | Validates the settings. |
 | `Engine` | item | `engine.rs:30` | Compresses and decompresses ACE files. |
 | `new` | method | `engine.rs:53` | An engine with the given settings and the default decode limits. |
 | `with_decode_limits` | method | `engine.rs:64` | Replaces the limits applied while decoding. |
@@ -89,10 +91,10 @@ its `extern "C"` functions are the interface.
 | `block_id` | method | `error.rs:61` | The block the failure concerns, for [`ErrorKind::ChecksumMismatch`] and |
 | `BlockReport` | item | `explain.rs:10` | The planner's decision for one block. |
 | `explain` | method | `explain.rs:54` | Reports, per block, which pipeline the planner selects and which it considered. Nothing is |
-| `error_from_core` | method | `lib.rs:86` | The facade error for an internal error. |
-| `config_core` | method | `lib.rs:91` | The internal configuration a [`Config`] resolves to. |
-| `limits_core` | method | `lib.rs:96` | The internal limits a [`DecodeLimits`] resolves to. |
-| `stats_from_core` | method | `lib.rs:101` | The facade statistics for internal statistics. |
+| `error_from_core` | method | `lib.rs:88` | The facade error for an internal error. |
+| `config_core` | method | `lib.rs:93` | The internal configuration a [`Config`] resolves to. |
+| `limits_core` | method | `lib.rs:98` | The internal limits a [`DecodeLimits`] resolves to. |
+| `stats_from_core` | method | `lib.rs:103` | The facade statistics for internal statistics. |
 | `DecodeLimits` | item | `limits.rs:20` | Upper bounds a decoder enforces on everything a file declares. |
 | `builder` | method | `limits.rs:27` | Starts a builder initialised with the defaults. |
 | `max_output_size` | method | `limits.rs:35` | Maximum total decoded output, in bytes. |
@@ -121,6 +123,18 @@ its `extern "C"` functions are the interface.
 | `read_range_with_stats` | method | `range.rs:123` | Like [`read_range`](Self::read_range), also reporting the work done. |
 | `read_block` | method | `range.rs:155` | Decodes one whole block by number. |
 | `open_range_reader` | method | `range.rs:166` | Opens a random-access reader over `reader` under this engine's decode limits. |
+| `ColumnKind` | item | `schema.rs:11` | What a column holds. The kind steers the codec ACE tries for the column; it never changes |
+| `Column` | item | `schema.rs:31` | One field of a fixed-size record: how many bytes it takes and what it holds. |
+| `bytes` | method | `schema.rs:41` | A column of opaque bytes, `width` bytes per record (non-zero). |
+| `unsigned` | method | `schema.rs:47` | A column of unsigned little-endian integers; `width` must be 1, 2, 4 or 8. |
+| `signed` | method | `schema.rs:53` | A column of signed little-endian integers; `width` must be 1, 2, 4 or 8. |
+| `float` | method | `schema.rs:59` | A column of IEEE-754 little-endian floats; `width` must be 4 or 8. |
+| `width` | method | `schema.rs:65` | Bytes per record. |
+| `kind` | method | `schema.rs:71` | What the column holds. |
+| `Schema` | item | `schema.rs:102` | The layout of one record: a validated list of [`Column`]s. A record is the concatenation of |
+| `new` | method | `schema.rs:114` | Validates the columns and builds the schema. |
+| `columns` | method | `schema.rs:134` | The columns, in record order. |
+| `record_size` | method | `schema.rs:152` | Bytes of one record: the sum of the column widths. |
 | `Stats` | item | `stats.rs:14` | Summary of one compression run. |
 | `ratio` | method | `stats.rs:41` | `input_bytes / output_bytes`; `1.0` when nothing was written. |
 
@@ -367,6 +381,7 @@ its `extern "C"` functions are the interface.
 | `SegmentationConfig` | item | `config.rs:22` | Window and segment sizes of adaptive segmentation (Format 1.6, `SEG1`). |
 | `validate` | method | `config.rs:54` | Checks the relations the segmenter relies on. |
 | `AceConfig` | item | `config.rs:76` | Runtime configuration of the ACE encoder. |
+| `aligned_block_size` | method | `config.rs:119` | `block_size` adjusted to the configuration: with a [`Schema`] it is rounded to whole |
 | `DictionaryId` | item | `dictionary.rs:3` | Stable dictionary identifier stored in ACE format metadata. |
 | `DictionaryScope` | item | `dictionary.rs:7` | Lifetime and reuse scope of one compression dictionary. |
 | `DictionaryRef` | item | `dictionary.rs:20` | Decoder-facing dictionary reference embedded into one block plan. |
@@ -411,7 +426,8 @@ its `extern "C"` functions are the interface.
 | `new` | method | `schema.rs:88` | Validates `columns` and builds the schema. |
 | `columns` | method | `schema.rs:111` | The columns, in record order. |
 | `record_size` | method | `schema.rs:116` | Bytes of one record: the sum of the widths. |
-| `widths` | method | `schema.rs:121` | The column widths, in record order. |
+| `align_block_size` | method | `schema.rs:123` | Rounds `block_size` down to a whole number of records, and up to one record when it is |
+| `widths` | method | `schema.rs:132` | The column widths, in record order. |
 | `CompressionStats` | item | `stats.rs:8` | Aggregate telemetry produced by one compression operation. |
 | `compression_ratio` | method | `stats.rs:89` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
 | `record_selected_plan` | method | `stats.rs:98` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
@@ -504,16 +520,16 @@ its `extern "C"` functions are the interface.
 | `PREALLOCATION_CAP_BYTES` | item | `engine.rs:25` | Upper bound on the output capacity [`AceEngine::decompress_into`] reserves up front from |
 | `AceEngine` | item | `engine.rs:29` | Public façade of the ACE compression engine. |
 | `new` | method | `engine.rs:45` | Creates an engine with explicit encoder configuration and default decoder limits. |
-| `default_engine` | method | `engine.rs:65` | Creates an engine using default settings. |
-| `with_decode_limits` | method | `engine.rs:73` | Replaces decoder resource limits. |
-| `config` | method | `engine.rs:79` | Returns a read-only view of encoder configuration. |
-| `compress` | method | `engine.rs:89` | Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a |
-| `compress_with_stats` | method | `engine.rs:108` | Compresses bytes and returns both the file image and detailed telemetry. |
-| `compress_to` | method | `engine.rs:156` | Compresses source bytes and writes the finished ACE file to an arbitrary sink. |
-| `decompress` | method | `engine.rs:171` | Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes. |
-| `decompress_into` | method | `engine.rs:191` | Decompresses an in-memory ACE file into a caller-owned buffer and returns the number |
-| `decompress_from` | method | `engine.rs:210` | Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer. |
-| `explain` | method | `engine.rs:262` | Produces deterministic planner explanations (every candidate fully evaluated) without |
+| `default_engine` | method | `engine.rs:74` | Creates an engine using default settings. |
+| `with_decode_limits` | method | `engine.rs:82` | Replaces decoder resource limits. |
+| `config` | method | `engine.rs:88` | Returns a read-only view of encoder configuration. |
+| `compress` | method | `engine.rs:98` | Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a |
+| `compress_with_stats` | method | `engine.rs:117` | Compresses bytes and returns both the file image and detailed telemetry. |
+| `compress_to` | method | `engine.rs:165` | Compresses source bytes and writes the finished ACE file to an arbitrary sink. |
+| `decompress` | method | `engine.rs:180` | Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes. |
+| `decompress_into` | method | `engine.rs:200` | Decompresses an in-memory ACE file into a caller-owned buffer and returns the number |
+| `decompress_from` | method | `engine.rs:219` | Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer. |
+| `explain` | method | `engine.rs:271` | Produces deterministic planner explanations (every candidate fully evaluated) without |
 | `BlockExplanation` | item | `explain.rs:10` | Planner explanation for one input block. |
 | `RangeAccessMetrics` | item | `indexed.rs:10` | Physical work implied by one logical random-access range request. |
 | `physical_to_logical_ratio` | method | `indexed.rs:29` | Returns physical serialized bytes read divided by logical reconstructed bytes requested. |

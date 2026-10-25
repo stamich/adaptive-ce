@@ -1,7 +1,7 @@
 //! The record layout of columnar blocks: validation of schemas and the column kind table.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
-use ace_core::{AceError, ColumnKind, ColumnSpec, Schema};
+use ace_core::{AceConfig, AceError, ColumnKind, ColumnSpec, Schema};
 
 fn spec(width: u16, kind: ColumnKind) -> ColumnSpec {
     ColumnSpec { width, kind }
@@ -67,4 +67,29 @@ fn widths_per_kind() {
     assert!(!ColumnKind::Float.accepts_width(1));
     assert!(ColumnKind::Bytes.accepts_width(1) && ColumnKind::Bytes.accepts_width(u16::MAX));
     assert!(!ColumnKind::Bytes.accepts_width(0));
+}
+
+#[test]
+fn block_sizes_are_rounded_to_whole_records() {
+    let schema = Schema::new(vec![spec(8, ColumnKind::Unsigned), spec(4, ColumnKind::Bytes)]).unwrap();
+    assert_eq!(schema.record_size(), 12);
+    // Down to a multiple, never below one record, exact multiples unchanged.
+    assert_eq!(schema.align_block_size(262_144), 262_140);
+    assert_eq!(schema.align_block_size(24), 24);
+    assert_eq!(schema.align_block_size(23), 12);
+    assert_eq!(schema.align_block_size(1), 12);
+    assert_eq!(schema.align_block_size(0), 12);
+    assert_eq!(schema.align_block_size(usize::MAX) % 12, 0);
+}
+
+#[test]
+fn the_configuration_aligns_only_with_a_schema() {
+    let plain = AceConfig::default();
+    assert_eq!(plain.aligned_block_size(1000), 1000);
+    let columnar = AceConfig {
+        schema: Some(Schema::new(vec![spec(7, ColumnKind::Bytes)]).unwrap()),
+        ..AceConfig::default()
+    };
+    assert_eq!(columnar.aligned_block_size(1000), 994);
+    assert_eq!(columnar.aligned_block_size(3), 7);
 }

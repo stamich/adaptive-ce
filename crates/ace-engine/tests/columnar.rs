@@ -201,6 +201,62 @@ fn a_disabled_specialization_stays_disabled_in_the_columns() {
     assert_eq!(engine.decompress(&file).unwrap(), input);
 }
 
+/// Blocks are cut at whole records: every block but the last holds a multiple of the record
+/// size, and the incomplete record sits at the end of the file.
+#[test]
+fn blocks_are_aligned_to_whole_records() {
+    let input = trades(1_000, 9); // 24_009 bytes
+    let engine = AceEngine::new(AceConfig {
+        block_size: 10_000, // rounds down to 9_984 = 416 records
+        ..config(Some(trade_schema()))
+    })
+    .unwrap();
+    let file = engine.compress(&input).unwrap();
+    let decoder = open(&file);
+    assert_eq!(decoder.block_count(), 3);
+    let sizes: Vec<usize> = (0..3)
+        .map(|id| open(&file).decode_block(id).unwrap().len())
+        .collect();
+    assert_eq!(sizes, vec![9_984, 9_984, 24_009 - 2 * 9_984]);
+    assert_eq!(sizes[2] % 24, 9, "the tail is in the last block only");
+    assert_eq!(engine.decompress(&file).unwrap(), input);
+    let mut reader = AceReader::new(Cursor::new(&file), DecodeLimits::default());
+    assert_eq!(reader.read_file_header().unwrap().default_block_size, 9_984);
+
+    // A block size below one record still holds one record.
+    let tiny = AceEngine::new(AceConfig { block_size: 5, ..config(Some(trade_schema())) }).unwrap();
+    let file = tiny.compress(&trades(10, 0)).unwrap();
+    assert_eq!(open(&file).block_count(), 10);
+}
+
+/// The automatic block-size policy is aligned too.
+#[test]
+fn the_automatic_block_size_is_aligned() {
+    let input = trades(40_000, 3);
+    let engine = AceEngine::new(AceConfig {
+        block_size_policy: ace_core::BlockSizePolicy::Auto,
+        ..config(Some(trade_schema()))
+    })
+    .unwrap();
+    let file = engine.compress(&input).unwrap();
+    let mut reader = AceReader::new(Cursor::new(&file), DecodeLimits::default());
+    let block = reader.read_file_header().unwrap().default_block_size;
+    assert_eq!(block % 24, 0, "{block}");
+    assert_eq!(engine.decompress(&file).unwrap(), input);
+}
+
+/// A schema the default reader could not accept is refused when the engine is built.
+#[test]
+fn a_schema_with_too_many_columns_is_refused() {
+    let many = Schema::new(vec![spec(1, ColumnKind::Bytes); 257]).unwrap();
+    assert!(matches!(
+        AceEngine::new(AceConfig { schema: Some(many), ..AceConfig::default() }),
+        Err(AceError::InvalidConfig(_))
+    ));
+    let limit = Schema::new(vec![spec(1, ColumnKind::Bytes); 256]).unwrap();
+    assert!(AceEngine::new(AceConfig { schema: Some(limit), ..AceConfig::default() }).is_ok());
+}
+
 #[test]
 fn the_output_does_not_depend_on_the_worker_count() {
     let input = trades(60_000, 5);

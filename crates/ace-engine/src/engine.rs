@@ -40,7 +40,7 @@ impl AceEngine {
     /// # Errors
     ///
     /// [`AceError::InvalidConfig`] when the block size is zero or exceeds `u32::MAX`, when the
-    /// segmentation configuration is invalid, or when the runtime configuration (threads, memory
+    /// segmentation configuration or the schema is invalid, or when the runtime configuration (threads, memory
     /// budget) is invalid.
     pub fn new(config: AceConfig) -> AceResult<Self> {
         if config.block_size == 0 || config.block_size > u32::MAX as usize {
@@ -50,6 +50,15 @@ impl AceEngine {
         }
         if let Some(segmentation) = &config.segmentation {
             segmentation.validate()?;
+        }
+        if let Some(schema) = &config.schema {
+            // A file with more columns than the default reader accepts could not be read back
+            // without raising its limits, so the writer refuses to produce it.
+            if schema.columns().len() > DecodeLimits::default().max_columns {
+                return Err(AceError::InvalidConfig(
+                    "schema has more columns than the default reader limit",
+                ));
+            }
         }
         RuntimeConfig::from_ace(&config)?;
         Ok(Self {
@@ -312,12 +321,15 @@ impl AceEngine {
         })
     }
 
-    /// Resolves the file-level block size according to the configured block-size policy.
+    /// Resolves the file-level block size according to the configured block-size policy; with a
+    /// schema it is a whole number of records.
     fn resolved_block_size(&self, input: &[u8]) -> usize {
         if !matches!(self.config.block_size_policy, BlockSizePolicy::Auto) {
-            return self.config.block_size;
+            return self.config.aligned_block_size(self.config.block_size);
         }
         let numeric = analyze_numeric(&input[..input.len().min(AUTO_POLICY_SAMPLE_BYTES)]);
-        recommend_block_size(self.config.access_hint, self.config.profile, &numeric).block_size
+        let recommended =
+            recommend_block_size(self.config.access_hint, self.config.profile, &numeric).block_size;
+        self.config.aligned_block_size(recommended)
     }
 }

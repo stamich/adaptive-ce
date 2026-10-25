@@ -40,10 +40,12 @@ pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
     limits: StreamLimits,
 ) -> AceResult<StreamingStats> {
     let block_count = validate_stream(original_size, &config, &limits)?;
+    // With a schema, blocks are cut at record boundaries exactly as `AceEngine::compress` cuts them.
+    let block_size = config.aligned_block_size(config.block_size);
     let mut file_header = FileHeader {
         minor_version: FORMAT_MINOR_BASE,
         flags: FILE_FLAG_HAS_INDEX,
-        default_block_size: config.block_size as u32,
+        default_block_size: block_size as u32,
         original_size,
         block_count,
     };
@@ -55,10 +57,10 @@ pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
     let mut minor_needed = FORMAT_MINOR_BASE;
 
     let engine = single_block_engine(&config)?;
-    let mut buffer = vec![0u8; config.block_size];
+    let mut buffer = vec![0u8; block_size];
     let mut stats = StreamingStats::default();
     for block_id in 0..block_count {
-        let remaining = (original_size - stats.input_bytes).min(config.block_size as u64) as usize;
+        let remaining = (original_size - stats.input_bytes).min(block_size as u64) as usize;
         let source = &mut buffer[..remaining];
         read_exactly(&mut reader, source)?;
         let (mut header, metadata, payload) = encode_single_block(&engine, source)?;
@@ -107,11 +109,17 @@ fn validate_stream(
             "stream block size must fit u32 and be non-zero",
         ));
     }
-    let block_count = original_size.div_ceil(config.block_size as u64);
+    let block_size = config.aligned_block_size(config.block_size);
+    if block_size > u32::MAX as usize {
+        return Err(AceError::InvalidConfig(
+            "stream block size must fit u32 and be non-zero",
+        ));
+    }
+    let block_count = original_size.div_ceil(block_size as u64);
     if block_count > limits.max_blocks {
         return Err(AceError::ResourceLimitExceeded("stream block count"));
     }
-    if config.block_size.saturating_mul(3) > limits.max_in_flight_bytes {
+    if block_size.saturating_mul(3) > limits.max_in_flight_bytes {
         return Err(AceError::ResourceLimitExceeded(
             "stream in-flight memory budget",
         ));

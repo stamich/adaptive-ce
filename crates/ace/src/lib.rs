@@ -62,6 +62,7 @@ mod error;
 mod explain;
 mod limits;
 mod range;
+mod schema;
 mod stats;
 
 pub use config::{AccessHint, BlockSizePolicy, Config, ConfigBuilder, Profile};
@@ -71,6 +72,7 @@ pub use error::{Error, ErrorKind, Result};
 pub use explain::BlockReport;
 pub use limits::{DecodeLimits, DecodeLimitsBuilder};
 pub use range::{RangeReader, RangeStats};
+pub use schema::{Column, ColumnKind, Schema};
 pub use stats::Stats;
 
 /// Conversions between the facade types and the internal crates, for the test suite of this

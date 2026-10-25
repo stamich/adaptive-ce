@@ -5,7 +5,7 @@ use ace_core::{
 };
 use ace_engine::AceEngine;
 
-use crate::{Error, Result};
+use crate::{Error, Result, Schema};
 
 /// How much encoder effort to spend to make the output smaller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -61,10 +61,11 @@ impl Config {
         }
     }
 
-    /// Target size of each independent block, in bytes.
+    /// Target size of each independent block, in bytes. With a [`Schema`] this is rounded to a
+    /// whole number of records.
     #[must_use]
     pub fn block_size(&self) -> usize {
-        self.inner.block_size
+        self.inner.aligned_block_size(self.inner.block_size)
     }
 
     /// The effort profile.
@@ -81,6 +82,12 @@ impl Config {
     #[must_use]
     pub fn threads(&self) -> usize {
         self.inner.threads
+    }
+
+    /// The record layout of columnar blocks, if one was set.
+    #[must_use]
+    pub fn schema(&self) -> Option<Schema> {
+        self.inner.schema.clone().map(Schema::from_core)
     }
 
     /// Whether a block index is written (needed for random access).
@@ -175,6 +182,15 @@ impl ConfigBuilder {
     #[must_use]
     pub fn float_specialization(mut self, enabled: bool) -> Self {
         self.inner.enable_float_specialization = enabled;
+        self
+    }
+
+    /// Stores the file as columns of fixed-size records (default: row-wise). The block size is
+    /// rounded to a whole number of records, and a columnar block is written only when it is
+    /// smaller than the row-wise block. See [`Schema`].
+    #[must_use]
+    pub fn schema(mut self, schema: Schema) -> Self {
+        self.inner.schema = Some(schema.core().clone());
         self
     }
 

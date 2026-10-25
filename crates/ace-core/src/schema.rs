@@ -117,6 +117,17 @@ impl Schema {
         self.record_size
     }
 
+    /// Rounds `block_size` down to a whole number of records, and up to one record when it is
+    /// smaller, so that blocks are cut at record boundaries and only the last block of a file
+    /// can end with an incomplete record (`docs/FORMAT-1.6.md`).
+    pub fn align_block_size(&self, block_size: usize) -> usize {
+        let record = self.record_size as usize;
+        match block_size.checked_div(record) {
+            Some(records) if records > 0 => records.saturating_mul(record),
+            _ => record,
+        }
+    }
+
     /// The column widths, in record order.
     pub fn widths(&self) -> Vec<u16> {
         self.columns.iter().map(|column| column.width).collect()

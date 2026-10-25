@@ -111,6 +111,19 @@ pub struct AceConfig {
     pub schema: Option<Schema>,
 }
 
+/// Inherent methods of [`AceConfig`].
+impl AceConfig {
+    /// `block_size` adjusted to the configuration: with a [`Schema`] it is rounded to whole
+    /// records ([`Schema::align_block_size`]), otherwise it is returned unchanged. The engine and
+    /// the streaming encoder cut blocks with this size.
+    pub fn aligned_block_size(&self, block_size: usize) -> usize {
+        match &self.schema {
+            Some(schema) => schema.align_block_size(block_size),
+            None => block_size,
+        }
+    }
+}
+
 /// Provides the documented default values of [`AceConfig`].
 impl Default for AceConfig {
     /// Returns the recommended ACE 0.4 defaults.
