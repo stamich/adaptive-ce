@@ -58,6 +58,7 @@ DECODER_MODULES = (
     "crates/ace-format/src/index.rs",
     "crates/ace-format/src/block_io.rs",
     "crates/ace-format/src/dictionary_section.rs",
+    "crates/ace-format/src/segment.rs",
     "crates/ace-index/src/index_reader.rs",
     "crates/ace-engine/src/block_pipeline.rs",
     "crates/ace-codecs/src/numeric/header.rs",
@@ -216,6 +217,21 @@ DECODER_FIELDS = (
      "ids strictly increasing; both checksums verified; the section is consumed exactly", "-",
      ("crates/ace-format/tests/dictionary_section.rs::every_single_byte_flip_is_rejected",
       "crates/ace-format/tests/dictionary_section.rs::truncation_is_an_error_at_every_length")),
+    ("Segment table (SEG1)", "count (u32)",
+     "<= limit before any entry is read; at least 2; wrong magic and a non-zero reserved word "
+     "are malformed",
+     "`max_segments`",
+     ("crates/ace-format/tests/segment.rs::limits_apply_before_any_allocation",
+      "crates/ace-format/tests/segment.rs::table_is_validated_against_the_block")),
+    ("Segment table (SEG1)", "original_size (u32)",
+     "1 ..= `max_block_size`; the sum equals the outer block's original size (checked add)",
+     "`max_block_size`",
+     ("crates/ace-format/tests/segment.rs::limits_apply_before_any_allocation",
+      "crates/ace-format/tests/segment.rs::table_is_validated_against_the_block")),
+    ("Segment table (SEG1)", "serialized_len (u32)",
+     "at least one block header; the sum equals the payload tail exactly (checked add)", "-",
+     ("crates/ace-format/tests/segment.rs::table_is_validated_against_the_block",
+      "crates/ace-format/tests/segment.rs::random_tables_tile_the_block")),
 )
 
 

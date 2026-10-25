@@ -7,11 +7,13 @@
 // narrowing cast is explicit (`docs/DECODER-AUDIT.md`).
 #![warn(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
-use std::io::Read;
+use std::io::{Cursor, Read};
 
 use ace_core::{AceError, AceResult, DecodeLimits};
 
-use crate::{block_descriptor_size, decode_block_header, BlockHeader, BLOCK_HEADER_SIZE};
+use crate::{
+    block_descriptor_size, decode_block_header, encode_block_header, BlockHeader, BLOCK_HEADER_SIZE,
+};
 
 /// One serialized block: parsed header, entropy metadata and encoded payload.
 pub type SerializedBlock = (BlockHeader, Vec<u8>, Vec<u8>);
@@ -56,4 +58,47 @@ pub fn read_serialized_block<R: Read>(
     let mut payload = vec![0u8; header.encoded_size as usize];
     reader.read_exact(&mut payload)?;
     Ok((header, metadata, payload))
+}
+
+/// Serializes one block exactly as [`crate::AceWriter::write_block`] writes it to a file: the
+/// fixed header with its descriptors and CRC-32C, the entropy metadata, the payload. Segmented
+/// and columnar blocks (Format 1.6) store their inner blocks in this form.
+pub fn serialize_block(header: &BlockHeader, metadata: &[u8], payload: &[u8]) -> Vec<u8> {
+    let mut bytes = encode_block_header(header);
+    bytes.extend_from_slice(metadata);
+    bytes.extend_from_slice(payload);
+    bytes
+}
+
+/// Parses one inner block of a segmented or columnar block (Format 1.6) from `bytes`.
+///
+/// `bytes` must contain exactly one serialized block. The block must carry `block_id`
+/// (its position in the outer block) and `original_size` bytes of output, and must not be a
+/// container itself: nesting is one level deep.
+///
+/// # Errors
+/// The conditions of [`read_serialized_block`], and [`AceError::Malformed`] for trailing bytes, a
+/// wrong id or size, or an inner block of a container codec.
+pub fn parse_inner_block(
+    bytes: &[u8],
+    block_id: u64,
+    original_size: u32,
+    minor_version: u8,
+    limits: &DecodeLimits,
+) -> AceResult<SerializedBlock> {
+    let mut cursor = Cursor::new(bytes);
+    let block = read_serialized_block(&mut cursor, minor_version, limits)?;
+    if usize::try_from(cursor.position()).ok() != Some(bytes.len()) {
+        return Err(AceError::Malformed("inner block length mismatch"));
+    }
+    if block.0.block_id != block_id {
+        return Err(AceError::Malformed("inner block id mismatch"));
+    }
+    if block.0.original_size != original_size {
+        return Err(AceError::Malformed("inner block size mismatch"));
+    }
+    if block.0.codec.is_container() {
+        return Err(AceError::Malformed("nested container block"));
+    }
+    Ok(block)
 }

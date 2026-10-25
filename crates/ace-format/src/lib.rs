@@ -17,6 +17,7 @@ mod dictionary_section;
 mod header;
 mod index;
 mod reader;
+mod segment;
 mod writer;
 
 pub use block_io::*;
@@ -25,4 +26,5 @@ pub use dictionary_section::*;
 pub use header::*;
 pub use index::*;
 pub use reader::*;
+pub use segment::*;
 pub use writer::*;

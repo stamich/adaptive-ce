@@ -43,6 +43,9 @@ wrap-around or an allocation of the forged size
 | Dictionary section (ADIC) | count (u32) | <= limit before the first entry is read; zero and a wrong magic are malformed | `max_dictionaries` | `dictionary_section.rs::forged_sizes_fail_before_they_are_read`<br>`dictionary_section.rs::magic_ordering_and_empty_entries_are_malformed` |
 | Dictionary section (ADIC) | length (u32) | `try_from`; 1 ..= min(limit, 65 535) before the buffer is allocated | `max_dictionary_size` | `dictionary_section.rs::forged_sizes_fail_before_they_are_read` |
 | Dictionary section (ADIC) | ids, per-dictionary and section CRC-32C | ids strictly increasing; both checksums verified; the section is consumed exactly | - | `dictionary_section.rs::every_single_byte_flip_is_rejected`<br>`dictionary_section.rs::truncation_is_an_error_at_every_length` |
+| Segment table (SEG1) | count (u32) | <= limit before any entry is read; at least 2; wrong magic and a non-zero reserved word are malformed | `max_segments` | `segment.rs::limits_apply_before_any_allocation`<br>`segment.rs::table_is_validated_against_the_block` |
+| Segment table (SEG1) | original_size (u32) | 1 ..= `max_block_size`; the sum equals the outer block's original size (checked add) | `max_block_size` | `segment.rs::limits_apply_before_any_allocation`<br>`segment.rs::table_is_validated_against_the_block` |
+| Segment table (SEG1) | serialized_len (u32) | at least one block header; the sum equals the payload tail exactly (checked add) | - | `segment.rs::table_is_validated_against_the_block`<br>`segment.rs::random_tables_tile_the_block` |
 
 ## Parser modules under the arithmetic lints
 
@@ -55,6 +58,7 @@ arithmetic or narrowing cast into a build failure. Proven-safe sites:
 | `crates/ace-format/src/index.rs` | none |
 | `crates/ace-format/src/block_io.rs` | none |
 | `crates/ace-format/src/dictionary_section.rs` | none |
+| `crates/ace-format/src/segment.rs` | none |
 | `crates/ace-index/src/index_reader.rs` | `:18` constant: -28 |
 | `crates/ace-engine/src/block_pipeline.rs` | none |
 | `crates/ace-codecs/src/numeric/header.rs` | none |

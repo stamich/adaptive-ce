@@ -38,7 +38,7 @@ its `extern "C"` functions are the interface.
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-ffi` | internal | 40 | 0 | 0 |
-| `ace-format` | internal | 38 | 16 | 0 |
+| `ace-format` | internal | 46 | 20 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
 | `ace-planner` | internal | 60 | 28 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
@@ -598,8 +598,10 @@ its `extern "C"` functions are the interface.
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `SerializedBlock` | item | `block_io.rs:17` | One serialized block: parsed header, entropy metadata and encoded payload. |
-| `read_serialized_block` | item | `block_io.rs:32` | Reads one block from `reader` positioned at its first header byte. |
+| `SerializedBlock` | item | `block_io.rs:19` | One serialized block: parsed header, entropy metadata and encoded payload. |
+| `read_serialized_block` | item | `block_io.rs:34` | Reads one block from `reader` positioned at its first header byte. |
+| `serialize_block` | item | `block_io.rs:66` | Serializes one block exactly as [`crate::AceWriter::write_block`] writes it to a file: the |
+| `parse_inner_block` | item | `block_io.rs:82` | Parses one inner block of a segmented or columnar block (Format 1.6) from `bytes`. |
 | `checksum` | item | `checksum.rs:7` | Computes CRC32C for ACE headers, indexes and reconstructed block payloads. |
 | `DICTIONARY_SECTION_MAGIC` | item | `dictionary_section.rs:27` | Magic bytes that open the dictionary section. |
 | `MAX_DICTIONARY_BYTES` | item | `dictionary_section.rs:31` | Largest dictionary the format allows: the LZ window. Bytes before the last 65 535 of a longer |
@@ -644,6 +646,16 @@ its `extern "C"` functions are the interface.
 | `dictionaries` | method | `reader.rs:62` | The dictionaries of the file's dictionary section, in id order; empty before |
 | `read_block` | method | `reader.rs:71` | Reads one block and returns header, entropy metadata and encoded payload. |
 | `into_inner` | method | `reader.rs:76` | Returns the wrapped reader after parsing is complete. |
+| `SEGMENT_MAGIC` | item | `segment.rs:24` | Magic bytes that open a segmented payload. |
+| `SEGMENT_HEADER_SIZE` | item | `segment.rs:27` | Size of the fixed part of the payload: magic, count, reserved word. |
+| `SEGMENT_ENTRY_SIZE` | item | `segment.rs:30` | Size of one table entry: `original_size` and `serialized_len`. |
+| `SegmentEntry` | item | `segment.rs:34` | One row of the segment table. |
+| `SegmentTable` | item | `segment.rs:43` | A validated segment table with the positions it implies. |
+| `parse` | method | `segment.rs:60` | Parses and validates the table at the start of `payload`. |
+| `data_offset` | method | `segment.rs:128` | Offset of the first inner block in the payload. |
+| `logical_ranges` | method | `segment.rs:134` | The part of the reconstructed block produced by each segment, in order. |
+| `payload_ranges` | method | `segment.rs:148` | The bytes of each inner block within the payload, in order. |
+| `encode_segment_payload` | item | `segment.rs:171` | Builds a `SEG1` payload from serialized inner blocks. |
 | `AceWriter` | item | `writer.rs:17` | Streaming ACE writer: file header, blocks, then (optionally) block index and trailer. |
 | `new` | method | `writer.rs:31` | Creates a writer over an arbitrary byte sink. |
 | `write_file_header` | method | `writer.rs:45` | Writes the global file header. |
