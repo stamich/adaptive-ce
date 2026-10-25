@@ -583,7 +583,7 @@ def audit_public_api(problems: list[str]) -> None:
 #: Exported functions that cannot fail and therefore are not wrapped in a panic guard: a guard
 #: would overwrite the last-error message they report.
 FFI_INFALLIBLE = {
-    "ace_abi_version", "ace_engine_version",
+    "ace_abi_version", "ace_abi_minor", "ace_engine_version",
     "ace_last_error_ptr", "ace_last_error_len", "ace_last_error_block",
 }
 FFI_FUZZ_TARGETS = ("ffi_decode", "ffi_handles")

@@ -2,11 +2,18 @@
 
 use std::mem::size_of;
 
-use ace::{AccessHint, BlockSizePolicy, Config, DecodeLimits, Profile};
+use ace::{AccessHint, BlockSizePolicy, Config, DecodeLimits, Profile, Segmentation};
 
+use crate::dictionary::AceDictionary;
 use crate::guard::guard_value;
 use crate::last_error::fail;
+use crate::schema::AceSchema;
 use crate::status::{AceStatus, ACE_ERR_INVALID_ARGUMENT};
+
+/// `AceConfig.dictionary_scope`: the dictionary is stored in the file when it pays (default).
+pub const ACE_DICTIONARY_EMBEDDED: u32 = 0;
+/// `AceConfig.dictionary_scope`: only the dictionary id is stored; readers must supply it.
+pub const ACE_DICTIONARY_EXTERNAL: u32 = 1;
 
 /// Compression settings. See `docs/FFI.md`.
 #[repr(C)]
@@ -34,6 +41,24 @@ pub struct AceConfig {
     pub float_specialization: u8,
     /// Must be zero.
     pub reserved: [u8; 5],
+    // ---- ABI 1.1: a caller that was built against ABI 1.0 declares a smaller `struct_size`
+    // and gets the defaults below (null / 0 = off). ----
+    /// Record layout for columnar blocks, or null for row-wise storage only.
+    pub schema: *const AceSchema,
+    /// Preset dictionary, or null for none.
+    pub dictionary: *const AceDictionary,
+    /// `ACE_DICTIONARY_EMBEDDED` (0, default) or `ACE_DICTIONARY_EXTERNAL`.
+    pub dictionary_scope: u32,
+    /// Non-zero lets blocks be split into segments with different codecs.
+    pub segmentation: u32,
+    /// Segmentation window in bytes; 0 keeps the library default (16 KiB).
+    pub segment_window: u64,
+    /// Smallest segment in bytes; 0 keeps the library default (64 KiB).
+    pub segment_min: u64,
+    /// Largest segment in bytes; 0 keeps the library default (1 MiB).
+    pub segment_max: u64,
+    /// Most segments per block; 0 keeps the library default (1 024).
+    pub max_segments: u64,
 }
 
 /// Decode limits. A field of 0 keeps the library default. See `docs/FFI.md`.
@@ -70,6 +95,14 @@ impl AceConfig {
             numeric_specialization: 1,
             float_specialization: 1,
             reserved: [0; 5],
+            schema: std::ptr::null(),
+            dictionary: std::ptr::null(),
+            dictionary_scope: ACE_DICTIONARY_EMBEDDED,
+            segmentation: 0,
+            segment_window: 0,
+            segment_min: 0,
+            segment_max: 0,
+            max_segments: 0,
         }
     }
 }
@@ -211,6 +244,34 @@ pub unsafe fn config_from_raw(config: *const AceConfig) -> Result<Config, AceSta
     }
     if value.memory_budget != 0 {
         builder = builder.memory_budget(to_usize(value.memory_budget, "memory_budget")?);
+    }
+    // SAFETY: null or live by the caller's contract.
+    if let Some(schema) = unsafe { value.schema.as_ref() } {
+        builder = builder.schema(schema.schema.clone());
+    }
+    // SAFETY: null or live by the caller's contract.
+    if let Some(dictionary) = unsafe { value.dictionary.as_ref() } {
+        builder = match value.dictionary_scope {
+            ACE_DICTIONARY_EMBEDDED => builder.dictionary(dictionary.dictionary.clone()),
+            ACE_DICTIONARY_EXTERNAL => builder.external_dictionary(dictionary.dictionary.clone()),
+            other => return Err(invalid(&format!("unknown dictionary_scope {other}"))),
+        };
+    }
+    if value.segmentation != 0 {
+        let mut segmentation = Segmentation::default();
+        if value.segment_window != 0 {
+            segmentation = segmentation.window_size(to_usize(value.segment_window, "segment_window")?);
+        }
+        if value.segment_min != 0 {
+            segmentation = segmentation.min_segment_size(to_usize(value.segment_min, "segment_min")?);
+        }
+        if value.segment_max != 0 {
+            segmentation = segmentation.max_segment_size(to_usize(value.segment_max, "segment_max")?);
+        }
+        if value.max_segments != 0 {
+            segmentation = segmentation.max_segments(to_usize(value.max_segments, "max_segments")?);
+        }
+        builder = builder.segmentation(segmentation);
     }
     builder
         .build()

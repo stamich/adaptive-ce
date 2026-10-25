@@ -11,6 +11,7 @@ use std::ffi::c_char;
 pub mod args;
 pub mod buffer;
 pub mod config;
+pub mod dictionary;
 pub mod engine;
 pub mod fuzzing;
 pub mod guard;
@@ -18,19 +19,31 @@ pub mod handle;
 pub mod json;
 pub mod last_error;
 pub mod range;
+pub mod schema;
 pub mod status;
 pub mod stream;
 
 pub use buffer::{ace_buffer_data, ace_buffer_free, ace_buffer_len, buffer_into_raw, AceBuffer};
-pub use config::{ace_config_default, ace_limits_default, AceConfig, AceLimits};
+pub use config::{
+    ace_config_default, ace_limits_default, AceConfig, AceLimits, ACE_DICTIONARY_EMBEDDED,
+    ACE_DICTIONARY_EXTERNAL,
+};
+pub use dictionary::{
+    ace_dictionary_data, ace_dictionary_free, ace_dictionary_id, ace_dictionary_len,
+    ace_dictionary_new, ace_dictionary_train, AceDictionary,
+};
 pub use engine::{
     ace_compress, ace_decompress, ace_decompress_into, ace_engine_free, ace_engine_new,
-    ace_explain_json, AceEngine,
+    ace_engine_new_ex, ace_explain_json, AceEngine,
 };
 pub use last_error::{ace_last_error_block, ace_last_error_len, ace_last_error_ptr};
 pub use range::{
     ace_range_block_count, ace_range_free, ace_range_last_stats, ace_range_len, ace_range_open,
     ace_range_open_path, ace_range_read, ace_range_read_block, AceRangeReader,
+};
+pub use schema::{
+    ace_schema_free, ace_schema_new, ace_schema_record_size, AceColumn, AceSchema,
+    ACE_COLUMN_BYTES, ACE_COLUMN_FLOAT, ACE_COLUMN_SIGNED, ACE_COLUMN_UNSIGNED,
 };
 pub use status::*;
 pub use stream::{ace_compress_stream, ace_decompress_stream, AceReadFn, AceWriteFn};
@@ -38,6 +51,11 @@ pub use stream::{ace_compress_stream, ace_decompress_stream, AceReadFn, AceWrite
 /// Version of the C ABI. Bumped when a function is removed or a signature, status value or
 /// struct layout changes; adding a function does not change it.
 pub const ACE_ABI_VERSION: u32 = 1;
+
+/// Minor version of the C ABI: 0 for the functions of 0.7.0, 1 when the dictionary, schema and
+/// segmentation functions of 0.8.0 were added. A binding that needs a 1.1 function checks
+/// `ace_abi_minor() >= 1` after it has checked [`ACE_ABI_VERSION`].
+pub const ACE_ABI_MINOR: u32 = 1;
 
 /// NUL-terminated crate version handed out by [`ace_engine_version`].
 static ENGINE_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
@@ -49,6 +67,15 @@ static ENGINE_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 #[no_mangle]
 pub extern "C" fn ace_abi_version() -> u32 {
     ACE_ABI_VERSION
+}
+
+/// Returns the minor version of the C ABI this library implements (1 for ABI 1.1).
+///
+/// Everything an older minor version declares is present and unchanged; a higher minor adds
+/// functions and appends fields to the structs that carry `struct_size`.
+#[no_mangle]
+pub extern "C" fn ace_abi_minor() -> u32 {
+    ACE_ABI_MINOR
 }
 
 /// Returns the crate version as a NUL-terminated string with static storage duration.

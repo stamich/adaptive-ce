@@ -37,7 +37,7 @@ its `extern "C"` functions are the interface.
 | `ace-dictionary` | internal | 8 | 9 | 0 |
 | `ace-engine` | internal | 9 | 24 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
-| `ace-ffi` | internal | 40 | 0 | 0 |
+| `ace-ffi` | internal | 50 | 0 | 0 |
 | `ace-format` | internal | 55 | 28 | 0 |
 | `ace-index` | internal | 1 | 5 | 0 |
 | `ace-planner` | internal | 64 | 28 | 0 |
@@ -634,11 +634,14 @@ its `extern "C"` functions are the interface.
 | `handle_ref` | item | `args.rs:44` | Borrows a handle for the duration of a call. |
 | `AceBuffer` | item | `buffer.rs:9` | Bytes produced by ACE, released with [`ace_buffer_free`]. |
 | `buffer_into_raw` | item | `buffer.rs:15` | Moves `bytes` into a new buffer handle owned by the caller. |
-| `AceConfig` | item | `config.rs:14` | Compression settings. See `docs/FFI.md`. |
-| `AceLimits` | item | `config.rs:42` | Decode limits. A field of 0 keeps the library default. See `docs/FFI.md`. |
-| `config_from_raw` | item | `config.rs:173` | Converts the caller's `AceConfig` (null = defaults) into a validated facade [`Config`]. |
-| `limits_from_raw` | item | `config.rs:229` | Converts the caller's `AceLimits` (null = defaults) into facade [`DecodeLimits`]. |
-| `AceEngine` | item | `engine.rs:15` | A compression engine. Immutable after creation, so any number of threads may share it. |
+| `ACE_DICTIONARY_EMBEDDED` | item | `config.rs:14` | `AceConfig.dictionary_scope`: the dictionary is stored in the file when it pays (default). |
+| `ACE_DICTIONARY_EXTERNAL` | item | `config.rs:16` | `AceConfig.dictionary_scope`: only the dictionary id is stored; readers must supply it. |
+| `AceConfig` | item | `config.rs:21` | Compression settings. See `docs/FFI.md`. |
+| `AceLimits` | item | `config.rs:67` | Decode limits. A field of 0 keeps the library default. See `docs/FFI.md`. |
+| `config_from_raw` | item | `config.rs:206` | Converts the caller's `AceConfig` (null = defaults) into a validated facade [`Config`]. |
+| `limits_from_raw` | item | `config.rs:290` | Converts the caller's `AceLimits` (null = defaults) into facade [`DecodeLimits`]. |
+| `AceDictionary` | item | `dictionary.rs:20` | A preset dictionary: LZ history that precedes every block it is used for. |
+| `AceEngine` | item | `engine.rs:16` | A compression engine. Immutable after creation, so any number of threads may share it. |
 | `decode` | item | `fuzzing.rs:77` | Garbage through `ace_decompress`, `ace_decompress_into` and the range functions. |
 | `handles` | item | `fuzzing.rs:168` | Random sequences of valid and invalid calls over engines, buffers and readers. |
 | `guard_value` | item | `guard.rs:27` | Runs `body`; if it panics, records the panic as the last error and returns `on_panic`. |
@@ -648,12 +651,19 @@ its `extern "C"` functions are the interface.
 | `clear_out` | item | `handle.rs:32` | Validates an out-parameter and sets it to null, so a failing call leaves null behind. |
 | `publish` | item | `handle.rs:46` | Stores `value` as a new handle in `out` and returns [`ACE_OK`]. |
 | `stats_json` | item | `json.rs:28` | Renders `stats` as one JSON object with the members of the documented schema. |
-| `explain_json` | item | `json.rs:68` | Renders the planner report as a JSON array with one object per block. |
+| `explain_json` | item | `json.rs:73` | Renders the planner report as a JSON array with one object per block. |
 | `ACE_NO_BLOCK` | item | `last_error.rs:8` | Block number reported when the last error concerns no block. |
 | `fail` | item | `last_error.rs:36` | Records `message` as the last error of this thread and returns `status`. |
 | `fail_with` | item | `last_error.rs:42` | Records a facade error (message and block number) and returns its status code. |
-| `ACE_ABI_VERSION` | item | `lib.rs:40` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `ACE_ABI_VERSION` | item | `lib.rs:53` | Version of the C ABI. Bumped when a function is removed or a signature, status value or |
+| `ACE_ABI_MINOR` | item | `lib.rs:58` | Minor version of the C ABI: 0 for the functions of 0.7.0, 1 when the dictionary, schema and |
 | `AceRangeReader` | item | `range.rs:22` | An open indexed ACE file. Not thread-safe: it keeps a one-block cache. |
+| `ACE_COLUMN_BYTES` | item | `schema.rs:12` | Column kind of [`AceColumn::kind`]: opaque bytes of any width. |
+| `ACE_COLUMN_UNSIGNED` | item | `schema.rs:14` | Column kind: unsigned little-endian integers of width 1, 2, 4 or 8. |
+| `ACE_COLUMN_SIGNED` | item | `schema.rs:16` | Column kind: signed little-endian integers of width 1, 2, 4 or 8. |
+| `ACE_COLUMN_FLOAT` | item | `schema.rs:18` | Column kind: IEEE-754 little-endian floats of width 4 or 8. |
+| `AceColumn` | item | `schema.rs:23` | One field of a fixed-size record. |
+| `AceSchema` | item | `schema.rs:31` | The record layout of a table. The type is opaque in C; release it with [`ace_schema_free`]. |
 | `AceStatus` | item | `status.rs:6` | Result of a fallible call: [`ACE_OK`] or one of the `ACE_ERR_*` values. |
 | `ACE_OK` | item | `status.rs:9` | The call succeeded. |
 | `ACE_ERR_INVALID_ARGUMENT` | item | `status.rs:11` | An argument is invalid: a null pointer, a bad struct size, a zero block size, a reversed range. |

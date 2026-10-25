@@ -14,19 +14,51 @@
 // struct layout changes; adding a function does not change it.
 #define ACE_ABI_VERSION 1
 
+// Minor version of the C ABI: 0 for the functions of 0.7.0, 1 when the dictionary, schema and
+// segmentation functions of 0.8.0 were added. A binding that needs a 1.1 function checks
+// `ace_abi_minor() >= 1` after it has checked [`ACE_ABI_VERSION`].
+#define ACE_ABI_MINOR 1
+
+// `AceConfig.dictionary_scope`: the dictionary is stored in the file when it pays (default).
+#define ACE_DICTIONARY_EMBEDDED 0
+
+// `AceConfig.dictionary_scope`: only the dictionary id is stored; readers must supply it.
+#define ACE_DICTIONARY_EXTERNAL 1
+
 // Block number reported when the last error concerns no block.
 #define ACE_NO_BLOCK UINT64_MAX
+
+// Column kind of [`AceColumn::kind`]: opaque bytes of any width.
+#define ACE_COLUMN_BYTES 0
+
+// Column kind: unsigned little-endian integers of width 1, 2, 4 or 8.
+#define ACE_COLUMN_UNSIGNED 1
+
+// Column kind: signed little-endian integers of width 1, 2, 4 or 8.
+#define ACE_COLUMN_SIGNED 2
+
+// Column kind: IEEE-754 little-endian floats of width 4 or 8.
+#define ACE_COLUMN_FLOAT 3
 
 // Bytes produced by ACE, released with [`ace_buffer_free`].
 //
 // The type is opaque in C; use [`ace_buffer_data`] and [`ace_buffer_len`].
 typedef struct AceBuffer AceBuffer;
 
+// A preset dictionary: LZ history that precedes every block it is used for.
+//
+// The type is opaque in C. Create it with [`ace_dictionary_new`] or [`ace_dictionary_train`] and
+// release it with [`ace_dictionary_free`].
+typedef struct AceDictionary AceDictionary;
+
 // A compression engine. Immutable after creation, so any number of threads may share it.
 typedef struct AceEngine AceEngine;
 
 // An open indexed ACE file. Not thread-safe: it keeps a one-block cache.
 typedef struct AceRangeReader AceRangeReader;
+
+// The record layout of a table. The type is opaque in C; release it with [`ace_schema_free`].
+typedef struct AceSchema AceSchema;
 
 // Compression settings. See `docs/FFI.md`.
 typedef struct AceConfig {
@@ -52,6 +84,22 @@ typedef struct AceConfig {
   uint8_t float_specialization;
   // Must be zero.
   uint8_t reserved[5];
+  // Record layout for columnar blocks, or null for row-wise storage only.
+  const struct AceSchema *schema;
+  // Preset dictionary, or null for none.
+  const struct AceDictionary *dictionary;
+  // `ACE_DICTIONARY_EMBEDDED` (0, default) or `ACE_DICTIONARY_EXTERNAL`.
+  uint32_t dictionary_scope;
+  // Non-zero lets blocks be split into segments with different codecs.
+  uint32_t segmentation;
+  // Segmentation window in bytes; 0 keeps the library default (16 KiB).
+  uint64_t segment_window;
+  // Smallest segment in bytes; 0 keeps the library default (64 KiB).
+  uint64_t segment_min;
+  // Largest segment in bytes; 0 keeps the library default (1 MiB).
+  uint64_t segment_max;
+  // Most segments per block; 0 keeps the library default (1 024).
+  uint64_t max_segments;
 } AceConfig;
 
 // Decode limits. A field of 0 keeps the library default. See `docs/FFI.md`.
@@ -74,6 +122,14 @@ typedef struct AceLimits {
 
 // Result of a fallible call: [`ACE_OK`] or one of the `ACE_ERR_*` values.
 typedef int32_t AceStatus;
+
+// One field of a fixed-size record.
+typedef struct AceColumn {
+  // `ACE_COLUMN_BYTES`, `ACE_COLUMN_UNSIGNED`, `ACE_COLUMN_SIGNED` or `ACE_COLUMN_FLOAT`.
+  uint32_t kind;
+  // Bytes per record, 1 to 65 535 (1, 2, 4 or 8 for integers; 4 or 8 for floats).
+  uint32_t width;
+} AceColumn;
 
 // Host callback that supplies input: stores up to `capacity` bytes in `buf` and returns how many
 // (0 = end of input), or a negative value on failure.
@@ -129,6 +185,12 @@ extern "C" {
 // function.
 uint32_t ace_abi_version(void);
 
+// Returns the minor version of the C ABI this library implements (1 for ABI 1.1).
+//
+// Everything an older minor version declares is present and unchanged; a higher minor adds
+// functions and appends fields to the structs that carry `struct_size`.
+uint32_t ace_abi_minor(void);
+
 // Returns the crate version as a NUL-terminated string with static storage duration.
 //
 // The string is for diagnostics; nothing should branch on it.
@@ -172,9 +234,70 @@ void ace_config_default(struct AceConfig *out);
 // `out` must be null or valid for a write of one `AceLimits`.
 void ace_limits_default(struct AceLimits *out);
 
+// Creates a dictionary from `len` bytes (1 to 65 535) at `bytes`.
+//
+// `id` names the dictionary inside files; 0 derives it from the content, which is what you want
+// unless another system already assigns ids. On failure `*out` is null.
+//
+// # Safety
+//
+// `bytes` must be valid for reads of `len` bytes; `out` valid for a pointer write.
+AceStatus ace_dictionary_new(const uint8_t *bytes,
+                             size_t len,
+                             uint64_t id,
+                             struct AceDictionary **out);
+
+// Trains a dictionary of about `size` bytes (64 to 65 535) from `count` sample inputs.
+//
+// `samples[i]` points to `lengths[i]` bytes. At least two samples are needed, and 100 to 1 000
+// typical inputs of one data source are usually enough. The result depends only on the samples,
+// in order, and `size`: the same samples give the same dictionary on every machine. On failure
+// `*out` is null.
+//
+// # Safety
+//
+// `samples` and `lengths` must be valid for reads of `count` elements, and every `samples[i]`
+// for reads of `lengths[i]` bytes; `out` valid for a pointer write.
+AceStatus ace_dictionary_train(const uint8_t *const *samples,
+                               const size_t *lengths,
+                               size_t count,
+                               size_t size,
+                               struct AceDictionary **out);
+
+// Returns the identifier files use for this dictionary, or 0 when `dictionary` is null.
+//
+// # Safety
+//
+// `dictionary` must be null or a live handle.
+uint64_t ace_dictionary_id(const struct AceDictionary *dictionary);
+
+// Returns a pointer to the dictionary bytes, valid until [`ace_dictionary_free`], or null when
+// `dictionary` is null. Store them to hand the dictionary to a reader later.
+//
+// # Safety
+//
+// `dictionary` must be null or a live handle.
+const uint8_t *ace_dictionary_data(const struct AceDictionary *dictionary);
+
+// Returns the number of dictionary bytes, or 0 when `dictionary` is null.
+//
+// # Safety
+//
+// `dictionary` must be null or a live handle.
+size_t ace_dictionary_len(const struct AceDictionary *dictionary);
+
+// Releases a dictionary. Accepts null. Engines created with it keep their own copy, so it may
+// be released right after [`ace_engine_new`](crate::ace_engine_new) returns.
+//
+// # Safety
+//
+// `dictionary` must be null or a live handle, not used afterwards.
+void ace_dictionary_free(struct AceDictionary *dictionary);
+
 // Creates an engine.
 //
-// `config` and `limits` may be null for the defaults. On failure `*out` is null.
+// `config` and `limits` may be null for the defaults. On failure `*out` is null. Equivalent to
+// [`ace_engine_new_ex`] without external dictionaries.
 //
 // # Safety
 //
@@ -183,6 +306,27 @@ void ace_limits_default(struct AceLimits *out);
 AceStatus ace_engine_new(const struct AceConfig *config,
                          const struct AceLimits *limits,
                          struct AceEngine **out);
+
+// Creates an engine that also knows external dictionaries (ABI 1.1).
+//
+// A file written with `ACE_DICTIONARY_EXTERNAL` names its dictionary by id only; reading it
+// needs a dictionary with that id, which this engine looks up among the `count` handles in
+// `dictionaries`. The dictionary of `config` is always available to its own engine. Handles are
+// copied, so they may be released after the call. Applies to every reading function, including
+// the range readers opened from the engine.
+//
+// `config`, `limits` and (with `count` 0) `dictionaries` may be null. On failure `*out` is null.
+//
+// # Safety
+//
+// `config` and `limits` must be null or point to readable structs of at least their
+// `struct_size` bytes; `dictionaries` must be valid for reads of `count` handles, each live;
+// `out` must be valid for a write of one pointer.
+AceStatus ace_engine_new_ex(const struct AceConfig *config,
+                            const struct AceLimits *limits,
+                            const struct AceDictionary *const *dictionaries,
+                            size_t count,
+                            struct AceEngine **out);
 
 // Releases an engine. Accepts null.
 //
@@ -335,6 +479,31 @@ AceStatus ace_range_last_stats(const struct AceRangeReader *reader,
 //
 // `reader` must be null or a handle from an `ace_range_open*` function, not used afterwards.
 void ace_range_free(struct AceRangeReader *reader);
+
+// Creates a schema from `count` columns at `columns`, in record order.
+//
+// A record is the concatenation of its columns. Fails with `ACE_ERR_INVALID_ARGUMENT` for an
+// empty list, an unknown kind, a width the kind does not allow or a record above the format's
+// limit. On failure `*out` is null.
+//
+// # Safety
+//
+// `columns` must be valid for reads of `count` elements; `out` valid for a pointer write.
+AceStatus ace_schema_new(const struct AceColumn *columns, size_t count, struct AceSchema **out);
+
+// Returns the size of one record in bytes, or 0 when `schema` is null.
+//
+// # Safety
+//
+// `schema` must be null or a live handle.
+uint32_t ace_schema_record_size(const struct AceSchema *schema);
+
+// Releases a schema. Accepts null. Engines created with it keep their own copy.
+//
+// # Safety
+//
+// `schema` must be null or a live handle, not used afterwards.
+void ace_schema_free(struct AceSchema *schema);
 
 // Compresses exactly `size` bytes supplied by `read` and delivers the ACE file through `write`.
 //

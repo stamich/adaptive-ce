@@ -111,7 +111,7 @@ class Header:
                     if field.startswith("//"):
                         field_doc.append(field[2:].strip())
                         continue
-                    match = re.match(r"^(\w+)\s+(\w+)(?:\[(\d+)\])?;$", field)
+                    match = re.match(r"^((?:const\s+)?(?:struct\s+)?\w+\s*\*?)\s*(\w+)(?:\[(\d+)\])?;$", field)
                     if not match:
                         raise SystemExit(f"genbindings: cannot parse field `{field}`")
                     fields.append((match.group(1), match.group(2), int(match.group(3) or 0), " ".join(field_doc)))

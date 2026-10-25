@@ -106,10 +106,14 @@ or a status value changes, or a struct layout changes. Adding a function does no
 
 A binding records the ABI version it was generated against and compares it with
 `ace_abi_version()` **before** it looks up any other symbol. A mismatch is a hard error that
-names both numbers. `ace_engine_version()` returns the crate version (`"0.7.0"`) for
+names both numbers. `ace_engine_version()` returns the crate version (`"0.8.0"`) for
 diagnostics only; nothing branches on it.
 
-ABI v1 ships with 0.7.0. The ABI version is independent of the file format version (1.5).
+ABI v1 ships with 0.7.0. ABI 1.1 (0.8.0) adds `ace_abi_minor()`, which returns 1: the minor
+version counts additions (functions and trailing struct fields) that leave every older call
+working, so it never makes a binding refuse a library. A binding that uses a 1.1 function checks
+`ace_abi_minor() >= 1` after the major check. Both versions are independent of the file format
+version (1.6).
 
 ### 7. Panics and unwinding
 

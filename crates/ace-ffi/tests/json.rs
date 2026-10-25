@@ -26,7 +26,8 @@ fn stats_json_is_stable_and_escapes_labels() {
         "{\"input_bytes\":1000,\"output_bytes\":250,\"format_minor\":5,\"blocks\":2,\
          \"raw_blocks\":0,\"rle_blocks\":0,\"lz_blocks\":1,\"numeric_blocks\":1,\
          \"time_series_blocks\":0,\"ratio\":4,\"plan_distribution\":\
-         {\"lz+huffman\":1,\"na\\\"me\\\\\":1}}"
+         {\"lz+huffman\":1,\"na\\\"me\\\\\":1},\
+         \"segmented_blocks\":0,\"columnar_blocks\":0,\"dictionary_blocks\":0}"
     );
 }
 

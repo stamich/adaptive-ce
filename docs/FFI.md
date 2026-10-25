@@ -1,6 +1,7 @@
 # C ABI v1 (`include/ace.h`)
 
-Status: ACE 0.7.0, ABI version **1**. The conventions every function follows (status codes,
+Status: ACE 0.8.0, ABI version **1**, minor **1** (`ace_abi_minor()`). Minor 1 adds the
+dictionary, schema and segmentation functions; everything of minor 0 (0.7.0) is unchanged. The conventions every function follows (status codes,
 last error, handles, buffers, panics) are in [NATIVE-INTEROP.md](NATIVE-INTEROP.md). This
 document lists the functions, structs and JSON shapes.
 
@@ -18,6 +19,8 @@ typedef int32_t AceStatus;
 typedef struct AceEngine      AceEngine;       // compress/decompress; Send + Sync
 typedef struct AceBuffer      AceBuffer;       // bytes owned by ACE
 typedef struct AceRangeReader AceRangeReader;  // random access into one ACE file
+typedef struct AceDictionary  AceDictionary;   // preset dictionary (ABI 1.1); Send + Sync
+typedef struct AceSchema      AceSchema;       // record layout of a table (ABI 1.1)
 
 typedef struct AceConfig {
     size_t   struct_size;      // set to sizeof(AceConfig); ace_config_default does it
@@ -31,7 +34,21 @@ typedef struct AceConfig {
     uint8_t  numeric_specialization; // non-zero (default 1)
     uint8_t  float_specialization;   // non-zero (default 1)
     uint8_t  reserved[5];      // must be zero
-} AceConfig;
+    // ---- ABI 1.1: appended behind struct_size; a 1.0 caller (struct_size 56) gets the defaults ----
+    const AceSchema     *schema;           // record layout for columnar blocks; NULL = row-wise only
+    const AceDictionary *dictionary;       // preset dictionary; NULL = none
+    uint32_t dictionary_scope; // 0 ACE_DICTIONARY_EMBEDDED (default), 1 ACE_DICTIONARY_EXTERNAL
+    uint32_t segmentation;     // non-zero lets blocks be split into segments
+    uint64_t segment_window;   // bytes; 0 keeps the default (16 KiB)
+    uint64_t segment_min;      // bytes; 0 keeps the default (64 KiB)
+    uint64_t segment_max;      // bytes; 0 keeps the default (1 MiB)
+    uint64_t max_segments;     // per block; 0 keeps the default (1 024)
+} AceConfig;                   // 112 bytes in ABI 1.1 (56 in 1.0)
+
+typedef struct AceColumn {     // one field of a record (ABI 1.1)
+    uint32_t kind;             // 0 ACE_COLUMN_BYTES, 1 UNSIGNED, 2 SIGNED, 3 FLOAT
+    uint32_t width;            // bytes per record: 1..65535 (bytes), 1/2/4/8 (integers), 4/8 (floats)
+} AceColumn;
 
 // A limit of 0 keeps the library default; ace_limits_default fills the explicit values.
 typedef struct AceLimits {
@@ -65,6 +82,7 @@ typedef AceStatus (*AceWriteFn)(void *ctx, const uint8_t *buf, size_t len);
 | Function | Description |
 |---|---|
 | `uint32_t ace_abi_version(void)` | `1`. |
+| `uint32_t ace_abi_minor(void)` | `1` (ABI 1.1). A binding that needs a 1.1 function checks `ace_abi_minor() >= 1` after the major version. |
 | `const char *ace_engine_version(void)` | NUL-terminated crate version, static storage. |
 | `const uint8_t *ace_last_error_ptr(void)` | Message of the last failure on this thread. |
 | `size_t ace_last_error_len(void)` | Its length in bytes. |
@@ -82,9 +100,34 @@ typedef AceStatus (*AceWriteFn)(void *ctx, const uint8_t *buf, size_t len);
 | Function | Description |
 |---|---|
 | `AceStatus ace_engine_new(const AceConfig *config, const AceLimits *limits, AceEngine **out)` | Validates and builds an engine. |
+| `AceStatus ace_engine_new_ex(const AceConfig *config, const AceLimits *limits, const AceDictionary *const *dictionaries, size_t count, AceEngine **out)` | As `ace_engine_new`, and the engine also resolves the `count` external dictionaries (ABI 1.1). |
 | `void ace_engine_free(AceEngine *engine)` | Releases it; accepts `NULL`. |
 
 An engine is immutable and may be shared by any number of threads.
+
+### Dictionaries and schemas (ABI 1.1)
+
+| Function | Description |
+|---|---|
+| `AceStatus ace_dictionary_new(const uint8_t *bytes, size_t len, uint64_t id, AceDictionary **out)` | A dictionary from 1 to 65 535 bytes. `id` 0 derives the id from the content. |
+| `AceStatus ace_dictionary_train(const uint8_t *const *samples, const size_t *lengths, size_t count, size_t size, AceDictionary **out)` | Trains a dictionary of about `size` bytes (64 to 65 535) from at least two samples. Deterministic: the same samples in the same order give the same bytes on every machine. |
+| `uint64_t ace_dictionary_id(const AceDictionary *d)` | The id files use; 0 for `NULL`. |
+| `const uint8_t *ace_dictionary_data(const AceDictionary *d)` / `size_t ace_dictionary_len(const AceDictionary *d)` | The dictionary bytes, valid until it is freed. Store them to hand the dictionary to a reader later. |
+| `void ace_dictionary_free(AceDictionary *d)` | Releases it; accepts `NULL`. Engines keep their own copy. |
+| `AceStatus ace_schema_new(const AceColumn *columns, size_t count, AceSchema **out)` | The record layout of a table, columns in record order. |
+| `uint32_t ace_schema_record_size(const AceSchema *s)` | Bytes per record; 0 for `NULL`. |
+| `void ace_schema_free(AceSchema *s)` | Releases it; accepts `NULL`. Engines keep their own copy. |
+
+A writer sets `AceConfig.dictionary` (with `dictionary_scope`), `AceConfig.schema` and the
+segmentation members. With `ACE_DICTIONARY_EMBEDDED` the file carries the dictionary when that
+pays; with `ACE_DICTIONARY_EXTERNAL` it carries only the id, and every reader needs an engine
+from `ace_engine_new_ex` that was given the same dictionary, otherwise decoding fails with
+`ACE_ERR_UNSUPPORTED` and the last error names the id. Range readers opened from such an engine
+resolve the same dictionaries. See [DICTIONARIES.md](DICTIONARIES.md) and
+[FORMAT-1.6.md](FORMAT-1.6.md).
+
+Segmentation and schemas never change how a file is read, so a reader needs no setting for
+them. The bytes written through the C ABI equal those of the Rust API for the same settings.
 
 ### One-shot compression and decompression
 
@@ -157,7 +200,10 @@ members they do not know.
   "numeric_blocks": 0,
   "time_series_blocks": 0,
   "ratio": 4.938,
-  "plan_distribution": { "lz+huffman": 1 }
+  "plan_distribution": { "lz+huffman": 1 },
+  "segmented_blocks": 0,
+  "columnar_blocks": 0,
+  "dictionary_blocks": 0
 }
 ```
 
@@ -207,9 +253,11 @@ fail:
 ## Compatibility rules
 
 - ABI v1 functions and status values are never removed or renumbered within ABI v1.
+- A new minor version (`ace_abi_minor()`) only adds functions and trailing struct fields; code
+  written for ABI 1.0 runs unchanged against 1.1.
 - Adding a function, a status value, or a trailing struct field (behind `struct_size`) is not an
   ABI change.
 - Anything else bumps `ace_abi_version()`, and the JVM binding refuses to load a mismatched
   library.
-- The bytes produced are governed by the file format ([FORMAT-1.5.md](FORMAT-1.5.md)), not by
+- The bytes produced are governed by the file format ([FORMAT-1.6.md](FORMAT-1.6.md)), not by
   the ABI.

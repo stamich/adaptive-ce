@@ -69,42 +69,60 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/src/buffer.rs:31` | block |
 | `crates/ace-ffi/src/buffer.rs:44` | block |
 | `crates/ace-ffi/src/buffer.rs:57` | block |
-| `crates/ace-ffi/src/config.rs:102` | block |
-| `crates/ace-ffi/src/config.rs:117` | block |
-| `crates/ace-ffi/src/config.rs:127` | fn |
-| `crates/ace-ffi/src/config.rs:130` | block |
-| `crates/ace-ffi/src/config.rs:152` | fn |
-| `crates/ace-ffi/src/config.rs:154` | block |
-| `crates/ace-ffi/src/config.rs:173` | fn |
-| `crates/ace-ffi/src/config.rs:177` | block |
-| `crates/ace-ffi/src/config.rs:179` | block |
-| `crates/ace-ffi/src/config.rs:229` | fn |
-| `crates/ace-ffi/src/config.rs:241` | block |
-| `crates/ace-ffi/src/config.rs:243` | block |
-| `crates/ace-ffi/src/engine.rs:35` | block |
-| `crates/ace-ffi/src/engine.rs:39` | block |
-| `crates/ace-ffi/src/engine.rs:44` | block |
-| `crates/ace-ffi/src/engine.rs:50` | block |
-| `crates/ace-ffi/src/engine.rs:73` | block |
-| `crates/ace-ffi/src/engine.rs:96` | block |
-| `crates/ace-ffi/src/engine.rs:101` | block |
-| `crates/ace-ffi/src/engine.rs:106` | block |
-| `crates/ace-ffi/src/engine.rs:111` | block |
-| `crates/ace-ffi/src/engine.rs:119` | block |
-| `crates/ace-ffi/src/engine.rs:124` | block |
-| `crates/ace-ffi/src/engine.rs:147` | block |
-| `crates/ace-ffi/src/engine.rs:151` | block |
-| `crates/ace-ffi/src/engine.rs:156` | block |
+| `crates/ace-ffi/src/config.rs:135` | block |
+| `crates/ace-ffi/src/config.rs:150` | block |
+| `crates/ace-ffi/src/config.rs:160` | fn |
+| `crates/ace-ffi/src/config.rs:163` | block |
+| `crates/ace-ffi/src/config.rs:185` | fn |
+| `crates/ace-ffi/src/config.rs:187` | block |
+| `crates/ace-ffi/src/config.rs:206` | fn |
+| `crates/ace-ffi/src/config.rs:210` | block |
+| `crates/ace-ffi/src/config.rs:212` | block |
+| `crates/ace-ffi/src/config.rs:249` | block |
+| `crates/ace-ffi/src/config.rs:253` | block |
+| `crates/ace-ffi/src/config.rs:290` | fn |
+| `crates/ace-ffi/src/config.rs:302` | block |
+| `crates/ace-ffi/src/config.rs:304` | block |
+| `crates/ace-ffi/src/dictionary.rs:41` | block |
+| `crates/ace-ffi/src/dictionary.rs:45` | block |
+| `crates/ace-ffi/src/dictionary.rs:56` | block |
+| `crates/ace-ffi/src/dictionary.rs:83` | block |
+| `crates/ace-ffi/src/dictionary.rs:98` | block |
+| `crates/ace-ffi/src/dictionary.rs:100` | block |
+| `crates/ace-ffi/src/dictionary.rs:107` | block |
+| `crates/ace-ffi/src/dictionary.rs:122` | block |
+| `crates/ace-ffi/src/dictionary.rs:136` | block |
+| `crates/ace-ffi/src/dictionary.rs:149` | block |
+| `crates/ace-ffi/src/dictionary.rs:163` | block |
+| `crates/ace-ffi/src/dictionary.rs:176` | fn |
+| `crates/ace-ffi/src/dictionary.rs:192` | block |
+| `crates/ace-ffi/src/dictionary.rs:194` | block |
+| `crates/ace-ffi/src/engine.rs:38` | block |
+| `crates/ace-ffi/src/engine.rs:67` | block |
+| `crates/ace-ffi/src/engine.rs:71` | block |
+| `crates/ace-ffi/src/engine.rs:76` | block |
+| `crates/ace-ffi/src/engine.rs:81` | block |
+| `crates/ace-ffi/src/engine.rs:87` | block |
+| `crates/ace-ffi/src/engine.rs:112` | block |
+| `crates/ace-ffi/src/engine.rs:135` | block |
+| `crates/ace-ffi/src/engine.rs:140` | block |
+| `crates/ace-ffi/src/engine.rs:145` | block |
+| `crates/ace-ffi/src/engine.rs:150` | block |
+| `crates/ace-ffi/src/engine.rs:158` | block |
 | `crates/ace-ffi/src/engine.rs:163` | block |
+| `crates/ace-ffi/src/engine.rs:186` | block |
+| `crates/ace-ffi/src/engine.rs:190` | block |
 | `crates/ace-ffi/src/engine.rs:195` | block |
-| `crates/ace-ffi/src/engine.rs:200` | block |
-| `crates/ace-ffi/src/engine.rs:205` | block |
-| `crates/ace-ffi/src/engine.rs:214` | block |
-| `crates/ace-ffi/src/engine.rs:226` | block |
-| `crates/ace-ffi/src/engine.rs:248` | block |
-| `crates/ace-ffi/src/engine.rs:252` | block |
-| `crates/ace-ffi/src/engine.rs:257` | block |
-| `crates/ace-ffi/src/engine.rs:264` | block |
+| `crates/ace-ffi/src/engine.rs:202` | block |
+| `crates/ace-ffi/src/engine.rs:234` | block |
+| `crates/ace-ffi/src/engine.rs:239` | block |
+| `crates/ace-ffi/src/engine.rs:244` | block |
+| `crates/ace-ffi/src/engine.rs:253` | block |
+| `crates/ace-ffi/src/engine.rs:265` | block |
+| `crates/ace-ffi/src/engine.rs:287` | block |
+| `crates/ace-ffi/src/engine.rs:291` | block |
+| `crates/ace-ffi/src/engine.rs:296` | block |
+| `crates/ace-ffi/src/engine.rs:303` | block |
 | `crates/ace-ffi/src/fuzzing.rs:42` | block |
 | `crates/ace-ffi/src/fuzzing.rs:53` | block |
 | `crates/ace-ffi/src/fuzzing.rs:67` | block |
@@ -152,6 +170,12 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/src/range.rs:289` | block |
 | `crates/ace-ffi/src/range.rs:294` | block |
 | `crates/ace-ffi/src/range.rs:318` | block |
+| `crates/ace-ffi/src/schema.rs:52` | block |
+| `crates/ace-ffi/src/schema.rs:56` | block |
+| `crates/ace-ffi/src/schema.rs:71` | block |
+| `crates/ace-ffi/src/schema.rs:88` | block |
+| `crates/ace-ffi/src/schema.rs:103` | block |
+| `crates/ace-ffi/src/schema.rs:116` | block |
 | `crates/ace-ffi/src/stream.rs:43` | block |
 | `crates/ace-ffi/src/stream.rs:77` | block |
 | `crates/ace-ffi/src/stream.rs:131` | block |
@@ -182,7 +206,7 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-bench/tests/limits_before_allocation.rs:61` | block |
 | `crates/ace-bench/tests/limits_before_allocation.rs:64` | fn |
 | `crates/ace-bench/tests/limits_before_allocation.rs:69` | block |
-| `crates/ace-ffi/tests/abi.rs:18` | block |
+| `crates/ace-ffi/tests/abi.rs:25` | block |
 | `crates/ace-ffi/tests/boundary.rs:17` | block |
 | `crates/ace-ffi/tests/boundary.rs:24` | block |
 | `crates/ace-ffi/tests/boundary.rs:47` | block |
@@ -204,9 +228,9 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/tests/handles.rs:27` | block |
 | `crates/ace-ffi/tests/handles.rs:39` | block |
 | `crates/ace-ffi/tests/handles.rs:49` | block |
-| `crates/ace-ffi/tests/json.rs:43` | block |
-| `crates/ace-ffi/tests/json.rs:47` | block |
-| `crates/ace-ffi/tests/json.rs:50` | block |
+| `crates/ace-ffi/tests/json.rs:44` | block |
+| `crates/ace-ffi/tests/json.rs:48` | block |
+| `crates/ace-ffi/tests/json.rs:51` | block |
 | `crates/ace-ffi/tests/oneshot.rs:25` | block |
 | `crates/ace-ffi/tests/oneshot.rs:38` | block |
 | `crates/ace-ffi/tests/oneshot.rs:47` | block |
@@ -218,20 +242,50 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/tests/oneshot.rs:113` | block |
 | `crates/ace-ffi/tests/oneshot.rs:121` | block |
 | `crates/ace-ffi/tests/oneshot.rs:129` | block |
-| `crates/ace-ffi/tests/oneshot.rs:160` | block |
-| `crates/ace-ffi/tests/oneshot.rs:171` | block |
-| `crates/ace-ffi/tests/oneshot.rs:189` | block |
-| `crates/ace-ffi/tests/oneshot.rs:202` | block |
-| `crates/ace-ffi/tests/oneshot.rs:212` | block |
-| `crates/ace-ffi/tests/oneshot.rs:220` | block |
-| `crates/ace-ffi/tests/oneshot.rs:225` | block |
-| `crates/ace-ffi/tests/oneshot.rs:237` | block |
-| `crates/ace-ffi/tests/oneshot.rs:241` | block |
-| `crates/ace-ffi/tests/oneshot.rs:248` | block |
-| `crates/ace-ffi/tests/oneshot.rs:262` | block |
-| `crates/ace-ffi/tests/oneshot.rs:272` | block |
+| `crates/ace-ffi/tests/oneshot.rs:163` | block |
+| `crates/ace-ffi/tests/oneshot.rs:174` | block |
+| `crates/ace-ffi/tests/oneshot.rs:192` | block |
+| `crates/ace-ffi/tests/oneshot.rs:205` | block |
+| `crates/ace-ffi/tests/oneshot.rs:215` | block |
+| `crates/ace-ffi/tests/oneshot.rs:223` | block |
+| `crates/ace-ffi/tests/oneshot.rs:228` | block |
+| `crates/ace-ffi/tests/oneshot.rs:240` | block |
+| `crates/ace-ffi/tests/oneshot.rs:244` | block |
+| `crates/ace-ffi/tests/oneshot.rs:251` | block |
+| `crates/ace-ffi/tests/oneshot.rs:265` | block |
 | `crates/ace-ffi/tests/oneshot.rs:275` | block |
-| `crates/ace-ffi/tests/oneshot.rs:283` | block |
+| `crates/ace-ffi/tests/oneshot.rs:278` | block |
+| `crates/ace-ffi/tests/oneshot.rs:286` | block |
+| `crates/ace-ffi/tests/storage.rs:19` | block |
+| `crates/ace-ffi/tests/storage.rs:44` | block |
+| `crates/ace-ffi/tests/storage.rs:53` | block |
+| `crates/ace-ffi/tests/storage.rs:63` | block |
+| `crates/ace-ffi/tests/storage.rs:71` | block |
+| `crates/ace-ffi/tests/storage.rs:84` | block |
+| `crates/ace-ffi/tests/storage.rs:96` | block |
+| `crates/ace-ffi/tests/storage.rs:105` | block |
+| `crates/ace-ffi/tests/storage.rs:113` | block |
+| `crates/ace-ffi/tests/storage.rs:118` | block |
+| `crates/ace-ffi/tests/storage.rs:121` | block |
+| `crates/ace-ffi/tests/storage.rs:132` | block |
+| `crates/ace-ffi/tests/storage.rs:138` | block |
+| `crates/ace-ffi/tests/storage.rs:150` | block |
+| `crates/ace-ffi/tests/storage.rs:154` | block |
+| `crates/ace-ffi/tests/storage.rs:183` | block |
+| `crates/ace-ffi/tests/storage.rs:186` | block |
+| `crates/ace-ffi/tests/storage.rs:208` | block |
+| `crates/ace-ffi/tests/storage.rs:217` | block |
+| `crates/ace-ffi/tests/storage.rs:220` | block |
+| `crates/ace-ffi/tests/storage.rs:223` | block |
+| `crates/ace-ffi/tests/storage.rs:238` | block |
+| `crates/ace-ffi/tests/storage.rs:246` | block |
+| `crates/ace-ffi/tests/storage.rs:264` | block |
+| `crates/ace-ffi/tests/storage.rs:312` | block |
+| `crates/ace-ffi/tests/storage.rs:338` | block |
+| `crates/ace-ffi/tests/storage.rs:355` | block |
+| `crates/ace-ffi/tests/storage.rs:366` | block |
+| `crates/ace-ffi/tests/storage.rs:370` | block |
+| `crates/ace-ffi/tests/storage.rs:377` | block |
 | `crates/ace-ffi/tests/stream_range.rs:26` | block |
 | `crates/ace-ffi/tests/stream_range.rs:33` | block |
 | `crates/ace-ffi/tests/stream_range.rs:40` | block |
@@ -267,7 +321,7 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 No Rust panic may unwind into the host (`docs/NATIVE-INTEROP.md`, rule 7): every exported
 function runs under `guard` / `guard_value` except the infallible accessors.
 
-**26** exported functions, **21** guarded, **5** infallible accessors, **26** called by a test.
+**37** exported functions, **31** guarded, **6** infallible accessors, **37** called by a test.
 
 | Function | File | Panic guard | Tested |
 |---|---|---|---|
@@ -276,7 +330,14 @@ function runs under `guard` / `guard_value` except the infallible accessors.
 | `ace_buffer_free` | `crates/ace-ffi/src/buffer.rs` | yes | yes |
 | `ace_config_default` | `crates/ace-ffi/src/config.rs` | yes | yes |
 | `ace_limits_default` | `crates/ace-ffi/src/config.rs` | yes | yes |
+| `ace_dictionary_new` | `crates/ace-ffi/src/dictionary.rs` | yes | yes |
+| `ace_dictionary_train` | `crates/ace-ffi/src/dictionary.rs` | yes | yes |
+| `ace_dictionary_id` | `crates/ace-ffi/src/dictionary.rs` | yes | yes |
+| `ace_dictionary_data` | `crates/ace-ffi/src/dictionary.rs` | yes | yes |
+| `ace_dictionary_len` | `crates/ace-ffi/src/dictionary.rs` | yes | yes |
+| `ace_dictionary_free` | `crates/ace-ffi/src/dictionary.rs` | yes | yes |
 | `ace_engine_new` | `crates/ace-ffi/src/engine.rs` | yes | yes |
+| `ace_engine_new_ex` | `crates/ace-ffi/src/engine.rs` | yes | yes |
 | `ace_engine_free` | `crates/ace-ffi/src/engine.rs` | yes | yes |
 | `ace_compress` | `crates/ace-ffi/src/engine.rs` | yes | yes |
 | `ace_decompress` | `crates/ace-ffi/src/engine.rs` | yes | yes |
@@ -286,6 +347,7 @@ function runs under `guard` / `guard_value` except the infallible accessors.
 | `ace_last_error_len` | `crates/ace-ffi/src/last_error.rs` | no (infallible) | yes |
 | `ace_last_error_block` | `crates/ace-ffi/src/last_error.rs` | no (infallible) | yes |
 | `ace_abi_version` | `crates/ace-ffi/src/lib.rs` | no (infallible) | yes |
+| `ace_abi_minor` | `crates/ace-ffi/src/lib.rs` | no (infallible) | yes |
 | `ace_engine_version` | `crates/ace-ffi/src/lib.rs` | no (infallible) | yes |
 | `ace_range_open` | `crates/ace-ffi/src/range.rs` | yes | yes |
 | `ace_range_open_path` | `crates/ace-ffi/src/range.rs` | yes | yes |
@@ -295,5 +357,8 @@ function runs under `guard` / `guard_value` except the infallible accessors.
 | `ace_range_read_block` | `crates/ace-ffi/src/range.rs` | yes | yes |
 | `ace_range_last_stats` | `crates/ace-ffi/src/range.rs` | yes | yes |
 | `ace_range_free` | `crates/ace-ffi/src/range.rs` | yes | yes |
+| `ace_schema_new` | `crates/ace-ffi/src/schema.rs` | yes | yes |
+| `ace_schema_record_size` | `crates/ace-ffi/src/schema.rs` | yes | yes |
+| `ace_schema_free` | `crates/ace-ffi/src/schema.rs` | yes | yes |
 | `ace_compress_stream` | `crates/ace-ffi/src/stream.rs` | yes | yes |
 | `ace_decompress_stream` | `crates/ace-ffi/src/stream.rs` | yes | yes |

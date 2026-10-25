@@ -146,6 +146,9 @@ fn stats_json_has_the_documented_keys_in_order() {
         "time_series_blocks",
         "ratio",
         "plan_distribution",
+        "segmented_blocks",
+        "columnar_blocks",
+        "dictionary_blocks",
     ];
     let mut cursor = 0;
     for key in keys {
