@@ -3,7 +3,7 @@
 # as errors, links it dynamically and statically, and runs both. Also checks that the header
 # parses as C++.
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ace-common0.7.0.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ace-common0.8.0.sh"
 cd "$ACE_ROOT"
 
 CC="${CC:-cc}"

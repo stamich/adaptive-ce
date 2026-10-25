@@ -40,7 +40,7 @@ tasks.jar {
 }
 
 // gradle -p jvm :ace-native:ffiBenchmark [-PffiOut=<file>]: the JVM side of the `ffi` benchmark
-// family (see tools/ace-check_regressions0.7.0.py, section ffi).
+// family (see tools/ace-check_regressions0.8.0.py, section ffi).
 tasks.register<JavaExec>("ffiBenchmark") {
     group = "verification"
     description = "Measures the JVM binding on the ffi benchmark workloads and writes JSON."

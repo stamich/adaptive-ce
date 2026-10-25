@@ -7,7 +7,7 @@ complete ``stable_timing`` object next to every timing object (any dict with ``m
 Schema 2.2 (additive) also requires the git revision / dirty flag of the measured build, the
 configuration fingerprint, threads and block size, and a SHA-256 for every generated input.
 
-usage: ace-validate_benchmark_json0.7.0.py FILE...
+usage: ace-validate_benchmark_json0.8.0.py FILE...
 """
 from __future__ import annotations
 

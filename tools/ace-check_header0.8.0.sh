@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Regenerates include/ace.h with cbindgen and fails when the committed header differs.
 #
-#   tools/ace-check_header0.7.0.sh           check (CI)
-#   tools/ace-check_header0.7.0.sh --write   regenerate include/ace.h
+#   tools/ace-check_header0.8.0.sh           check (CI)
+#   tools/ace-check_header0.8.0.sh --write   regenerate include/ace.h
 #
 # Needs cbindgen 0.29.0:  cargo install cbindgen --locked --version 0.29.0
 set -euo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ace-common0.7.0.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ace-common0.8.0.sh"
 cd "$ACE_ROOT"
 
 CBINDGEN_VERSION="0.29.0"
@@ -26,6 +26,6 @@ if [[ "${1:-}" == "--write" ]]; then
 fi
 
 if ! diff -u include/ace.h "$generated"; then
-  ace_die "include/ace.h is out of date: run tools/ace-check_header0.7.0.sh --write and commit the result"
+  ace_die "include/ace.h is out of date: run tools/ace-check_header0.8.0.sh --write and commit the result"
 fi
 ace_log "include/ace.h matches crates/ace-ffi"

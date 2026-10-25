@@ -157,7 +157,7 @@ where `java.lang.foreign` is final; CI also runs JDK 25.
 ## What the bindings must not do
 
 - Hand-write signatures for functions that the header declares. Java bindings are generated
-  from `ace.h` by `tools/ace-genbindings0.7.0.py`, and CI fails when the committed file differs
+  from `ace.h` by `tools/ace-genbindings0.8.0.py`, and CI fails when the committed file differs
   from the generated one.
 - Parse or re-implement format logic on the JVM side. The JVM never reads ACE blocks itself.
 - Keep a pointer returned by ACE beyond the owning handle.

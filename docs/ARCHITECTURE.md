@@ -1,6 +1,6 @@
 # ACE architecture
 
-Canonical description of the current release (0.7.0). Earlier versions of this document:
+Canonical description of the current release (0.8.0). Earlier versions of this document:
 [`history/`](history/) (`ARCHITECTURE-0.4.6.md`, `ARCHITECTURE-0.5.0.md`).
 
 ACE is a deterministic, block-based lossless compressor. Every block is planned and encoded
@@ -106,13 +106,13 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
 | facade internals | `crates/ace/tests/` with feature `internal-testing` | the hidden `ace::internal` conversions |
 | CLI | `crates/ace-cli/tests/cli.rs` | the `ace` binary: round trips, invalid input, closed pipes |
 | golden / compat | `crates/ace-engine/tests/golden.rs`, `compat_fixtures.rs` | bytes on disk |
-| C ABI | `crates/ace-ffi/tests/` | every exported function through `extern "C"`, misuse, panics, golden bytes; `tests/c/smoke.c` built by `tools/ace-check_c0.7.0.sh` |
+| C ABI | `crates/ace-ffi/tests/` | every exported function through `extern "C"`, misuse, panics, golden bytes; `tests/c/smoke.c` built by `tools/ace-check_c0.8.0.sh` |
 | JVM | `jvm/<module>/src/test/` | round trips, misuse, leaks, packaging, golden bytes (Java and Scala) |
 | fuzz | `fuzz/` | arbitrary input ([`../fuzz/README.md`](../fuzz/README.md)) |
 
 ### Test layout
 
-No file under `crates/*/src` contains `#[cfg(test)]` (enforced by `tools/ace-code_audit0.7.0.py`).
+No file under `crates/*/src` contains `#[cfg(test)]` (enforced by `tools/ace-code_audit0.8.0.py`).
 A test of `crates/ace-cost/src/quality.rs` lives in `crates/ace-cost/tests/quality.rs` and calls
 public items only. When a test needs a private helper, one of three things happens, in this order
 of preference: the test restates the helper (a bit reader is ten lines), the helper becomes `pub`

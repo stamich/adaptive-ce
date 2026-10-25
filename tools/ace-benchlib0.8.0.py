@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers of the ACE 0.7.0 benchmark tools (schema 2.0 – 2.2).
+"""Shared helpers of the ACE 0.8.0 benchmark tools (schema 2.0 – 2.2).
 
 Loaded by every ``tools/ace-*0.7.0.py`` script through :func:`load_benchlib`-style
 ``importlib`` boilerplate (the hyphenated, versioned file name cannot be imported directly).
@@ -20,9 +20,9 @@ import pathlib
 from typing import Any, Iterable
 
 #: Milestone produced by this tool set.
-MILESTONE = "0.7.0"
+MILESTONE = "0.8.0"
 #: Predecessor used as the A/B and stored-baseline reference.
-BASELINE = "0.6.1"
+BASELINE = "0.7.0"
 #: Schema version written by Harness V3 (2.2 = 2.1 + build revision and input fingerprints).
 SCHEMA = "2.2"
 

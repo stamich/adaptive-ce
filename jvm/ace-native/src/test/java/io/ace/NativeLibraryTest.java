@@ -15,7 +15,7 @@ class NativeLibraryTest {
 
     @Test
     void engineVersionIsTheProjectVersion() {
-        assertEquals("0.7.0", NativeLibrary.engineVersion());
+        assertEquals("0.8.0", NativeLibrary.engineVersion());
     }
 
     @Test

@@ -123,4 +123,4 @@ class AceSdkTest:
     assertTrue(err(codec.compress(Array[Byte](1))).isInstanceOf[AceError.InvalidArgument])
 
   @Test def theNativeVersionIsTheProjectVersion(): Unit =
-    assertEquals("0.7.0", ok(Ace.nativeVersion))
+    assertEquals("0.8.0", ok(Ace.nativeVersion))

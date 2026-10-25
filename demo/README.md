@@ -1,7 +1,7 @@
-# ACE 0.7.0 demo
+# ACE 0.8.0 demo
 
 ```bash
-./demo/ace-run-demo0.7.0.sh
+./demo/ace-run-demo0.8.0.sh
 ```
 
 Takes well under a minute after the release build and runs no benchmarks:
@@ -17,6 +17,6 @@ Takes well under a minute after the release build and runs no benchmarks:
 5. determinism: SHA-256 of 1 thread == all threads == `ACE_SIMD=scalar`, for the 0.4 routes
    and for Gorilla blocks.
 
-Scratch files live in `target/demo-0.7.0/` (or under `$CARGO_TARGET_DIR`) and are removed at
-the end. Measurements belong to `./ace-benchmark0.7.0.sh`; the full pipeline is
-`./ace-build0.7.0.sh` / `./ace-release0.7.0.sh`.
+Scratch files live in `target/demo-0.8.0/` (or under `$CARGO_TARGET_DIR`) and are removed at
+the end. Measurements belong to `./ace-benchmark0.8.0.sh`; the full pipeline is
+`./ace-build0.8.0.sh` / `./ace-release0.8.0.sh`.

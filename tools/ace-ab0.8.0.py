@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Interleaved A/B performance comparison of ACE 0.7.0 against a baseline source tree.
+"""Interleaved A/B performance comparison of ACE 0.8.0 against a baseline source tree.
 
-Both trees get the same probe (``tools/ace-abprobe0.7.0``) compiled against their own
+Both trees get the same probe (``tools/ace-abprobe0.8.0``) compiled against their own
 engine crates with identical release settings. For every case the driver runs
 ``batches`` probe processes per side, alternating which side goes first, so machine drift
 (temperature, governor, background load) affects both sides equally.
@@ -16,7 +16,7 @@ Per case:
 * ``fail`` when ``speed_ratio < required`` *and* ``ratio_upper < required + margin``;
 * otherwise ``pass``.
 
-usage: ace-ab0.7.0.py --baseline-tree DIR [--candidate-tree DIR] [--quick]
+usage: ace-ab0.8.0.py --baseline-tree DIR [--candidate-tree DIR] [--quick]
                       [--cases ID,...] [--output FILE]
 """
 from __future__ import annotations
@@ -35,8 +35,8 @@ from dataclasses import dataclass
 
 
 def _benchlib():
-    """Load the shared ``ace-benchlib0.7.0.py`` module that sits next to this script."""
-    path = pathlib.Path(__file__).with_name("ace-benchlib0.7.0.py")
+    """Load the shared ``ace-benchlib0.8.0.py`` module that sits next to this script."""
+    path = pathlib.Path(__file__).with_name("ace-benchlib0.8.0.py")
     spec = importlib.util.spec_from_file_location("ace_benchlib", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -46,7 +46,7 @@ def _benchlib():
 lib = _benchlib()
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-PROBE_SOURCE = REPO / "tools" / "ace-abprobe0.7.0" / "src" / "main.rs"
+PROBE_SOURCE = REPO / "tools" / "ace-abprobe0.8.0" / "src" / "main.rs"
 #: Noise margin added to the required ratio for the per-batch upper bound.
 UPPER_MARGIN = 0.02
 
@@ -60,13 +60,14 @@ class Case:
     stability_limit: float
     #: True when the candidate changes the produced bytes on purpose: the byte-identity check
     #: is skipped for the case and its speed floor is the documented price of the change.
-    #: No 0.7.0 case sets it (the format and the bytes are those of 0.6.1).
+    #: No 0.8.0 case sets it: the default configuration (no schema, no dictionary, no segmentation) writes the bytes of 0.7.0.
     output_changes: bool = False
 
 
 CASES = [
-    # ACE 0.7.0 writes exactly the bytes of 0.6.1 (Format 1.5 unchanged), so every case must keep
-    # the output byte-identical and no case is allowed to get slower than 0.95x.
+    # With the default configuration ACE 0.8.0 writes exactly the bytes of 0.7.0 (Format 1.6 is
+    # only written when a segmented block, a schema or a dictionary is used), so every case must
+    # keep the output byte-identical and no case is allowed to get slower than 0.95x.
     Case("compression.fast.encode", 0.95, 3.0),
     Case("compression.balanced.encode", 0.95, 3.0),
     # Task 4: DENSE shares the analysis of its BALANCED comparison plan (expected faster).
@@ -78,7 +79,7 @@ CASES = [
     Case("numeric_fast.u32_counter.decode", 0.95, 5.0),
     Case("numeric_general.u64_timestamps.encode", 0.95, 3.0),
     Case("numeric_general.delta_variable.encode", 0.95, 3.0),
-    # Task 3: Patched FOR decoding (expected about 2x - 4x faster than 0.6.1).
+    # Patched FOR decoding (0.7.0 task 3).
     Case("numeric_general.delta_variable.decode", 0.95, 5.0),
     Case("numeric_general.monotonic_outliers.encode", 0.95, 3.0),
     Case("numeric_general.monotonic_outliers.decode", 0.95, 5.0),
@@ -95,7 +96,7 @@ CASES = [
 
 PROBE_MANIFEST = """[package]
 name = "ace-abprobe"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 publish = false
 

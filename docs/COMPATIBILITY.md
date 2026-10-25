@@ -110,7 +110,7 @@ Details per field: [`DECODER-AUDIT.md`](DECODER-AUDIT.md).
   another ABI version ([`NATIVE-INTEROP.md`](NATIVE-INTEROP.md), rule 6;
   [`FFI.md`](FFI.md), compatibility rules).
 * `include/ace.h` is generated and drift-checked; the Java bindings are generated from it
-  (`tools/ace-genbindings0.7.0.py --check`).
+  (`tools/ace-genbindings0.8.0.py --check`).
 * The bytes written through the C ABI, Java and Scala are those of the Rust API for the same
   configuration (golden 0.6.1).
 * JVM: JDK 22 or newer (`java.lang.foreign` is final from 22), tested on 22 and 25; Scala 3.3 LTS

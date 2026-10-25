@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Shared helpers of the ACE 0.7.0 scripts; sourced, never executed.
+# Shared helpers of the ACE 0.8.0 scripts; sourced, never executed.
 #
 #   ACE_VERSION   product / Cargo / result-file version
 #   ACE_BASELINE  predecessor used by A/B and stored-baseline diagnostics
@@ -17,8 +17,8 @@ if [[ -n "${LC_ALL:-}" ]]; then
   unset LC_ALL
 fi
 export LC_NUMERIC=C
-ACE_VERSION="0.7.0"
-ACE_BASELINE="0.6.1"
+ACE_VERSION="0.8.0"
+ACE_BASELINE="0.7.0"
 ACE_RESULTS="${ACE_BENCH_OUT_DIR:-$ACE_ROOT/examples/results}"
 export ACE_BENCH_OUT_DIR="$ACE_RESULTS"
 

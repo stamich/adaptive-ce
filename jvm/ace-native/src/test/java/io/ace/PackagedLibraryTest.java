@@ -77,7 +77,7 @@ class PackagedLibraryTest {
             String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             assertEquals(0, process.waitFor(), output);
             assertTrue(output.contains("origin=packaged in the JAR"), output);
-            assertTrue(output.contains("version=0.7.0"), output);
+            assertTrue(output.contains("version=0.8.0"), output);
         } finally {
             Files.deleteIfExists(jar);
             Files.deleteIfExists(directory);

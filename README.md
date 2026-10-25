@@ -1,6 +1,6 @@
 # Adaptive Compression Engine (ACE)
 
-[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.7.0.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.7.0.yml)
+[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.8.0.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.8.0.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=coverage)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
@@ -44,7 +44,7 @@ cargo build --release                                  # builds the `ace` binary
 ./target/release/ace compress data.bin data.ace        # --profile fast | balanced | dense
 ./target/release/ace decompress data.ace restored.bin
 ./target/release/ace version                           # version, formats, backends, git revision
-./demo/ace-run-demo0.7.0.sh                            # one-minute product tour
+./demo/ace-run-demo0.8.0.sh                            # one-minute product tour
 ```
 
 Requirements: Rust 1.98.1 or newer (MSRV); the repository pins the build toolchain to 1.98.1
@@ -151,12 +151,12 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 ## Development
 
 ```bash
-./ace-build0.7.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
-./ace-ci0.7.0.sh pr | aarch64 | jvm | fuzz-smoke | fuzz   # CI entry points (GitHub Actions wraps them)
-./ace-benchmark0.7.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
-./ace-ab0.7.0.sh /path/to/ace-0.6.1                  # interleaved A/B against the previous release
-./ace-benchmark-compare0.7.0.sh OLD NEW              # any two result files or directories
-./ace-release0.7.0.sh /path/to/ace-0.6.1             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+./ace-build0.8.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
+./ace-ci0.8.0.sh pr | aarch64 | jvm | fuzz-smoke | fuzz   # CI entry points (GitHub Actions wraps them)
+./ace-benchmark0.8.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
+./ace-ab0.8.0.sh /path/to/ace-0.6.1                  # interleaved A/B against the previous release
+./ace-benchmark-compare0.8.0.sh OLD NEW              # any two result files or directories
+./ace-release0.8.0.sh /path/to/ace-0.6.1             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
 gradle -p jvm build                                  # Java and Scala SDKs (JDK 22+, builds libace_ffi)
 ```
 

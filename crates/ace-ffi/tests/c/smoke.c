@@ -1,5 +1,5 @@
 /*
- * Smoke test of the C ABI: build with `tools/ace-check_c0.7.0.sh`, which compiles this file with
+ * Smoke test of the C ABI: build with `tools/ace-check_c0.8.0.sh`, which compiles this file with
  * -Wall -Wextra -Werror against include/ace.h and links libace_ffi.
  */
 #include <stddef.h>
