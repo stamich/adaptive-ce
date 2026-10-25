@@ -25,7 +25,8 @@ pub const BLOCK_HEADER_SIZE: usize = 32;
 const DICTIONARY_DESCRIPTOR_SIZE: usize = 9;
 /// File flag indicating that a serialized block index and trailer are present.
 pub const FILE_FLAG_HAS_INDEX: u16 = 0x0001;
-/// File flag indicating that one or more block dictionary references may be present.
+/// File flag (Format 1.6): the dictionary section (`ADIC`) follows the file header and blocks may
+/// reference its dictionaries (scope `File`).
 pub const FILE_FLAG_HAS_DICTIONARIES: u16 = 0x0002;
 /// Set of format-1.1…1.4 flags understood by ACE.
 pub const SUPPORTED_FILE_FLAGS: u16 = FILE_FLAG_HAS_INDEX | FILE_FLAG_HAS_DICTIONARIES;
@@ -139,6 +140,11 @@ pub fn decode_file_header(bytes: &[u8]) -> AceResult<FileHeader> {
     );
     if bytes[5] >= 1 && flags & !SUPPORTED_FILE_FLAGS != 0 {
         return Err(AceError::UnsupportedFeature(flags & !SUPPORTED_FILE_FLAGS));
+    }
+    // The flag announces the dictionary section (`ADIC`) that follows the header; the section
+    // exists only in Format 1.6, so an older version with the flag set is not a file we know.
+    if flags & FILE_FLAG_HAS_DICTIONARIES != 0 && bytes[5] < ace_core::FORMAT_MINOR_STORAGE {
+        return Err(AceError::UnsupportedFeature(FILE_FLAG_HAS_DICTIONARIES));
     }
     Ok(FileHeader {
         minor_version: bytes[5],
@@ -285,6 +291,24 @@ pub fn decode_block_header(
             major: FORMAT_MAJOR,
             minor: minor_version,
         });
+    }
+    // Segmented and columnar blocks exist only in Format 1.6 files, and (like TS1) are complete
+    // payloads: transforms, an entropy stage or a dictionary on the outer block are rejected.
+    if codec.is_container() {
+        if minor_version < ace_core::FORMAT_MINOR_STORAGE {
+            return Err(AceError::UnsupportedVersion {
+                major: FORMAT_MAJOR,
+                minor: minor_version,
+            });
+        }
+        if !transforms.is_empty()
+            || !matches!(entropy, EntropyCodecId::None)
+            || dictionary.is_some()
+        {
+            return Err(AceError::Malformed(
+                "SEG1/COL1 block with transforms, entropy stage or dictionary",
+            ));
+        }
     }
     // A TS1 payload is a complete bitstream: Format 1.4 defines it without transforms, entropy
     // stage or dictionary, so any of them is rejected rather than given ad-hoc semantics.

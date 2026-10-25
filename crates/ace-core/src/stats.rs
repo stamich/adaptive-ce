@@ -94,6 +94,8 @@ impl CompressionStats {
             CodecId::Lz => self.lz_blocks += 1,
             CodecId::Numeric => self.numeric_blocks += 1,
             CodecId::TimeSeries => self.time_series_blocks += 1,
+            // Container blocks are assembled by the engine after planning (never planned).
+            CodecId::Segmented | CodecId::Columnar => {}
         }
         match plan.decoding.entropy {
             EntropyCodecId::Huffman => self.huffman_blocks += 1,

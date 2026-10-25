@@ -104,6 +104,8 @@ pub(crate) fn estimator_family_id(plan: &PhysicalCompressionPlan) -> String {
         (CodecId::Lz, None) => "lz",
         (CodecId::Numeric, _) => "numeric",
         (CodecId::TimeSeries, _) => "timeseries",
+        (CodecId::Segmented, _) => "segmented",
+        (CodecId::Columnar, _) => "columnar",
     };
     if delta {
         format!("delta_{base}")
@@ -130,6 +132,8 @@ pub(crate) fn plan_id(p: &PhysicalCompressionPlan) -> String {
         (CodecId::Lz, _) => "lz_fast",
         (CodecId::Numeric, _) => "numeric",
         (CodecId::TimeSeries, _) => "timeseries",
+        (CodecId::Segmented, _) => "segmented",
+        (CodecId::Columnar, _) => "columnar",
     });
     parts.push(match p.decoding.entropy {
         EntropyCodecId::None => "none",

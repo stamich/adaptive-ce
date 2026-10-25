@@ -1,7 +1,7 @@
 //! A file of a newer format (ACE 0.6.0 forward-compatibility contract): every reader rejects it
 //! at the file header with `UnsupportedVersion`, and the message names the ACE release that can
-//! read it, or says "a newer ACE release" when no release is announced (1.5 is read since
-//! ACE 0.6.1, so the first unreadable version is 1.6).
+//! read it, or says "a newer ACE release" when no release is announced (1.6 is read since
+//! ACE 0.8.0, so the first unreadable version is 1.7).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use std::io::Cursor;
@@ -46,7 +46,7 @@ fn outcomes(bytes: &[u8]) -> Vec<(&'static str, AceError)> {
 
 #[test]
 fn unknown_newer_versions_say_so_without_inventing_a_release() {
-    for (major, minor) in [(1, 6), (1, 255), (2, 0)] {
+    for (major, minor) in [(1, 7), (1, 255), (2, 0)] {
         for (reader, error) in outcomes(&forged(major, minor)) {
             let message = error.to_string();
             assert!(
@@ -58,7 +58,7 @@ fn unknown_newer_versions_say_so_without_inventing_a_release() {
                 "{reader} {major}.{minor}: {message}"
             );
             assert!(
-                message.contains("supports up to 1.5"),
+                message.contains("supports up to 1.6"),
                 "{reader} {major}.{minor}: {message}"
             );
         }
@@ -67,7 +67,7 @@ fn unknown_newer_versions_say_so_without_inventing_a_release() {
 
 #[test]
 fn supported_versions_still_decode() {
-    for minor in [3u8, 4, 5] {
+    for minor in [3u8, 4, 5, 6] {
         let bytes = forged(1, minor);
         assert!(
             AceEngine::default_engine().decompress(&bytes).is_ok(),

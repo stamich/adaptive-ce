@@ -97,6 +97,8 @@ impl CandidateEstimator for DefaultCandidateEstimator {
                 primary_ratio *= (1.0 - gain).clamp(0.04, 1.02);
                 confidence = confidence.max((0.58 + p.delta_score * 0.35).clamp(0.0, 0.96));
             }
+            // Container blocks are not planner candidates (the engine assembles them).
+            CodecId::Segmented | CodecId::Columnar => {}
             CodecId::TimeSeries => {
                 // TS1 is never ranked from the generic BlockProfile: the Float lane and the
                 // RunDelta admission use dedicated exact/sample estimators (ace_cost::time_series).
@@ -131,6 +133,7 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             (CodecId::Lz, _) => 4,
             (CodecId::Numeric, _) => 5,
             (CodecId::TimeSeries, _) => 4,
+            (CodecId::Segmented | CodecId::Columnar, _) => 4,
         };
         let codec_decode = match candidate.decoding.codec {
             CodecId::Raw => 1u64,
@@ -138,6 +141,7 @@ impl CandidateEstimator for DefaultCandidateEstimator {
             CodecId::Lz => 3,
             CodecId::Numeric => 2,
             CodecId::TimeSeries => 2,
+            CodecId::Segmented | CodecId::Columnar => 3,
         };
         let entropy_encode = match candidate.decoding.entropy {
             EntropyCodecId::None => 0u64,

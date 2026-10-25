@@ -13,6 +13,23 @@ pub enum CodecId {
     /// Self-describing TS1 time-series codec (Gorilla XOR floats, RunDelta integers)
     /// introduced by ACE Format 1.4.
     TimeSeries = 4,
+    /// Segmented block (`SEG1`, ACE Format 1.6): the payload is a segment table followed by
+    /// inner blocks, each with its own codec, entropy stage and transforms, that together
+    /// reconstruct the block. The outer block has no entropy stage, transform or dictionary.
+    Segmented = 5,
+    /// Columnar block (`COL1`, ACE Format 1.6): the payload is a column table followed by one
+    /// inner block per column of a fixed-size record layout, plus the raw bytes of an incomplete
+    /// last record. The outer block has no entropy stage, transform or dictionary.
+    Columnar = 6,
+}
+
+impl CodecId {
+    /// True for the codecs whose payload is made of inner blocks (`SEG1`, `COL1`): the engine
+    /// decodes them, not `ace_codecs`, and they are valid only in Format 1.6 files.
+    #[must_use]
+    pub const fn is_container(self) -> bool {
+        matches!(self, Self::Segmented | Self::Columnar)
+    }
 }
 
 /// Parses the serialized one-byte identifier of [`CodecId`], rejecting unknown values.
@@ -28,6 +45,8 @@ impl TryFrom<u8> for CodecId {
             2 => Ok(Self::Lz),
             3 => Ok(Self::Numeric),
             4 => Ok(Self::TimeSeries),
+            5 => Ok(Self::Segmented),
+            6 => Ok(Self::Columnar),
             other => Err(crate::AceError::UnsupportedCodec(other)),
         }
     }

@@ -31,7 +31,7 @@ its `extern "C"` functions are the interface.
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 54 | 21 | 0 |
-| `ace-core` | internal | 31 | 20 | 0 |
+| `ace-core` | internal | 32 | 21 | 0 |
 | `ace-corpus` | internal | 4 | 14 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
@@ -274,9 +274,9 @@ its `extern "C"` functions are the interface.
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `payload_minor_version` | item | `dispatch.rs:25` | Lowest minor format version whose readers can decode `primary`, the stream `codec` produced. |
-| `encode_codec` | item | `dispatch.rs:51` | Encodes a transformed byte stream with the requested primary codec. |
-| `decode_codec` | item | `dispatch.rs:68` | Decodes a primary codec stream to exactly `expected_size` bytes. |
+| `payload_minor_version` | item | `dispatch.rs:28` | Lowest minor format version whose readers can decode `primary`, the stream `codec` produced. |
+| `encode_codec` | item | `dispatch.rs:56` | Encodes a transformed byte stream with the requested primary codec. |
+| `decode_codec` | item | `dispatch.rs:74` | Decodes a primary codec stream to exactly `expected_size` bytes. |
 | `LZ_SCRATCH_MAX_INPUT` | item | `lz.rs:20` | Largest input (bytes) encoded with the per-thread tables. Longer inputs allocate their own: |
 | `lz_leave_scratch_dirty` | item | `lz.rs:96` | Test hook: leaves this thread's hash tables dirty, exactly as an encode that unwound would. |
 | `lz_encode` | item | `lz.rs:109` | Encodes a byte slice into a simple LZ token stream. |
@@ -356,12 +356,13 @@ its `extern "C"` functions are the interface.
 |---|---|---|---|
 | `BlockId` | item | `block.rs:3` | Stable numeric identifier of a block inside one ACE stream. |
 | `CodecId` | item | `codec.rs:4` | Byte-oriented primary codec used by a physical compression plan. |
-| `EntropyCodecId` | item | `codec.rs:39` | Optional entropy coder applied after the primary codec. |
-| `PRIMARY_LENGTH_PREFIX_BYTES` | item | `codec.rs:52` | Bytes of the little-endian `u32` primary-stream length stored in front of the entropy model |
-| `metadata_prefix_bytes` | method | `codec.rs:59` | Container bytes added in front of this coder's model metadata (`0` or |
-| `label` | method | `codec.rs:67` | Stable lower-case label used in plan-distribution telemetry. |
-| `TransformId` | item | `codec.rs:97` | Reversible byte transformation applied before the primary codec. |
-| `LzMode` | item | `codec.rs:121` | Encoder-side LZ search strategy. Both variants produce the same wire format. |
+| `is_container` | method | `codec.rs:30` | True for the codecs whose payload is made of inner blocks (`SEG1`, `COL1`): the engine |
+| `EntropyCodecId` | item | `codec.rs:58` | Optional entropy coder applied after the primary codec. |
+| `PRIMARY_LENGTH_PREFIX_BYTES` | item | `codec.rs:71` | Bytes of the little-endian `u32` primary-stream length stored in front of the entropy model |
+| `metadata_prefix_bytes` | method | `codec.rs:78` | Container bytes added in front of this coder's model metadata (`0` or |
+| `label` | method | `codec.rs:86` | Stable lower-case label used in plan-distribution telemetry. |
+| `TransformId` | item | `codec.rs:116` | Reversible byte transformation applied before the primary codec. |
+| `LzMode` | item | `codec.rs:140` | Encoder-side LZ search strategy. Both variants produce the same wire format. |
 | `CompressionProfile` | item | `config.rs:5` | Planner profile that changes the relative importance of compressed size and runtime cost. |
 | `AceConfig` | item | `config.rs:16` | Runtime configuration of the ACE encoder. |
 | `DictionaryId` | item | `dictionary.rs:3` | Stable dictionary identifier stored in ACE format metadata. |
@@ -369,8 +370,8 @@ its `extern "C"` functions are the interface.
 | `DictionaryRef` | item | `dictionary.rs:20` | Decoder-facing dictionary reference embedded into one block plan. |
 | `AceError` | item | `error.rs:5` | Unified error type returned by ACE components. |
 | `AceResult` | item | `error.rs:71` | Convenience result type used throughout ACE. |
-| `DecodeLimits` | item | `limits.rs:21` | Hard decoder limits used before any attacker-controlled allocation is performed. |
-| `max_block_count` | method | `limits.rs:46` | Maximum number of blocks a file may declare, enforced by every reader before the first |
+| `DecodeLimits` | item | `limits.rs:24` | Hard decoder limits used before any attacker-controlled allocation is performed. |
+| `max_block_count` | method | `limits.rs:56` | Maximum number of blocks a file may declare, enforced by every reader before the first |
 | `NumericWidth` | item | `numeric.rs:9` | Integer lane widths recognized by the ACE 0.4 numeric analyzer and codec. |
 | `bytes` | method | `numeric.rs:21` | Returns the width in source bytes of one logical numeric value. |
 | `bits` | method | `numeric.rs:30` | Returns the width in bits of one logical numeric value. |
@@ -400,11 +401,12 @@ its `extern "C"` functions are the interface.
 | `CompressionStats` | item | `stats.rs:8` | Aggregate telemetry produced by one compression operation. |
 | `compression_ratio` | method | `stats.rs:81` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
 | `record_selected_plan` | method | `stats.rs:90` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
-| `record_plan` | method | `stats.rs:111` | Increments the stable counter associated with one selected physical plan. |
+| `record_plan` | method | `stats.rs:113` | Increments the stable counter associated with one selected physical plan. |
 | `FORMAT_MAJOR` | item | `version.rs:6` | Current major format version. |
-| `FORMAT_MINOR` | item | `version.rs:9` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the |
-| `first_release_reading` | item | `version.rs:18` | The ACE release that first reads format `major.minor`, for the versions that are known to be |
-| `NewerFormatHint` | item | `version.rs:29` | Explains why format `major.minor` is rejected, for the [`crate::AceError::UnsupportedVersion`] |
+| `FORMAT_MINOR` | item | `version.rs:10` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the |
+| `FORMAT_MINOR_STORAGE` | item | `version.rs:14` | First minor version that has segmented (`SEG1`) and columnar (`COL1`) blocks and the |
+| `first_release_reading` | item | `version.rs:23` | The ACE release that first reads format `major.minor`, for the versions that are known to be |
+| `NewerFormatHint` | item | `version.rs:34` | Explains why format `major.minor` is rejected, for the [`crate::AceError::UnsupportedVersion`] |
 
 ### `ace-corpus` (internal)
 
@@ -604,18 +606,18 @@ its `extern "C"` functions are the interface.
 | `FILE_HEADER_SIZE` | item | `header.rs:21` | Serialized file-header size in bytes. |
 | `BLOCK_HEADER_SIZE` | item | `header.rs:23` | Fixed serialized block-header size before variable descriptors and metadata. |
 | `FILE_FLAG_HAS_INDEX` | item | `header.rs:27` | File flag indicating that a serialized block index and trailer are present. |
-| `FILE_FLAG_HAS_DICTIONARIES` | item | `header.rs:29` | File flag indicating that one or more block dictionary references may be present. |
-| `SUPPORTED_FILE_FLAGS` | item | `header.rs:31` | Set of format-1.1…1.4 flags understood by ACE. |
-| `BLOCK_FLAG_HAS_DICTIONARY` | item | `header.rs:33` | Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors. |
-| `FileHeader` | item | `header.rs:37` | Fixed ACE file header shared by formats 1.0 – 1.5. |
-| `BlockHeader` | item | `header.rs:53` | Fixed and variable decoder metadata for one ACE block. |
-| `minimal_minor_version` | item | `header.rs:83` | Minor version a writer must declare for a file whose blocks each need the minor version |
-| `encode_file_header` | item | `header.rs:93` | Serializes a file header, including a CRC32C over its first 28 bytes. |
-| `decode_file_header` | item | `header.rs:114` | Parses and validates a format 1.0 – 1.5 file header. |
-| `block_descriptor_size` | item | `header.rs:165` | Returns the variable descriptor byte count implied by a fixed block header. |
-| `encode_block_header` | item | `header.rs:183` | Serializes one block header and its variable transform/dictionary descriptors. |
-| `decode_block_header` | item | `header.rs:223` | Parses one fixed block header and its caller-supplied variable descriptors. |
-| `decoding_plan` | method | `header.rs:337` | Returns the decoder-relevant physical plan represented by this block header. |
+| `FILE_FLAG_HAS_DICTIONARIES` | item | `header.rs:30` | File flag (Format 1.6): the dictionary section (`ADIC`) follows the file header and blocks may |
+| `SUPPORTED_FILE_FLAGS` | item | `header.rs:32` | Set of format-1.1…1.4 flags understood by ACE. |
+| `BLOCK_FLAG_HAS_DICTIONARY` | item | `header.rs:34` | Block flag indicating that a nine-byte dictionary descriptor follows transform descriptors. |
+| `FileHeader` | item | `header.rs:38` | Fixed ACE file header shared by formats 1.0 – 1.5. |
+| `BlockHeader` | item | `header.rs:54` | Fixed and variable decoder metadata for one ACE block. |
+| `minimal_minor_version` | item | `header.rs:84` | Minor version a writer must declare for a file whose blocks each need the minor version |
+| `encode_file_header` | item | `header.rs:94` | Serializes a file header, including a CRC32C over its first 28 bytes. |
+| `decode_file_header` | item | `header.rs:115` | Parses and validates a format 1.0 – 1.5 file header. |
+| `block_descriptor_size` | item | `header.rs:171` | Returns the variable descriptor byte count implied by a fixed block header. |
+| `encode_block_header` | item | `header.rs:189` | Serializes one block header and its variable transform/dictionary descriptors. |
+| `decode_block_header` | item | `header.rs:229` | Parses one fixed block header and its caller-supplied variable descriptors. |
+| `decoding_plan` | method | `header.rs:361` | Returns the decoder-relevant physical plan represented by this block header. |
 | `INDEX_MAGIC` | item | `index.rs:9` | Four-byte serialized block-index section magic. |
 | `TRAILER_MAGIC` | item | `index.rs:11` | Four-byte end-of-file trailer magic. |
 | `INDEX_ENTRY_SIZE` | item | `index.rs:13` | Fixed serialized size of one block-index entry. |
@@ -666,7 +668,7 @@ its `extern "C"` functions are the interface.
 | `needs_second_stage` | method | `confidence.rs:36` | Returns true when a larger second-stage micro-trial is justified. |
 | `DeterministicCostModel` | item | `cost.rs:13` | Deterministic ACE 0.4 cost model. |
 | `cost` | method | `cost.rs:18` | Computes multidimensional cost from encoded size, explicit metadata and static work coefficients. |
-| `score` | method | `cost.rs:70` | Converts multidimensional cost into a stable sortable scalar using normalized dimensions. |
+| `score` | method | `cost.rs:72` | Converts multidimensional cost into a stable sortable scalar using normalized dimensions. |
 | `PlannerTelemetry` | item | `decision.rs:8` | Planner V4 telemetry used by engine statistics, `ace explain` and benchmarks. |
 | `PlannerDecision` | item | `decision.rs:57` | Result returned by the Planner V4 / V5 hot path. |
 | `TimeSeriesSelection` | item | `decision.rs:89` | TS1 plan chosen by Planner V5. |

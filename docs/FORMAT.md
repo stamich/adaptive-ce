@@ -1,9 +1,10 @@
 # ACE container format
 
 Canonical description of the ACE1 container as written and read by the current release
-(writer 1.3 | 1.4, readers 1.0 – 1.4). Per-version specifications:
+(writer 1.3 | 1.4 | 1.5 | 1.6, readers 1.0 – 1.6). Per-version specifications:
 [`FORMAT-1.1.md`](FORMAT-1.1.md), [`FORMAT-1.2.md`](FORMAT-1.2.md),
-[`FORMAT-1.3.md`](FORMAT-1.3.md), [`FORMAT-1.4.md`](FORMAT-1.4.md); payload formats:
+[`FORMAT-1.3.md`](FORMAT-1.3.md), [`FORMAT-1.4.md`](FORMAT-1.4.md),
+[`FORMAT-1.5.md`](FORMAT-1.5.md), [`FORMAT-1.6.md`](FORMAT-1.6.md); payload formats:
 [`TS1-CODEC.md`](TS1-CODEC.md), [`RANS.md`](RANS.md); compatibility rules:
 [`COMPATIBILITY.md`](COMPATIBILITY.md). All integers are little-endian.
 
@@ -11,6 +12,7 @@ Canonical description of the ACE1 container as written and read by the current r
 
 ```text
 file header (32 bytes)
+ADIC dictionary section      when the file header has HAS_DICTIONARIES (Format 1.6)
 block 0 … block N-1          each: fixed header (32) · descriptors · entropy metadata · payload
 AIDX block index             when the file header has HAS_INDEX (Format 1.1 and later)
 ACET trailer (28 bytes)      when the file header has HAS_INDEX
@@ -26,8 +28,8 @@ through the index.
 |---|---|---|---|
 | 0 | 4 | magic `ACE1` | exact |
 | 4 | 1 | major version (1) | exact |
-| 5 | 1 | minor version (0 – 4) | ≤ 4; selects which codec / coder ids are legal |
-| 6 | 2 | flags: `0x0001` HAS_INDEX, `0x0002` HAS_DICTIONARIES | unknown bits rejected (1.1+) |
+| 5 | 1 | minor version (0 – 6) | ≤ 6; selects which codec / coder ids are legal |
+| 6 | 2 | flags: `0x0001` HAS_INDEX, `0x0002` HAS_DICTIONARIES (the ADIC section follows; 1.6) | unknown bits rejected (1.1+); HAS_DICTIONARIES below 1.6 rejected |
 | 8 | 4 | default block size | informational only |
 | 12 | 8 | original size | ≤ `DecodeLimits::max_output_size`; equals the sum of the blocks |
 | 20 | 8 | block count | ≤ `DecodeLimits::max_block_count()`; equals the index entry count |
@@ -41,7 +43,7 @@ through the index.
 | 8 | 4 | original size | ≤ `max_block_size`; every decoder must produce exactly this many bytes |
 | 12 | 4 | encoded (payload) size | with the metadata size ≤ `max_encoded_block_size` |
 | 16 | 4 | entropy metadata size | see above |
-| 20 | 1 | primary codec: 0 RAW, 1 RLE, 2 LZ, 3 NUM1 (1.3+), 4 TS1 (1.4+); NUM1 / TS1 payload modes 4+ need 1.5 | known and allowed by the minor version |
+| 20 | 1 | primary codec: 0 RAW, 1 RLE, 2 LZ, 3 NUM1 (1.3+), 4 TS1 (1.4+), 5 SEG1 and 6 COL1 (1.6+, inner blocks, no outer entropy / transform / dictionary); NUM1 / TS1 payload modes 4+ need 1.5 | known and allowed by the minor version |
 | 21 | 1 | entropy coder: 0 none, 1 Huffman, 2 rANS, 3 rANS4x (1.2+) | known; rANS4x only in 1.2+ |
 | 22 | 1 | transform count | ≤ `max_transforms` |
 | 23 | 1 | flags: `0x01` dictionary descriptor present (1.1+) | — |
@@ -75,7 +77,8 @@ Entry ids are strictly increasing, logical offsets contiguous, spans inside the 
 | 1.3 | 0.4 | NUM1 numeric codec (u16 lanes since 0.4.5) |
 | 1.4 | 0.5 | TS1 time-series codec (Gorilla f64 / f32, RunDelta) |
 | 1.5 | 0.6.1 | NUM1 mode 4 (Patched FOR) and TS1 mode 4 (ALP); the minor version is payload-aware ([`FORMAT-1.5.md`](FORMAT-1.5.md)) |
+| 1.6 | 0.8.0 | SEG1 segmented and COL1 columnar blocks (codecs 5, 6), ADIC dictionary section, LZ with a dictionary ([`FORMAT-1.6.md`](FORMAT-1.6.md)) |
 
-The writer declares the minimal version a file needs: 1.5 when a payload uses a Format 1.5
-mode, 1.4 when a block uses TS1, otherwise 1.3. Every field and limit above is cross-referenced to its tests in
+The writer declares the minimal version a file needs: 1.6 when it has a segmented or columnar
+block or a dictionary, 1.5 when a payload uses a Format 1.5 mode, 1.4 when a block uses TS1, otherwise 1.3. Every field and limit above is cross-referenced to its tests in
 [`DECODER-AUDIT.md`](DECODER-AUDIT.md).

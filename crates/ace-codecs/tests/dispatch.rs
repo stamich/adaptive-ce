@@ -59,3 +59,15 @@ fn payload_minor_version_follows_codec_and_mode() {
     other_magic[5] = 4;
     assert_eq!(payload_minor_version(CodecId::Numeric, &other_magic), 3);
 }
+
+/// Container codecs (SEG1, COL1) need Format 1.6 whatever their payload is, and the dispatcher
+/// refuses to encode or decode them: only the engine owns the inner blocks.
+#[test]
+fn container_codecs_are_format_1_6_and_engine_only() {
+    for id in [CodecId::Segmented, CodecId::Columnar] {
+        assert_eq!(payload_minor_version(id, &[]), 6, "{id:?}");
+        assert_eq!(payload_minor_version(id, b"SEG1\0\0\0\0"), 6, "{id:?}");
+        assert!(encode_codec(id, None, b"abc").is_err(), "{id:?}");
+        assert!(decode_codec(id, b"abc", 3).is_err(), "{id:?}");
+    }
+}

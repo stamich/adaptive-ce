@@ -167,12 +167,12 @@ fn hostile_input_never_returns_wrong_data() {
     assert!(engine.decompress(&[]).is_err());
 }
 
-/// A file from a newer minor format (1.6) is unsupported and says a newer release wrote it.
+/// A file from a newer minor format (1.7) is unsupported and says a newer release wrote it.
 #[test]
 fn a_newer_format_is_unsupported_and_named() {
     let engine = Engine::default();
     let mut packed = engine.compress(&[7u8; 4096]).unwrap();
-    packed[5] = 6; // format 1.6
+    packed[5] = 7; // format 1.7
     let e = engine.decompress(&packed).unwrap_err();
     assert_eq!(e.kind(), ErrorKind::Unsupported);
     assert!(e.to_string().contains("newer ACE release"), "{e}");

@@ -4,18 +4,21 @@ What each ACE release promises about files, APIs, toolchains and benchmark docum
 
 ## Format
 
-ACE 0.7.0 reads Format 1.0 – 1.5 and writes the **minimal** version a file needs: 1.3 unless the
-file contains a TS1 block (1.4, [`FORMAT-1.4.md`](FORMAT-1.4.md)) or a payload of a Format 1.5
-mode (1.5, [`FORMAT-1.5.md`](FORMAT-1.5.md); the version is a property of the payload).
+ACE 0.8.0 reads Format 1.0 – 1.6 and writes the **minimal** version a file needs: 1.3 unless the
+file contains a TS1 block (1.4, [`FORMAT-1.4.md`](FORMAT-1.4.md)), a payload of a Format 1.5
+mode (1.5, [`FORMAT-1.5.md`](FORMAT-1.5.md); the version is a property of the payload), a
+segmented or columnar block or a dictionary (1.6, [`FORMAT-1.6.md`](FORMAT-1.6.md)). The default
+configuration writes the bytes of 0.7.0.
 
-| File format | ACE 0.4.x reader | ACE 0.5.x – 0.6.0 reader | ACE 0.6.1 – 0.7.0 reader |
-|---|---|---|---|
-| 1.0 | supported | supported | supported |
-| 1.1 | supported | supported | supported |
-| 1.2 | supported | supported | supported |
-| 1.3 | supported | supported | supported |
-| 1.4 | rejected at the file header (`UnsupportedVersion`) | supported | supported |
-| 1.5 | rejected at the file header | rejected at the file header (0.6.0 names ACE 0.6.1) | supported |
+| File format | ACE 0.4.x reader | ACE 0.5.x – 0.6.0 reader | ACE 0.6.1 – 0.7.0 reader | ACE 0.8.0 reader |
+|---|---|---|---|---|
+| 1.0 | supported | supported | supported | supported |
+| 1.1 | supported | supported | supported | supported |
+| 1.2 | supported | supported | supported | supported |
+| 1.3 | supported | supported | supported | supported |
+| 1.4 | rejected at the file header (`UnsupportedVersion`) | supported | supported | supported |
+| 1.5 | rejected at the file header | rejected at the file header (0.6.0 names ACE 0.6.1) | supported | supported |
+| 1.6 | rejected at the file header | rejected at the file header | rejected at the file header | supported |
 
 | Version | Adds |
 |---|---|
@@ -24,6 +27,7 @@ mode (1.5, [`FORMAT-1.5.md`](FORMAT-1.5.md); the version is a property of the pa
 | 1.3 | primary codec 3 `Numeric` (NUM1 payload; u16 lanes since 0.4.5) |
 | 1.4 | primary codec 4 `TimeSeries` (TS1 payload: Gorilla f64 / f32, RunDelta) |
 | 1.5 | NUM1 mode 4 (Patched FOR), TS1 mode 4 (ALP): no new codec id, the mode inside the payload needs the version |
+| 1.6 | primary codecs 5 `Segmented` (SEG1) and 6 `Columnar` (COL1) with inner blocks; dictionary section (ADIC) and dictionary references with scope File / External; see [`FORMAT-1.6.md`](FORMAT-1.6.md) |
 
 Every extension adds only a codec / coder id plus its self-describing payload; outer file and
 block header sizes, dictionary descriptors, AIDX and ACET remain unchanged. A block whose
@@ -48,7 +52,7 @@ Without the flag, data that no TS1 block helps (all of Corpus V3) is also writte
    never inside a block, and since 0.6.0 the error says which release can read the file
    (0.6.0 reading a 1.5 file: `unsupported ACE format version 1.5 (written by ACE 0.6.1 or
    newer; this reader supports up to 1.4)`; 0.6.1 reading a 1.6 file: `... (written by a newer
-   ACE release; this reader supports up to 1.5)`; `crates/ace-engine/tests/newer_format.rs`).
+   ACE release; this reader supports up to 1.6)`; `crates/ace-engine/tests/newer_format.rs`).
    Since 1.5 the rule has a second half: a payload mode newer than the file's declared minor
    version is rejected by the reader even inside an otherwise readable file
    (`crates/ace-engine/tests/format_1_5.rs`). (TS1 modes are self-describing, so a new mode

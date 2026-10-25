@@ -30,6 +30,7 @@ impl DeterministicCostModel {
             (CodecId::Lz, _) => 5,
             (CodecId::Numeric, _) => 5,
             (CodecId::TimeSeries, _) => 4,
+            (CodecId::Segmented | CodecId::Columnar, _) => 4,
         };
         let codec_decode = match plan.decoding.codec {
             CodecId::Raw => 1,
@@ -37,6 +38,7 @@ impl DeterministicCostModel {
             CodecId::Lz => 3,
             CodecId::Numeric => 2,
             CodecId::TimeSeries => 2,
+            CodecId::Segmented | CodecId::Columnar => 3,
         };
         // ACE 0.2 measured scalar rANS as materially slower than Huffman at encode time.
         let entropy_encode = match plan.decoding.entropy {

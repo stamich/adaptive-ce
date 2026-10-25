@@ -133,12 +133,12 @@ fn file_headers_1_0_to_1_5_are_readable() {
     future[28..32].copy_from_slice(&crc.to_le_bytes());
     assert!(matches!(
         decode_file_header(&future),
-        Err(AceError::UnsupportedVersion { minor: 6, .. })
+        Err(AceError::UnsupportedVersion { minor: 7, .. })
     ));
     let message = decode_file_header(&future).unwrap_err().to_string();
     assert!(
         message.contains("written by a newer ACE release"),
         "{message}"
     );
-    assert!(message.contains("supports up to 1.5"), "{message}");
+    assert!(message.contains("supports up to 1.6"), "{message}");
 }

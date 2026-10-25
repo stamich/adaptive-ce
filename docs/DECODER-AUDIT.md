@@ -48,7 +48,7 @@ arithmetic or narrowing cast into a build failure. Proven-safe sites:
 
 | Module | Proven-safe allowances |
 |---|---|
-| `crates/ace-format/src/header.rs` | `:182` encoder: see Invariants |
+| `crates/ace-format/src/header.rs` | `:188` encoder: see Invariants |
 | `crates/ace-format/src/index.rs` | none |
 | `crates/ace-format/src/block_io.rs` | none |
 | `crates/ace-index/src/index_reader.rs` | `:18` constant: -28 |
