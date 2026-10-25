@@ -1,15 +1,15 @@
 //! The deterministic segmenter: tiling, size limits, determinism and the shape of the cuts.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
-use ace_core::{AceConfig, AceError, CompressionProfile};
+use ace_core::{AceConfig, AceError, CompressionProfile, SegmentationConfig};
 use ace_planner::{
-    classify_window, segment_boundaries, AlphabetBucket, SegmenterConfig,
+    classify_window, segment_boundaries, AlphabetBucket,
 };
 use proptest::prelude::*;
 
 /// A small configuration so the tests stay fast: 4 KiB windows, 8 KiB .. 64 KiB segments.
-fn small() -> SegmenterConfig {
-    SegmenterConfig {
+fn small() -> SegmentationConfig {
+    SegmentationConfig {
         window_size: 4096,
         min_segment_size: 8192,
         max_segment_size: 64 * 1024,
@@ -69,17 +69,17 @@ fn invalid_configurations_are_rejected() {
     let ok = small();
     assert!(ok.validate().is_ok());
     for bad in [
-        SegmenterConfig { window_size: 0, ..ok },
-        SegmenterConfig { min_segment_size: 0, ..ok },
-        SegmenterConfig { min_segment_size: 5000, ..ok },
-        SegmenterConfig { max_segment_size: 10_000, ..ok },
-        SegmenterConfig { max_segment_size: 8192, ..ok },
-        SegmenterConfig { max_segments: 1, ..ok },
+        SegmentationConfig { window_size: 0, ..ok },
+        SegmentationConfig { min_segment_size: 0, ..ok },
+        SegmentationConfig { min_segment_size: 5000, ..ok },
+        SegmentationConfig { max_segment_size: 10_000, ..ok },
+        SegmentationConfig { max_segment_size: 8192, ..ok },
+        SegmentationConfig { max_segments: 1, ..ok },
     ] {
         assert!(matches!(bad.validate(), Err(AceError::InvalidConfig(_))), "{bad:?}");
         assert!(segment_boundaries(&[1, 2, 3], &AceConfig::default(), &bad).is_err());
     }
-    assert!(SegmenterConfig::default().validate().is_ok());
+    assert!(SegmentationConfig::default().validate().is_ok());
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn too_many_segments_fall_back_to_a_uniform_cut() {
     for index in 0..40u64 {
         input.extend(if index % 2 == 0 { text(8192) } else { noise(8192, index) });
     }
-    let capped = SegmenterConfig { max_segments: 4, ..small() };
+    let capped = SegmentationConfig { max_segments: 4, ..small() };
     let ranges = segment_boundaries(&input, &config, &capped).unwrap();
     assert_tiles(&ranges, input.len());
     assert!((2..=4).contains(&ranges.len()), "{ranges:?}");

@@ -57,6 +57,10 @@ pub struct CompressionStats {
     pub ts1_run_delta_blocks: u64,
     /// Stored TS1 blocks in ALP mode (Format 1.5).
     pub ts1_alp_blocks: u64,
+    /// Blocks stored as a segmented container (`SEG1`).
+    pub segmented_blocks: u64,
+    /// Segments inside those blocks.
+    pub segments: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
     /// Time spent in route prefilter/classification/full NumericFast validation.
@@ -95,7 +99,8 @@ impl CompressionStats {
             CodecId::Numeric => self.numeric_blocks += 1,
             CodecId::TimeSeries => self.time_series_blocks += 1,
             // Container blocks are assembled by the engine after planning (never planned).
-            CodecId::Segmented | CodecId::Columnar => {}
+            CodecId::Segmented => self.segmented_blocks += 1,
+            CodecId::Columnar => {}
         }
         match plan.decoding.entropy {
             EntropyCodecId::Huffman => self.huffman_blocks += 1,

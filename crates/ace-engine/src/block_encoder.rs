@@ -7,13 +7,16 @@ use ace_codecs::{
     numeric_encode_estimated, numeric_encode_fixed_step, ts1_encode_with, TimeSeriesLayout,
 };
 use ace_core::{
-    AceConfig, AceResult, BlockProfile, CodecId, CompressionProfile, PhysicalCompressionPlan,
+    AceConfig, AceError, AceResult, BlockProfile, CodecId, CompressionProfile, EntropyCodecId,
+    PhysicalCompressionPlan, SegmentationConfig,
 };
-use ace_format::{checksum, BlockHeader, BLOCK_HEADER_SIZE};
+use ace_format::{
+    checksum, encode_segment_payload, serialize_block, BlockHeader, BLOCK_HEADER_SIZE,
+};
 use ace_planner::{
     apply_time_series_policy, encode_plan_payload, evaluate_candidates_v4_with_route,
     float_fast_decision, numeric_fast_decision_from_route, same_plan_semantics,
-    DefaultCompressionPlanner, FloatFastOutcome, PlannerDecision, PlannerRoute, PlannerTelemetry,
+    segment_boundaries, DefaultCompressionPlanner, FloatFastOutcome, PlannerDecision, PlannerRoute, PlannerTelemetry,
     PlanningContext, TimeSeriesSelection,
 };
 
@@ -51,6 +54,9 @@ pub(crate) struct EncodedBlock {
     pub route: PlannerRoute,
     /// TS1 layout of the stored block (`None` unless the stored codec is TS1).
     pub time_series_layout: Option<TimeSeriesLayout>,
+    /// Plans of the inner blocks when this block is segmented (empty otherwise), in segment
+    /// order. The segment count of the block is the length of this list.
+    pub segment_plans: Vec<PhysicalCompressionPlan>,
 }
 
 /// Bytes a block occupies besides its fixed-size header: payload, metadata and transform list.
@@ -95,6 +101,98 @@ struct PlannedBlock {
     timings: BlockTimings,
 }
 
+/// Encodes block `id`, segmenting it when [`AceConfig::segmentation`] is set and the segmented
+/// form is smaller by a margin.
+///
+/// The unsegmented block is always encoded first, so the result is never larger than it: the
+/// segmented form replaces it only when it saves at least `max(min_gain_bytes, 1 %)` of the
+/// framed block (`docs/FORMAT-1.6.md`, writer rule). Without a segmentation configuration this
+/// is exactly the unsegmented encoder, so the output keeps the bytes of 0.7.0.
+///
+/// # Determinism
+///
+/// The segment boundaries are a pure function of the input and the configuration
+/// ([`segment_boundaries`]) and every segment is encoded by the same deterministic encoder, so
+/// the stored block does not depend on the thread count or the host.
+pub(crate) fn encode_block(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
+    let plain = encode_block_plain(config, id, input)?;
+    match &config.segmentation {
+        Some(segmentation) => encode_segmented(config, segmentation, id, input, plain),
+        None => Ok(plain),
+    }
+}
+
+/// Tries the segmented form of block `id` and returns it when it beats `plain` by the margin,
+/// otherwise returns `plain` unchanged.
+fn encode_segmented(
+    config: &AceConfig,
+    segmentation: &SegmentationConfig,
+    id: u64,
+    input: &[u8],
+    plain: EncodedBlock,
+) -> AceResult<EncodedBlock> {
+    if input.len() < segmentation.min_segment_size.saturating_mul(2) {
+        return Ok(plain);
+    }
+    let ranges = segment_boundaries(input, config, segmentation)?;
+    if ranges.len() < 2 {
+        return Ok(plain);
+    }
+    let mut timings = plain.timings;
+    let mut inner_plans = Vec::with_capacity(ranges.len());
+    let mut table = Vec::with_capacity(ranges.len());
+    for (index, range) in ranges.iter().enumerate() {
+        let segment = &input[range.clone()];
+        // An inner block's id is its position in the outer block (docs/FORMAT-1.6.md).
+        let inner = encode_block_plain(config, index as u64, segment)?;
+        timings.route_classify += inner.timings.route_classify;
+        timings.generic_analysis += inner.timings.generic_analysis;
+        timings.planning += inner.timings.planning;
+        timings.encoding += inner.timings.encoding;
+        let original_size = u32::try_from(segment.len())
+            .map_err(|_| AceError::ResourceLimitExceeded("segment size"))?;
+        table.push((
+            original_size,
+            serialize_block(&inner.header, &inner.metadata, &inner.payload),
+        ));
+        inner_plans.push(inner.plan);
+    }
+    let payload = encode_segment_payload(&table)?;
+    let plain_framed = BLOCK_HEADER_SIZE + framed_len(&plain);
+    let segmented_framed = BLOCK_HEADER_SIZE + payload.len();
+    let margin = config.min_gain_bytes.max(plain_framed / 100);
+    if plain_framed.saturating_sub(segmented_framed) < margin {
+        return Ok(plain);
+    }
+    let header = BlockHeader {
+        block_id: id,
+        original_size: u32::try_from(input.len())
+            .map_err(|_| AceError::ResourceLimitExceeded("block size"))?,
+        encoded_size: u32::try_from(payload.len())
+            .map_err(|_| AceError::ResourceLimitExceeded("segmented payload"))?,
+        metadata_size: 0,
+        codec: CodecId::Segmented,
+        entropy: EntropyCodecId::None,
+        transforms: Vec::new(),
+        dictionary: None,
+        flags: 0,
+        // The outer checksum covers the whole reconstructed block, so a forged table cannot
+        // produce a block that passes (docs/FORMAT-1.6.md, inner blocks).
+        payload_crc32c: checksum(input),
+    };
+    Ok(EncodedBlock {
+        header,
+        metadata: Vec::new(),
+        payload,
+        plan: PhysicalCompressionPlan::segmented(),
+        timings,
+        planner_telemetry: plain.planner_telemetry,
+        route: plain.route,
+        time_series_layout: None,
+        segment_plans: inner_plans,
+    })
+}
+
 /// Encodes block `id`; the DENSE profile never stores a block larger than BALANCED would (0.6.1).
 ///
 /// DENSE plans with a wider and slower search, but its estimates are not exact, so on some data
@@ -110,7 +208,7 @@ struct PlannedBlock {
 ///
 /// Both encodings are pure functions of `(config, input)` and the comparison is on exact stored
 /// sizes, so the choice is the same on every platform and thread count.
-pub(crate) fn encode_block(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
+fn encode_block_plain(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
     let mut analysis = SharedAnalysis::default();
     let dense_plan = plan_for_profile(config, input, &mut analysis)?;
     if config.profile != CompressionProfile::Dense {
@@ -226,6 +324,7 @@ fn encode_planned(
         planner_telemetry: decision.telemetry,
         route: context.route.route,
         time_series_layout,
+        segment_plans: Vec::new(),
     })
 }
 

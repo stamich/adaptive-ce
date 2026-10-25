@@ -135,6 +135,25 @@ impl PhysicalCompressionPlan {
             && matches!(self.decoding.entropy, EntropyCodecId::None)
     }
 
+    /// The plan recorded for a segmented block (`SEG1`): a container with no transform, entropy
+    /// stage or dictionary of its own. It is assembled from already-planned segments, never
+    /// chosen by the planner.
+    pub fn segmented() -> Self {
+        Self {
+            decoding: DecodingPlan {
+                transforms: Vec::new(),
+                codec: CodecId::Segmented,
+                dictionary: None,
+                entropy: EntropyCodecId::None,
+            },
+            lz_mode: None,
+            tier: CandidateTier::Mandatory,
+            cost: PlanCost::default(),
+            score: 0,
+            reason: "segmented container",
+        }
+    }
+
     /// Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry.
     pub fn label(&self) -> String {
         let mut parts: Vec<&str> = self

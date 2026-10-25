@@ -8,27 +8,27 @@
 //!
 //! # Method
 //!
-//! 1. The input is cut into windows of [`SegmenterConfig::window_size`] bytes; a remainder
+//! 1. The input is cut into windows of [`SegmentationConfig::window_size`] bytes; a remainder
 //!    shorter than a window is folded into the last window, so every window is at least one
 //!    window long.
 //! 2. Each window gets a [`WindowClass`]: the planner route of the existing
 //!    [`RoutePolicy`] plus a coarse alphabet-size bucket.
 //! 3. Neighbouring windows with the same class form a run.
-//! 4. Runs shorter than [`SegmenterConfig::min_segment_size`] are merged into the larger of
+//! 4. Runs shorter than [`SegmentationConfig::min_segment_size`] are merged into the larger of
 //!    their neighbours, smallest first, until none is left.
-//! 5. Runs longer than [`SegmenterConfig::max_segment_size`] are cut into equal pieces.
-//! 6. If more than [`SegmenterConfig::max_segments`] remain, the input is cut uniformly
+//! 5. Runs longer than [`SegmentationConfig::max_segment_size`] are cut into equal pieces.
+//! 6. If more than [`SegmentationConfig::max_segments`] remain, the input is cut uniformly
 //!    instead.
 //!
 //! # Determinism
 //!
-//! The result is a pure function of `(input, config, segmenter config)`: it uses integer
+//! The result is a pure function of `(input, config, segmentation config)`: it uses integer
 //! arithmetic only, breaks every tie towards the earlier position, and never looks at the
 //! thread count, the clock or the SIMD backend, so every host cuts the same boundaries.
 
 use std::ops::Range;
 
-use ace_core::{AceConfig, AceError, AceResult};
+use ace_core::{AceConfig, AceResult, SegmentationConfig};
 
 use crate::{PlannerRoute, RoutePolicy};
 
@@ -55,65 +55,6 @@ pub struct WindowClass {
     pub route: PlannerRoute,
     /// Distinct-byte bucket of the window.
     pub alphabet: AlphabetBucket,
-}
-
-/// Window and segment sizes of the segmenter.
-///
-/// All sizes are in bytes. `min_segment_size` and `max_segment_size` must be multiples of
-/// `window_size`, because a segment is a whole number of windows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SegmenterConfig {
-    /// Granularity of the classification (default 64 KiB).
-    pub window_size: usize,
-    /// Smallest segment the segmenter produces, unless the input itself is shorter
-    /// (default 256 KiB).
-    pub min_segment_size: usize,
-    /// Largest segment the segmenter produces, unless `max_segments` forces larger ones
-    /// (default 4 MiB).
-    pub max_segment_size: usize,
-    /// Most segments in one block (default 1 024, the `DecodeLimits` default).
-    pub max_segments: usize,
-}
-
-/// Defaults tuned for the 16 MiB blocks of the default configuration.
-impl Default for SegmenterConfig {
-    fn default() -> Self {
-        Self {
-            window_size: 64 * 1024,
-            min_segment_size: 256 * 1024,
-            max_segment_size: 4 * 1024 * 1024,
-            max_segments: 1024,
-        }
-    }
-}
-
-/// Inherent methods of [`SegmenterConfig`].
-impl SegmenterConfig {
-    /// Checks the relations the algorithm relies on.
-    ///
-    /// # Errors
-    /// [`AceError::InvalidConfig`] when `window_size` is zero, the minimum or the maximum is not
-    /// a non-zero multiple of the window, the maximum is smaller than twice the minimum (a
-    /// segment cut in two must stay above the minimum), or fewer than two segments are allowed.
-    pub fn validate(&self) -> AceResult<()> {
-        let multiple = |size: usize| {
-            self.window_size != 0 && size != 0 && size.is_multiple_of(self.window_size)
-        };
-        if !multiple(self.min_segment_size) || !multiple(self.max_segment_size) {
-            return Err(AceError::InvalidConfig(
-                "segment sizes must be non-zero multiples of the window size",
-            ));
-        }
-        if self.max_segment_size / 2 < self.min_segment_size {
-            return Err(AceError::InvalidConfig(
-                "max segment size must be at least twice the min segment size",
-            ));
-        }
-        if self.max_segments < 2 {
-            return Err(AceError::InvalidConfig("at least two segments must be allowed"));
-        }
-        Ok(())
-    }
 }
 
 /// A run of windows with one class: first window, window count, class.
@@ -154,11 +95,11 @@ pub fn classify_window(window: &[u8], config: &AceConfig) -> WindowClass {
 /// not segment".
 ///
 /// # Errors
-/// [`AceError::InvalidConfig`] for an invalid [`SegmenterConfig`].
+/// [`AceError::InvalidConfig`] for an invalid [`SegmentationConfig`].
 pub fn segment_boundaries(
     input: &[u8],
     config: &AceConfig,
-    segmenter: &SegmenterConfig,
+    segmenter: &SegmentationConfig,
 ) -> AceResult<Vec<Range<usize>>> {
     segmenter.validate()?;
     if input.is_empty() {
@@ -250,7 +191,7 @@ fn split_large_runs(runs: &[Run], max_windows: usize) -> Vec<(usize, usize)> {
 
 /// The fallback when the classification yields too many segments: equal pieces of the whole
 /// input, as small as `max_segment_size` allows but never more than `max_segments`.
-fn uniform_pieces(windows: usize, segmenter: &SegmenterConfig) -> Vec<(usize, usize)> {
+fn uniform_pieces(windows: usize, segmenter: &SegmentationConfig) -> Vec<(usize, usize)> {
     let max_windows = segmenter.max_segment_size / segmenter.window_size;
     let parts = windows
         .div_ceil(max_windows)

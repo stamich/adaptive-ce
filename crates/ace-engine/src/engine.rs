@@ -39,13 +39,17 @@ impl AceEngine {
     ///
     /// # Errors
     ///
-    /// [`AceError::InvalidConfig`] when the block size is zero or exceeds `u32::MAX`, or when the
-    /// runtime configuration (threads, memory budget) is invalid.
+    /// [`AceError::InvalidConfig`] when the block size is zero or exceeds `u32::MAX`, when the
+    /// segmentation configuration is invalid, or when the runtime configuration (threads, memory
+    /// budget) is invalid.
     pub fn new(config: AceConfig) -> AceResult<Self> {
         if config.block_size == 0 || config.block_size > u32::MAX as usize {
             return Err(AceError::InvalidConfig(
                 "block size must fit u32 and be non-zero",
             ));
+        }
+        if let Some(segmentation) = &config.segmentation {
+            segmentation.validate()?;
         }
         RuntimeConfig::from_ace(&config)?;
         Ok(Self {

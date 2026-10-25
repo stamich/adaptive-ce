@@ -65,6 +65,12 @@ fn record_block(stats: &mut CompressionStats, block: &EncodedBlock) {
     stats.planning_time += timings.planning;
     stats.encoding_time += timings.encoding;
     stats.record_selected_plan(&block.plan);
+    // A segmented block also counts the plans of its inner blocks, so the codec and entropy
+    // counters keep describing the bytes actually stored.
+    stats.segments += block.segment_plans.len() as u64;
+    for plan in &block.segment_plans {
+        stats.record_selected_plan(plan);
+    }
     let telemetry = &block.planner_telemetry;
     stats.planner_fast_path_blocks += telemetry.fast_path_hit as u64;
     stats.planner_estimated_candidates += telemetry.estimated_candidates as u64;

@@ -31,7 +31,7 @@ its `extern "C"` functions are the interface.
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 54 | 21 | 0 |
-| `ace-core` | internal | 32 | 21 | 0 |
+| `ace-core` | internal | 33 | 23 | 0 |
 | `ace-corpus` | internal | 4 | 14 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
@@ -40,7 +40,7 @@ its `extern "C"` functions are the interface.
 | `ace-ffi` | internal | 40 | 0 | 0 |
 | `ace-format` | internal | 56 | 28 | 0 |
 | `ace-index` | internal | 1 | 3 | 0 |
-| `ace-planner` | internal | 65 | 29 | 0 |
+| `ace-planner` | internal | 64 | 28 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
 | `ace-simd` | internal | 8 | 0 | 0 |
 | `ace-stream` | internal | 4 | 0 | 0 |
@@ -364,7 +364,9 @@ its `extern "C"` functions are the interface.
 | `TransformId` | item | `codec.rs:116` | Reversible byte transformation applied before the primary codec. |
 | `LzMode` | item | `codec.rs:140` | Encoder-side LZ search strategy. Both variants produce the same wire format. |
 | `CompressionProfile` | item | `config.rs:5` | Planner profile that changes the relative importance of compressed size and runtime cost. |
-| `AceConfig` | item | `config.rs:16` | Runtime configuration of the ACE encoder. |
+| `SegmentationConfig` | item | `config.rs:22` | Window and segment sizes of adaptive segmentation (Format 1.6, `SEG1`). |
+| `validate` | method | `config.rs:54` | Checks the relations the segmenter relies on. |
+| `AceConfig` | item | `config.rs:76` | Runtime configuration of the ACE encoder. |
 | `DictionaryId` | item | `dictionary.rs:3` | Stable dictionary identifier stored in ACE format metadata. |
 | `DictionaryScope` | item | `dictionary.rs:7` | Lifetime and reuse scope of one compression dictionary. |
 | `DictionaryRef` | item | `dictionary.rs:20` | Decoder-facing dictionary reference embedded into one block plan. |
@@ -396,12 +398,13 @@ its `extern "C"` functions are the interface.
 | `PhysicalCompressionPlan` | item | `plan.rs:96` | Encoder-side candidate plan including ephemeral cost estimates and explanation metadata. |
 | `raw` | method | `plan.rs:114` | Creates the universal RAW fallback plan. |
 | `is_plain_numeric` | method | `plan.rs:132` | True for a bare NUM1 plan (Numeric codec, no transforms, no entropy stage), the only |
-| `label` | method | `plan.rs:139` | Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry. |
+| `segmented` | method | `plan.rs:141` | The plan recorded for a segmented block (`SEG1`): a container with no transform, entropy |
+| `label` | method | `plan.rs:158` | Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry. |
 | `BlockProfile` | item | `profile.rs:3` | Statistical description of one input block used by the adaptive planner. |
 | `CompressionStats` | item | `stats.rs:8` | Aggregate telemetry produced by one compression operation. |
-| `compression_ratio` | method | `stats.rs:81` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
-| `record_selected_plan` | method | `stats.rs:90` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
-| `record_plan` | method | `stats.rs:113` | Increments the stable counter associated with one selected physical plan. |
+| `compression_ratio` | method | `stats.rs:85` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
+| `record_selected_plan` | method | `stats.rs:94` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
+| `record_plan` | method | `stats.rs:118` | Increments the stable counter associated with one selected physical plan. |
 | `FORMAT_MAJOR` | item | `version.rs:6` | Current major format version. |
 | `FORMAT_MINOR` | item | `version.rs:10` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the |
 | `FORMAT_MINOR_STORAGE` | item | `version.rs:14` | First minor version that has segmented (`SEG1`) and columnar (`COL1`) blocks and the |
@@ -489,17 +492,17 @@ its `extern "C"` functions are the interface.
 | `chunks` | method | `chunker.rs:14` | Returns an iterator over independent fixed-size source blocks. |
 | `PREALLOCATION_CAP_BYTES` | item | `engine.rs:25` | Upper bound on the output capacity [`AceEngine::decompress_into`] reserves up front from |
 | `AceEngine` | item | `engine.rs:29` | Public façade of the ACE compression engine. |
-| `new` | method | `engine.rs:44` | Creates an engine with explicit encoder configuration and default decoder limits. |
-| `default_engine` | method | `engine.rs:61` | Creates an engine using default settings. |
-| `with_decode_limits` | method | `engine.rs:69` | Replaces decoder resource limits. |
-| `config` | method | `engine.rs:75` | Returns a read-only view of encoder configuration. |
-| `compress` | method | `engine.rs:85` | Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a |
-| `compress_with_stats` | method | `engine.rs:104` | Compresses bytes and returns both the file image and detailed telemetry. |
-| `compress_to` | method | `engine.rs:152` | Compresses source bytes and writes the finished ACE file to an arbitrary sink. |
-| `decompress` | method | `engine.rs:167` | Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes. |
-| `decompress_into` | method | `engine.rs:187` | Decompresses an in-memory ACE file into a caller-owned buffer and returns the number |
-| `decompress_from` | method | `engine.rs:206` | Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer. |
-| `explain` | method | `engine.rs:258` | Produces deterministic planner explanations (every candidate fully evaluated) without |
+| `new` | method | `engine.rs:45` | Creates an engine with explicit encoder configuration and default decoder limits. |
+| `default_engine` | method | `engine.rs:65` | Creates an engine using default settings. |
+| `with_decode_limits` | method | `engine.rs:73` | Replaces decoder resource limits. |
+| `config` | method | `engine.rs:79` | Returns a read-only view of encoder configuration. |
+| `compress` | method | `engine.rs:89` | Compresses an in-memory byte slice into a complete ACE file (Format 1.3, or 1.4 when a |
+| `compress_with_stats` | method | `engine.rs:108` | Compresses bytes and returns both the file image and detailed telemetry. |
+| `compress_to` | method | `engine.rs:156` | Compresses source bytes and writes the finished ACE file to an arbitrary sink. |
+| `decompress` | method | `engine.rs:171` | Decompresses an in-memory ACE 1.0 – 1.5 file into reconstructed bytes. |
+| `decompress_into` | method | `engine.rs:191` | Decompresses an in-memory ACE file into a caller-owned buffer and returns the number |
+| `decompress_from` | method | `engine.rs:210` | Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer. |
+| `explain` | method | `engine.rs:262` | Produces deterministic planner explanations (every candidate fully evaluated) without |
 | `BlockExplanation` | item | `explain.rs:10` | Planner explanation for one input block. |
 | `RangeAccessMetrics` | item | `indexed.rs:9` | Physical work implied by one logical random-access range request. |
 | `physical_to_logical_ratio` | method | `indexed.rs:23` | Returns physical serialized bytes read divided by logical reconstructed bytes requested. |
@@ -786,10 +789,8 @@ its `extern "C"` functions are the interface.
 | `budget` | method | `route_policy.rs:213` | Returns the route's initial work budget before Numeric dominance is measured. |
 | `AlphabetBucket` | item | `segmenter.rs:37` | Coarse alphabet size of a window: the number of distinct byte values, bucketed. |
 | `WindowClass` | item | `segmenter.rs:53` | What a window looks like to the planner: the route it would be given and its alphabet. |
-| `SegmenterConfig` | item | `segmenter.rs:65` | Window and segment sizes of the segmenter. |
-| `validate` | method | `segmenter.rs:98` | Checks the relations the algorithm relies on. |
-| `classify_window` | item | `segmenter.rs:131` | Classifies one window: the planner route plus the alphabet bucket. |
-| `segment_boundaries` | item | `segmenter.rs:158` | Cuts `input` into segments and returns their byte ranges, which tile `0..input.len()`. |
+| `classify_window` | item | `segmenter.rs:72` | Classifies one window: the planner route plus the alphabet bucket. |
+| `segment_boundaries` | item | `segmenter.rs:99` | Cuts `input` into segments and returns their byte ranges, which tile `0..input.len()`. |
 
 ### `ace-runtime` (internal)
 
