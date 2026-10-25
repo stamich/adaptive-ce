@@ -14,10 +14,16 @@ const HASH_SIZE: usize = 1 << HASH_BITS;
 /// Maximum candidates inspected per position in `LzMode::Balanced`.
 const MAX_CHAIN: usize = 16;
 
-/// Largest input (bytes) encoded with the per-thread tables. Longer inputs allocate their own:
-/// the cost of clearing the tables is then small next to the encoding, and the plain loop is
-/// about 7 % faster than the one that tracks the touched buckets.
+/// Largest input (bytes) encoded with the per-thread tables that track their touched buckets.
+/// Longer inputs use the plain loop over a second set of per-thread tables: clearing 512 KiB of
+/// buckets is then small next to the encoding, and the plain loop is about 7 % faster than the
+/// one that tracks the touched buckets.
 pub const LZ_SCRATCH_MAX_INPUT: usize = 64 * 1024;
+
+/// Largest input (bytes) whose tables are kept on the thread between calls. A block above this
+/// (a block size of several MiB) allocates its own tables, so a worker never holds more than
+/// about 20 MiB (`8 bytes × 2 MiB` for the chain table plus the buckets) for the next block.
+pub const LZ_REUSE_MAX_INPUT: usize = 2 * 1024 * 1024;
 
 /// Hash-chain tables reused by the calls of one thread.
 ///
@@ -86,6 +92,11 @@ impl LzScratch {
 thread_local! {
     /// The hash-chain tables of the calling thread.
     static LZ_SCRATCH: std::cell::RefCell<LzScratch> = const { std::cell::RefCell::new(LzScratch::new()) };
+    /// Tables of the calling thread for inputs above [`LZ_SCRATCH_MAX_INPUT`]: `(head, prev)`.
+    /// `head` is refilled for every call; `prev` is only grown, never cleared, because the chain
+    /// walk reads only the entries of positions the same call inserted.
+    static LZ_LARGE: std::cell::RefCell<(Vec<usize>, Vec<usize>)> =
+        const { std::cell::RefCell::new((Vec::new(), Vec::new())) };
 }
 
 /// Test hook: leaves this thread's hash tables dirty, exactly as an encode that unwound would.
@@ -111,7 +122,7 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
         return Vec::new();
     }
     if input.len() > LZ_SCRATCH_MAX_INPUT {
-        return lz_encode_allocating(input, mode);
+        return lz_encode_from(input, 0, mode);
     }
     LZ_SCRATCH.with(|cell| match cell.try_borrow_mut() {
         Ok(mut scratch) => {
@@ -129,13 +140,14 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
     })
 }
 
-/// The encoder with hash tables allocated for this call (the path of inputs above
-/// [`LZ_SCRATCH_MAX_INPUT`]).
+/// The encoder with hash tables allocated for this call.
 ///
 /// Produces exactly the bytes of [`lz_encode`] for every input; it is the reference the reuse of
 /// the per-thread tables is tested against.
 pub fn lz_encode_allocating(input: &[u8], mode: LzMode) -> Vec<u8> {
-    lz_encode_from(input, 0, mode)
+    let mut head = vec![usize::MAX; HASH_SIZE];
+    let mut prev = vec![usize::MAX; input.len()];
+    lz_encode_tables(input, 0, mode, &mut head, &mut prev)
 }
 
 /// Encodes `input` with `dictionary` as history that precedes it (Format 1.6).
@@ -159,10 +171,39 @@ pub fn lz_encode_with_dictionary(input: &[u8], dictionary: &[u8], mode: LzMode) 
 
 /// Encodes `data[start..]`; `data[..start]` is history that is indexed but not emitted.
 ///
-/// With `start == 0` this is the plain encoder. The tables are allocated for the call.
+/// With `start == 0` this is the plain encoder. The tables come from the calling thread when
+/// the data is at most [`LZ_REUSE_MAX_INPUT`] bytes, so the blocks a worker encodes one after
+/// the other share one allocation; otherwise (or on a re-entrant call) they are allocated.
 fn lz_encode_from(data: &[u8], start: usize, mode: LzMode) -> Vec<u8> {
+    if data.len() <= LZ_REUSE_MAX_INPUT {
+        let reused = LZ_LARGE.with(|cell| {
+            let mut tables = cell.try_borrow_mut().ok()?;
+            let (head, prev) = &mut *tables;
+            head.clear();
+            head.resize(HASH_SIZE, usize::MAX);
+            if prev.len() < data.len() {
+                prev.resize(data.len(), usize::MAX);
+            }
+            Some(lz_encode_tables(data, start, mode, head, &mut prev[..data.len()]))
+        });
+        if let Some(out) = reused {
+            return out;
+        }
+    }
     let mut head = vec![usize::MAX; HASH_SIZE];
     let mut prev = vec![usize::MAX; data.len()];
+    lz_encode_tables(data, start, mode, &mut head, &mut prev)
+}
+
+/// Encodes `data[start..]` over `head` (all `usize::MAX`, `HASH_SIZE` entries) and `prev`
+/// (`data.len()` entries; their initial content is never read).
+fn lz_encode_tables(
+    data: &[u8],
+    start: usize,
+    mode: LzMode,
+    head: &mut [usize],
+    prev: &mut [usize],
+) -> Vec<u8> {
     // Index the history so that matches can start in it. A position whose four bytes run into
     // the input is fine: the bytes exist in `data` and in the decoder's output buffer.
     for p in 0..start {
@@ -181,7 +222,7 @@ fn lz_encode_from(data: &[u8], start: usize, mode: LzMode) -> Vec<u8> {
             let candidate = head[h];
             prev[i] = candidate;
             head[h] = i;
-            find_best(data, i, candidate, &prev, mode)
+            find_best(data, i, candidate, prev, mode)
         } else {
             None
         };

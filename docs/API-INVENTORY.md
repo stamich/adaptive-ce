@@ -30,7 +30,7 @@ its `extern "C"` functions are the interface.
 | `ace-analysis` | internal | 39 | 13 | 0 |
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
-| `ace-codecs` | internal | 56 | 21 | 0 |
+| `ace-codecs` | internal | 57 | 21 | 0 |
 | `ace-core` | internal | 38 | 34 | 0 |
 | `ace-corpus` | internal | 6 | 20 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
@@ -316,13 +316,14 @@ its `extern "C"` functions are the interface.
 | `payload_minor_version` | item | `dispatch.rs:28` | Lowest minor format version whose readers can decode `primary`, the stream `codec` produced. |
 | `encode_codec` | item | `dispatch.rs:56` | Encodes a transformed byte stream with the requested primary codec. |
 | `decode_codec` | item | `dispatch.rs:74` | Decodes a primary codec stream to exactly `expected_size` bytes. |
-| `LZ_SCRATCH_MAX_INPUT` | item | `lz.rs:20` | Largest input (bytes) encoded with the per-thread tables. Longer inputs allocate their own: |
-| `lz_leave_scratch_dirty` | item | `lz.rs:96` | Test hook: leaves this thread's hash tables dirty, exactly as an encode that unwound would. |
-| `lz_encode` | item | `lz.rs:109` | Encodes a byte slice into a simple LZ token stream. |
-| `lz_encode_allocating` | item | `lz.rs:137` | The encoder with hash tables allocated for this call (the path of inputs above |
-| `lz_encode_with_dictionary` | item | `lz.rs:147` | Encodes `input` with `dictionary` as history that precedes it (Format 1.6). |
-| `lz_decode` | item | `lz.rs:251` | Decodes a simple LZ token stream with strict reference and output validation. |
-| `lz_decode_with_dictionary` | item | `lz.rs:266` | Decodes a token stream that was encoded with `dictionary` as preset history |
+| `LZ_SCRATCH_MAX_INPUT` | item | `lz.rs:21` | Largest input (bytes) encoded with the per-thread tables that track their touched buckets. |
+| `LZ_REUSE_MAX_INPUT` | item | `lz.rs:26` | Largest input (bytes) whose tables are kept on the thread between calls. A block above this |
+| `lz_leave_scratch_dirty` | item | `lz.rs:107` | Test hook: leaves this thread's hash tables dirty, exactly as an encode that unwound would. |
+| `lz_encode` | item | `lz.rs:120` | Encodes a byte slice into a simple LZ token stream. |
+| `lz_encode_allocating` | item | `lz.rs:147` | The encoder with hash tables allocated for this call. |
+| `lz_encode_with_dictionary` | item | `lz.rs:159` | Encodes `input` with `dictionary` as history that precedes it (Format 1.6). |
+| `lz_decode` | item | `lz.rs:292` | Decodes a simple LZ token stream with strict reference and output validation. |
+| `lz_decode_with_dictionary` | item | `lz.rs:307` | Decodes a token stream that was encoded with `dictionary` as preset history |
 | `numeric_decode` | item | `numeric/decode.rs:25` | Decodes a NUM1 payload to exactly `expected_size` bytes. |
 | `numeric_encode` | item | `numeric/encode.rs:21` | Encodes bytes with the smallest deterministic FOR/Delta/DoD+BitPack representation. |
 | `numeric_encode_with` | item | `numeric/encode.rs:35` | Encodes bytes with an explicitly chosen lane width and mode. |
@@ -817,7 +818,7 @@ its `extern "C"` functions are the interface.
 | `HybridLzObservation` | item | `hybrid.rs:73` | Diagnostic result emitted by one bounded LZ refinement. |
 | `HybridLzEstimator` | item | `hybrid.rs:86` | Bounded production-codec LZ estimator. |
 | `refine` | method | `hybrid.rs:99` | Refines one candidate if it uses LZ; non-LZ candidates are returned unchanged. |
-| `encode_plan_payload` | item | `pipeline.rs:13` | Executes only the reversible payload pipeline of one plan and returns entropy metadata, payload and primary-stream size. |
+| `encode_plan_payload` | item | `pipeline.rs:19` | Executes only the reversible payload pipeline of one plan and returns entropy metadata, payload and primary-stream size. |
 | `stable_plan_key` | item | `plan_identity.rs:6` | Produces a stable tie-break key that does not depend on address, thread scheduling or hash iteration order. |
 | `same_plan_semantics` | item | `plan_identity.rs:22` | Returns true when two physical plans have identical decoder semantics. |
 | `CompressionPlanner` | item | `planner.rs:8` | Generates a deterministic candidate set from one analyzed block. |
