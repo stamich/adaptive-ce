@@ -148,7 +148,13 @@ SHA-256 digests with `examples/golden/0.6.1/`.
    that is deleted on exit;
 4. `System.mapLibraryName("ace_ffi")` through the normal library path.
 
-`<os>-<arch>` is one of `linux-x86_64`, `linux-aarch64`, `macos-aarch64`, `windows-x86_64`.
+`<os>-<arch>` is one of `linux-x86_64`, `linux-aarch64`, `macos-aarch64`, `windows-x86_64`. The
+library file is `libace_ffi.so`, `libace_ffi.dylib` or `ace_ffi.dll` (`System.mapLibraryName`).
+Since 0.8.0 CI builds, tests and packages the library on all four platforms: `jvm` (linux-x86_64,
+JDK 22 and 25), `aarch64` (linux-aarch64, Rust tests), `native` (macos-aarch64 and windows-x86_64,
+`./ace-ci0.8.0.sh native`: C ABI tests and the Java module's tests, including the packaged-JAR
+smoke test). A JAR carries the library of the machine that built it; a multi-platform JAR is
+assembled by copying each platform's file into `native/<os>-<arch>/` before `gradle jar`.
 After loading, the ABI version is checked (rule 6).
 
 The JVM needs `--enable-native-access=ALL-UNNAMED` (or the module name). The minimum is JDK 22,

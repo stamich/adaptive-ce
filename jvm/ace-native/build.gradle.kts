@@ -49,6 +49,9 @@ tasks.register<JavaExec>("ffiBenchmark") {
     mainClass.set("io.ace.FfiBenchmark")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     systemProperty("ace.native.path", aceNativeDir)
-    systemProperty("ace.corpus.bin", rootDir.parentFile.resolve("target/release/ace-corpus").path)
+    systemProperty("ace.corpus.bin", if (System.getProperty("os.name").lowercase().contains("win"))
+        rootDir.parentFile.resolve("target/release/ace-corpus.exe").path
+    else
+        rootDir.parentFile.resolve("target/release/ace-corpus").path)
     args(providers.gradleProperty("ffiOut").orElse(layout.buildDirectory.file("ffi-jvm.json").get().asFile.path).get())
 }

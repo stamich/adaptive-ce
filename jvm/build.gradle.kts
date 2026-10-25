@@ -31,8 +31,11 @@ val buildCorpus = tasks.register<Exec>("buildCorpus") {
     onlyIf { !project.hasProperty("skipNativeBuild") }
 }
 
+// Windows names executables `ace-corpus.exe`; the tests only need the path that works here.
+val executableSuffix: String = if (System.getProperty("os.name").lowercase().contains("win")) ".exe" else ""
+
 val aceCorpusBin: String = providers.gradleProperty("aceCorpusBin")
-    .orElse(rootDir.parentFile.resolve("target/release/ace-corpus").path).get()
+    .orElse(rootDir.parentFile.resolve("target/release/ace-corpus$executableSuffix").path).get()
 
 subprojects {
     group = "io.ace"

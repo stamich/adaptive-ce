@@ -59,6 +59,37 @@ jobs:
           name: jvm-test-reports-${{ matrix.java }}
           path: jvm/**/build/reports/tests
           if-no-files-found: ignore
+  native:
+    # The native library on the other platforms the JAR layout names (native/macos-aarch64/,
+    # native/windows-x86_64/): it must build, pass the C ABI tests, be packaged and be loaded back
+    # by the Java SDK tests. Linux x86_64 is covered by `jvm`, Linux aarch64 by `aarch64`.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show && rustc --version
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 22
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.1.0
+      - run: set -o pipefail; ./ace-ci0.8.0.sh native 2>&1 | tee ci.log
+      - if: failure()
+        run: tools/ace-ci-annotate0.8.0.sh ci.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-test-reports-${{ matrix.os }}
+          path: jvm/**/build/reports/tests
+          if-no-files-found: ignore
   fuzz-smoke:
     # 20 targets x 25 s on every push / PR. The corpus is kept between runs as a CI cache and
     # published as an artifact; it is never committed (fuzz/README.md, "Corpus policy").

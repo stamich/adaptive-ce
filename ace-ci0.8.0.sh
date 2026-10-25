@@ -6,6 +6,8 @@
 #   ./ace-ci0.8.0.sh aarch64   golden bytes of the engine, the facade and the C ABI on this machine
 #                              (ACE_EXPECT_ARCH=aarch64 makes the job fail on any other CPU)
 #   ./ace-ci0.8.0.sh jvm       Gradle build and tests of jvm/ (needs gradle 9.1+ and JDK 22 or newer)
+#   ./ace-ci0.8.0.sh native    C ABI tests and the Java SDK tests on this OS (macOS, Windows, Linux);
+#                              the library is built for this machine and packaged under native/<os>-<arch>/
 #   ./ace-ci0.8.0.sh release   full ace-release0.8.0.sh (needs ACE_AB_BASELINE_TREE)
 #   ./ace-ci0.8.0.sh fuzz      all 20 fuzz targets, ACE_FUZZ_SECONDS each (default 60);
 #                              ACE_FUZZ_CMIN=1 minimises every corpus afterwards
@@ -39,6 +41,16 @@ case "${1:-}" in
     ace_step "gradle build (jvm/)"
     gradle -p jvm build --no-daemon --console=plain
     ;;
+  native)
+    # The same checks as `jvm`, limited to the Java module so that a platform without a Scala
+    # toolchain in CI still proves that its library loads, packs and round-trips.
+    ace_step "C ABI tests on $(uname -s) $(uname -m)"
+    cargo test --release -p ace-ffi
+    command -v gradle >/dev/null || ace_die "gradle is not installed"
+    java -version
+    ace_step "gradle :ace-native:build"
+    gradle -p jvm :ace-native:build --no-daemon --console=plain
+    ;;
   release)
     [[ -n "${ACE_AB_BASELINE_TREE:-}" ]] || ace_die "set ACE_AB_BASELINE_TREE to the $ACE_BASELINE source tree"
     ./ace-release0.8.0.sh "$ACE_AB_BASELINE_TREE"
@@ -67,7 +79,7 @@ case "${1:-}" in
     done
     ;;
   *)
-    ace_die "usage: $0 {pr|aarch64|jvm|release|fuzz|fuzz-smoke}"
+    ace_die "usage: $0 {pr|aarch64|jvm|native|release|fuzz|fuzz-smoke}"
     ;;
 esac
 ace_log "ci '$1' completed"
