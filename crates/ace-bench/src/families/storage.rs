@@ -16,9 +16,9 @@
 use ace_core::{
     ColumnKind, ColumnSpec, DictionaryScope, EncoderDictionary, Schema, SegmentationConfig,
 };
+use ace_corpus::{FieldKind, RecordWorkload, Workload};
 use ace_dictionary::{train_dictionary, Dictionary, DictionaryRegistry, TrainerConfig};
 use std::sync::Arc;
-use ace_corpus::{FieldKind, RecordWorkload, Workload};
 
 use super::float::profile_name;
 use crate::prelude::*;
@@ -166,7 +166,11 @@ fn dictionary_rows() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     )?;
     let id = ace_dictionary::dictionary_id_of(&bytes);
     let mut registry = DictionaryRegistry::new();
-    registry.insert(Dictionary::new(id, DictionaryScope::External, bytes.clone()));
+    registry.insert(Dictionary::new(
+        id,
+        DictionaryScope::External,
+        bytes.clone(),
+    ));
     let base = AceConfig {
         threads: 1,
         block_size: DICTIONARY_BLOCK,
@@ -198,7 +202,10 @@ fn dictionary_rows() -> Result<Vec<Value>, Box<dyn std::error::Error>> {
             .field("plain_bytes", plain.len())
             .field("dictionary_bytes", file.len())
             .field("dictionary_size", bytes.len())
-            .field("gain_vs_plain", plain.len() as f64 / file.len().max(1) as f64)
+            .field(
+                "gain_vs_plain",
+                plain.len() as f64 / file.len().max(1) as f64,
+            )
             .field("format_minor", file[5])
             .field("dictionary_blocks", stats.dictionary_blocks)
             .value("encode", timing_json(&encode, data.len()))

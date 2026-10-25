@@ -177,11 +177,18 @@ fn only_the_segmented_flag_is_defined() {
     };
     let limits = DecodeLimits::default();
     for flags in [0, INDEX_FLAG_SEGMENTED] {
-        let bytes = encode_index(&BlockIndex { entries: vec![entry(flags)] });
-        assert_eq!(decode_index(&bytes, &limits).unwrap().entries[0].flags, flags);
+        let bytes = encode_index(&BlockIndex {
+            entries: vec![entry(flags)],
+        });
+        assert_eq!(
+            decode_index(&bytes, &limits).unwrap().entries[0].flags,
+            flags
+        );
     }
     for flags in [0x2, 0x3, 0x8000_0000, u32::MAX] {
-        let bytes = encode_index(&BlockIndex { entries: vec![entry(flags)] });
+        let bytes = encode_index(&BlockIndex {
+            entries: vec![entry(flags)],
+        });
         assert!(
             matches!(decode_index(&bytes, &limits), Err(AceError::Malformed(_))),
             "{flags:#x}"

@@ -41,7 +41,9 @@ fn noise(len: usize, mut seed: u64) -> Vec<u8> {
 
 /// Text that LZ and Huffman compress well.
 fn text(len: usize) -> Vec<u8> {
-    let words = ["alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n"];
+    let words = [
+        "alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n",
+    ];
     let mut out = Vec::with_capacity(len + 8);
     let mut i = 0usize;
     while out.len() < len {
@@ -76,19 +78,32 @@ fn blocks_of(file: &[u8]) -> (u8, Vec<(ace_format::BlockHeader, Vec<u8>)>) {
 #[test]
 fn default_configuration_never_segments_and_keeps_the_old_bytes() {
     let input = mixed();
-    let plain = AceEngine::new(config(false)).unwrap().compress(&input).unwrap();
+    let plain = AceEngine::new(config(false))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let (minor, blocks) = blocks_of(&plain);
     assert!(minor < 6, "no container codec, so not Format 1.6");
-    assert!(blocks.iter().all(|(header, _)| header.codec != CodecId::Segmented));
+    assert!(blocks
+        .iter()
+        .all(|(header, _)| header.codec != CodecId::Segmented));
 }
 
 #[test]
 fn a_mixed_block_is_stored_as_segments_and_is_smaller() {
     let input = mixed();
-    let plain = AceEngine::new(config(false)).unwrap().compress(&input).unwrap();
+    let plain = AceEngine::new(config(false))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let engine = AceEngine::new(config(true)).unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
-    assert!(file.len() < plain.len(), "{} !< {}", file.len(), plain.len());
+    assert!(
+        file.len() < plain.len(),
+        "{} !< {}",
+        file.len(),
+        plain.len()
+    );
 
     let (minor, blocks) = blocks_of(&file);
     assert_eq!(minor, 6, "a segmented block makes the file Format 1.6");
@@ -109,8 +124,14 @@ fn a_mixed_block_is_stored_as_segments_and_is_smaller() {
         .zip(table.logical_ranges())
         .enumerate()
     {
-        let inner = parse_inner_block(&payload[range], index as u64, logical.len() as u32, 6, &limits)
-            .unwrap();
+        let inner = parse_inner_block(
+            &payload[range],
+            index as u64,
+            logical.len() as u32,
+            6,
+            &limits,
+        )
+        .unwrap();
         assert_ne!(inner.0.codec, CodecId::Segmented);
         assert_ne!(inner.0.codec, CodecId::Columnar);
     }
@@ -118,17 +139,36 @@ fn a_mixed_block_is_stored_as_segments_and_is_smaller() {
     assert_eq!(stats.segmented_blocks, 1);
     assert_eq!(stats.segments as usize, table.entries.len());
     // The codec counters describe the stored bytes: one count per inner block, none for the outer.
-    let inner_blocks = stats.raw_blocks + stats.rle_blocks + stats.lz_blocks + stats.numeric_blocks
+    let inner_blocks = stats.raw_blocks
+        + stats.rle_blocks
+        + stats.lz_blocks
+        + stats.numeric_blocks
         + stats.time_series_blocks;
     assert_eq!(inner_blocks, stats.segments);
 }
 
 #[test]
 fn a_block_of_one_character_is_never_larger_than_unsegmented() {
-    for input in [text(600 * 1024), vec![0u8; 600 * 1024], noise(300 * 1024, 7), (0u32..90_000).flat_map(u32::to_le_bytes).collect()] {
-        let plain = AceEngine::new(config(false)).unwrap().compress(&input).unwrap();
-        let segmented = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
-        assert!(segmented.len() <= plain.len(), "{} > {}", segmented.len(), plain.len());
+    for input in [
+        text(600 * 1024),
+        vec![0u8; 600 * 1024],
+        noise(300 * 1024, 7),
+        (0u32..90_000).flat_map(u32::to_le_bytes).collect(),
+    ] {
+        let plain = AceEngine::new(config(false))
+            .unwrap()
+            .compress(&input)
+            .unwrap();
+        let segmented = AceEngine::new(config(true))
+            .unwrap()
+            .compress(&input)
+            .unwrap();
+        assert!(
+            segmented.len() <= plain.len(),
+            "{} > {}",
+            segmented.len(),
+            plain.len()
+        );
     }
 }
 
@@ -136,8 +176,14 @@ fn a_block_of_one_character_is_never_larger_than_unsegmented() {
 fn short_blocks_are_left_alone() {
     // Below twice the minimum segment size there is nothing to cut.
     let input = mixed()[..24 * 1024].to_vec();
-    let plain = AceEngine::new(config(false)).unwrap().compress(&input).unwrap();
-    let segmented = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
+    let plain = AceEngine::new(config(false))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
+    let segmented = AceEngine::new(config(true))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     assert_eq!(plain, segmented);
 }
 
@@ -145,21 +191,48 @@ fn short_blocks_are_left_alone() {
 fn the_output_does_not_depend_on_the_thread_count() {
     let mut input = mixed();
     input.extend(mixed());
-    let reference = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
+    let reference = AceEngine::new(config(true))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     for threads in [2usize, 4] {
-        let engine = AceEngine::new(AceConfig { threads, block_size: 512 * 1024, ..config(true) }).unwrap();
-        let single_thread = AceEngine::new(AceConfig { threads: 1, block_size: 512 * 1024, ..config(true) })
-            .unwrap();
-        assert_eq!(engine.compress(&input).unwrap(), single_thread.compress(&input).unwrap());
+        let engine = AceEngine::new(AceConfig {
+            threads,
+            block_size: 512 * 1024,
+            ..config(true)
+        })
+        .unwrap();
+        let single_thread = AceEngine::new(AceConfig {
+            threads: 1,
+            block_size: 512 * 1024,
+            ..config(true)
+        })
+        .unwrap();
+        assert_eq!(
+            engine.compress(&input).unwrap(),
+            single_thread.compress(&input).unwrap()
+        );
     }
-    assert_eq!(reference, AceEngine::new(config(true)).unwrap().compress(&input).unwrap());
+    assert_eq!(
+        reference,
+        AceEngine::new(config(true))
+            .unwrap()
+            .compress(&input)
+            .unwrap()
+    );
 }
 
 #[test]
 fn invalid_segmentation_is_rejected_when_the_engine_is_built() {
     let bad = AceConfig {
-        segmentation: Some(SegmentationConfig { window_size: 0, ..segmentation() }),
+        segmentation: Some(SegmentationConfig {
+            window_size: 0,
+            ..segmentation()
+        }),
         ..AceConfig::default()
     };
-    assert!(matches!(AceEngine::new(bad), Err(AceError::InvalidConfig(_))));
+    assert!(matches!(
+        AceEngine::new(bad),
+        Err(AceError::InvalidConfig(_))
+    ));
 }

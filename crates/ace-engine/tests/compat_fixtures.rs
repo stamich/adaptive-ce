@@ -202,7 +202,9 @@ fn trade_schema() -> ace_core::Schema {
 /// 400 000 `u32` counters that step every other value, then 1 500 000 bytes of a multiplicative
 /// pattern: one 4 MiB block with two regimes (Format 1.6 segments); the golden case uses it too.
 fn mixed_regimes() -> Vec<u8> {
-    let mut out: Vec<u8> = (0..400_000u32).flat_map(|i| (i / 2).to_le_bytes()).collect();
+    let mut out: Vec<u8> = (0..400_000u32)
+        .flat_map(|i| (i / 2).to_le_bytes())
+        .collect();
     out.extend((0..1_500_000u64).map(|i| ((i.wrapping_mul(2_654_435_761)) >> 13) as u8));
     out
 }
@@ -485,7 +487,9 @@ fn write_fixtures_0_8_0() {
     ];
     for (case, name, config) in fixtures {
         let data = input(case);
-        let engine = AceEngine::new(config).unwrap().with_dictionaries(registry.clone());
+        let engine = AceEngine::new(config)
+            .unwrap()
+            .with_dictionaries(registry.clone());
         let file = engine.compress(&data).unwrap();
         assert!(engine.decompress(&file).unwrap() == data);
         std::fs::write(Path::new(&dir).join(format!("{name}.ace")), &file).unwrap();

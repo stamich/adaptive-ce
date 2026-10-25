@@ -260,13 +260,16 @@ pub unsafe fn config_from_raw(config: *const AceConfig) -> Result<Config, AceSta
     if value.segmentation != 0 {
         let mut segmentation = Segmentation::default();
         if value.segment_window != 0 {
-            segmentation = segmentation.window_size(to_usize(value.segment_window, "segment_window")?);
+            segmentation =
+                segmentation.window_size(to_usize(value.segment_window, "segment_window")?);
         }
         if value.segment_min != 0 {
-            segmentation = segmentation.min_segment_size(to_usize(value.segment_min, "segment_min")?);
+            segmentation =
+                segmentation.min_segment_size(to_usize(value.segment_min, "segment_min")?);
         }
         if value.segment_max != 0 {
-            segmentation = segmentation.max_segment_size(to_usize(value.segment_max, "segment_max")?);
+            segmentation =
+                segmentation.max_segment_size(to_usize(value.segment_max, "segment_max")?);
         }
         if value.max_segments != 0 {
             segmentation = segmentation.max_segments(to_usize(value.max_segments, "max_segments")?);

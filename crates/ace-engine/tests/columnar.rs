@@ -65,15 +65,26 @@ fn open(file: &[u8]) -> AceIndexedDecoder<Cursor<&[u8]>> {
 #[test]
 fn a_record_block_is_stored_by_column_and_is_smaller() {
     let input = trades(20_000, 11);
-    let rowwise = AceEngine::new(config(None)).unwrap().compress(&input).unwrap();
+    let rowwise = AceEngine::new(config(None))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let engine = AceEngine::new(config(Some(trade_schema()))).unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
-    assert!(file.len() < rowwise.len(), "{} !< {}", file.len(), rowwise.len());
+    assert!(
+        file.len() < rowwise.len(),
+        "{} !< {}",
+        file.len(),
+        rowwise.len()
+    );
     assert_eq!((stats.columnar_blocks, stats.column_streams), (1, 4));
 
     let mut reader = AceReader::new(Cursor::new(&file), DecodeLimits::default());
     let header = reader.read_file_header().unwrap();
-    assert_eq!(header.minor_version, 6, "a columnar block makes the file Format 1.6");
+    assert_eq!(
+        header.minor_version, 6,
+        "a columnar block makes the file Format 1.6"
+    );
     let (block, metadata, _) = reader.read_block().unwrap();
     assert_eq!(block.codec, CodecId::Columnar);
     assert!(metadata.is_empty() && block.transforms.is_empty() && block.dictionary.is_none());
@@ -84,18 +95,26 @@ fn a_record_block_is_stored_by_column_and_is_smaller() {
     engine.decompress_into(&file, &mut into).unwrap();
     assert_eq!(into, input);
     let mut streamed = Vec::new();
-    engine.decompress_from(Cursor::new(&file), &mut streamed).unwrap();
+    engine
+        .decompress_from(Cursor::new(&file), &mut streamed)
+        .unwrap();
     assert_eq!(streamed, input);
     let mut decoder = open(&file);
     assert_eq!(decoder.read_range(0..input.len() as u64).unwrap(), input);
     let last = input.len() as u64;
-    assert_eq!(decoder.read_range(last - 30..last).unwrap(), &input[input.len() - 30..]);
+    assert_eq!(
+        decoder.read_range(last - 30..last).unwrap(),
+        &input[input.len() - 30..]
+    );
 }
 
 #[test]
 fn without_a_schema_the_bytes_are_those_of_a_rowwise_block() {
     let input = trades(5_000, 0);
-    let a = AceEngine::new(config(None)).unwrap().compress(&input).unwrap();
+    let a = AceEngine::new(config(None))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let mut reader = AceReader::new(Cursor::new(&a), DecodeLimits::default());
     assert!(reader.read_file_header().unwrap().minor_version < 6);
     assert_ne!(reader.read_block().unwrap().0.codec, CodecId::Columnar);
@@ -116,11 +135,26 @@ fn a_block_is_never_larger_than_rowwise() {
             })
             .collect::<Vec<u8>>()
     };
-    for input in [random, vec![0u8; 48_000], trades(1, 5), trades(0, 20), Vec::new()] {
-        let rowwise = AceEngine::new(config(None)).unwrap().compress(&input).unwrap();
-        let columnar = AceEngine::new(config(Some(trade_schema()))).unwrap().compress(&input).unwrap();
+    for input in [
+        random,
+        vec![0u8; 48_000],
+        trades(1, 5),
+        trades(0, 20),
+        Vec::new(),
+    ] {
+        let rowwise = AceEngine::new(config(None))
+            .unwrap()
+            .compress(&input)
+            .unwrap();
+        let columnar = AceEngine::new(config(Some(trade_schema())))
+            .unwrap()
+            .compress(&input)
+            .unwrap();
         assert!(columnar.len() <= rowwise.len());
-        assert_eq!(AceEngine::default_engine().decompress(&columnar).unwrap(), input);
+        assert_eq!(
+            AceEngine::default_engine().decompress(&columnar).unwrap(),
+            input
+        );
     }
 }
 
@@ -135,21 +169,30 @@ fn segmentation_and_schema_together_keep_the_smallest() {
         max_segments: 64,
     };
     let only = |segmentation: Option<SegmentationConfig>, schema: Option<Schema>| {
-        AceEngine::new(AceConfig { segmentation, ..config(schema) })
-            .unwrap()
-            .compress(&input)
-            .unwrap()
-            .len()
+        AceEngine::new(AceConfig {
+            segmentation,
+            ..config(schema)
+        })
+        .unwrap()
+        .compress(&input)
+        .unwrap()
+        .len()
     };
     let both = only(Some(segmentation), Some(trade_schema()));
     assert!(both <= only(None, None));
     assert!(both <= only(Some(segmentation), None));
     assert!(both <= only(None, Some(trade_schema())));
-    let file = AceEngine::new(AceConfig { segmentation: Some(segmentation), ..config(Some(trade_schema())) })
-        .unwrap()
-        .compress(&input)
-        .unwrap();
-    assert_eq!(AceEngine::default_engine().decompress(&file).unwrap(), input);
+    let file = AceEngine::new(AceConfig {
+        segmentation: Some(segmentation),
+        ..config(Some(trade_schema()))
+    })
+    .unwrap()
+    .compress(&input)
+    .unwrap();
+    assert_eq!(
+        AceEngine::default_engine().decompress(&file).unwrap(),
+        input
+    );
 }
 
 /// The schema's kinds steer the codec of each column (`block_encoder::column_config`).
@@ -178,12 +221,22 @@ fn the_kind_of_a_column_selects_its_codec() {
 
     // Declaring everything opaque disables both specializations: only generic codecs remain.
     let (opaque_len, opaque) = stats_for([Bytes; 4]);
-    assert_eq!(opaque.numeric_blocks + opaque.time_series_blocks, 0, "{opaque:?}");
-    assert!(typed_len < opaque_len, "typed {typed_len} !< opaque {opaque_len}");
+    assert_eq!(
+        opaque.numeric_blocks + opaque.time_series_blocks,
+        0,
+        "{opaque:?}"
+    );
+    assert!(
+        typed_len < opaque_len,
+        "typed {typed_len} !< opaque {opaque_len}"
+    );
 
     // Integers are never tried as floats: no Gorilla / ALP block for an all-integer schema.
     let (_, integers) = stats_for([Unsigned; 4]);
-    assert_eq!(integers.ts1_gorilla_f64_blocks + integers.ts1_gorilla_f32_blocks + integers.ts1_alp_blocks, 0);
+    assert_eq!(
+        integers.ts1_gorilla_f64_blocks + integers.ts1_gorilla_f32_blocks + integers.ts1_alp_blocks,
+        0
+    );
 }
 
 /// Disabling a specialization in the block configuration also disables it for every column.
@@ -197,7 +250,11 @@ fn a_disabled_specialization_stays_disabled_in_the_columns() {
     })
     .unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
-    assert_eq!(stats.numeric_blocks + stats.time_series_blocks, 0, "{stats:?}");
+    assert_eq!(
+        stats.numeric_blocks + stats.time_series_blocks,
+        0,
+        "{stats:?}"
+    );
     assert_eq!(engine.decompress(&file).unwrap(), input);
 }
 
@@ -224,7 +281,11 @@ fn blocks_are_aligned_to_whole_records() {
     assert_eq!(reader.read_file_header().unwrap().default_block_size, 9_984);
 
     // A block size below one record still holds one record.
-    let tiny = AceEngine::new(AceConfig { block_size: 5, ..config(Some(trade_schema())) }).unwrap();
+    let tiny = AceEngine::new(AceConfig {
+        block_size: 5,
+        ..config(Some(trade_schema()))
+    })
+    .unwrap();
     let file = tiny.compress(&trades(10, 0)).unwrap();
     assert_eq!(open(&file).block_count(), 10);
 }
@@ -250,20 +311,30 @@ fn the_automatic_block_size_is_aligned() {
 fn a_schema_with_too_many_columns_is_refused() {
     let many = Schema::new(vec![spec(1, ColumnKind::Bytes); 257]).unwrap();
     assert!(matches!(
-        AceEngine::new(AceConfig { schema: Some(many), ..AceConfig::default() }),
+        AceEngine::new(AceConfig {
+            schema: Some(many),
+            ..AceConfig::default()
+        }),
         Err(AceError::InvalidConfig(_))
     ));
     let limit = Schema::new(vec![spec(1, ColumnKind::Bytes); 256]).unwrap();
-    assert!(AceEngine::new(AceConfig { schema: Some(limit), ..AceConfig::default() }).is_ok());
+    assert!(AceEngine::new(AceConfig {
+        schema: Some(limit),
+        ..AceConfig::default()
+    })
+    .is_ok());
 }
 
 #[test]
 fn the_output_does_not_depend_on_the_worker_count() {
     let input = trades(60_000, 5);
-    let reference = AceEngine::new(AceConfig { block_size: 480 * 1024, ..config(Some(trade_schema())) })
-        .unwrap()
-        .compress(&input)
-        .unwrap();
+    let reference = AceEngine::new(AceConfig {
+        block_size: 480 * 1024,
+        ..config(Some(trade_schema()))
+    })
+    .unwrap()
+    .compress(&input)
+    .unwrap();
     for threads in [2usize, 4, 8] {
         let engine = AceEngine::new(AceConfig {
             threads,
@@ -271,7 +342,11 @@ fn the_output_does_not_depend_on_the_worker_count() {
             ..config(Some(trade_schema()))
         })
         .unwrap();
-        assert_eq!(engine.compress(&input).unwrap(), reference, "threads {threads}");
+        assert_eq!(
+            engine.compress(&input).unwrap(),
+            reference,
+            "threads {threads}"
+        );
     }
 }
 
@@ -298,7 +373,12 @@ fn raw_inner(id: u64, data: &[u8]) -> Vec<u8> {
 }
 
 /// A file of format `minor` holding `whole` as one columnar block with RAW columns.
-fn forged_file(minor: u8, specs: &[ColumnSpec], whole: &[u8], tweak: impl FnOnce(&mut Vec<u8>)) -> Vec<u8> {
+fn forged_file(
+    minor: u8,
+    specs: &[ColumnSpec],
+    whole: &[u8],
+    tweak: impl FnOnce(&mut Vec<u8>),
+) -> Vec<u8> {
     let widths: Vec<u16> = specs.iter().map(|s| s.width).collect();
     let record: usize = widths.iter().map(|&w| usize::from(w)).sum();
     let (streams, tail) = split_columns(whole, &widths).unwrap();
@@ -339,7 +419,12 @@ fn forged_file(minor: u8, specs: &[ColumnSpec], whole: &[u8], tweak: impl FnOnce
 fn assert_rejected(file: &[u8], what: &str) -> AceError {
     let engine = AceEngine::default_engine();
     let error = engine.decompress(file).expect_err(what);
-    assert!(engine.decompress_from(Cursor::new(file), Vec::new()).is_err(), "{what}");
+    assert!(
+        engine
+            .decompress_from(Cursor::new(file), Vec::new())
+            .is_err(),
+        "{what}"
+    );
     if let Ok(mut decoder) = AceIndexedDecoder::open(Cursor::new(file), DecodeLimits::default()) {
         assert!(decoder.decode_block(0).is_err(), "{what}");
     }
@@ -350,33 +435,65 @@ fn assert_rejected(file: &[u8], what: &str) -> AceError {
 fn forged_column_tables_are_rejected_by_every_reader() {
     let specs = [spec(4, ColumnKind::Unsigned), spec(3, ColumnKind::Bytes)];
     let whole: Vec<u8> = (0..7 * 40 + 5).map(|i| (i * 13 % 251) as u8).collect();
-    assert_eq!(AceEngine::default_engine().decompress(&forged_file(6, &specs, &whole, |_| {})).unwrap(), whole);
+    assert_eq!(
+        AceEngine::default_engine()
+            .decompress(&forged_file(6, &specs, &whole, |_| {}))
+            .unwrap(),
+        whole
+    );
     let entry = |index: usize| COLUMN_HEADER_SIZE + index * COLUMN_ENTRY_SIZE;
     type Tweak = Box<dyn Fn(&mut Vec<u8>)>;
     let cases: Vec<(&str, Tweak)> = vec![
         ("magic", Box::new(|p| p[0] = b'X')),
         ("version", Box::new(|p| p[4] = 1)),
         ("flags", Box::new(|p| p[5] = 1)),
-        ("column count 0", Box::new(|p| p[6..8].copy_from_slice(&0u16.to_le_bytes()))),
-        ("column count too large", Box::new(|p| p[6..8].copy_from_slice(&u16::MAX.to_le_bytes()))),
-        ("record size", Box::new(|p| p[8..12].copy_from_slice(&8u32.to_le_bytes()))),
-        ("record count", Box::new(|p| p[12..16].copy_from_slice(&41u32.to_le_bytes()))),
-        ("tail length", Box::new(|p| p[16..20].copy_from_slice(&4u32.to_le_bytes()))),
+        (
+            "column count 0",
+            Box::new(|p| p[6..8].copy_from_slice(&0u16.to_le_bytes())),
+        ),
+        (
+            "column count too large",
+            Box::new(|p| p[6..8].copy_from_slice(&u16::MAX.to_le_bytes())),
+        ),
+        (
+            "record size",
+            Box::new(|p| p[8..12].copy_from_slice(&8u32.to_le_bytes())),
+        ),
+        (
+            "record count",
+            Box::new(|p| p[12..16].copy_from_slice(&41u32.to_le_bytes())),
+        ),
+        (
+            "tail length",
+            Box::new(|p| p[16..20].copy_from_slice(&4u32.to_le_bytes())),
+        ),
         ("reserved", Box::new(|p| p[20] = 1)),
         ("width", Box::new(move |p| p[entry(0)] = 5)),
         ("kind", Box::new(move |p| p[entry(1) + 2] = 7)),
-        ("kind/width mismatch", Box::new(move |p| p[entry(1) + 2] = 1)),
-        ("serialized length", Box::new(move |p| p[entry(0) + 4] = p[entry(0) + 4].wrapping_add(1))),
+        (
+            "kind/width mismatch",
+            Box::new(move |p| p[entry(1) + 2] = 1),
+        ),
+        (
+            "serialized length",
+            Box::new(move |p| p[entry(0) + 4] = p[entry(0) + 4].wrapping_add(1)),
+        ),
         ("truncated", Box::new(|p| p.truncate(p.len() - 1))),
         ("trailing byte", Box::new(|p| p.push(0))),
-        ("table cut short", Box::new(|p| p.truncate(COLUMN_HEADER_SIZE + 4))),
+        (
+            "table cut short",
+            Box::new(|p| p.truncate(COLUMN_HEADER_SIZE + 4)),
+        ),
     ];
     for (what, tweak) in &cases {
         assert_rejected(&forged_file(6, &specs, &whole, |p| tweak(p)), what);
     }
     for minor in 0..=5u8 {
         let error = assert_rejected(&forged_file(minor, &specs, &whole, |_| {}), "old minor");
-        assert!(matches!(error, AceError::UnsupportedVersion { .. }), "minor {minor}");
+        assert!(
+            matches!(error, AceError::UnsupportedVersion { .. }),
+            "minor {minor}"
+        );
     }
 }
 
@@ -417,7 +534,10 @@ fn a_swapped_column_is_caught_by_the_outer_checksum() {
         .unwrap();
     writer.write_block(&header, &[], &payload).unwrap();
     let file = writer.finish(true).unwrap().0;
-    assert!(matches!(assert_rejected(&file, "swapped"), AceError::ChecksumMismatch(_)));
+    assert!(matches!(
+        assert_rejected(&file, "swapped"),
+        AceError::ChecksumMismatch(_)
+    ));
 }
 
 proptest! {

@@ -52,7 +52,10 @@ fn table_round_trips_and_gives_positions() {
     let (payload, total) = payload_of(&parts);
     let table = SegmentTable::parse(&payload, total, &DecodeLimits::default()).unwrap();
     assert_eq!(table.entries.len(), 3);
-    assert_eq!(table.data_offset(), SEGMENT_HEADER_SIZE + 3 * SEGMENT_ENTRY_SIZE);
+    assert_eq!(
+        table.data_offset(),
+        SEGMENT_HEADER_SIZE + 3 * SEGMENT_ENTRY_SIZE
+    );
     assert_eq!(table.logical_ranges(), vec![0..100, 100..107, 107..50_107]);
     let ranges = table.payload_ranges();
     assert_eq!(ranges[0].start, table.data_offset());
@@ -77,8 +80,14 @@ fn writer_rejects_degenerate_input() {
     assert!(encode_segment_payload(&[]).is_err());
     let empty = vec![(0u32, raw_block(0, b"a")), (4, raw_block(1, b"abcd"))];
     assert!(encode_segment_payload(&empty).is_err(), "empty segment");
-    let short = vec![(1u32, vec![0u8; BLOCK_HEADER_SIZE - 1]), (4, raw_block(1, b"abcd"))];
-    assert!(encode_segment_payload(&short).is_err(), "inner block shorter than a header");
+    let short = vec![
+        (1u32, vec![0u8; BLOCK_HEADER_SIZE - 1]),
+        (4, raw_block(1, b"abcd")),
+    ];
+    assert!(
+        encode_segment_payload(&short).is_err(),
+        "inner block shorter than a header"
+    );
 }
 
 /// Every way to make the table disagree with the outer block or the payload is `Malformed`, and
@@ -90,8 +99,14 @@ fn table_is_validated_against_the_block() {
     let parse = |bytes: &[u8], size: usize| SegmentTable::parse(bytes, size, &limits);
     assert!(parse(&payload, total).is_ok());
     // outer size mismatch (either direction)
-    assert!(matches!(parse(&payload, total + 1), Err(AceError::Malformed(_))));
-    assert!(matches!(parse(&payload, total - 1), Err(AceError::Malformed(_))));
+    assert!(matches!(
+        parse(&payload, total + 1),
+        Err(AceError::Malformed(_))
+    ));
+    assert!(matches!(
+        parse(&payload, total - 1),
+        Err(AceError::Malformed(_))
+    ));
     // magic, reserved word
     let mut bad = payload.clone();
     bad[0] ^= 1;
@@ -103,7 +118,10 @@ fn table_is_validated_against_the_block() {
     for count in [0u32, 1] {
         let mut bad = payload.clone();
         bad[4..8].copy_from_slice(&count.to_le_bytes());
-        assert!(matches!(parse(&bad, total), Err(AceError::Malformed(_))), "count {count}");
+        assert!(
+            matches!(parse(&bad, total), Err(AceError::Malformed(_))),
+            "count {count}"
+        );
     }
     let mut bad = payload.clone();
     bad[4..8].copy_from_slice(&3u32.to_le_bytes());
@@ -118,7 +136,10 @@ fn table_is_validated_against_the_block() {
     assert!(matches!(parse(&bad, total), Err(AceError::Malformed(_))));
     let mut bad = payload.clone();
     bad.push(0);
-    assert!(matches!(parse(&bad, total), Err(AceError::Malformed(_))), "trailing byte");
+    assert!(
+        matches!(parse(&bad, total), Err(AceError::Malformed(_))),
+        "trailing byte"
+    );
     // truncation at every length
     for len in 0..SEGMENT_HEADER_SIZE + 2 * SEGMENT_ENTRY_SIZE {
         assert!(parse(&payload[..len], total).is_err(), "prefix {len}");
@@ -159,11 +180,20 @@ fn inner_blocks_are_checked() {
     let limits = DecodeLimits::default();
     let block = raw_block(3, b"abcdef");
     assert!(parse_inner_block(&block, 3, 6, 6, &limits).is_ok());
-    assert!(matches!(parse_inner_block(&block, 4, 6, 6, &limits), Err(AceError::Malformed(_))));
-    assert!(matches!(parse_inner_block(&block, 3, 7, 6, &limits), Err(AceError::Malformed(_))));
+    assert!(matches!(
+        parse_inner_block(&block, 4, 6, 6, &limits),
+        Err(AceError::Malformed(_))
+    ));
+    assert!(matches!(
+        parse_inner_block(&block, 3, 7, 6, &limits),
+        Err(AceError::Malformed(_))
+    ));
     let mut trailing = block.clone();
     trailing.push(0);
-    assert!(matches!(parse_inner_block(&trailing, 3, 6, 6, &limits), Err(AceError::Malformed(_))));
+    assert!(matches!(
+        parse_inner_block(&trailing, 3, 6, 6, &limits),
+        Err(AceError::Malformed(_))
+    ));
     // An inner container block is refused (nesting is one level deep).
     let nested = serialize_block(
         &BlockHeader {
@@ -181,7 +211,10 @@ fn inner_blocks_are_checked() {
         &[],
         &[],
     );
-    assert!(matches!(parse_inner_block(&nested, 0, 6, 6, &limits), Err(AceError::Malformed(_))));
+    assert!(matches!(
+        parse_inner_block(&nested, 0, 6, 6, &limits),
+        Err(AceError::Malformed(_))
+    ));
 }
 
 /// A range reader holds only the head and the table: it learns the count from 12 bytes, fetches
@@ -197,14 +230,28 @@ fn the_table_parses_from_a_prefix() {
     assert_eq!(table_len, SEGMENT_HEADER_SIZE + 3 * SEGMENT_ENTRY_SIZE);
     let from_prefix =
         SegmentTable::parse_prefix(&payload[..table_len], payload.len(), total, &limits).unwrap();
-    assert_eq!(from_prefix, SegmentTable::parse(&payload, total, &limits).unwrap());
+    assert_eq!(
+        from_prefix,
+        SegmentTable::parse(&payload, total, &limits).unwrap()
+    );
     // A wrong payload length is caught from the prefix alone; so is a prefix cut inside the table.
-    assert!(SegmentTable::parse_prefix(&payload[..table_len], payload.len() + 1, total, &limits).is_err());
-    assert!(SegmentTable::parse_prefix(&payload[..table_len], table_len - 1, total, &limits).is_err());
-    assert!(SegmentTable::parse_prefix(&payload[..table_len - 1], payload.len(), total, &limits).is_err());
+    assert!(
+        SegmentTable::parse_prefix(&payload[..table_len], payload.len() + 1, total, &limits)
+            .is_err()
+    );
+    assert!(
+        SegmentTable::parse_prefix(&payload[..table_len], table_len - 1, total, &limits).is_err()
+    );
+    assert!(
+        SegmentTable::parse_prefix(&payload[..table_len - 1], payload.len(), total, &limits)
+            .is_err()
+    );
     // The head alone enforces the magic, the count range and the limit.
     assert!(SegmentTable::count_from_head(&payload[..SEGMENT_HEADER_SIZE - 1], &limits).is_err());
-    let few = DecodeLimits { max_segments: 2, ..DecodeLimits::default() };
+    let few = DecodeLimits {
+        max_segments: 2,
+        ..DecodeLimits::default()
+    };
     assert!(matches!(
         SegmentTable::count_from_head(&payload[..SEGMENT_HEADER_SIZE], &few),
         Err(AceError::ResourceLimitExceeded("segment count"))
@@ -221,12 +268,20 @@ fn the_block_header_can_be_read_without_the_payload() {
     assert_eq!((header.block_id, header.original_size), (7, 13));
     assert_eq!(header_len, BLOCK_HEADER_SIZE);
     assert_eq!(reader.position() as usize, header_len);
-    let tiny = DecodeLimits { max_block_size: 4, ..DecodeLimits::default() };
+    let tiny = DecodeLimits {
+        max_block_size: 4,
+        ..DecodeLimits::default()
+    };
     assert!(matches!(
         read_block_header(&mut std::io::Cursor::new(&block), 6, &tiny),
         Err(AceError::ResourceLimitExceeded("block output size"))
     ));
-    assert!(read_block_header(&mut std::io::Cursor::new(&block[..10]), 6, &DecodeLimits::default()).is_err());
+    assert!(read_block_header(
+        &mut std::io::Cursor::new(&block[..10]),
+        6,
+        &DecodeLimits::default()
+    )
+    .is_err());
 }
 
 proptest! {

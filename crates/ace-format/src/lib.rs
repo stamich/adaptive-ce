@@ -13,20 +13,20 @@
 
 mod block_io;
 mod checksum;
+mod column;
 mod dictionary_section;
 mod header;
 mod index;
 mod reader;
-mod column;
 mod segment;
 mod writer;
 
 pub use block_io::*;
 pub use checksum::*;
+pub use column::*;
 pub use dictionary_section::*;
 pub use header::*;
 pub use index::*;
 pub use reader::*;
-pub use column::*;
 pub use segment::*;
 pub use writer::*;

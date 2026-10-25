@@ -3,12 +3,12 @@
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 
 use ace_core::{AceConfig, AceError, AceResult, BlockSizePolicy, DecodeLimits};
+use ace_core::{DictionaryScope, FORMAT_MINOR_STORAGE};
 use ace_engine::{block_format_minor, AceEngine};
 use ace_format::{
     encode_file_header, minimal_minor_version, AceReader, AceWriter, FileHeader, SerializedBlock,
     FILE_FLAG_HAS_INDEX, FORMAT_MINOR_BASE,
 };
-use ace_core::{DictionaryScope, FORMAT_MINOR_STORAGE};
 
 use crate::{StreamLimits, StreamingStats};
 

@@ -45,7 +45,13 @@ fn container_codecs_have_stable_ids() {
         CodecId::try_from(7),
         Err(AceError::UnsupportedCodec(7))
     ));
-    for codec in [CodecId::Raw, CodecId::Rle, CodecId::Lz, CodecId::Numeric, CodecId::TimeSeries] {
+    for codec in [
+        CodecId::Raw,
+        CodecId::Rle,
+        CodecId::Lz,
+        CodecId::Numeric,
+        CodecId::TimeSeries,
+    ] {
         assert!(!codec.is_container());
     }
     assert!(CodecId::Segmented.is_container() && CodecId::Columnar.is_container());

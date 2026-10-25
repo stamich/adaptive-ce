@@ -1,7 +1,7 @@
 use crate::block_pipeline::{decode_encoded_block, decode_inner_block};
 use crate::dictionaries::DictionaryView;
-use ace_dictionary::DictionaryRegistry;
 use ace_core::{AceError, AceResult, CodecId, DecodeLimits, EntropyCodecId};
+use ace_dictionary::DictionaryRegistry;
 use ace_format::{SegmentTable, INDEX_FLAG_SEGMENTED, SEGMENT_HEADER_SIZE};
 use ace_index::AceIndexReader;
 use std::io::{Read, Seek};

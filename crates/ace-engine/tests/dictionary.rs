@@ -82,16 +82,27 @@ fn flags(file: &[u8]) -> u16 {
 #[test]
 fn an_embedded_dictionary_makes_a_smaller_self_contained_file() {
     let input = records(4000);
-    let plain = AceEngine::new(config(None)).unwrap().compress(&input).unwrap();
+    let plain = AceEngine::new(config(None))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let engine = AceEngine::new(config(Some(dictionary(DictionaryScope::File)))).unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
-    assert!(file.len() < plain.len(), "{} !< {}", file.len(), plain.len());
+    assert!(
+        file.len() < plain.len(),
+        "{} !< {}",
+        file.len(),
+        plain.len()
+    );
     assert_eq!(stats.format_minor, 6);
     assert_eq!(file[5], 6);
     assert_ne!(flags(&file) & FILE_FLAG_HAS_DICTIONARIES, 0);
     assert!(stats.dictionary_blocks > 0);
     // Self-contained: a default engine without any registry reads it, in every reader.
-    assert_eq!(AceEngine::default_engine().decompress(&file).unwrap(), input);
+    assert_eq!(
+        AceEngine::default_engine().decompress(&file).unwrap(),
+        input
+    );
     let mut streamed = Vec::new();
     AceEngine::default_engine()
         .decompress_from(Cursor::new(&file), &mut streamed)
@@ -109,7 +120,11 @@ fn an_external_dictionary_needs_the_registry_to_decode() {
     let engine = AceEngine::new(config(Some(dictionary.clone()))).unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
     assert_eq!(stats.format_minor, 6);
-    assert_eq!(flags(&file) & FILE_FLAG_HAS_DICTIONARIES, 0, "nothing is embedded");
+    assert_eq!(
+        flags(&file) & FILE_FLAG_HAS_DICTIONARIES,
+        0,
+        "nothing is embedded"
+    );
     assert!(stats.dictionary_blocks > 0);
 
     // Smaller than the embedded variant by the section.
@@ -151,7 +166,10 @@ fn a_dictionary_that_is_not_used_leaves_the_bytes_unchanged() {
             (state >> 24) as u8
         })
         .collect();
-    let without = AceEngine::new(config(None)).unwrap().compress(&input).unwrap();
+    let without = AceEngine::new(config(None))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     for scope in [DictionaryScope::File, DictionaryScope::External] {
         let with = AceEngine::new(config(Some(dictionary(scope))))
             .unwrap()
@@ -167,7 +185,10 @@ fn an_embedded_dictionary_that_does_not_pay_for_itself_is_dropped() {
     // A tiny input saves a few bytes at best, far less than the 28 + dictionary bytes of the
     // section, so the file is encoded without the dictionary.
     let input = records(3);
-    let without = AceEngine::new(config(None)).unwrap().compress(&input).unwrap();
+    let without = AceEngine::new(config(None))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let with = AceEngine::new(config(Some(dictionary(DictionaryScope::File))))
         .unwrap()
         .compress(&input)
@@ -229,7 +250,10 @@ fn segments_may_use_the_dictionary() {
     let engine = AceEngine::new(config.clone()).unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
     assert_eq!(stats.segmented_blocks, 1, "the fixture must be segmented");
-    assert!(stats.dictionary_blocks > 0, "no segment used the dictionary");
+    assert!(
+        stats.dictionary_blocks > 0,
+        "no segment used the dictionary"
+    );
     assert_eq!(engine.decompress(&file).unwrap(), input);
     // Range reads at segment granularity resolve the dictionary too.
     let reader = registry(config.dictionary.as_ref().unwrap());
@@ -346,7 +370,10 @@ fn a_reference_into_the_dictionary_decodes() {
         &match_stream(3),
         b"abca",
     );
-    assert_eq!(AceEngine::default_engine().decompress(&file).unwrap(), b"abca");
+    assert_eq!(
+        AceEngine::default_engine().decompress(&file).unwrap(),
+        b"abca"
+    );
 }
 
 #[test]
@@ -376,15 +403,28 @@ fn the_wrong_dictionary_is_caught_by_the_checksum() {
         b"abca",
     );
     let mut wrong = DictionaryRegistry::new();
-    wrong.insert(Dictionary::new(ID, DictionaryScope::External, b"xyz".to_vec()));
+    wrong.insert(Dictionary::new(
+        ID,
+        DictionaryScope::External,
+        b"xyz".to_vec(),
+    ));
     assert!(matches!(
-        AceEngine::default_engine().with_dictionaries(wrong).decompress(&file),
+        AceEngine::default_engine()
+            .with_dictionaries(wrong)
+            .decompress(&file),
         Err(AceError::ChecksumMismatch(0))
     ));
     let mut right = DictionaryRegistry::new();
-    right.insert(Dictionary::new(ID, DictionaryScope::External, b"abc".to_vec()));
+    right.insert(Dictionary::new(
+        ID,
+        DictionaryScope::External,
+        b"abc".to_vec(),
+    ));
     assert_eq!(
-        AceEngine::default_engine().with_dictionaries(right).decompress(&file).unwrap(),
+        AceEngine::default_engine()
+            .with_dictionaries(right)
+            .decompress(&file)
+            .unwrap(),
         b"abca"
     );
 }
@@ -442,7 +482,14 @@ fn a_descriptor_below_format_1_6_is_missing_its_dictionary() {
 #[test]
 fn reserved_scopes_and_foreign_codecs_are_malformed() {
     for scope in [DictionaryScope::Block, DictionaryScope::Segment] {
-        let file = crafted(6, &[], CodecId::Lz, reference(scope), &match_stream(3), b"abca");
+        let file = crafted(
+            6,
+            &[],
+            CodecId::Lz,
+            reference(scope),
+            &match_stream(3),
+            b"abca",
+        );
         assert!(matches!(
             AceEngine::default_engine().decompress(&file),
             Err(AceError::Malformed("reserved dictionary scope"))
@@ -474,7 +521,11 @@ fn an_external_dictionary_above_the_limit_is_refused() {
         b"abca",
     );
     let mut large = DictionaryRegistry::new();
-    large.insert(Dictionary::new(ID, DictionaryScope::External, b"abc".to_vec()));
+    large.insert(Dictionary::new(
+        ID,
+        DictionaryScope::External,
+        b"abc".to_vec(),
+    ));
     let limits = DecodeLimits {
         max_dictionary_size: 2,
         ..DecodeLimits::default()

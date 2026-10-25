@@ -11,8 +11,8 @@ use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_format::{
     checksum, decode_file_header, decode_index, decode_trailer, read_block_header,
     read_dictionary_section, read_serialized_block, BlockHeader, BlockIndex, EmbeddedDictionary,
-    FileHeader, SerializedBlock, FILE_FLAG_HAS_DICTIONARIES, FILE_FLAG_HAS_INDEX,
-    FILE_HEADER_SIZE, INDEX_ENTRY_SIZE, INDEX_HEADER_SIZE, TRAILER_SIZE,
+    FileHeader, SerializedBlock, FILE_FLAG_HAS_DICTIONARIES, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
+    INDEX_ENTRY_SIZE, INDEX_HEADER_SIZE, TRAILER_SIZE,
 };
 
 /// Seek offset of the trailer from the end of the file.
@@ -168,8 +168,11 @@ impl<R: Read + Seek> AceIndexReader<R> {
             .ok_or(AceError::BlockNotFound(block_id))?
             .file_offset;
         self.reader.seek(SeekFrom::Start(file_offset))?;
-        let (header, header_len) =
-            read_block_header(&mut self.reader, self.file_header.minor_version, &self.limits)?;
+        let (header, header_len) = read_block_header(
+            &mut self.reader,
+            self.file_header.minor_version,
+            &self.limits,
+        )?;
         if header.block_id != block_id {
             return Err(AceError::Malformed(
                 "index block id does not match serialized block",

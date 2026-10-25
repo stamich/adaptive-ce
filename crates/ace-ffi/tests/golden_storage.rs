@@ -44,7 +44,10 @@ struct Golden {
 }
 
 fn sha256(bytes: &[u8]) -> String {
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 fn take(buffer: *mut AceBuffer) -> Vec<u8> {
@@ -78,7 +81,9 @@ fn input(generator: &str) -> Vec<u8> {
         return (0..count.parse().unwrap()).flat_map(json_record).collect();
     }
     assert_eq!(generator, "mixed-regimes");
-    let mut out: Vec<u8> = (0..400_000u32).flat_map(|i| (i / 2).to_le_bytes()).collect();
+    let mut out: Vec<u8> = (0..400_000u32)
+        .flat_map(|i| (i / 2).to_le_bytes())
+        .collect();
     out.extend((0..1_500_000u64).map(|i| (i.wrapping_mul(2_654_435_761) >> 13) as u8));
     out
 }
@@ -106,7 +111,13 @@ fn train() -> *mut AceDictionary {
     let mut handle = ptr::null_mut();
     // SAFETY: parallel arrays of readable samples; `handle` writable.
     let status = unsafe {
-        ace_dictionary_train(pointers.as_ptr(), lengths.as_ptr(), samples.len(), 2048, &mut handle)
+        ace_dictionary_train(
+            pointers.as_ptr(),
+            lengths.as_ptr(),
+            samples.len(),
+            2048,
+            &mut handle,
+        )
     };
     assert_eq!(status, ACE_OK);
     handle
@@ -114,30 +125,44 @@ fn train() -> *mut AceDictionary {
 
 #[test]
 fn the_c_abi_reproduces_the_0_8_0_storage_golden_file() {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/golden/0.8.0/GOLDEN.json");
+    let path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/golden/0.8.0/GOLDEN.json");
     let golden: Golden = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     assert_eq!(golden.cases.len(), 6);
     for case in &golden.cases {
         let data = input(&case.generator);
         assert_eq!(sha256(&data), case.input_sha256, "{}: generator", case.case);
 
-        let dictionary = if case.dictionary == "none" { ptr::null_mut() } else { train() };
+        let dictionary = if case.dictionary == "none" {
+            ptr::null_mut()
+        } else {
+            train()
+        };
         if !dictionary.is_null() {
             // SAFETY: live handle; the bytes are valid until the free.
             unsafe {
-                assert_eq!(format!("{:016x}", ace_dictionary_id(dictionary)), case.dictionary_id);
+                assert_eq!(
+                    format!("{:016x}", ace_dictionary_id(dictionary)),
+                    case.dictionary_id
+                );
                 let bytes = std::slice::from_raw_parts(
                     ace_dictionary_data(dictionary),
                     ace_dictionary_len(dictionary),
                 );
-                assert_eq!(sha256(bytes), case.dictionary_sha256, "{}: trained dictionary", case.case);
+                assert_eq!(
+                    sha256(bytes),
+                    case.dictionary_sha256,
+                    "{}: trained dictionary",
+                    case.case
+                );
             }
         }
         let mut schema: *mut AceSchema = ptr::null_mut();
         if !case.schema.is_empty() {
             let columns = columns(&case.schema);
             // SAFETY: readable column array; `schema` writable.
-            assert_eq!(unsafe { ace_schema_new(columns.as_ptr(), columns.len(), &mut schema) }, ACE_OK);
+            let status = unsafe { ace_schema_new(columns.as_ptr(), columns.len(), &mut schema) };
+            assert_eq!(status, ACE_OK);
         }
 
         for (profile, (sha, size)) in [
@@ -159,7 +184,8 @@ fn the_c_abi_reproduces_the_0_8_0_storage_golden_file() {
             config.block_size = case.block_size;
             config.schema = schema;
             config.dictionary = dictionary;
-            config.dictionary_scope = u32::from(case.dictionary == "external") * ACE_DICTIONARY_EXTERNAL;
+            config.dictionary_scope =
+                u32::from(case.dictionary == "external") * ACE_DICTIONARY_EXTERNAL;
             if case.segmentation_min > 0 {
                 config.segmentation = 1;
                 config.segment_min = case.segmentation_min;
@@ -168,8 +194,9 @@ fn the_c_abi_reproduces_the_0_8_0_storage_golden_file() {
             let known: [*const AceDictionary; 1] = [dictionary];
             let count = usize::from(!dictionary.is_null());
             // SAFETY: live config and handles; `engine` writable.
-            let status =
-                unsafe { ace_engine_new_ex(&config, ptr::null(), known.as_ptr(), count, &mut engine) };
+            let status = unsafe {
+                ace_engine_new_ex(&config, ptr::null(), known.as_ptr(), count, &mut engine)
+            };
             assert_eq!(status, ACE_OK, "{} {profile}", case.case);
 
             let mut out = ptr::null_mut();

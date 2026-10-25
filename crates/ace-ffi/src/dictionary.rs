@@ -95,7 +95,8 @@ pub unsafe extern "C" fn ace_dictionary_train(
         }
         for index in 0..count {
             // SAFETY: `index < count` and both arrays hold `count` elements by the contract.
-            let (pointer, length) = unsafe { (samples.add(index).read(), lengths.add(index).read()) };
+            let (pointer, length) =
+                unsafe { (samples.add(index).read(), lengths.add(index).read()) };
             // SAFETY: `pointer` is valid for `length` bytes by the contract.
             match unsafe { input_bytes(pointer, length) } {
                 Ok(sample) => borrowed.push(sample),
@@ -133,7 +134,9 @@ pub unsafe extern "C" fn ace_dictionary_id(dictionary: *const AceDictionary) -> 
 pub unsafe extern "C" fn ace_dictionary_data(dictionary: *const AceDictionary) -> *const u8 {
     guard_value(std::ptr::null(), || {
         // SAFETY: null or live by the caller's contract.
-        unsafe { dictionary.as_ref() }.map_or(std::ptr::null(), |handle| handle.dictionary.as_bytes().as_ptr())
+        unsafe { dictionary.as_ref() }.map_or(std::ptr::null(), |handle| {
+            handle.dictionary.as_bytes().as_ptr()
+        })
     })
 }
 
@@ -185,7 +188,10 @@ pub(crate) unsafe fn collect(
     }
     let mut dictionaries = Vec::new();
     if dictionaries.try_reserve_exact(count).is_err() {
-        return Err(fail(ACE_ERR_INVALID_ARGUMENT, "dictionary count is too large"));
+        return Err(fail(
+            ACE_ERR_INVALID_ARGUMENT,
+            "dictionary count is too large",
+        ));
     }
     for index in 0..count {
         // SAFETY: `index < count`; the array holds `count` pointers by the contract.

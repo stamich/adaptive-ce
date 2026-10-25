@@ -40,7 +40,9 @@ fn noise(len: usize, mut seed: u64) -> Vec<u8> {
 
 /// Text, then counters, then noise: 512 KiB that the encoder segments.
 fn mixed() -> Vec<u8> {
-    let words = ["alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n"];
+    let words = [
+        "alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n",
+    ];
     let mut input = Vec::new();
     let mut i = 0usize;
     while input.len() < 192 * 1024 {
@@ -57,7 +59,11 @@ fn output_is_identical_for_every_worker_count_and_profile() {
     let mut input = mixed();
     input.extend(mixed());
     input.extend(mixed());
-    for profile in [CompressionProfile::Fast, CompressionProfile::Balanced, CompressionProfile::Dense] {
+    for profile in [
+        CompressionProfile::Fast,
+        CompressionProfile::Balanced,
+        CompressionProfile::Dense,
+    ] {
         let mut reference: Option<Vec<u8>> = None;
         for threads in [1usize, 2, 3, 8] {
             let config = AceConfig {
@@ -67,14 +73,25 @@ fn output_is_identical_for_every_worker_count_and_profile() {
                 segmentation: Some(segmentation()),
                 ..AceConfig::default()
             };
-            let (file, stats) = AceEngine::new(config).unwrap().compress_with_stats(&input).unwrap();
-            assert!(stats.segmented_blocks >= 1, "{profile:?}: nothing was segmented");
+            let (file, stats) = AceEngine::new(config)
+                .unwrap()
+                .compress_with_stats(&input)
+                .unwrap();
+            assert!(
+                stats.segmented_blocks >= 1,
+                "{profile:?}: nothing was segmented"
+            );
             match &reference {
                 Some(expected) => assert_eq!(expected, &file, "{profile:?} threads={threads}"),
                 None => reference = Some(file),
             }
         }
-        assert_eq!(AceEngine::default_engine().decompress(&reference.unwrap()).unwrap(), input);
+        assert_eq!(
+            AceEngine::default_engine()
+                .decompress(&reference.unwrap())
+                .unwrap(),
+            input
+        );
     }
 }
 
@@ -124,16 +141,20 @@ fn raw_header(id: u64, data: &[u8]) -> BlockHeader {
 
 /// A valid two-segment payload over `a` and `b` and the whole block's bytes.
 fn good_payload(a: &[u8], b: &[u8]) -> (Vec<u8>, Vec<u8>) {
-    let payload = encode_segment_payload(&[
-        (a.len() as u32, inner(0, a)),
-        (b.len() as u32, inner(1, b)),
-    ])
-    .unwrap();
+    let payload =
+        encode_segment_payload(&[(a.len() as u32, inner(0, a)), (b.len() as u32, inner(1, b))])
+            .unwrap();
     (payload, [a, b].concat())
 }
 
 /// A file of format `minor` with one block whose header comes from `outer`.
-fn file_with(minor: u8, outer: impl FnOnce(&mut BlockHeader), metadata: &[u8], payload: &[u8], whole: &[u8]) -> Vec<u8> {
+fn file_with(
+    minor: u8,
+    outer: impl FnOnce(&mut BlockHeader),
+    metadata: &[u8],
+    payload: &[u8],
+    whole: &[u8],
+) -> Vec<u8> {
     let mut header = BlockHeader {
         block_id: 0,
         original_size: whole.len() as u32,
@@ -166,8 +187,16 @@ fn assert_rejected(file: &[u8], what: &str) -> AceError {
     let engine = AceEngine::default_engine();
     let error = engine.decompress(file).expect_err(what);
     let mut sink = Vec::new();
-    assert!(engine.decompress_into(file, &mut sink).is_err(), "{what}: decompress_into");
-    assert!(engine.decompress_from(Cursor::new(file), Vec::new()).is_err(), "{what}: decompress_from");
+    assert!(
+        engine.decompress_into(file, &mut sink).is_err(),
+        "{what}: decompress_into"
+    );
+    assert!(
+        engine
+            .decompress_from(Cursor::new(file), Vec::new())
+            .is_err(),
+        "{what}: decompress_from"
+    );
     if let Ok(mut decoder) = AceIndexedDecoder::open(Cursor::new(file), DecodeLimits::default()) {
         assert!(decoder.decode_block(0).is_err(), "{what}: decode_block");
     }
@@ -178,7 +207,10 @@ fn assert_rejected(file: &[u8], what: &str) -> AceError {
 fn the_forgery_builder_produces_a_valid_file() {
     let (payload, whole) = good_payload(&[1u8; 64], &[2u8; 100]);
     let file = file_with(6, |_| {}, &[], &payload, &whole);
-    assert_eq!(AceEngine::default_engine().decompress(&file).unwrap(), whole);
+    assert_eq!(
+        AceEngine::default_engine().decompress(&file).unwrap(),
+        whole
+    );
 }
 
 #[test]
@@ -187,17 +219,61 @@ fn forged_tables_are_rejected_by_every_reader() {
     let (good, whole) = good_payload(&a, &b);
     let entry = |index: usize| SEGMENT_HEADER_SIZE + index * SEGMENT_ENTRY_SIZE;
     let cases: Vec<(&str, Vec<u8>)> = vec![
-        ("wrong magic", { let mut p = good.clone(); p[0] = b'X'; p }),
-        ("reserved word", { let mut p = good.clone(); p[8] = 1; p }),
-        ("count 1", { let mut p = good.clone(); p[4..8].copy_from_slice(&1u32.to_le_bytes()); p }),
-        ("count 0", { let mut p = good.clone(); p[4..8].copy_from_slice(&0u32.to_le_bytes()); p }),
-        ("count over the limit", { let mut p = good.clone(); p[4..8].copy_from_slice(&u32::MAX.to_le_bytes()); p }),
-        ("count beyond the payload", { let mut p = good.clone(); p[4..8].copy_from_slice(&9u32.to_le_bytes()); p }),
-        ("zero-size entry", { let mut p = good.clone(); p[entry(0)..entry(0) + 4].copy_from_slice(&0u32.to_le_bytes()); p }),
-        ("sizes do not add up", { let mut p = good.clone(); p[entry(0)..entry(0) + 4].copy_from_slice(&65u32.to_le_bytes()); p }),
-        ("lengths do not add up", { let mut p = good.clone(); p[entry(1) + 4..entry(1) + 8].copy_from_slice(&1u32.to_le_bytes()); p }),
-        ("entry shorter than a header", { let mut p = good.clone(); p[entry(0) + 4..entry(0) + 8].copy_from_slice(&31u32.to_le_bytes()); p }),
-        ("trailing byte", { let mut p = good.clone(); p.push(0); p }),
+        ("wrong magic", {
+            let mut p = good.clone();
+            p[0] = b'X';
+            p
+        }),
+        ("reserved word", {
+            let mut p = good.clone();
+            p[8] = 1;
+            p
+        }),
+        ("count 1", {
+            let mut p = good.clone();
+            p[4..8].copy_from_slice(&1u32.to_le_bytes());
+            p
+        }),
+        ("count 0", {
+            let mut p = good.clone();
+            p[4..8].copy_from_slice(&0u32.to_le_bytes());
+            p
+        }),
+        ("count over the limit", {
+            let mut p = good.clone();
+            p[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
+            p
+        }),
+        ("count beyond the payload", {
+            let mut p = good.clone();
+            p[4..8].copy_from_slice(&9u32.to_le_bytes());
+            p
+        }),
+        ("zero-size entry", {
+            let mut p = good.clone();
+            p[entry(0)..entry(0) + 4].copy_from_slice(&0u32.to_le_bytes());
+            p
+        }),
+        ("sizes do not add up", {
+            let mut p = good.clone();
+            p[entry(0)..entry(0) + 4].copy_from_slice(&65u32.to_le_bytes());
+            p
+        }),
+        ("lengths do not add up", {
+            let mut p = good.clone();
+            p[entry(1) + 4..entry(1) + 8].copy_from_slice(&1u32.to_le_bytes());
+            p
+        }),
+        ("entry shorter than a header", {
+            let mut p = good.clone();
+            p[entry(0) + 4..entry(0) + 8].copy_from_slice(&31u32.to_le_bytes());
+            p
+        }),
+        ("trailing byte", {
+            let mut p = good.clone();
+            p.push(0);
+            p
+        }),
         ("truncated payload", good[..good.len() - 1].to_vec()),
         ("table cut short", good[..SEGMENT_HEADER_SIZE + 3].to_vec()),
         ("empty payload", Vec::new()),
@@ -241,7 +317,10 @@ fn forged_inner_blocks_are_rejected_by_every_reader() {
         &[],
         &nested_payload,
     );
-    let nested = table(&[(nested_whole.len() as u32, nested_block), (100, inner(1, &b))]);
+    let nested = table(&[
+        (nested_whole.len() as u32, nested_block),
+        (100, inner(1, &b)),
+    ]);
     let nested_total = [nested_whole.clone(), b.clone()].concat();
 
     for (what, payload, total) in [
@@ -259,12 +338,27 @@ fn forged_inner_blocks_are_rejected_by_every_reader() {
 fn forged_outer_blocks_are_rejected_by_every_reader() {
     let (payload, whole) = good_payload(&[1u8; 64], &[2u8; 100]);
     let wrong_crc = file_with(6, |h| h.payload_crc32c ^= 1, &[], &payload, &whole);
-    assert!(matches!(assert_rejected(&wrong_crc, "outer CRC"), AceError::ChecksumMismatch(_)));
+    assert!(matches!(
+        assert_rejected(&wrong_crc, "outer CRC"),
+        AceError::ChecksumMismatch(_)
+    ));
     let wrong_size = file_with(6, |h| h.original_size += 1, &[], &payload, &whole);
     assert_rejected(&wrong_size, "outer size");
-    let entropy = file_with(6, |h| h.entropy = EntropyCodecId::Huffman, &[], &payload, &whole);
+    let entropy = file_with(
+        6,
+        |h| h.entropy = EntropyCodecId::Huffman,
+        &[],
+        &payload,
+        &whole,
+    );
     assert_rejected(&entropy, "outer entropy stage");
-    let transform = file_with(6, |h| h.transforms = vec![TransformId::DeltaByte], &[], &payload, &whole);
+    let transform = file_with(
+        6,
+        |h| h.transforms = vec![TransformId::DeltaByte],
+        &[],
+        &payload,
+        &whole,
+    );
     assert_rejected(&transform, "outer transform");
     let metadata = file_with(6, |_| {}, &[0u8; 4], &payload, &whole);
     assert_rejected(&metadata, "outer metadata");
@@ -272,7 +366,10 @@ fn forged_outer_blocks_are_rejected_by_every_reader() {
     for minor in 0..=5u8 {
         let old = file_with(minor, |_| {}, &[], &payload, &whole);
         assert!(
-            matches!(assert_rejected(&old, "old minor"), AceError::UnsupportedVersion { .. }),
+            matches!(
+                assert_rejected(&old, "old minor"),
+                AceError::UnsupportedVersion { .. }
+            ),
             "minor {minor}"
         );
     }
@@ -284,8 +381,20 @@ fn tight_limits_stop_a_valid_segmented_file() {
     let file = file_with(6, |_| {}, &[], &payload, &whole);
     let engine = AceEngine::default_engine();
     for (limits, label) in [
-        (DecodeLimits { max_segments: 1, ..DecodeLimits::default() }, "segment count"),
-        (DecodeLimits { max_block_size: 99, ..DecodeLimits::default() }, "block output size"),
+        (
+            DecodeLimits {
+                max_segments: 1,
+                ..DecodeLimits::default()
+            },
+            "segment count",
+        ),
+        (
+            DecodeLimits {
+                max_block_size: 99,
+                ..DecodeLimits::default()
+            },
+            "block output size",
+        ),
     ] {
         let tight = engine.clone().with_decode_limits(limits);
         assert!(

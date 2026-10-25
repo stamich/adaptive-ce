@@ -1,9 +1,7 @@
 //! Tests of LZ with a preset dictionary (Format 1.6): the dictionary is history that precedes
 //! the input, and the token stream is unchanged.
 
-use ace_codecs::{
-    lz_decode, lz_decode_with_dictionary, lz_encode, lz_encode_with_dictionary,
-};
+use ace_codecs::{lz_decode, lz_decode_with_dictionary, lz_encode, lz_encode_with_dictionary};
 use ace_core::{AceError, LzMode};
 
 /// Deterministic pseudo-random bytes.
@@ -57,12 +55,18 @@ fn an_empty_dictionary_is_the_plain_codec() {
 
 #[test]
 fn the_dictionary_makes_a_short_input_smaller() {
-    let dictionary = b"{\"event\":\"temperature_reading\",\"unit\":\"celsius\",\"firmware\":\"release-2.7.1\"}";
+    let dictionary =
+        b"{\"event\":\"temperature_reading\",\"unit\":\"celsius\",\"firmware\":\"release-2.7.1\"}";
     let input = b"{\"event\":\"temperature_reading\",\"unit\":\"celsius\",\"value\":21}";
     for mode in MODES {
         let plain = lz_encode(input, mode);
         let with = lz_encode_with_dictionary(input, dictionary, mode);
-        assert!(with.len() < plain.len(), "{} !< {}", with.len(), plain.len());
+        assert!(
+            with.len() < plain.len(),
+            "{} !< {}",
+            with.len(),
+            plain.len()
+        );
         assert_eq!(
             lz_decode_with_dictionary(&with, dictionary, input.len()).unwrap(),
             input

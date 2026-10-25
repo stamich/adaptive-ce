@@ -36,7 +36,9 @@ fn noise(len: usize, mut seed: u64) -> Vec<u8> {
 
 /// Text, then counters, then noise: the encoder segments this block.
 fn mixed() -> Vec<u8> {
-    let words = ["alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n"];
+    let words = [
+        "alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n",
+    ];
     let mut input = Vec::new();
     let mut i = 0usize;
     while input.len() < 192 * 1024 {
@@ -51,7 +53,10 @@ fn mixed() -> Vec<u8> {
 /// A segmented file of [`mixed`] and the input it encodes.
 fn segmented_file() -> (Vec<u8>, Vec<u8>) {
     let input = mixed();
-    let (file, stats) = AceEngine::new(config()).unwrap().compress_with_stats(&input).unwrap();
+    let (file, stats) = AceEngine::new(config())
+        .unwrap()
+        .compress_with_stats(&input)
+        .unwrap();
     assert_eq!(stats.segmented_blocks, 1, "the fixture must be segmented");
     (file, input)
 }
@@ -72,17 +77,27 @@ fn every_reader_returns_the_original_bytes() {
     assert_eq!(engine.decompress(&file).unwrap(), input);
 
     let mut into = Vec::new();
-    assert_eq!(engine.decompress_into(&file, &mut into).unwrap(), input.len());
+    assert_eq!(
+        engine.decompress_into(&file, &mut into).unwrap(),
+        input.len()
+    );
     assert_eq!(into, input);
 
     let mut streamed = Vec::new();
-    engine.decompress_from(Cursor::new(&file), &mut streamed).unwrap();
+    engine
+        .decompress_from(Cursor::new(&file), &mut streamed)
+        .unwrap();
     assert_eq!(streamed, input);
 
     let mut indexed = AceIndexedDecoder::open(Cursor::new(&file), DecodeLimits::default()).unwrap();
     assert_eq!(indexed.read_range(0..input.len() as u64).unwrap(), input);
     // Ranges across the segment boundaries (text | counters | noise) and inside one segment.
-    for range in [(0u64, 10u64), (190 * 1024, 200 * 1024), (100_000, 500_000), (input.len() as u64 - 5, input.len() as u64)] {
+    for range in [
+        (0u64, 10u64),
+        (190 * 1024, 200 * 1024),
+        (100_000, 500_000),
+        (input.len() as u64 - 5, input.len() as u64),
+    ] {
         let got = indexed.read_range(range.0..range.1).unwrap();
         assert_eq!(got, &input[range.0 as usize..range.1 as usize], "{range:?}");
     }
@@ -97,7 +112,10 @@ fn several_blocks_mix_segmented_and_plain_blocks() {
     let engine = AceEngine::new(config()).unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
     assert!(stats.segmented_blocks >= 2);
-    assert!(stats.segmented_blocks < 4, "the constant block must stay unsegmented");
+    assert!(
+        stats.segmented_blocks < 4,
+        "the constant block must stay unsegmented"
+    );
     assert_eq!(engine.decompress(&file).unwrap(), input);
 }
 
@@ -107,12 +125,23 @@ fn files_older_than_1_6_reject_a_segmented_block() {
     for minor in 0..=5u8 {
         let old = with_minor(&file, minor);
         let engine = AceEngine::default_engine();
-        assert!(matches!(engine.decompress(&old), Err(AceError::UnsupportedVersion { .. })), "{minor}");
+        assert!(
+            matches!(
+                engine.decompress(&old),
+                Err(AceError::UnsupportedVersion { .. })
+            ),
+            "{minor}"
+        );
         let mut out = Vec::new();
-        assert!(matches!(engine.decompress_from(Cursor::new(&old), &mut out), Err(AceError::UnsupportedVersion { .. })));
-        assert!(AceIndexedDecoder::open(Cursor::new(&old), DecodeLimits::default())
-            .and_then(|mut decoder| decoder.read_range(0..100))
-            .is_err());
+        assert!(matches!(
+            engine.decompress_from(Cursor::new(&old), &mut out),
+            Err(AceError::UnsupportedVersion { .. })
+        ));
+        assert!(
+            AceIndexedDecoder::open(Cursor::new(&old), DecodeLimits::default())
+                .and_then(|mut decoder| decoder.read_range(0..100))
+                .is_err()
+        );
     }
 }
 
@@ -128,7 +157,10 @@ fn damage_is_detected_at_every_position() {
         let mut damaged = file.clone();
         damaged[position] ^= 0x5A;
         if let Ok(output) = engine.decompress(&damaged) {
-            assert_eq!(output, input, "flip at {position} changed the output silently");
+            assert_eq!(
+                output, input,
+                "flip at {position} changed the output silently"
+            );
         }
     }
     for len in (0..file.len()).step_by(1013) {
@@ -139,8 +171,10 @@ fn damage_is_detected_at_every_position() {
 #[test]
 fn the_segment_limit_is_enforced_by_the_reader() {
     let (file, _) = segmented_file();
-    let tight = AceEngine::default_engine()
-        .with_decode_limits(DecodeLimits { max_segments: 2, ..DecodeLimits::default() });
+    let tight = AceEngine::default_engine().with_decode_limits(DecodeLimits {
+        max_segments: 2,
+        ..DecodeLimits::default()
+    });
     assert!(matches!(
         tight.decompress(&file),
         Err(AceError::ResourceLimitExceeded("segment count"))

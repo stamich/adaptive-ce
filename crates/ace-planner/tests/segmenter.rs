@@ -2,9 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use ace_core::{AceConfig, AceError, CompressionProfile, SegmentationConfig};
-use ace_planner::{
-    classify_window, segment_boundaries, AlphabetBucket,
-};
+use ace_planner::{classify_window, segment_boundaries, AlphabetBucket};
 use proptest::prelude::*;
 
 /// A small configuration so the tests stay fast: 4 KiB windows, 8 KiB .. 64 KiB segments.
@@ -31,7 +29,9 @@ fn noise(len: usize, mut seed: u64) -> Vec<u8> {
 
 /// English-like text over a small alphabet.
 fn text(len: usize) -> Vec<u8> {
-    let words = ["alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n"];
+    let words = [
+        "alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n",
+    ];
     let mut out = Vec::with_capacity(len + 8);
     let mut i = 0usize;
     while out.len() < len {
@@ -69,14 +69,35 @@ fn invalid_configurations_are_rejected() {
     let ok = small();
     assert!(ok.validate().is_ok());
     for bad in [
-        SegmentationConfig { window_size: 0, ..ok },
-        SegmentationConfig { min_segment_size: 0, ..ok },
-        SegmentationConfig { min_segment_size: 5000, ..ok },
-        SegmentationConfig { max_segment_size: 10_000, ..ok },
-        SegmentationConfig { max_segment_size: 8192, ..ok },
-        SegmentationConfig { max_segments: 1, ..ok },
+        SegmentationConfig {
+            window_size: 0,
+            ..ok
+        },
+        SegmentationConfig {
+            min_segment_size: 0,
+            ..ok
+        },
+        SegmentationConfig {
+            min_segment_size: 5000,
+            ..ok
+        },
+        SegmentationConfig {
+            max_segment_size: 10_000,
+            ..ok
+        },
+        SegmentationConfig {
+            max_segment_size: 8192,
+            ..ok
+        },
+        SegmentationConfig {
+            max_segments: 1,
+            ..ok
+        },
     ] {
-        assert!(matches!(bad.validate(), Err(AceError::InvalidConfig(_))), "{bad:?}");
+        assert!(
+            matches!(bad.validate(), Err(AceError::InvalidConfig(_))),
+            "{bad:?}"
+        );
         assert!(segment_boundaries(&[1, 2, 3], &AceConfig::default(), &bad).is_err());
     }
     assert!(SegmentationConfig::default().validate().is_ok());
@@ -85,12 +106,23 @@ fn invalid_configurations_are_rejected() {
 #[test]
 fn short_and_uniform_inputs_are_not_segmented() {
     let config = AceConfig::default();
-    assert!(segment_boundaries(&[], &config, &small()).unwrap().is_empty());
-    assert_eq!(segment_boundaries(&[7; 100], &config, &small()).unwrap(), vec![0..100]);
+    assert!(segment_boundaries(&[], &config, &small())
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        segment_boundaries(&[7; 100], &config, &small()).unwrap(),
+        vec![0..100]
+    );
     let one_and_a_half = text(6000);
-    assert_eq!(segment_boundaries(&one_and_a_half, &config, &small()).unwrap(), vec![0..6000]);
+    assert_eq!(
+        segment_boundaries(&one_and_a_half, &config, &small()).unwrap(),
+        vec![0..6000]
+    );
     let uniform = text(40_000);
-    assert_eq!(segment_boundaries(&uniform, &config, &small()).unwrap(), vec![0..40_000]);
+    assert_eq!(
+        segment_boundaries(&uniform, &config, &small()).unwrap(),
+        vec![0..40_000]
+    );
 }
 
 #[test]
@@ -102,16 +134,31 @@ fn cuts_follow_the_change_of_character() {
     let ranges = segment_boundaries(&input, &config, &small()).unwrap();
     assert_tiles(&ranges, input.len());
     let cuts: Vec<usize> = ranges.iter().map(|range| range.end).collect();
-    assert!(cuts.contains(&(128 * 1024)), "text | noise boundary in {cuts:?}");
-    assert!(cuts.contains(&(256 * 1024)), "noise | counters boundary in {cuts:?}");
+    assert!(
+        cuts.contains(&(128 * 1024)),
+        "text | noise boundary in {cuts:?}"
+    );
+    assert!(
+        cuts.contains(&(256 * 1024)),
+        "noise | counters boundary in {cuts:?}"
+    );
 }
 
 #[test]
 fn window_classes_distinguish_the_obvious_cases() {
     let config = AceConfig::default();
-    assert_eq!(classify_window(&[0; 4096], &config).alphabet, AlphabetBucket::Constant);
-    assert_eq!(classify_window(&text(4096), &config).alphabet, AlphabetBucket::Small);
-    assert_eq!(classify_window(&noise(4096, 3), &config).alphabet, AlphabetBucket::Wide);
+    assert_eq!(
+        classify_window(&[0; 4096], &config).alphabet,
+        AlphabetBucket::Constant
+    );
+    assert_eq!(
+        classify_window(&text(4096), &config).alphabet,
+        AlphabetBucket::Small
+    );
+    assert_eq!(
+        classify_window(&noise(4096, 3), &config).alphabet,
+        AlphabetBucket::Wide
+    );
     assert_ne!(
         classify_window(&text(4096), &config),
         classify_window(&noise(4096, 3), &config)
@@ -142,9 +189,16 @@ fn too_many_segments_fall_back_to_a_uniform_cut() {
     // 8 KiB runs alternate between text and noise: far more runs than 4 allowed segments.
     let mut input = Vec::new();
     for index in 0..40u64 {
-        input.extend(if index % 2 == 0 { text(8192) } else { noise(8192, index) });
+        input.extend(if index % 2 == 0 {
+            text(8192)
+        } else {
+            noise(8192, index)
+        });
     }
-    let capped = SegmentationConfig { max_segments: 4, ..small() };
+    let capped = SegmentationConfig {
+        max_segments: 4,
+        ..small()
+    };
     let ranges = segment_boundaries(&input, &config, &capped).unwrap();
     assert_tiles(&ranges, input.len());
     assert!((2..=4).contains(&ranges.len()), "{ranges:?}");
@@ -157,14 +211,32 @@ fn boundaries_do_not_depend_on_threads_or_profile_order() {
     input.extend(counters(96 * 1024));
     let reference = segment_boundaries(&input, &AceConfig::default(), &small()).unwrap();
     for threads in [1usize, 2, 8] {
-        let config = AceConfig { threads, ..AceConfig::default() };
-        assert_eq!(segment_boundaries(&input, &config, &small()).unwrap(), reference, "{threads}");
+        let config = AceConfig {
+            threads,
+            ..AceConfig::default()
+        };
+        assert_eq!(
+            segment_boundaries(&input, &config, &small()).unwrap(),
+            reference,
+            "{threads}"
+        );
     }
-    for profile in [CompressionProfile::Fast, CompressionProfile::Balanced, CompressionProfile::Dense] {
-        let config = AceConfig { profile, ..AceConfig::default() };
+    for profile in [
+        CompressionProfile::Fast,
+        CompressionProfile::Balanced,
+        CompressionProfile::Dense,
+    ] {
+        let config = AceConfig {
+            profile,
+            ..AceConfig::default()
+        };
         let ranges = segment_boundaries(&input, &config, &small()).unwrap();
         assert_tiles(&ranges, input.len());
-        assert_eq!(ranges, segment_boundaries(&input, &config, &small()).unwrap(), "{profile:?}");
+        assert_eq!(
+            ranges,
+            segment_boundaries(&input, &config, &small()).unwrap(),
+            "{profile:?}"
+        );
     }
 }
 

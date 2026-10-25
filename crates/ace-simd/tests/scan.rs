@@ -49,7 +49,10 @@ fn common_prefix_finds_the_first_difference_in_long_buffers() {
             state as u8
         })
         .collect();
-    for split in (0..base.len()).step_by(7).chain([15, 16, 17, 31, 32, 33, 999]) {
+    for split in (0..base.len())
+        .step_by(7)
+        .chain([15, 16, 17, 31, 32, 33, 999])
+    {
         let mut other = base.clone();
         other[split] = other[split].wrapping_add(1);
         // A later difference must not hide the first one.

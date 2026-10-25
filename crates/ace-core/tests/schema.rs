@@ -24,7 +24,10 @@ fn a_valid_schema_reports_its_layout() {
 #[test]
 fn invalid_schemas_are_rejected() {
     let invalid = |columns: Vec<ColumnSpec>| {
-        assert!(matches!(Schema::new(columns), Err(AceError::InvalidConfig(_))));
+        assert!(matches!(
+            Schema::new(columns),
+            Err(AceError::InvalidConfig(_))
+        ));
     };
     invalid(Vec::new());
     invalid(vec![spec(0, ColumnKind::Bytes)]);
@@ -36,7 +39,9 @@ fn invalid_schemas_are_rejected() {
     invalid(vec![spec(u16::MAX, ColumnKind::Bytes); 70_000]);
     // The widest legal schema is accepted.
     assert_eq!(
-        Schema::new(vec![spec(u16::MAX, ColumnKind::Bytes); 3]).unwrap().record_size(),
+        Schema::new(vec![spec(u16::MAX, ColumnKind::Bytes); 3])
+            .unwrap()
+            .record_size(),
         3 * u32::from(u16::MAX)
     );
 }
@@ -53,14 +58,19 @@ fn kind_ids_are_the_wire_values() {
         assert_eq!(ColumnKind::from_id(id).unwrap(), kind);
     }
     for id in 4..=u8::MAX {
-        assert!(matches!(ColumnKind::from_id(id), Err(AceError::Malformed(_))));
+        assert!(matches!(
+            ColumnKind::from_id(id),
+            Err(AceError::Malformed(_))
+        ));
     }
 }
 
 #[test]
 fn widths_per_kind() {
     for width in [1u16, 2, 4, 8] {
-        assert!(ColumnKind::Unsigned.accepts_width(width) && ColumnKind::Signed.accepts_width(width));
+        assert!(
+            ColumnKind::Unsigned.accepts_width(width) && ColumnKind::Signed.accepts_width(width)
+        );
     }
     assert!(!ColumnKind::Unsigned.accepts_width(3) && !ColumnKind::Signed.accepts_width(0));
     assert!(ColumnKind::Float.accepts_width(4) && ColumnKind::Float.accepts_width(8));
@@ -71,7 +81,11 @@ fn widths_per_kind() {
 
 #[test]
 fn block_sizes_are_rounded_to_whole_records() {
-    let schema = Schema::new(vec![spec(8, ColumnKind::Unsigned), spec(4, ColumnKind::Bytes)]).unwrap();
+    let schema = Schema::new(vec![
+        spec(8, ColumnKind::Unsigned),
+        spec(4, ColumnKind::Bytes),
+    ])
+    .unwrap();
     assert_eq!(schema.record_size(), 12);
     // Down to a multiple, never below one record, exact multiples unchanged.
     assert_eq!(schema.align_block_size(262_144), 262_140);

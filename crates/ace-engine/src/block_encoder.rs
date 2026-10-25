@@ -421,9 +421,11 @@ fn try_dictionary(
     ] {
         let (model, payload) = encode_entropy(entropy, &primary)?;
         let metadata = wrap_entropy_metadata(entropy, primary.len(), model)?;
-        let smaller = best.as_ref().is_none_or(|(_, best_metadata, best_payload)| {
-            metadata.len() + payload.len() < best_metadata.len() + best_payload.len()
-        });
+        let smaller = best
+            .as_ref()
+            .is_none_or(|(_, best_metadata, best_payload)| {
+                metadata.len() + payload.len() < best_metadata.len() + best_payload.len()
+            });
         if smaller {
             best = Some((entropy, metadata, payload));
         }

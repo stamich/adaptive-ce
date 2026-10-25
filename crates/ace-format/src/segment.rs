@@ -159,18 +159,21 @@ impl SegmentTable {
             });
         }
         if original_total != block_original_size {
-            return Err(AceError::Malformed("segment sizes do not add up to the block"));
+            return Err(AceError::Malformed(
+                "segment sizes do not add up to the block",
+            ));
         }
         if serialized_total != data_len {
-            return Err(AceError::Malformed("segment lengths do not add up to the payload"));
+            return Err(AceError::Malformed(
+                "segment lengths do not add up to the payload",
+            ));
         }
         Ok(Self { entries })
     }
 
     /// Offset of the first inner block in the payload.
     pub fn data_offset(&self) -> usize {
-        SEGMENT_HEADER_SIZE
-            .saturating_add(self.entries.len().saturating_mul(SEGMENT_ENTRY_SIZE))
+        SEGMENT_HEADER_SIZE.saturating_add(self.entries.len().saturating_mul(SEGMENT_ENTRY_SIZE))
     }
 
     /// The part of the reconstructed block produced by each segment, in order.
@@ -213,7 +216,9 @@ impl SegmentTable {
 /// fit in `u32`.
 pub fn encode_segment_payload(segments: &[(u32, Vec<u8>)]) -> AceResult<Vec<u8>> {
     if segments.len() < 2 {
-        return Err(AceError::InvalidConfig("a segmented block needs two segments"));
+        return Err(AceError::InvalidConfig(
+            "a segmented block needs two segments",
+        ));
     }
     let count = u32::try_from(segments.len())
         .map_err(|_| AceError::ResourceLimitExceeded("segment count"))?;
@@ -238,9 +243,7 @@ pub fn encode_segment_payload(segments: &[(u32, Vec<u8>)]) -> AceResult<Vec<u8>>
 
 /// Little-endian `u32` from exactly four bytes.
 fn read_u32(bytes: &[u8]) -> AceResult<u32> {
-    Ok(u32::from_le_bytes(
-        bytes
-            .try_into()
-            .map_err(|_| AceError::Malformed("truncated segment field"))?,
-    ))
+    Ok(u32::from_le_bytes(bytes.try_into().map_err(|_| {
+        AceError::Malformed("truncated segment field")
+    })?))
 }

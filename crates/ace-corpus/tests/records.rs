@@ -5,7 +5,10 @@ use ace_corpus::{FieldKind, RecordWorkload};
 
 #[test]
 fn layouts_add_up_to_the_record_size() {
-    let sizes: Vec<usize> = RecordWorkload::ALL.iter().map(|w| w.record_size()).collect();
+    let sizes: Vec<usize> = RecordWorkload::ALL
+        .iter()
+        .map(|w| w.record_size())
+        .collect();
     assert_eq!(sizes, vec![24, 16, 32]);
     for workload in RecordWorkload::ALL {
         assert!(!workload.layout().is_empty());
@@ -38,7 +41,10 @@ fn generation_is_deterministic_and_whole_records() {
 #[test]
 fn names_are_distinct_and_stable() {
     let names: Vec<&str> = RecordWorkload::ALL.iter().map(|w| w.name()).collect();
-    assert_eq!(names, vec!["records-trades", "records-telemetry", "records-events"]);
+    assert_eq!(
+        names,
+        vec!["records-trades", "records-telemetry", "records-events"]
+    );
 }
 
 /// The first bytes are fixed (guards against accidental generator changes).
@@ -46,8 +52,15 @@ fn names_are_distinct_and_stable() {
 fn first_records_are_fixed() {
     let trades = RecordWorkload::Trades.generate_records(2);
     let first_time = u64::from_le_bytes(trades[..8].try_into().unwrap());
-    assert!((1_700_000_000_000..1_700_000_000_016).contains(&first_time), "{first_time}");
-    assert_eq!(&trades[20..23], &[b'A', 0, 0], "flags start with the record's cycle letter");
+    assert!(
+        (1_700_000_000_000..1_700_000_000_016).contains(&first_time),
+        "{first_time}"
+    );
+    assert_eq!(
+        &trades[20..23],
+        &[b'A', 0, 0],
+        "flags start with the record's cycle letter"
+    );
     let telemetry = RecordWorkload::Telemetry.generate_records(3);
     assert_eq!(&telemetry[..2], &0u16.to_le_bytes());
     assert_eq!(&telemetry[16..18], &1u16.to_le_bytes());

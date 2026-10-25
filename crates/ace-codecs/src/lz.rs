@@ -184,7 +184,13 @@ fn lz_encode_from(data: &[u8], start: usize, mode: LzMode) -> Vec<u8> {
             if prev.len() < data.len() {
                 prev.resize(data.len(), usize::MAX);
             }
-            Some(lz_encode_tables(data, start, mode, head, &mut prev[..data.len()]))
+            Some(lz_encode_tables(
+                data,
+                start,
+                mode,
+                head,
+                &mut prev[..data.len()],
+            ))
         });
         if let Some(out) = reused {
             return out;

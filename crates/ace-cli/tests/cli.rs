@@ -295,12 +295,27 @@ fn a_schema_stores_the_table_by_columns() {
     let input = table(&dir);
     let (rowwise, columnar, out) = (dir.join("r.ace"), dir.join("c.ace"), dir.join("out"));
     assert!(run(&["compress", s(&input), s(&rowwise)]).status.success());
-    let output = run(&["compress", s(&input), s(&columnar), "--schema", "u64,f64,u32,b4"]);
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let output = run(&[
+        "compress",
+        s(&input),
+        s(&columnar),
+        "--schema",
+        "u64,f64,u32,b4",
+    ]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let text = String::from_utf8_lossy(&output.stdout);
-    assert!(text.contains("columnar=") && !text.contains("columnar=0 "), "{text}");
+    assert!(
+        text.contains("columnar=") && !text.contains("columnar=0 "),
+        "{text}"
+    );
     assert!(text.contains("format=1.6"), "{text}");
-    assert!(std::fs::metadata(&columnar).unwrap().len() < std::fs::metadata(&rowwise).unwrap().len());
+    assert!(
+        std::fs::metadata(&columnar).unwrap().len() < std::fs::metadata(&rowwise).unwrap().len()
+    );
     for args in [
         vec!["verify", s(&columnar)],
         vec!["decompress", s(&columnar), s(&out)],
@@ -310,9 +325,17 @@ fn a_schema_stores_the_table_by_columns() {
     assert_eq!(std::fs::read(&out).unwrap(), std::fs::read(&input).unwrap());
     // The streaming path writes the same bytes.
     let streamed = dir.join("s.ace");
-    assert!(run(&["compress-stream", s(&input), s(&streamed), "--schema", "u64,f64,u32,b4", "--profile", "balanced"])
-        .status
-        .success());
+    assert!(run(&[
+        "compress-stream",
+        s(&input),
+        s(&streamed),
+        "--schema",
+        "u64,f64,u32,b4",
+        "--profile",
+        "balanced"
+    ])
+    .status
+    .success());
     assert!(run(&["decompress", s(&streamed), s(&out)]).status.success());
     assert_eq!(std::fs::read(&out).unwrap(), std::fs::read(&input).unwrap());
 }
@@ -322,9 +345,18 @@ fn schema_errors_are_clean() {
     let dir = scratch("schema-errors");
     let input = sample(&dir);
     let out = dir.join("out.ace");
-    assert_clean_failure(&["compress", s(&input), s(&out), "--schema", "u64,q9"], "unknown schema field");
-    assert_clean_failure(&["compress", s(&input), s(&out), "--schema", "b0"], "unknown schema field");
-    assert_clean_failure(&["compress", s(&input), s(&out), "--schema", ""], "unknown schema field");
+    assert_clean_failure(
+        &["compress", s(&input), s(&out), "--schema", "u64,q9"],
+        "unknown schema field",
+    );
+    assert_clean_failure(
+        &["compress", s(&input), s(&out), "--schema", "b0"],
+        "unknown schema field",
+    );
+    assert_clean_failure(
+        &["compress", s(&input), s(&out), "--schema", ""],
+        "unknown schema field",
+    );
 }
 
 #[test]
@@ -332,7 +364,9 @@ fn segments_are_accepted() {
     let dir = scratch("segments");
     let input = sample(&dir);
     let (packed, out) = (dir.join("a.ace"), dir.join("out"));
-    assert!(run(&["compress", s(&input), s(&packed), "--segments"]).status.success());
+    assert!(run(&["compress", s(&input), s(&packed), "--segments"])
+        .status
+        .success());
     assert!(run(&["decompress", s(&packed), s(&out)]).status.success());
     assert_eq!(std::fs::read(&out).unwrap(), std::fs::read(&input).unwrap());
 }
@@ -345,7 +379,11 @@ fn a_dictionary_is_trained_embedded_and_external() {
     let mut args = vec!["train", s(&dictionary), "--size", "1024"];
     args.extend(samples.iter().map(|path| s(path)));
     let trained = run(&args);
-    assert!(trained.status.success(), "{}", String::from_utf8_lossy(&trained.stderr));
+    assert!(
+        trained.status.success(),
+        "{}",
+        String::from_utf8_lossy(&trained.stderr)
+    );
     assert!(String::from_utf8_lossy(&trained.stdout).contains("trained dictionary"));
     let size = std::fs::metadata(&dictionary).unwrap().len();
     assert!(size > 0 && size <= 1024, "{size}");
@@ -367,47 +405,103 @@ fn a_dictionary_is_trained_embedded_and_external() {
         args.extend(common);
         args.extend(extra);
         let result = run(&args);
-        assert!(result.status.success(), "{args:?}: {}", String::from_utf8_lossy(&result.stderr));
+        assert!(
+            result.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
         String::from_utf8_lossy(&result.stdout).into_owned()
     };
     compress(&plain, &[]);
     let text_out = compress(&embedded, &["--dictionary", s(&dictionary)]);
-    assert!(text_out.contains("format=1.6") && !text_out.contains("dictionary=0 "), "{text_out}");
-    compress(&external, &["--dictionary", s(&dictionary), "--external-dictionary"]);
+    assert!(
+        text_out.contains("format=1.6") && !text_out.contains("dictionary=0 "),
+        "{text_out}"
+    );
+    compress(
+        &external,
+        &["--dictionary", s(&dictionary), "--external-dictionary"],
+    );
     let (plain_len, embedded_len, external_len) = (
         std::fs::metadata(&plain).unwrap().len(),
         std::fs::metadata(&embedded).unwrap().len(),
         std::fs::metadata(&external).unwrap().len(),
     );
-    assert!(external_len < embedded_len && embedded_len < plain_len, "{plain_len} {embedded_len} {external_len}");
+    assert!(
+        external_len < embedded_len && embedded_len < plain_len,
+        "{plain_len} {embedded_len} {external_len}"
+    );
 
     // The embedded file is self-contained and shows its dictionary.
     assert!(run(&["decompress", s(&embedded), s(&out)]).status.success());
     assert_eq!(std::fs::read(&out).unwrap(), text.as_bytes());
     let inspect = run(&["inspect", s(&embedded), "--blocks"]);
     let listing = String::from_utf8_lossy(&inspect.stdout);
-    assert!(listing.contains("(embedded)") && listing.contains("scope=File"), "{listing}");
+    assert!(
+        listing.contains("(embedded)") && listing.contains("scope=File"),
+        "{listing}"
+    );
     // The external file needs the dictionary, and says so when it is missing.
     assert_clean_failure(&["decompress", s(&external), s(&out)], "dictionary");
     for args in [
-        vec!["decompress", s(&external), s(&out), "--dictionary", s(&dictionary)],
+        vec![
+            "decompress",
+            s(&external),
+            s(&out),
+            "--dictionary",
+            s(&dictionary),
+        ],
         vec!["verify", s(&external), "--dictionary", s(&dictionary)],
-        vec!["decode-block", s(&external), "1", s(&out), "--dictionary", s(&dictionary)],
-        vec!["read-range", s(&external), "10", "5000", s(&out), "--dictionary", s(&dictionary)],
+        vec![
+            "decode-block",
+            s(&external),
+            "1",
+            s(&out),
+            "--dictionary",
+            s(&dictionary),
+        ],
+        vec![
+            "read-range",
+            s(&external),
+            "10",
+            "5000",
+            s(&out),
+            "--dictionary",
+            s(&dictionary),
+        ],
     ] {
         let result = run(&args);
-        assert!(result.status.success(), "{args:?}: {}", String::from_utf8_lossy(&result.stderr));
+        assert!(
+            result.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
     }
     assert_eq!(std::fs::read(&out).unwrap(), &text.as_bytes()[10..5010]);
     // `compress-stream` takes an external dictionary and writes the bytes `compress` writes.
     let result = run(&[
-        "compress-stream", s(&input), s(&streamed), "--block-size", "4096",
-        "--dictionary", s(&dictionary),
+        "compress-stream",
+        s(&input),
+        s(&streamed),
+        "--block-size",
+        "4096",
+        "--dictionary",
+        s(&dictionary),
     ]);
-    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
-    assert!(run(&["decompress", s(&streamed), s(&out), "--dictionary", s(&dictionary)])
-        .status
-        .success());
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(run(&[
+        "decompress",
+        s(&streamed),
+        s(&out),
+        "--dictionary",
+        s(&dictionary)
+    ])
+    .status
+    .success());
     assert_eq!(std::fs::read(&out).unwrap(), text.as_bytes());
 }
 
@@ -418,7 +512,19 @@ fn train_errors_are_clean() {
     std::fs::write(&one, b"just one short sample").unwrap();
     let out = dir.join("dict.bin");
     assert_clean_failure(&["train", s(&out), s(&one)], "samples");
-    assert_clean_failure(&["train", s(&out), s(&one), "--chunk-size", "0"], "chunk-size");
+    assert_clean_failure(
+        &["train", s(&out), s(&one), "--chunk-size", "0"],
+        "chunk-size",
+    );
     assert_clean_failure(&["train", s(&out), s(&dir.join("missing.txt"))], "reading");
-    assert_clean_failure(&["compress", s(&one), s(&out), "--dictionary", s(&dir.join("none.bin"))], "reading");
+    assert_clean_failure(
+        &[
+            "compress",
+            s(&one),
+            s(&out),
+            "--dictionary",
+            s(&dir.join("none.bin")),
+        ],
+        "reading",
+    );
 }

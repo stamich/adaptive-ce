@@ -51,7 +51,13 @@ fn engine_with(config: &AceConfig, dictionaries: &[*const AceDictionary]) -> *mu
     let mut handle = ptr::null_mut();
     // SAFETY: the config and the handles are live; `handle` is writable.
     let status = unsafe {
-        ace_engine_new_ex(config, ptr::null(), dictionaries.as_ptr(), dictionaries.len(), &mut handle)
+        ace_engine_new_ex(
+            config,
+            ptr::null(),
+            dictionaries.as_ptr(),
+            dictionaries.len(),
+            &mut handle,
+        )
     };
     assert_eq!(status, ACE_OK);
     handle
@@ -60,7 +66,15 @@ fn engine_with(config: &AceConfig, dictionaries: &[*const AceDictionary]) -> *mu
 fn compress(engine: *const AceEngine, input: &[u8]) -> Vec<u8> {
     let mut out = ptr::null_mut();
     // SAFETY: live engine and input; the output is writable.
-    let status = unsafe { ace_compress(engine, input.as_ptr(), input.len(), &mut out, ptr::null_mut()) };
+    let status = unsafe {
+        ace_compress(
+            engine,
+            input.as_ptr(),
+            input.len(),
+            &mut out,
+            ptr::null_mut(),
+        )
+    };
     assert_eq!(status, ACE_OK);
     take(out)
 }
@@ -87,7 +101,9 @@ fn dictionary_handle_reports_its_content_and_derived_id() {
         assert_eq!(bytes, b"temperature_reading celsius");
         assert_eq!(
             ace_dictionary_id(handle),
-            ace::Dictionary::new(b"temperature_reading celsius".to_vec()).unwrap().id()
+            ace::Dictionary::new(b"temperature_reading celsius".to_vec())
+                .unwrap()
+                .id()
         );
         ace_dictionary_free(handle);
     }
@@ -130,14 +146,21 @@ fn trained_dictionary_equals_the_facade_dictionary() {
     let mut handle = ptr::null_mut();
     // SAFETY: arrays of equal length, each element readable; `handle` writable.
     let status = unsafe {
-        ace_dictionary_train(pointers.as_ptr(), lengths.as_ptr(), samples.len(), 2048, &mut handle)
+        ace_dictionary_train(
+            pointers.as_ptr(),
+            lengths.as_ptr(),
+            samples.len(),
+            2048,
+            &mut handle,
+        )
     };
     assert_eq!(status, ACE_OK);
     let expected = ace::Dictionary::train(&samples, 2048).unwrap();
     // SAFETY: live handle; bytes valid until the free.
     unsafe {
         assert_eq!(ace_dictionary_id(handle), expected.id());
-        let bytes = std::slice::from_raw_parts(ace_dictionary_data(handle), ace_dictionary_len(handle));
+        let bytes =
+            std::slice::from_raw_parts(ace_dictionary_data(handle), ace_dictionary_len(handle));
         assert_eq!(bytes, expected.as_bytes());
         ace_dictionary_free(handle);
     }
@@ -164,23 +187,39 @@ fn embedded_dictionary_round_trips_through_a_plain_engine() {
     let dictionary = ace::Dictionary::train(&samples, 2048).unwrap();
     let handle = new_dictionary(dictionary.as_bytes(), dictionary.id());
 
-    let mut config = AceConfig { reserved: [0; 5], ..zeroed_config() };
+    let mut config = AceConfig {
+        reserved: [0; 5],
+        ..zeroed_config()
+    };
     config.block_size = 4096;
     config.dictionary = handle;
     let writer = engine_with(&config, &[]);
     let packed = compress(writer, &input);
 
     let facade = ace::Engine::new(
-        ace::Config::builder().block_size(4096).dictionary(dictionary.clone()).build().unwrap(),
+        ace::Config::builder()
+            .block_size(4096)
+            .dictionary(dictionary.clone())
+            .build()
+            .unwrap(),
     )
     .unwrap();
-    assert_eq!(packed, facade.compress(&input).unwrap(), "same bytes as the Rust facade");
-    let without = ace::Engine::new(ace::Config::builder().block_size(4096).build().unwrap()).unwrap();
-    assert!(packed.len() < without.compress(&input).unwrap().len(), "the dictionary pays");
+    assert_eq!(
+        packed,
+        facade.compress(&input).unwrap(),
+        "same bytes as the Rust facade"
+    );
+    let without =
+        ace::Engine::new(ace::Config::builder().block_size(4096).build().unwrap()).unwrap();
+    assert!(
+        packed.len() < without.compress(&input).unwrap().len(),
+        "the dictionary pays"
+    );
 
     let mut plain = ptr::null_mut();
     // SAFETY: null configs are the defaults; `plain` writable.
-    assert_eq!(unsafe { ace_engine_new(ptr::null(), ptr::null(), &mut plain) }, ACE_OK);
+    let status = unsafe { ace_engine_new(ptr::null(), ptr::null(), &mut plain) };
+    assert_eq!(status, ACE_OK);
     assert_eq!(decompress(plain, &packed).unwrap(), input);
     // SAFETY: each handle freed once; the engines own copies of the dictionary.
     unsafe {
@@ -205,7 +244,8 @@ fn external_dictionary_needs_the_reader_to_supply_it() {
 
     let mut plain = ptr::null_mut();
     // SAFETY: null configs are the defaults; `plain` writable.
-    assert_eq!(unsafe { ace_engine_new(ptr::null(), ptr::null(), &mut plain) }, ACE_OK);
+    let status = unsafe { ace_engine_new(ptr::null(), ptr::null(), &mut plain) };
+    assert_eq!(status, ACE_OK);
     assert_eq!(decompress(plain, &packed), Err(ACE_ERR_UNSUPPORTED));
 
     let reader = engine_with(&zeroed_config(), &[handle]);
@@ -214,7 +254,8 @@ fn external_dictionary_needs_the_reader_to_supply_it() {
     // Range reads resolve the same dictionaries.
     let mut range: *mut AceRangeReader = ptr::null_mut();
     // SAFETY: live engine, readable file, writable output.
-    assert_eq!(unsafe { ace_range_open(reader, packed.as_ptr(), packed.len(), &mut range) }, ACE_OK);
+    let status = unsafe { ace_range_open(reader, packed.as_ptr(), packed.len(), &mut range) };
+    assert_eq!(status, ACE_OK);
     let mut out = ptr::null_mut();
     // SAFETY: live reader; the output is writable.
     assert_eq!(unsafe { ace_range_read(range, 5, 25, &mut out) }, ACE_OK);
@@ -255,9 +296,18 @@ fn schema(columns: &[AceColumn]) -> Result<*mut AceSchema, i32> {
 #[test]
 fn schema_reports_its_record_size_and_validates_columns() {
     let columns = [
-        AceColumn { kind: ACE_COLUMN_UNSIGNED, width: 8 },
-        AceColumn { kind: ACE_COLUMN_FLOAT, width: 8 },
-        AceColumn { kind: ACE_COLUMN_BYTES, width: 8 },
+        AceColumn {
+            kind: ACE_COLUMN_UNSIGNED,
+            width: 8,
+        },
+        AceColumn {
+            kind: ACE_COLUMN_FLOAT,
+            width: 8,
+        },
+        AceColumn {
+            kind: ACE_COLUMN_BYTES,
+            width: 8,
+        },
     ];
     let handle = schema(&columns).unwrap();
     // SAFETY: live handle, freed once.
@@ -268,9 +318,24 @@ fn schema_reports_its_record_size_and_validates_columns() {
         ace_schema_free(ptr::null_mut());
     }
     assert_eq!(schema(&[]), Err(ACE_ERR_INVALID_ARGUMENT));
-    assert_eq!(schema(&[AceColumn { kind: 9, width: 4 }]), Err(ACE_ERR_INVALID_ARGUMENT));
-    assert_eq!(schema(&[AceColumn { kind: ACE_COLUMN_UNSIGNED, width: 3 }]), Err(ACE_ERR_INVALID_ARGUMENT));
-    assert_eq!(schema(&[AceColumn { kind: ACE_COLUMN_FLOAT, width: 70_000 }]), Err(ACE_ERR_INVALID_ARGUMENT));
+    assert_eq!(
+        schema(&[AceColumn { kind: 9, width: 4 }]),
+        Err(ACE_ERR_INVALID_ARGUMENT)
+    );
+    assert_eq!(
+        schema(&[AceColumn {
+            kind: ACE_COLUMN_UNSIGNED,
+            width: 3
+        }]),
+        Err(ACE_ERR_INVALID_ARGUMENT)
+    );
+    assert_eq!(
+        schema(&[AceColumn {
+            kind: ACE_COLUMN_FLOAT,
+            width: 70_000
+        }]),
+        Err(ACE_ERR_INVALID_ARGUMENT)
+    );
 }
 
 /// Fixed-size records: a counter, a price and a flag word.
@@ -287,9 +352,18 @@ fn table(count: u64) -> Vec<u8> {
 #[test]
 fn schema_in_the_config_gives_the_facade_bytes() {
     let handle = schema(&[
-        AceColumn { kind: ACE_COLUMN_UNSIGNED, width: 8 },
-        AceColumn { kind: ACE_COLUMN_FLOAT, width: 8 },
-        AceColumn { kind: ACE_COLUMN_UNSIGNED, width: 8 },
+        AceColumn {
+            kind: ACE_COLUMN_UNSIGNED,
+            width: 8,
+        },
+        AceColumn {
+            kind: ACE_COLUMN_FLOAT,
+            width: 8,
+        },
+        AceColumn {
+            kind: ACE_COLUMN_UNSIGNED,
+            width: 8,
+        },
     ])
     .unwrap();
     let input = table(20_000);
@@ -304,7 +378,13 @@ fn schema_in_the_config_gives_the_facade_bytes() {
         ace::Column::unsigned(8),
     ])
     .unwrap();
-    let facade = ace::Engine::new(ace::Config::builder().schema(facade_schema).build().unwrap()).unwrap();
+    let facade = ace::Engine::new(
+        ace::Config::builder()
+            .schema(facade_schema)
+            .build()
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(packed, facade.compress(&input).unwrap());
     assert!(packed.len() < ace::Engine::default().compress(&input).unwrap().len());
     assert_eq!(decompress(writer, &packed).unwrap(), input);
@@ -329,7 +409,11 @@ fn segmentation_in_the_config_gives_the_facade_bytes() {
 
     let segmentation = ace::Segmentation::default().min_segment_size(128 * 1024);
     let facade = ace::Engine::new(
-        ace::Config::builder().block_size(4 << 20).segmentation(segmentation).build().unwrap(),
+        ace::Config::builder()
+            .block_size(4 << 20)
+            .segmentation(segmentation)
+            .build()
+            .unwrap(),
     )
     .unwrap();
     assert_eq!(packed, facade.compress(&input).unwrap());
@@ -350,7 +434,10 @@ fn a_one_point_zero_config_keeps_the_old_behaviour() {
     config.segment_min = 1;
     let writer = engine_with(&config, &[]);
     let input = table(5_000);
-    assert_eq!(compress(writer, &input), ace::Engine::default().compress(&input).unwrap());
+    assert_eq!(
+        compress(writer, &input),
+        ace::Engine::default().compress(&input).unwrap()
+    );
     // SAFETY: freed once.
     unsafe { ace_engine_free(writer) };
 }

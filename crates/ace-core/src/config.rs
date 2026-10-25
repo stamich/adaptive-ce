@@ -52,8 +52,9 @@ impl SegmentationConfig {
     /// a non-zero multiple of the window, the maximum is smaller than twice the minimum (a
     /// segment cut in two must stay above the minimum), or fewer than two segments are allowed.
     pub fn validate(&self) -> AceResult<()> {
-        let multiple =
-            |size: usize| self.window_size != 0 && size != 0 && size.is_multiple_of(self.window_size);
+        let multiple = |size: usize| {
+            self.window_size != 0 && size != 0 && size.is_multiple_of(self.window_size)
+        };
         if !multiple(self.min_segment_size) || !multiple(self.max_segment_size) {
             return Err(AceError::InvalidConfig(
                 "segment sizes must be non-zero multiples of the window size",
@@ -65,7 +66,9 @@ impl SegmentationConfig {
             ));
         }
         if self.max_segments < 2 {
-            return Err(AceError::InvalidConfig("at least two segments must be allowed"));
+            return Err(AceError::InvalidConfig(
+                "at least two segments must be allowed",
+            ));
         }
         Ok(())
     }

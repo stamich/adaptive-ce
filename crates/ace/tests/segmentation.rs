@@ -7,7 +7,9 @@ use ace::{Config, Engine, ErrorKind, RangeReader, Segmentation};
 
 /// Text, then counters, then noise: a block the segmenter cuts.
 fn mixed() -> Vec<u8> {
-    let words = ["alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n"];
+    let words = [
+        "alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n",
+    ];
     let mut input = Vec::new();
     let mut i = 0usize;
     while input.len() < 192 * 1024 {
@@ -41,7 +43,10 @@ fn the_defaults_and_getters() {
     assert_eq!(defaults.max_segment_size_bytes(), 1 << 20);
     assert_eq!(defaults.max_segments_per_block(), 1024);
     assert_eq!(Config::default().segmentation(), None);
-    let config = Config::builder().segmentation(segmentation()).build().unwrap();
+    let config = Config::builder()
+        .segmentation(segmentation())
+        .build()
+        .unwrap();
     assert_eq!(config.segmentation(), Some(segmentation()));
 }
 

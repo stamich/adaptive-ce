@@ -117,7 +117,9 @@ fn mixed(len: usize, seed: u64) -> Vec<u8> {
     let mut state = seed;
     let mut out = Vec::with_capacity(len);
     while out.len() < len {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let run = (state >> 60) as usize + 1;
         let byte = (state >> 33) as u8 % 24;
         out.extend(std::iter::repeat_n(byte, run));
@@ -130,12 +132,23 @@ fn mixed(len: usize, seed: u64) -> Vec<u8> {
 /// small-input limit and for inputs after a longer one (stale `prev` entries must not matter).
 #[test]
 fn reused_large_tables_equal_allocating_encoder() {
-    let sizes = [LZ_SCRATCH_MAX_INPUT + 1, 300_000, 70_000, 1_000_000, 65_537, 131_072];
+    let sizes = [
+        LZ_SCRATCH_MAX_INPUT + 1,
+        300_000,
+        70_000,
+        1_000_000,
+        65_537,
+        131_072,
+    ];
     for (n, &len) in sizes.iter().enumerate() {
         let data = mixed(len, n as u64 + 1);
         for mode in [LzMode::Fast, LzMode::Balanced] {
             let reused = lz_encode(&data, mode);
-            assert_eq!(reused, lz_encode_allocating(&data, mode), "len {len} {mode:?}");
+            assert_eq!(
+                reused,
+                lz_encode_allocating(&data, mode),
+                "len {len} {mode:?}"
+            );
             assert_eq!(lz_decode(&reused, len).unwrap(), data);
         }
     }
@@ -158,6 +171,12 @@ fn dictionary_encode_after_longer_call_is_stable() {
     let short = mixed(5_000, 9);
     let first = lz_encode_with_dictionary(&short, &dictionary, LzMode::Balanced);
     let _ = lz_encode_with_dictionary(&long, &dictionary, LzMode::Balanced);
-    assert_eq!(lz_encode_with_dictionary(&short, &dictionary, LzMode::Balanced), first);
-    assert_eq!(lz_decode_with_dictionary(&first, &dictionary, short.len()).unwrap(), short);
+    assert_eq!(
+        lz_encode_with_dictionary(&short, &dictionary, LzMode::Balanced),
+        first
+    );
+    assert_eq!(
+        lz_decode_with_dictionary(&first, &dictionary, short.len()).unwrap(),
+        short
+    );
 }

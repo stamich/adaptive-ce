@@ -283,11 +283,8 @@ impl AceEngine {
         // Cloned because reading blocks borrows the reader mutably; the section is at most a
         // few dictionaries of 64 KiB.
         let embedded = ace.dictionaries().to_vec();
-        let dictionaries = DictionaryView::new(
-            &embedded,
-            &self.registry,
-            self.config.dictionary.as_ref(),
-        );
+        let dictionaries =
+            DictionaryView::new(&embedded, &self.registry, self.config.dictionary.as_ref());
         for expected_id in 0..file.block_count {
             let (header, metadata, payload) = ace.read_block()?;
             if header.block_id != expected_id {

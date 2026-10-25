@@ -41,7 +41,9 @@ fn noise(len: usize, mut seed: u64) -> Vec<u8> {
 
 /// Text, then counters, then noise: 512 KiB that the encoder segments.
 fn mixed() -> Vec<u8> {
-    let words = ["alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n"];
+    let words = [
+        "alpha ", "beta ", "gamma ", "delta ", "log ", "entry ", "value=", "ok\n",
+    ];
     let mut input = Vec::new();
     let mut i = 0usize;
     while input.len() < 192 * 1024 {
@@ -78,8 +80,14 @@ fn with_index(file: &[u8], edit: impl FnOnce(&mut ace_format::BlockIndex)) -> Ve
 #[test]
 fn the_writer_flags_segmented_blocks_in_the_index() {
     let input = mixed();
-    let segmented = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
-    let plain = AceEngine::new(config(false)).unwrap().compress(&input).unwrap();
+    let segmented = AceEngine::new(config(true))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
+    let plain = AceEngine::new(config(false))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let flags = |file: &[u8]| {
         AceIndexReader::open(Cursor::new(file), DecodeLimits::default())
             .unwrap()
@@ -96,20 +104,32 @@ fn the_writer_flags_segmented_blocks_in_the_index() {
 #[test]
 fn a_small_range_reads_one_segment_and_fewer_bytes_than_the_block() {
     let input = mixed();
-    let file = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
+    let file = AceEngine::new(config(true))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let mut decoder = open(&file);
-    let span = decoder.range_metrics(0..input.len() as u64).unwrap().physical_bytes_read;
+    let span = decoder
+        .range_metrics(0..input.len() as u64)
+        .unwrap()
+        .physical_bytes_read;
 
     // 1 KiB inside the first (text) segment: the incompressible tail of the block is not read.
     let (bytes, metrics) = decoder.read_range_with_metrics(1000..2024).unwrap();
     assert_eq!(bytes, &input[1000..2024]);
     assert_eq!(metrics.blocks_touched, 1);
     assert_eq!(metrics.segments_decoded, 1);
-    assert!(metrics.physical_bytes_read < span / 4, "{} vs span {span}", metrics.physical_bytes_read);
+    assert!(
+        metrics.physical_bytes_read < span / 4,
+        "{} vs span {span}",
+        metrics.physical_bytes_read
+    );
 
     // 1 KiB inside the noise segment at the end: one segment, still fewer bytes than the block.
     let start = input.len() as u64 - 40_000;
-    let (bytes, metrics) = decoder.read_range_with_metrics(start..start + 1024).unwrap();
+    let (bytes, metrics) = decoder
+        .read_range_with_metrics(start..start + 1024)
+        .unwrap();
     assert_eq!(bytes, &input[start as usize..start as usize + 1024]);
     assert_eq!(metrics.segments_decoded, 1);
     assert!(metrics.physical_bytes_read < span);
@@ -125,10 +145,18 @@ fn a_small_range_reads_one_segment_and_fewer_bytes_than_the_block() {
 #[test]
 fn the_whole_block_costs_exactly_its_span_and_never_more() {
     let input = mixed();
-    let file = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
+    let file = AceEngine::new(config(true))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let mut decoder = open(&file);
-    let span = decoder.range_metrics(0..input.len() as u64).unwrap().physical_bytes_read;
-    let (bytes, metrics) = decoder.read_range_with_metrics(0..input.len() as u64).unwrap();
+    let span = decoder
+        .range_metrics(0..input.len() as u64)
+        .unwrap()
+        .physical_bytes_read;
+    let (bytes, metrics) = decoder
+        .read_range_with_metrics(0..input.len() as u64)
+        .unwrap();
     assert_eq!(bytes, input);
     assert_eq!(metrics.physical_bytes_read, span);
     assert!(metrics.segments_decoded >= 2);
@@ -137,7 +165,10 @@ fn the_whole_block_costs_exactly_its_span_and_never_more() {
 #[test]
 fn unsegmented_files_keep_their_metrics() {
     let input = mixed();
-    let file = AceEngine::new(config(false)).unwrap().compress(&input).unwrap();
+    let file = AceEngine::new(config(false))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let mut decoder = open(&file);
     let span = decoder.range_metrics(0..10).unwrap().physical_bytes_read;
     let (bytes, metrics) = decoder.read_range_with_metrics(0..10).unwrap();
@@ -150,10 +181,13 @@ fn unsegmented_files_keep_their_metrics() {
 fn every_range_matches_the_input() {
     let mut input = mixed();
     input.extend(mixed());
-    let file = AceEngine::new(AceConfig { block_size: 512 * 1024, ..config(true) })
-        .unwrap()
-        .compress(&input)
-        .unwrap();
+    let file = AceEngine::new(AceConfig {
+        block_size: 512 * 1024,
+        ..config(true)
+    })
+    .unwrap()
+    .compress(&input)
+    .unwrap();
     let mut decoder = open(&file);
     let len = input.len() as u64;
     for step in 0..60u64 {
@@ -167,10 +201,18 @@ fn every_range_matches_the_input() {
 #[test]
 fn a_flag_on_a_block_that_is_not_segmented_is_rejected() {
     let input = mixed();
-    let plain = AceEngine::new(config(false)).unwrap().compress(&input).unwrap();
-    let forged = with_index(&plain, |index| index.entries[0].flags = INDEX_FLAG_SEGMENTED);
+    let plain = AceEngine::new(config(false))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
+    let forged = with_index(&plain, |index| {
+        index.entries[0].flags = INDEX_FLAG_SEGMENTED
+    });
     let mut decoder = open(&forged);
-    assert!(matches!(decoder.read_range(0..100), Err(AceError::Malformed(_))));
+    assert!(matches!(
+        decoder.read_range(0..100),
+        Err(AceError::Malformed(_))
+    ));
     // Unknown flag bits are refused when the index is read.
     let unknown = with_index(&plain, |index| index.entries[0].flags = 0x2);
     assert!(AceIndexedDecoder::open(Cursor::new(&unknown), DecodeLimits::default()).is_err());
@@ -180,7 +222,10 @@ fn a_flag_on_a_block_that_is_not_segmented_is_rejected() {
 #[test]
 fn a_missing_flag_falls_back_to_the_whole_block() {
     let input = mixed();
-    let file = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
+    let file = AceEngine::new(config(true))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let unflagged = with_index(&file, |index| index.entries[0].flags = 0);
     let mut decoder = open(&unflagged);
     let (bytes, metrics) = decoder.read_range_with_metrics(5..50).unwrap();
@@ -193,11 +238,19 @@ fn a_missing_flag_falls_back_to_the_whole_block() {
 #[test]
 fn damage_is_local_to_the_touched_segments() {
     let input = mixed();
-    let mut file = AceEngine::new(config(true)).unwrap().compress(&input).unwrap();
+    let mut file = AceEngine::new(config(true))
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let last = file.len() - 600; // inside the last segment, before the index
     file[last] ^= 0xFF;
     let mut decoder = open(&file);
-    assert!(decoder.read_range(0..1024).is_ok(), "first segment is intact");
-    assert!(decoder.read_range(input.len() as u64 - 100..input.len() as u64).is_err());
+    assert!(
+        decoder.read_range(0..1024).is_ok(),
+        "first segment is intact"
+    );
+    assert!(decoder
+        .read_range(input.len() as u64 - 100..input.len() as u64)
+        .is_err());
     assert!(decoder.decode_block(0).is_err());
 }

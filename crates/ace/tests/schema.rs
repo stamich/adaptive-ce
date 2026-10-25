@@ -16,7 +16,13 @@ fn records(count: usize) -> Vec<u8> {
 }
 
 fn schema() -> Schema {
-    Schema::new([Column::unsigned(8), Column::float(8), Column::unsigned(4), Column::bytes(4)]).unwrap()
+    Schema::new([
+        Column::unsigned(8),
+        Column::float(8),
+        Column::unsigned(4),
+        Column::bytes(4),
+    ])
+    .unwrap()
 }
 
 #[test]
@@ -45,13 +51,20 @@ fn invalid_schemas_are_invalid_configuration() {
         vec![Column::signed(16)],
         vec![Column::float(2)],
     ] {
-        assert_eq!(Schema::new(columns).unwrap_err().kind(), ErrorKind::InvalidConfig);
+        assert_eq!(
+            Schema::new(columns).unwrap_err().kind(),
+            ErrorKind::InvalidConfig
+        );
     }
 }
 
 #[test]
 fn the_builder_keeps_the_schema_and_aligns_the_block_size() {
-    let config = Config::builder().schema(schema()).block_size(100_000).build().unwrap();
+    let config = Config::builder()
+        .schema(schema())
+        .block_size(100_000)
+        .build()
+        .unwrap();
     assert_eq!(config.schema(), Some(schema()));
     assert_eq!(config.block_size(), 99_984); // 4166 records of 24 bytes
     assert_eq!(Config::default().schema(), None);
@@ -70,12 +83,29 @@ fn a_schema_with_too_many_columns_is_refused_by_build() {
 #[test]
 fn a_table_round_trips_and_is_stored_by_column() {
     let input = records(30_000);
-    let row_wise = Engine::new(Config::default()).unwrap().compress(&input).unwrap();
+    let row_wise = Engine::new(Config::default())
+        .unwrap()
+        .compress(&input)
+        .unwrap();
     let engine = Engine::new(Config::builder().schema(schema()).build().unwrap()).unwrap();
     let (file, stats) = engine.compress_with_stats(&input).unwrap();
-    assert!(file.len() < row_wise.len(), "{} !< {}", file.len(), row_wise.len());
+    assert!(
+        file.len() < row_wise.len(),
+        "{} !< {}",
+        file.len(),
+        row_wise.len()
+    );
     assert_eq!(engine.decompress(&file).unwrap(), input);
-    assert!(stats.format_minor >= 6, "columnar blocks make the file Format 1.6");
+    assert!(
+        stats.format_minor >= 6,
+        "columnar blocks make the file Format 1.6"
+    );
     // Files without a schema are unchanged: still readable by the default engine.
-    assert_eq!(Engine::new(Config::default()).unwrap().decompress(&file).unwrap(), input);
+    assert_eq!(
+        Engine::new(Config::default())
+            .unwrap()
+            .decompress(&file)
+            .unwrap(),
+        input
+    );
 }

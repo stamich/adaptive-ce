@@ -279,11 +279,7 @@ pub(crate) fn decode_inner_block(
 ///
 /// [`AceError::UnsupportedVersion`] below Format 1.6 and [`AceError::Malformed`] for an entropy
 /// stage, transform, dictionary or metadata on the outer block.
-fn check_bare_container(
-    header: &BlockHeader,
-    metadata: &[u8],
-    minor_version: u8,
-) -> AceResult<()> {
+fn check_bare_container(header: &BlockHeader, metadata: &[u8], minor_version: u8) -> AceResult<()> {
     if minor_version < ace_core::FORMAT_MINOR_STORAGE {
         return Err(AceError::UnsupportedVersion {
             major: FORMAT_MAJOR,
@@ -295,7 +291,9 @@ fn check_bare_container(
         || header.dictionary.is_some()
         || !metadata.is_empty()
     {
-        return Err(AceError::Malformed("container block with stages of its own"));
+        return Err(AceError::Malformed(
+            "container block with stages of its own",
+        ));
     }
     Ok(())
 }
@@ -343,7 +341,11 @@ fn decode_columnar_block(
             dictionaries,
         )?);
     }
-    let widths: Vec<u16> = table.columns.iter().map(|column| column.spec.width).collect();
+    let widths: Vec<u16> = table
+        .columns
+        .iter()
+        .map(|column| column.spec.width)
+        .collect();
     let tail = payload
         .get(table.tail_range())
         .ok_or(AceError::Malformed("column tail outside the payload"))?;

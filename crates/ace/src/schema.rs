@@ -39,25 +39,37 @@ impl Column {
     /// A column of opaque bytes, `width` bytes per record (non-zero).
     #[must_use]
     pub fn bytes(width: u16) -> Self {
-        Self { width, kind: ColumnKind::Bytes }
+        Self {
+            width,
+            kind: ColumnKind::Bytes,
+        }
     }
 
     /// A column of unsigned little-endian integers; `width` must be 1, 2, 4 or 8.
     #[must_use]
     pub fn unsigned(width: u16) -> Self {
-        Self { width, kind: ColumnKind::Unsigned }
+        Self {
+            width,
+            kind: ColumnKind::Unsigned,
+        }
     }
 
     /// A column of signed little-endian integers; `width` must be 1, 2, 4 or 8.
     #[must_use]
     pub fn signed(width: u16) -> Self {
-        Self { width, kind: ColumnKind::Signed }
+        Self {
+            width,
+            kind: ColumnKind::Signed,
+        }
     }
 
     /// A column of IEEE-754 little-endian floats; `width` must be 4 or 8.
     #[must_use]
     pub fn float(width: u16) -> Self {
-        Self { width, kind: ColumnKind::Float }
+        Self {
+            width,
+            kind: ColumnKind::Float,
+        }
     }
 
     /// Bytes per record.

@@ -49,7 +49,9 @@ impl RecordWorkload {
 
     /// The workload with this [`name`](Self::name), if there is one.
     pub fn from_name(name: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|workload| workload.name() == name)
+        Self::ALL
+            .into_iter()
+            .find(|workload| workload.name() == name)
     }
 
     /// The fields of one record as `(width in bytes, kind)`, in record order.
@@ -111,7 +113,9 @@ fn trades(out: &mut Vec<u8>, records: usize) {
     for i in 0..records {
         let draw = rng.next_u64();
         cents += (draw % 5) as i64 - 2;
-        out.extend_from_slice(&(1_700_000_000_000u64 + i as u64 * 250 + (draw >> 60)).to_le_bytes());
+        out.extend_from_slice(
+            &(1_700_000_000_000u64 + i as u64 * 250 + (draw >> 60)).to_le_bytes(),
+        );
         out.extend_from_slice(&(cents as f64 / 100.0).to_le_bytes());
         out.extend_from_slice(&((1 + (draw >> 8) % 20) as u32 * 100).to_le_bytes());
         out.extend_from_slice(&[b'A' + (i % 3) as u8, 0, 0, u8::from(draw & 1 == 0)]);

@@ -56,7 +56,10 @@ impl EncoderDictionary {
     /// [`AceError::InvalidConfig`] for a scope other than `File` or `External` (the others are
     /// reserved), for an empty dictionary and for one longer than [`MAX_DICTIONARY_BYTES`].
     pub fn validate(&self) -> AceResult<()> {
-        if !matches!(self.scope, DictionaryScope::File | DictionaryScope::External) {
+        if !matches!(
+            self.scope,
+            DictionaryScope::File | DictionaryScope::External
+        ) {
             return Err(AceError::InvalidConfig(
                 "a dictionary scope must be File or External",
             ));

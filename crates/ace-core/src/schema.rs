@@ -87,7 +87,9 @@ impl Schema {
     /// kind does not allow, or a record size that does not fit in `u32`.
     pub fn new(columns: Vec<ColumnSpec>) -> AceResult<Self> {
         if columns.is_empty() {
-            return Err(AceError::InvalidConfig("a schema needs at least one column"));
+            return Err(AceError::InvalidConfig(
+                "a schema needs at least one column",
+            ));
         }
         if columns.len() > usize::from(u16::MAX) {
             return Err(AceError::InvalidConfig("a schema has too many columns"));
@@ -95,7 +97,9 @@ impl Schema {
         let mut record_size = 0u32;
         for column in &columns {
             if !column.kind.accepts_width(column.width) {
-                return Err(AceError::InvalidConfig("column width does not fit its kind"));
+                return Err(AceError::InvalidConfig(
+                    "column width does not fit its kind",
+                ));
             }
             record_size = record_size
                 .checked_add(u32::from(column.width))

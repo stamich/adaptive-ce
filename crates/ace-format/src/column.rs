@@ -19,8 +19,8 @@
 
 use std::ops::Range;
 
-pub use ace_core::{ColumnKind, ColumnSpec};
 use ace_core::{AceError, AceResult, DecodeLimits};
+pub use ace_core::{ColumnKind, ColumnSpec};
 
 use crate::BLOCK_HEADER_SIZE;
 
@@ -113,7 +113,9 @@ impl ColumnTable {
             .and_then(|bytes| bytes.checked_add(to_usize(tail_len).ok()?))
             .ok_or(AceError::Malformed("column block size overflow"))?;
         if records_bytes != block_original_size {
-            return Err(AceError::Malformed("record layout does not add up to the block"));
+            return Err(AceError::Malformed(
+                "record layout does not add up to the block",
+            ));
         }
         let table_bytes = count
             .checked_mul(COLUMN_ENTRY_SIZE)
@@ -149,13 +151,17 @@ impl ColumnTable {
             });
         }
         if width_total != record {
-            return Err(AceError::Malformed("column widths do not add up to the record size"));
+            return Err(AceError::Malformed(
+                "column widths do not add up to the record size",
+            ));
         }
         let expected = serialized_total
             .checked_add(to_usize(tail_len)?)
             .ok_or(AceError::Malformed("column length overflow"))?;
         if expected != data.len() {
-            return Err(AceError::Malformed("column lengths do not add up to the payload"));
+            return Err(AceError::Malformed(
+                "column lengths do not add up to the payload",
+            ));
         }
         Ok(Self {
             record_size,
@@ -167,8 +173,7 @@ impl ColumnTable {
 
     /// Offset of the first inner block in the payload.
     pub fn data_offset(&self) -> usize {
-        COLUMN_HEADER_SIZE
-            .saturating_add(self.columns.len().saturating_mul(COLUMN_ENTRY_SIZE))
+        COLUMN_HEADER_SIZE.saturating_add(self.columns.len().saturating_mul(COLUMN_ENTRY_SIZE))
     }
 
     /// Reconstructed size of each column stream: `record_count × width`.
@@ -222,10 +227,12 @@ pub fn encode_column_payload(
     record_count: u32,
     tail: &[u8],
 ) -> AceResult<Vec<u8>> {
-    let count = u16::try_from(columns.len())
-        .map_err(|_| AceError::InvalidConfig("too many columns"))?;
+    let count =
+        u16::try_from(columns.len()).map_err(|_| AceError::InvalidConfig("too many columns"))?;
     if count == 0 || record_count == 0 {
-        return Err(AceError::InvalidConfig("a columnar block needs columns and records"));
+        return Err(AceError::InvalidConfig(
+            "a columnar block needs columns and records",
+        ));
     }
     let mut record_size = 0u32;
     for (spec, inner) in columns {
@@ -236,10 +243,12 @@ pub fn encode_column_payload(
             .checked_add(u32::from(spec.width))
             .ok_or(AceError::ResourceLimitExceeded("record size"))?;
     }
-    let tail_len = u32::try_from(tail.len())
-        .map_err(|_| AceError::ResourceLimitExceeded("column tail"))?;
+    let tail_len =
+        u32::try_from(tail.len()).map_err(|_| AceError::ResourceLimitExceeded("column tail"))?;
     if tail_len >= record_size {
-        return Err(AceError::InvalidConfig("tail must be shorter than a record"));
+        return Err(AceError::InvalidConfig(
+            "tail must be shorter than a record",
+        ));
     }
     let mut out = Vec::new();
     out.extend_from_slice(&COLUMN_MAGIC);
@@ -306,7 +315,9 @@ pub fn join_columns<S: AsRef<[u8]>>(
 ) -> AceResult<Vec<u8>> {
     let record = record_size_of(widths)?;
     if streams.len() != widths.len() {
-        return Err(AceError::Malformed("stream count differs from column count"));
+        return Err(AceError::Malformed(
+            "stream count differs from column count",
+        ));
     }
     let records = streams[0]
         .as_ref()
@@ -318,11 +329,7 @@ pub fn join_columns<S: AsRef<[u8]>>(
             return Err(AceError::Malformed("column stream has the wrong length"));
         }
     }
-    let mut out = Vec::with_capacity(
-        records
-            .saturating_mul(record)
-            .saturating_add(tail.len()),
-    );
+    let mut out = Vec::with_capacity(records.saturating_mul(record).saturating_add(tail.len()));
     for index in 0..records {
         for (stream, &width) in streams.iter().zip(widths) {
             let width = usize::from(width);
@@ -337,7 +344,9 @@ pub fn join_columns<S: AsRef<[u8]>>(
 /// `Σ widths`, validated.
 fn record_size_of(widths: &[u16]) -> AceResult<usize> {
     if widths.is_empty() || widths.contains(&0) {
-        return Err(AceError::InvalidConfig("a schema needs non-zero column widths"));
+        return Err(AceError::InvalidConfig(
+            "a schema needs non-zero column widths",
+        ));
     }
     Ok(widths.iter().map(|&width| usize::from(width)).sum())
 }
@@ -349,9 +358,7 @@ fn to_usize(value: u32) -> AceResult<usize> {
 
 /// Little-endian `u32` from exactly four bytes.
 fn read_u32(bytes: &[u8]) -> AceResult<u32> {
-    Ok(u32::from_le_bytes(
-        bytes
-            .try_into()
-            .map_err(|_| AceError::Malformed("truncated column field"))?,
-    ))
+    Ok(u32::from_le_bytes(bytes.try_into().map_err(|_| {
+        AceError::Malformed("truncated column field")
+    })?))
 }

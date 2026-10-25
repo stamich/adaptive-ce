@@ -36,17 +36,28 @@ fn parse(bytes: &[u8]) -> Result<Vec<EmbeddedDictionary>, AceError> {
 
 #[test]
 fn section_round_trips_and_reports_its_size() {
-    let dictionaries = vec![dictionary(3, 1), dictionary(10, 4096), dictionary(11, MAX_DICTIONARY_BYTES)];
+    let dictionaries = vec![
+        dictionary(3, 1),
+        dictionary(10, 4096),
+        dictionary(11, MAX_DICTIONARY_BYTES),
+    ];
     let bytes = encode_dictionary_section(&dictionaries).unwrap();
     assert_eq!(&bytes[..4], &DICTIONARY_SECTION_MAGIC);
     // magic + count + entries + section CRC
-    assert_eq!(bytes.len(), 8 + 3 * 16 + (1 + 4096 + MAX_DICTIONARY_BYTES) + 4);
+    assert_eq!(
+        bytes.len(),
+        8 + 3 * 16 + (1 + 4096 + MAX_DICTIONARY_BYTES) + 4
+    );
     let mut cursor = Cursor::new(bytes.as_slice());
     assert_eq!(
         read_dictionary_section(&mut cursor, &DecodeLimits::default()).unwrap(),
         dictionaries
     );
-    assert_eq!(cursor.position() as usize, bytes.len(), "the section is consumed exactly");
+    assert_eq!(
+        cursor.position() as usize,
+        bytes.len(),
+        "the section is consumed exactly"
+    );
 }
 
 #[test]
@@ -75,7 +86,10 @@ fn every_single_byte_flip_is_rejected() {
 fn truncation_is_an_error_at_every_length() {
     let bytes = encode_dictionary_section(&[dictionary(1, 64), dictionary(2, 64)]).unwrap();
     for len in 0..bytes.len() {
-        assert!(parse(&bytes[..len]).is_err(), "prefix of {len} bytes was accepted");
+        assert!(
+            parse(&bytes[..len]).is_err(),
+            "prefix of {len} bytes was accepted"
+        );
     }
 }
 
@@ -155,7 +169,10 @@ fn writer_and_reader_carry_the_section_before_the_first_block() {
         .unwrap();
     writer.write_dictionary_section(&dictionaries).unwrap();
     let section_len = encode_dictionary_section(&dictionaries).unwrap().len();
-    assert_eq!(writer.bytes_written() as usize, FILE_HEADER_SIZE + section_len);
+    assert_eq!(
+        writer.bytes_written() as usize,
+        FILE_HEADER_SIZE + section_len
+    );
     let header = BlockHeader {
         block_id: 0,
         original_size: 5,
@@ -174,10 +191,16 @@ fn writer_and_reader_carry_the_section_before_the_first_block() {
     let mut reader = AceReader::new(Cursor::new(bytes), DecodeLimits::default());
     assert!(reader.dictionaries().is_empty());
     let file_header = reader.read_file_header().unwrap();
-    assert_eq!(file_header.flags & FILE_FLAG_HAS_DICTIONARIES, FILE_FLAG_HAS_DICTIONARIES);
+    assert_eq!(
+        file_header.flags & FILE_FLAG_HAS_DICTIONARIES,
+        FILE_FLAG_HAS_DICTIONARIES
+    );
     assert_eq!(reader.dictionaries(), dictionaries.as_slice());
     let (block, _, payload) = reader.read_block().unwrap();
-    assert_eq!((block.block_id, payload.as_slice()), (0, b"hello".as_slice()));
+    assert_eq!(
+        (block.block_id, payload.as_slice()),
+        (0, b"hello".as_slice())
+    );
 }
 
 /// Without the flag nothing is read between the header and the first block.

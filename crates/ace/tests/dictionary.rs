@@ -37,8 +37,14 @@ fn training_is_deterministic_and_the_id_follows_the_content() {
     assert_eq!(a.id(), b.id());
     assert!(!a.is_empty() && a.len() <= 1024);
     assert_eq!(Dictionary::new(a.as_bytes().to_vec()).unwrap().id(), a.id());
-    assert_ne!(Dictionary::new(b"other bytes".to_vec()).unwrap().id(), a.id());
-    assert_eq!(Dictionary::with_id(7, a.as_bytes().to_vec()).unwrap().id(), 7);
+    assert_ne!(
+        Dictionary::new(b"other bytes".to_vec()).unwrap().id(),
+        a.id()
+    );
+    assert_eq!(
+        Dictionary::with_id(7, a.as_bytes().to_vec()).unwrap().id(),
+        7
+    );
 }
 
 #[test]
@@ -70,7 +76,10 @@ fn an_embedded_dictionary_gives_a_smaller_self_contained_file() {
     assert!(stats.dictionary_blocks > 0);
     assert_eq!(Engine::default().decompress(&file).unwrap(), input);
     let mut reader = RangeReader::open(Cursor::new(&file)).unwrap();
-    assert_eq!(reader.read_range(10_000..20_000).unwrap(), &input[10_000..20_000]);
+    assert_eq!(
+        reader.read_range(10_000..20_000).unwrap(),
+        &input[10_000..20_000]
+    );
     let config = builder().dictionary(trained()).build().unwrap();
     assert!(config.dictionary_is_embedded());
     assert_eq!(config.dictionary(), Some(trained()));
@@ -80,7 +89,13 @@ fn an_embedded_dictionary_gives_a_smaller_self_contained_file() {
 fn an_external_dictionary_is_resolved_by_the_reader() {
     let input = records(0..4000);
     let dictionary = trained();
-    let writer = Engine::new(builder().external_dictionary(dictionary.clone()).build().unwrap()).unwrap();
+    let writer = Engine::new(
+        builder()
+            .external_dictionary(dictionary.clone())
+            .build()
+            .unwrap(),
+    )
+    .unwrap();
     let file = writer.compress(&input).unwrap();
     assert!(!writer.config().dictionary_is_embedded());
 
@@ -103,7 +118,10 @@ fn an_external_dictionary_is_resolved_by_the_reader() {
     assert_eq!(error.kind(), ErrorKind::Unsupported);
     assert!(error.to_string().contains("dictionary"), "{error}");
     let mut range = RangeReader::open(Cursor::new(&file)).unwrap();
-    assert_eq!(range.read_range(0..100).unwrap_err().kind(), ErrorKind::Unsupported);
+    assert_eq!(
+        range.read_range(0..100).unwrap_err().kind(),
+        ErrorKind::Unsupported
+    );
     // A different dictionary under the same id never yields wrong bytes.
     let impostor = Dictionary::with_id(dictionary.id(), vec![b'z'; dictionary.len()]).unwrap();
     let wrong = Engine::default().with_dictionaries([impostor]);
@@ -121,12 +139,18 @@ fn a_dictionary_that_does_not_help_leaves_the_bytes_of_the_plain_engine() {
             (state >> 24) as u8
         })
         .collect();
-    let plain = Engine::new(builder().build().unwrap()).unwrap().compress(&noise).unwrap();
+    let plain = Engine::new(builder().build().unwrap())
+        .unwrap()
+        .compress(&noise)
+        .unwrap();
     for config in [
         builder().dictionary(trained()).build().unwrap(),
         builder().external_dictionary(trained()).build().unwrap(),
     ] {
-        assert_eq!(Engine::new(config).unwrap().compress(&noise).unwrap(), plain);
+        assert_eq!(
+            Engine::new(config).unwrap().compress(&noise).unwrap(),
+            plain
+        );
     }
 }
 

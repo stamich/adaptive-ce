@@ -79,17 +79,15 @@ impl<'a> DictionaryView<'a> {
                 .iter()
                 .find(|dictionary| dictionary.id == id)
                 .map(|dictionary| ResolvedDictionary::Borrowed(&dictionary.bytes)),
-            DictionaryScope::External => {
-                match self.external.get(id)? {
-                    Some(dictionary) => Some(ResolvedDictionary::Shared(dictionary)),
-                    None => self
-                        .configured
-                        .filter(|dictionary| {
-                            dictionary.id == id && dictionary.scope == DictionaryScope::External
-                        })
-                        .map(|dictionary| ResolvedDictionary::Borrowed(&dictionary.bytes)),
-                }
-            }
+            DictionaryScope::External => match self.external.get(id)? {
+                Some(dictionary) => Some(ResolvedDictionary::Shared(dictionary)),
+                None => self
+                    .configured
+                    .filter(|dictionary| {
+                        dictionary.id == id && dictionary.scope == DictionaryScope::External
+                    })
+                    .map(|dictionary| ResolvedDictionary::Borrowed(&dictionary.bytes)),
+            },
             DictionaryScope::Block | DictionaryScope::Segment => {
                 return Err(AceError::Malformed("reserved dictionary scope"))
             }

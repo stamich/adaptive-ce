@@ -21,9 +21,18 @@ fn table(records: usize) -> Vec<u8> {
 
 fn schema() -> Schema {
     Schema::new(vec![
-        ColumnSpec { width: 4, kind: ColumnKind::Unsigned },
-        ColumnSpec { width: 8, kind: ColumnKind::Unsigned },
-        ColumnSpec { width: 3, kind: ColumnKind::Bytes },
+        ColumnSpec {
+            width: 4,
+            kind: ColumnKind::Unsigned,
+        },
+        ColumnSpec {
+            width: 8,
+            kind: ColumnKind::Unsigned,
+        },
+        ColumnSpec {
+            width: 3,
+            kind: ColumnKind::Bytes,
+        },
     ])
     .unwrap()
 }
@@ -38,7 +47,10 @@ fn streaming_and_in_memory_output_are_identical() {
             schema: Some(schema()),
             ..AceConfig::default()
         };
-        let in_memory = AceEngine::new(config.clone()).unwrap().compress(&input).unwrap();
+        let in_memory = AceEngine::new(config.clone())
+            .unwrap()
+            .compress(&input)
+            .unwrap();
         let mut streamed = Cursor::new(Vec::new());
         compress_reader_known_size(
             Cursor::new(&input),
@@ -49,6 +61,9 @@ fn streaming_and_in_memory_output_are_identical() {
         )
         .unwrap();
         assert_eq!(streamed.into_inner(), in_memory, "block size {block_size}");
-        assert_eq!(AceEngine::default_engine().decompress(&in_memory).unwrap(), input);
+        assert_eq!(
+            AceEngine::default_engine().decompress(&in_memory).unwrap(),
+            input
+        );
     }
 }

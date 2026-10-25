@@ -95,7 +95,7 @@ pub fn classify_window(window: &[u8], config: &AceConfig) -> WindowClass {
 /// not segment".
 ///
 /// # Errors
-/// [`AceError::InvalidConfig`] for an invalid [`SegmentationConfig`].
+/// [`ace_core::AceError::InvalidConfig`] for an invalid [`SegmentationConfig`].
 pub fn segment_boundaries(
     input: &[u8],
     config: &AceConfig,
@@ -109,7 +109,11 @@ pub fn segment_boundaries(
     let windows = (input.len() / window).max(1);
     let window_bytes = |index: usize| {
         let start = index * window;
-        let end = if index + 1 == windows { input.len() } else { start + window };
+        let end = if index + 1 == windows {
+            input.len()
+        } else {
+            start + window
+        };
         &input[start..end]
     };
     let mut runs: Vec<Run> = Vec::new();
@@ -117,7 +121,11 @@ pub fn segment_boundaries(
         let class = classify_window(window_bytes(index), config);
         match runs.last_mut() {
             Some(last) if last.class == class => last.windows += 1,
-            _ => runs.push(Run { start: index, windows: 1, class }),
+            _ => runs.push(Run {
+                start: index,
+                windows: 1,
+                class,
+            }),
         }
     }
     merge_small_runs(&mut runs, segmenter.min_segment_size / window);

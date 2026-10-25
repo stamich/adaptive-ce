@@ -143,9 +143,7 @@ impl FrequencyTable {
 
     /// Position of `hash` in the table.
     fn find(&self, hash: u64) -> Option<usize> {
-        self.entries
-            .binary_search_by_key(&hash, |&(h, _)| h)
-            .ok()
+        self.entries.binary_search_by_key(&hash, |&(h, _)| h).ok()
     }
 
     /// Current frequency of `hash` (zero when unknown or covered).
@@ -168,10 +166,7 @@ fn exact_score(table: &FrequencyTable, segment: &[u8]) -> u64 {
     let mut hashes = gram_hashes(segment);
     hashes.sort_unstable();
     hashes.dedup();
-    hashes
-        .iter()
-        .map(|&h| u64::from(table.frequency(h)))
-        .sum()
+    hashes.iter().map(|&h| u64::from(table.frequency(h))).sum()
 }
 
 /// Trains a dictionary from `samples`.

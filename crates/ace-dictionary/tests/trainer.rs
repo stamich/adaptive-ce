@@ -59,7 +59,10 @@ fn the_size_cap_is_honoured() {
             ..TrainerConfig::default()
         };
         let dictionary = train_dictionary(&borrow(&samples), &config).unwrap();
-        assert!(!dictionary.is_empty() && dictionary.len() <= size, "size {size}");
+        assert!(
+            !dictionary.is_empty() && dictionary.len() <= size,
+            "size {size}"
+        );
     }
 }
 
@@ -98,7 +101,10 @@ fn unique_content_is_mostly_left_out() {
             contains(&dictionary, &sample[start..start + 16])
         })
         .count();
-    assert!(hits * 10 <= samples.len(), "{hits} nonces in the dictionary");
+    assert!(
+        hits * 10 <= samples.len(),
+        "{hits} nonces in the dictionary"
+    );
 }
 
 #[test]

@@ -39,16 +39,65 @@ const PROFILES: [(&str, CompressionProfile); 3] = [
 
 /// One case: name, generator, block size, schema, smallest segment (0 = no segmentation),
 /// dictionary (`none`, `embedded`, `external`).
-type Spec = (&'static str, &'static str, usize, &'static str, usize, &'static str);
+type Spec = (
+    &'static str,
+    &'static str,
+    usize,
+    &'static str,
+    usize,
+    &'static str,
+);
 
 /// The cases of the file. Never change one; add a new case.
 const SPECS: [Spec; 6] = [
-    ("columnar-trades", "records-trades:1048576", 262_144, "u8,f8,u4,b4", 0, "none"),
-    ("columnar-telemetry", "records-telemetry:1048576", 262_144, "u2,u1,u1,u4,f4,u4", 0, "none"),
-    ("columnar-events", "records-events:1048576", 262_144, "u8,u1,u8,b15", 0, "none"),
-    ("segmented-mixed", "mixed-regimes", 4 << 20, "", 131_072, "none"),
-    ("dictionary-embedded", "json-records:600", 4096, "", 0, "embedded"),
-    ("dictionary-external", "json-records:600", 4096, "", 0, "external"),
+    (
+        "columnar-trades",
+        "records-trades:1048576",
+        262_144,
+        "u8,f8,u4,b4",
+        0,
+        "none",
+    ),
+    (
+        "columnar-telemetry",
+        "records-telemetry:1048576",
+        262_144,
+        "u2,u1,u1,u4,f4,u4",
+        0,
+        "none",
+    ),
+    (
+        "columnar-events",
+        "records-events:1048576",
+        262_144,
+        "u8,u1,u8,b15",
+        0,
+        "none",
+    ),
+    (
+        "segmented-mixed",
+        "mixed-regimes",
+        4 << 20,
+        "",
+        131_072,
+        "none",
+    ),
+    (
+        "dictionary-embedded",
+        "json-records:600",
+        4096,
+        "",
+        0,
+        "embedded",
+    ),
+    (
+        "dictionary-external",
+        "json-records:600",
+        4096,
+        "",
+        0,
+        "external",
+    ),
 ];
 
 /// Root document.
@@ -130,7 +179,9 @@ fn input(generator: &str) -> Vec<u8> {
     }
     assert_eq!(generator, "mixed-regimes");
     // 400 000 little-endian counters that step every other value, then 1.5 MB of cheap noise.
-    let mut out: Vec<u8> = (0..400_000u32).flat_map(|i| (i / 2).to_le_bytes()).collect();
+    let mut out: Vec<u8> = (0..400_000u32)
+        .flat_map(|i| (i / 2).to_le_bytes())
+        .collect();
     out.extend((0..1_500_000u64).map(|i| (i.wrapping_mul(2_654_435_761) >> 13) as u8));
     out
 }
@@ -150,7 +201,10 @@ fn schema(layout: &str) -> Option<Schema> {
                 "b" => ColumnKind::Bytes,
                 other => panic!("column kind {other}"),
             };
-            ColumnSpec { width: column[1..].parse().unwrap(), kind }
+            ColumnSpec {
+                width: column[1..].parse().unwrap(),
+                kind,
+            }
         })
         .collect();
     Some(Schema::new(columns).unwrap())
@@ -212,7 +266,11 @@ fn compute(spec: &Spec) -> Case {
         .unwrap()
         .with_dictionaries(registry.clone());
         let (file, stats) = engine.compress_with_stats(&data).unwrap();
-        assert_eq!(engine.decompress(&file).unwrap(), data, "{name} {profile_name}");
+        assert_eq!(
+            engine.decompress(&file).unwrap(),
+            data,
+            "{name} {profile_name}"
+        );
         format_minor = file[5];
         hashes.push((sha256(&file), file.len()));
         if profile_name == "balanced" {
@@ -227,8 +285,12 @@ fn compute(spec: &Spec) -> Case {
         schema: layout.to_owned(),
         segmentation_min,
         dictionary: dictionary_kind.to_owned(),
-        dictionary_id: trained.as_ref().map_or_else(String::new, |d| format!("{:016x}", d.id.0)),
-        dictionary_sha256: trained.as_ref().map_or_else(String::new, |d| sha256(&d.bytes)),
+        dictionary_id: trained
+            .as_ref()
+            .map_or_else(String::new, |d| format!("{:016x}", d.id.0)),
+        dictionary_sha256: trained
+            .as_ref()
+            .map_or_else(String::new, |d| sha256(&d.bytes)),
         input_bytes: data.len(),
         input_sha256: sha256(&data),
         fast_sha256: hashes[0].0.clone(),

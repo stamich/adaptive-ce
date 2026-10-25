@@ -70,7 +70,10 @@ pub unsafe extern "C" fn ace_schema_new(
             // SAFETY: `raw` covers `count` elements, so element `index` is in bounds.
             let column = unsafe { columns.add(index).read_unaligned() };
             let Ok(width) = u16::try_from(column.width) else {
-                return fail(ACE_ERR_INVALID_ARGUMENT, "column width does not fit in 16 bits");
+                return fail(
+                    ACE_ERR_INVALID_ARGUMENT,
+                    "column width does not fit in 16 bits",
+                );
             };
             list.push(match column.kind {
                 ACE_COLUMN_BYTES => Column::bytes(width),
@@ -78,7 +81,10 @@ pub unsafe extern "C" fn ace_schema_new(
                 ACE_COLUMN_SIGNED => Column::signed(width),
                 ACE_COLUMN_FLOAT => Column::float(width),
                 other => {
-                    return fail(ACE_ERR_INVALID_ARGUMENT, &format!("unknown column kind {other}"))
+                    return fail(
+                        ACE_ERR_INVALID_ARGUMENT,
+                        &format!("unknown column kind {other}"),
+                    )
                 }
             });
         }

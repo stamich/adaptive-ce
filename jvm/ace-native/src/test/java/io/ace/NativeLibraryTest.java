@@ -25,7 +25,7 @@ class NativeLibraryTest {
 
     @Test
     void layoutsMatchTheHeader() {
-        assertEquals(56, AceBindings.ACE_CONFIG_SIZE);
+        assertEquals(112, AceBindings.ACE_CONFIG_SIZE);
         assertEquals(56, AceBindings.ACE_LIMITS_SIZE);
         assertEquals(AceBindings.ACE_CONFIG_SIZE, AceBindings.ACE_CONFIG.byteSize());
         assertTrue(AceBindings.ACE_CONFIG_RESERVED + 5 <= AceBindings.ACE_CONFIG_SIZE);
