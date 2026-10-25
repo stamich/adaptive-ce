@@ -126,7 +126,9 @@ impl ColumnTable {
         let mut columns = Vec::with_capacity(count);
         let mut width_total = 0usize;
         let mut serialized_total = 0usize;
-        for row in table.chunks_exact(COLUMN_ENTRY_SIZE) {
+        // `table` is exactly `count` entries long, so there is no remainder.
+        let (rows, _) = table.as_chunks::<COLUMN_ENTRY_SIZE>();
+        for row in rows {
             let width = u16::from_le_bytes([row[0], row[1]]);
             let kind = ColumnKind::from_id(row[2])?;
             if row[3] != 0 {

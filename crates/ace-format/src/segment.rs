@@ -131,7 +131,9 @@ impl SegmentTable {
         let mut entries = Vec::with_capacity(count);
         let mut original_total = 0usize;
         let mut serialized_total = 0usize;
-        for row in table.chunks_exact(SEGMENT_ENTRY_SIZE) {
+        // `table` is exactly `count` entries long, so there is no remainder.
+        let (rows, _) = table.as_chunks::<SEGMENT_ENTRY_SIZE>();
+        for row in rows {
             let original_size = read_u32(&row[..4])?;
             let serialized_len = read_u32(&row[4..8])?;
             let original = usize::try_from(original_size)
