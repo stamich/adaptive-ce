@@ -9,6 +9,8 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -64,11 +66,36 @@ public final class Engine implements AutoCloseable {
      * @throws AceException with {@link Status#INVALID_ARGUMENT} when the native library rejects the settings
      */
     public static Engine create(Config config, DecodeLimits limits) {
+        return create(config, limits, List.of());
+    }
+
+    /**
+     * An engine that also knows external dictionaries.
+     *
+     * <p>A file written with {@link Config.Builder#externalDictionary(Dictionary)} names its
+     * dictionary by id only. Reading it needs a dictionary with that id, which this engine looks
+     * up among {@code dictionaries}; a missing one fails with {@link Status#UNSUPPORTED} and the
+     * message names the id. Dictionaries embedded in a file need nothing, and the dictionary of
+     * {@code config} is always available to its own engine. Applies to every reading method,
+     * including {@link #openRange(byte[])}.
+     *
+     * @throws AceException with {@link Status#INVALID_ARGUMENT} when the native library rejects the settings
+     */
+    public static Engine create(Config config, DecodeLimits limits, Collection<Dictionary> dictionaries) {
         Objects.requireNonNull(config, "config");
         Objects.requireNonNull(limits, "limits");
-        try (Arena arena = Arena.ofConfined()) {
+        Objects.requireNonNull(dictionaries, "dictionaries");
+        try (Arena arena = Arena.ofConfined(); Temporaries temporaries = new Temporaries()) {
+            MemorySegment nativeConfig = config.toNative(arena, temporaries);
+            MemorySegment array = arena.allocate(ValueLayout.ADDRESS, Math.max(1, dictionaries.size()));
+            int index = 0;
+            for (Dictionary dictionary : dictionaries) {
+                Objects.requireNonNull(dictionary, "dictionary");
+                array.setAtIndex(ValueLayout.ADDRESS, index++, dictionary.toNative(arena, temporaries));
+            }
             MemorySegment out = Native.slot(arena);
-            Native.check(Native.fn().aceEngineNew(config.toNative(arena), limits.toNative(arena), out));
+            Native.check(Native.fn().aceEngineNewEx(
+                    nativeConfig, limits.toNative(arena), array, dictionaries.size(), out));
             return new Engine(config, limits, Native.pointerIn(out));
         }
     }

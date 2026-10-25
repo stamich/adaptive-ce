@@ -75,3 +75,26 @@ records:
 
 Tests: `crates/ace-engine/tests/dictionary.rs`, `crates/ace-codecs/tests/lz_dictionary.rs`,
 `crates/ace-dictionary/tests/trainer.rs`.
+
+## From C and Java
+
+The C ABI 1.1 ([FFI.md](FFI.md)) and the Java SDK expose the same three features as the Rust
+facade, with the same bytes.
+
+```java
+// Train once from typical inputs, keep dictionary.bytes() and dictionary.id() with your data.
+Dictionary dictionary = Dictionary.train(samples, 4096);
+
+Config config = Config.builder().externalDictionary(dictionary).build();
+try (Engine writer = Engine.create(config);
+     Engine reader = Engine.create(Config.defaults(), DecodeLimits.defaults(), List.of(dictionary))) {
+    byte[] packed = writer.compress(record);
+    byte[] same = reader.decompress(packed);   // Status.UNSUPPORTED if the dictionary is missing
+}
+```
+
+`Config.Builder.dictionary` embeds the dictionary when it pays, `externalDictionary` stores only
+its id. A `Schema` of `Column`s and a `Segmentation` are set the same way on the `Config` and need
+nothing on the reading side. In C the same options are the `dictionary`, `schema` and
+segmentation members of `AceConfig`, and `ace_engine_new_ex` takes the external dictionaries of a
+reader.
