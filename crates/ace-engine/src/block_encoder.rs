@@ -7,11 +7,13 @@ use ace_codecs::{
     numeric_encode_estimated, numeric_encode_fixed_step, ts1_encode_with, TimeSeriesLayout,
 };
 use ace_core::{
-    AceConfig, AceError, AceResult, BlockProfile, CodecId, CompressionProfile, EntropyCodecId,
-    PhysicalCompressionPlan, SegmentationConfig,
+    AceConfig, AceError, AceResult, BlockProfile, CodecId, ColumnSpec, CompressionProfile,
+    EntropyCodecId,
+    PhysicalCompressionPlan, Schema, SegmentationConfig,
 };
 use ace_format::{
-    checksum, encode_segment_payload, serialize_block, BlockHeader, BLOCK_HEADER_SIZE,
+    checksum, encode_column_payload, encode_segment_payload, serialize_block, split_columns,
+    BlockHeader, BLOCK_HEADER_SIZE,
 };
 use ace_planner::{
     apply_time_series_policy, encode_plan_payload, evaluate_candidates_v4_with_route,
@@ -56,7 +58,7 @@ pub(crate) struct EncodedBlock {
     pub time_series_layout: Option<TimeSeriesLayout>,
     /// Plans of the inner blocks when this block is segmented (empty otherwise), in segment
     /// order. The segment count of the block is the length of this list.
-    pub segment_plans: Vec<PhysicalCompressionPlan>,
+    pub inner_plans: Vec<PhysicalCompressionPlan>,
 }
 
 /// Bytes a block occupies besides its fixed-size header: payload, metadata and transform list.
@@ -101,77 +103,105 @@ struct PlannedBlock {
     timings: BlockTimings,
 }
 
-/// Encodes block `id`, segmenting it when [`AceConfig::segmentation`] is set and the segmented
-/// form is smaller by a margin.
+/// Encodes block `id`; with a segmentation or a schema in the configuration it also tries the
+/// segmented and the columnar form and keeps the smallest.
 ///
-/// The unsegmented block is always encoded first, so the result is never larger than it: the
-/// segmented form replaces it only when it saves at least `max(min_gain_bytes, 1 %)` of the
-/// framed block (`docs/FORMAT-1.6.md`, writer rule). Without a segmentation configuration this
-/// is exactly the unsegmented encoder, so the output keeps the bytes of 0.7.0.
+/// The unsegmented row-wise block is always encoded first, so the result is never larger than
+/// it: a container replaces it only when it saves at least `max(min_gain_bytes, 1 %)` of the
+/// framed block (`docs/FORMAT-1.6.md`, writer rules). Among containers that pass, the smaller
+/// wins and a tie goes to the segmented block. Without either option this is exactly the
+/// row-wise encoder, so the output keeps the bytes of 0.7.0.
 ///
 /// # Determinism
 ///
 /// The segment boundaries are a pure function of the input and the configuration
-/// ([`segment_boundaries`]) and every segment is encoded by the same deterministic encoder, so
-/// the stored block does not depend on the thread count or the host.
+/// ([`segment_boundaries`]), the column streams a pure function of the input and the schema,
+/// and every part is encoded by the same deterministic encoder, so the stored block does not
+/// depend on the thread count or the host.
 pub(crate) fn encode_block(config: &AceConfig, id: u64, input: &[u8]) -> AceResult<EncodedBlock> {
     let plain = encode_block_plain(config, id, input)?;
-    match &config.segmentation {
-        Some(segmentation) => encode_segmented(config, segmentation, id, input, plain),
-        None => Ok(plain),
+    let mut best: Option<EncodedBlock> = None;
+    if let Some(segmentation) = &config.segmentation {
+        best = try_segmented(config, segmentation, id, input, &plain)?;
     }
+    if let Some(schema) = &config.schema {
+        if let Some(columnar) = try_columnar(config, schema, id, input, &plain)? {
+            let smaller = best
+                .as_ref()
+                .is_none_or(|segmented| columnar.payload.len() < segmented.payload.len());
+            if smaller {
+                best = Some(columnar);
+            }
+        }
+    }
+    Ok(best.unwrap_or(plain))
 }
 
-/// Tries the segmented form of block `id` and returns it when it beats `plain` by the margin,
-/// otherwise returns `plain` unchanged.
-fn encode_segmented(
+/// True when a container of `container_payload` bytes beats `plain` by the writer margin.
+fn beats_by_margin(config: &AceConfig, plain: &EncodedBlock, container_payload: usize) -> bool {
+    let plain_framed = BLOCK_HEADER_SIZE + framed_len(plain);
+    let container_framed = BLOCK_HEADER_SIZE + container_payload;
+    let margin = config.min_gain_bytes.max(plain_framed / 100);
+    plain_framed.saturating_sub(container_framed) >= margin
+}
+
+/// The inner blocks of a container, serialized, with the plans and timings of their encoding.
+struct InnerBlocks {
+    /// `(reconstructed size, serialized inner block)` in order.
+    serialized: Vec<(u32, Vec<u8>)>,
+    /// The plan each inner block was stored with.
+    plans: Vec<PhysicalCompressionPlan>,
+    /// Timings of the plain block plus every inner block.
+    timings: BlockTimings,
+}
+
+/// Encodes `parts` as inner blocks whose ids are their positions (`docs/FORMAT-1.6.md`).
+fn encode_inner_blocks<'a>(
     config: &AceConfig,
-    segmentation: &SegmentationConfig,
-    id: u64,
-    input: &[u8],
-    plain: EncodedBlock,
-) -> AceResult<EncodedBlock> {
-    if input.len() < segmentation.min_segment_size.saturating_mul(2) {
-        return Ok(plain);
-    }
-    let ranges = segment_boundaries(input, config, segmentation)?;
-    if ranges.len() < 2 {
-        return Ok(plain);
-    }
-    let mut timings = plain.timings;
-    let mut inner_plans = Vec::with_capacity(ranges.len());
-    let mut table = Vec::with_capacity(ranges.len());
-    for (index, range) in ranges.iter().enumerate() {
-        let segment = &input[range.clone()];
-        // An inner block's id is its position in the outer block (docs/FORMAT-1.6.md).
-        let inner = encode_block_plain(config, index as u64, segment)?;
+    parts: impl IntoIterator<Item = &'a [u8]>,
+    plain_timings: BlockTimings,
+) -> AceResult<InnerBlocks> {
+    let mut inner_blocks = InnerBlocks {
+        serialized: Vec::new(),
+        plans: Vec::new(),
+        timings: plain_timings,
+    };
+    for (index, part) in parts.into_iter().enumerate() {
+        let inner = encode_block_plain(config, index as u64, part)?;
+        let timings = &mut inner_blocks.timings;
         timings.route_classify += inner.timings.route_classify;
         timings.generic_analysis += inner.timings.generic_analysis;
         timings.planning += inner.timings.planning;
         timings.encoding += inner.timings.encoding;
-        let original_size = u32::try_from(segment.len())
-            .map_err(|_| AceError::ResourceLimitExceeded("segment size"))?;
-        table.push((
+        let original_size = u32::try_from(part.len())
+            .map_err(|_| AceError::ResourceLimitExceeded("inner block size"))?;
+        inner_blocks.serialized.push((
             original_size,
             serialize_block(&inner.header, &inner.metadata, &inner.payload),
         ));
-        inner_plans.push(inner.plan);
+        inner_blocks.plans.push(inner.plan);
     }
-    let payload = encode_segment_payload(&table)?;
-    let plain_framed = BLOCK_HEADER_SIZE + framed_len(&plain);
-    let segmented_framed = BLOCK_HEADER_SIZE + payload.len();
-    let margin = config.min_gain_bytes.max(plain_framed / 100);
-    if plain_framed.saturating_sub(segmented_framed) < margin {
-        return Ok(plain);
-    }
+    Ok(inner_blocks)
+}
+
+/// Wraps a container payload into the block that replaces `plain`.
+fn container_block(
+    id: u64,
+    input: &[u8],
+    codec: CodecId,
+    plan: PhysicalCompressionPlan,
+    payload: Vec<u8>,
+    inner: InnerBlocks,
+    plain: &EncodedBlock,
+) -> AceResult<EncodedBlock> {
     let header = BlockHeader {
         block_id: id,
         original_size: u32::try_from(input.len())
             .map_err(|_| AceError::ResourceLimitExceeded("block size"))?,
         encoded_size: u32::try_from(payload.len())
-            .map_err(|_| AceError::ResourceLimitExceeded("segmented payload"))?,
+            .map_err(|_| AceError::ResourceLimitExceeded("container payload"))?,
         metadata_size: 0,
-        codec: CodecId::Segmented,
+        codec,
         entropy: EntropyCodecId::None,
         transforms: Vec::new(),
         dictionary: None,
@@ -184,13 +214,95 @@ fn encode_segmented(
         header,
         metadata: Vec::new(),
         payload,
-        plan: PhysicalCompressionPlan::segmented(),
-        timings,
+        plan,
+        timings: inner.timings,
         planner_telemetry: plain.planner_telemetry,
         route: plain.route,
         time_series_layout: None,
-        segment_plans: inner_plans,
+        inner_plans: inner.plans,
     })
+}
+
+/// The segmented form of block `id`, or `None` when it does not beat `plain` by the margin.
+fn try_segmented(
+    config: &AceConfig,
+    segmentation: &SegmentationConfig,
+    id: u64,
+    input: &[u8],
+    plain: &EncodedBlock,
+) -> AceResult<Option<EncodedBlock>> {
+    if input.len() < segmentation.min_segment_size.saturating_mul(2) {
+        return Ok(None);
+    }
+    let ranges = segment_boundaries(input, config, segmentation)?;
+    if ranges.len() < 2 {
+        return Ok(None);
+    }
+    let inner = encode_inner_blocks(
+        config,
+        ranges.iter().map(|range| &input[range.clone()]),
+        plain.timings,
+    )?;
+    let payload = encode_segment_payload(&inner.serialized)?;
+    if !beats_by_margin(config, plain, payload.len()) {
+        return Ok(None);
+    }
+    container_block(
+        id,
+        input,
+        CodecId::Segmented,
+        PhysicalCompressionPlan::segmented(),
+        payload,
+        inner,
+        plain,
+    )
+    .map(Some)
+}
+
+/// The columnar form of block `id` under `schema`, or `None` when the block holds no whole
+/// record or the columnar form does not beat `plain` by the margin.
+///
+/// Every column stream is planned and encoded on its own, exactly like a block, so a counter
+/// column gets NUM1, a text column LZ and a noisy column RAW.
+fn try_columnar(
+    config: &AceConfig,
+    schema: &Schema,
+    id: u64,
+    input: &[u8],
+    plain: &EncodedBlock,
+) -> AceResult<Option<EncodedBlock>> {
+    let record_size = schema.record_size() as usize;
+    if input.len() < record_size {
+        return Ok(None);
+    }
+    let (streams, tail) = split_columns(input, &schema.widths())?;
+    let record_count = u32::try_from(input.len() / record_size)
+        .map_err(|_| AceError::ResourceLimitExceeded("record count"))?;
+    let inner = encode_inner_blocks(
+        config,
+        streams.iter().map(Vec::as_slice),
+        plain.timings,
+    )?;
+    let columns: Vec<(ColumnSpec, Vec<u8>)> = schema
+        .columns()
+        .iter()
+        .copied()
+        .zip(inner.serialized.iter().map(|(_, bytes)| bytes.clone()))
+        .collect();
+    let payload = encode_column_payload(&columns, record_count, tail)?;
+    if !beats_by_margin(config, plain, payload.len()) {
+        return Ok(None);
+    }
+    container_block(
+        id,
+        input,
+        CodecId::Columnar,
+        PhysicalCompressionPlan::columnar(),
+        payload,
+        inner,
+        plain,
+    )
+    .map(Some)
 }
 
 /// Encodes block `id`; the DENSE profile never stores a block larger than BALANCED would (0.6.1).
@@ -324,7 +436,7 @@ fn encode_planned(
         planner_telemetry: decision.telemetry,
         route: context.route.route,
         time_series_layout,
-        segment_plans: Vec::new(),
+        inner_plans: Vec::new(),
     })
 }
 

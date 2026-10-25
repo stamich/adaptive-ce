@@ -19,6 +19,7 @@
 
 use std::ops::Range;
 
+pub use ace_core::{ColumnKind, ColumnSpec};
 use ace_core::{AceError, AceResult, DecodeLimits};
 
 use crate::BLOCK_HEADER_SIZE;
@@ -31,65 +32,6 @@ pub const COLUMN_HEADER_SIZE: usize = 24;
 
 /// Size of one column table entry.
 pub const COLUMN_ENTRY_SIZE: usize = 8;
-
-/// What a column holds. It does not change decoding (every inner block describes itself); it
-/// lets tools and column projection interpret a stream.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ColumnKind {
-    /// Opaque bytes of any width.
-    Bytes,
-    /// Unsigned little-endian integers of width 1, 2, 4 or 8.
-    Unsigned,
-    /// Signed little-endian integers of width 1, 2, 4 or 8.
-    Signed,
-    /// IEEE-754 floats of width 4 or 8.
-    Float,
-}
-
-/// Inherent methods of [`ColumnKind`].
-impl ColumnKind {
-    /// The byte stored in the table.
-    pub fn id(self) -> u8 {
-        match self {
-            Self::Bytes => 0,
-            Self::Unsigned => 1,
-            Self::Signed => 2,
-            Self::Float => 3,
-        }
-    }
-
-    /// Parses the table byte.
-    ///
-    /// # Errors
-    /// [`AceError::Malformed`] for an unknown kind.
-    pub fn from_id(id: u8) -> AceResult<Self> {
-        match id {
-            0 => Ok(Self::Bytes),
-            1 => Ok(Self::Unsigned),
-            2 => Ok(Self::Signed),
-            3 => Ok(Self::Float),
-            _ => Err(AceError::Malformed("unknown column kind")),
-        }
-    }
-
-    /// Whether `width` is allowed for this kind.
-    pub fn accepts_width(self, width: u16) -> bool {
-        match self {
-            Self::Bytes => width != 0,
-            Self::Unsigned | Self::Signed => matches!(width, 1 | 2 | 4 | 8),
-            Self::Float => matches!(width, 4 | 8),
-        }
-    }
-}
-
-/// One column of a schema: its width in bytes and what it holds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ColumnSpec {
-    /// Bytes per record taken by this column (non-zero).
-    pub width: u16,
-    /// What the column holds.
-    pub kind: ColumnKind,
-}
 
 /// A table row: the column plus the size of its serialized inner block.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

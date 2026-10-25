@@ -31,14 +31,14 @@ its `extern "C"` functions are the interface.
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 54 | 21 | 0 |
-| `ace-core` | internal | 33 | 23 | 0 |
+| `ace-core` | internal | 36 | 31 | 0 |
 | `ace-corpus` | internal | 4 | 14 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-ffi` | internal | 40 | 0 | 0 |
-| `ace-format` | internal | 58 | 31 | 0 |
+| `ace-format` | internal | 56 | 28 | 0 |
 | `ace-index` | internal | 1 | 5 | 0 |
 | `ace-planner` | internal | 64 | 28 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
@@ -399,12 +399,23 @@ its `extern "C"` functions are the interface.
 | `raw` | method | `plan.rs:114` | Creates the universal RAW fallback plan. |
 | `is_plain_numeric` | method | `plan.rs:132` | True for a bare NUM1 plan (Numeric codec, no transforms, no entropy stage), the only |
 | `segmented` | method | `plan.rs:141` | The plan recorded for a segmented block (`SEG1`): a container with no transform, entropy |
-| `label` | method | `plan.rs:158` | Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry. |
+| `columnar` | method | `plan.rs:159` | The plan recorded for a columnar block (`COL1`): a container with no transform, entropy |
+| `label` | method | `plan.rs:171` | Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry. |
 | `BlockProfile` | item | `profile.rs:3` | Statistical description of one input block used by the adaptive planner. |
+| `ColumnKind` | item | `schema.rs:13` | What a column holds. It does not change decoding — every stored column describes itself — it |
+| `id` | method | `schema.rs:27` | The byte stored in the `COL1` column table: 0 bytes, 1 unsigned, 2 signed, 3 float. |
+| `from_id` | method | `schema.rs:40` | Parses the table byte. |
+| `accepts_width` | method | `schema.rs:51` | Whether `width` (bytes) is allowed for this kind. |
+| `ColumnSpec` | item | `schema.rs:62` | One column of a schema: its width in bytes and what it holds. |
+| `Schema` | item | `schema.rs:74` | A validated list of columns: the layout of one fixed-size record. |
+| `new` | method | `schema.rs:88` | Validates `columns` and builds the schema. |
+| `columns` | method | `schema.rs:111` | The columns, in record order. |
+| `record_size` | method | `schema.rs:116` | Bytes of one record: the sum of the widths. |
+| `widths` | method | `schema.rs:121` | The column widths, in record order. |
 | `CompressionStats` | item | `stats.rs:8` | Aggregate telemetry produced by one compression operation. |
-| `compression_ratio` | method | `stats.rs:85` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
-| `record_selected_plan` | method | `stats.rs:94` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
-| `record_plan` | method | `stats.rs:118` | Increments the stable counter associated with one selected physical plan. |
+| `compression_ratio` | method | `stats.rs:89` | Returns `input_bytes / output_bytes`, or `1.0` when no output bytes were produced. |
+| `record_selected_plan` | method | `stats.rs:98` | Counts one selected block plan: codec, entropy coder, delta transform and plan label. |
+| `record_plan` | method | `stats.rs:122` | Increments the stable counter associated with one selected physical plan. |
 | `FORMAT_MAJOR` | item | `version.rs:6` | Current major format version. |
 | `FORMAT_MINOR` | item | `version.rs:10` | Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the |
 | `FORMAT_MINOR_STORAGE` | item | `version.rs:14` | First minor version that has segmented (`SEG1`) and columnar (`COL1`) blocks and the |
@@ -484,9 +495,9 @@ its `extern "C"` functions are the interface.
 
 | Item | Kind | Location | Summary |
 |---|---|---|---|
-| `wrap_entropy_metadata` | item | `block_pipeline.rs:26` | Prepends the primary-stream length to entropy model metadata when the coder requires it. |
-| `block_format_minor` | item | `block_pipeline.rs:51` | Minor format version a block needs, given its codec, entropy coder and stored payload. |
-| `split_entropy_metadata` | item | `block_pipeline.rs:66` | Splits stored block metadata into `(entropy model metadata, primary stream length)`. |
+| `wrap_entropy_metadata` | item | `block_pipeline.rs:28` | Prepends the primary-stream length to entropy model metadata when the coder requires it. |
+| `block_format_minor` | item | `block_pipeline.rs:53` | Minor format version a block needs, given its codec, entropy coder and stored payload. |
+| `split_entropy_metadata` | item | `block_pipeline.rs:68` | Splits stored block metadata into `(entropy model metadata, primary stream length)`. |
 | `FixedBlockChunker` | item | `chunker.rs:3` | Deterministic fixed-size block splitter retained by ACE 0.2.1. |
 | `new` | method | `chunker.rs:10` | Creates a chunker or returns `None` for a zero block size. |
 | `chunks` | method | `chunker.rs:14` | Returns an iterator over independent fixed-size source blocks. |
@@ -607,24 +618,19 @@ its `extern "C"` functions are the interface.
 | `serialize_block` | item | `block_io.rs:86` | Serializes one block exactly as [`crate::AceWriter::write_block`] writes it to a file: the |
 | `parse_inner_block` | item | `block_io.rs:102` | Parses one inner block of a segmented or columnar block (Format 1.6) from `bytes`. |
 | `checksum` | item | `checksum.rs:7` | Computes CRC32C for ACE headers, indexes and reconstructed block payloads. |
-| `COLUMN_MAGIC` | item | `column.rs:27` | Magic bytes that open a columnar payload. |
-| `COLUMN_HEADER_SIZE` | item | `column.rs:30` | Size of the fixed part of the payload. |
-| `COLUMN_ENTRY_SIZE` | item | `column.rs:33` | Size of one column table entry. |
-| `ColumnKind` | item | `column.rs:38` | What a column holds. It does not change decoding (every inner block describes itself); it |
-| `id` | method | `column.rs:52` | The byte stored in the table. |
-| `from_id` | method | `column.rs:65` | Parses the table byte. |
-| `accepts_width` | method | `column.rs:76` | Whether `width` is allowed for this kind. |
-| `ColumnSpec` | item | `column.rs:87` | One column of a schema: its width in bytes and what it holds. |
-| `ColumnEntry` | item | `column.rs:96` | A table row: the column plus the size of its serialized inner block. |
-| `ColumnTable` | item | `column.rs:105` | A validated column table with the positions it implies. |
-| `parse` | method | `column.rs:129` | Parses and validates the table at the start of `payload`. |
-| `data_offset` | method | `column.rs:227` | Offset of the first inner block in the payload. |
-| `stream_sizes` | method | `column.rs:233` | Reconstructed size of each column stream: `record_count × width`. |
-| `payload_ranges` | method | `column.rs:244` | The bytes of each inner block within the payload, in column order. |
-| `tail_range` | method | `column.rs:258` | The tail bytes within the payload (they close the payload). |
-| `encode_column_payload` | item | `column.rs:278` | Builds a `COL1` payload. |
-| `split_columns` | item | `column.rs:333` | Splits `data` into one stream per column plus the tail of an incomplete last record. |
-| `join_columns` | item | `column.rs:360` | The exact inverse of [`split_columns`]: interleaves the streams record by record and appends |
+| `COLUMN_MAGIC` | item | `column.rs:28` | Magic bytes that open a columnar payload. |
+| `COLUMN_HEADER_SIZE` | item | `column.rs:31` | Size of the fixed part of the payload. |
+| `COLUMN_ENTRY_SIZE` | item | `column.rs:34` | Size of one column table entry. |
+| `ColumnEntry` | item | `column.rs:38` | A table row: the column plus the size of its serialized inner block. |
+| `ColumnTable` | item | `column.rs:47` | A validated column table with the positions it implies. |
+| `parse` | method | `column.rs:71` | Parses and validates the table at the start of `payload`. |
+| `data_offset` | method | `column.rs:169` | Offset of the first inner block in the payload. |
+| `stream_sizes` | method | `column.rs:175` | Reconstructed size of each column stream: `record_count × width`. |
+| `payload_ranges` | method | `column.rs:186` | The bytes of each inner block within the payload, in column order. |
+| `tail_range` | method | `column.rs:200` | The tail bytes within the payload (they close the payload). |
+| `encode_column_payload` | item | `column.rs:220` | Builds a `COL1` payload. |
+| `split_columns` | item | `column.rs:275` | Splits `data` into one stream per column plus the tail of an incomplete last record. |
+| `join_columns` | item | `column.rs:302` | The exact inverse of [`split_columns`]: interleaves the streams record by record and appends |
 | `DICTIONARY_SECTION_MAGIC` | item | `dictionary_section.rs:27` | Magic bytes that open the dictionary section. |
 | `MAX_DICTIONARY_BYTES` | item | `dictionary_section.rs:31` | Largest dictionary the format allows: the LZ window. Bytes before the last 65 535 of a longer |
 | `EmbeddedDictionary` | item | `dictionary_section.rs:38` | A dictionary stored in the file. |

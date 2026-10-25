@@ -154,6 +154,19 @@ impl PhysicalCompressionPlan {
         }
     }
 
+    /// The plan recorded for a columnar block (`COL1`): a container with no transform, entropy
+    /// stage or dictionary of its own, assembled from already-planned column streams.
+    pub fn columnar() -> Self {
+        Self {
+            reason: "columnar container",
+            decoding: DecodingPlan {
+                codec: CodecId::Columnar,
+                ..Self::segmented().decoding
+            },
+            ..Self::segmented()
+        }
+    }
+
     /// Stable label such as `delta+lz_balanced+huffman` used by plan-distribution telemetry.
     pub fn label(&self) -> String {
         let mut parts: Vec<&str> = self

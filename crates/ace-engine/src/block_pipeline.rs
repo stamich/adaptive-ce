@@ -15,7 +15,9 @@ use ace_core::{
     PRIMARY_LENGTH_PREFIX_BYTES,
 };
 use ace_entropy::decode_entropy_cow;
-use ace_format::{checksum, parse_inner_block, BlockHeader, SegmentTable};
+use ace_format::{
+    checksum, join_columns, parse_inner_block, BlockHeader, ColumnTable, SegmentTable,
+};
 use ace_transforms::invert_transform;
 
 /// Prepends the primary-stream length to entropy model metadata when the coder requires it.
@@ -108,8 +110,14 @@ pub(crate) fn decode_encoded_block(
     if original_size > limits.max_block_size {
         return Err(AceError::ResourceLimitExceeded("block output size"));
     }
-    if header.codec == CodecId::Segmented {
-        return decode_segmented_block(header, metadata, payload, minor_version, limits);
+    match header.codec {
+        CodecId::Segmented => {
+            return decode_segmented_block(header, metadata, payload, minor_version, limits)
+        }
+        CodecId::Columnar => {
+            return decode_columnar_block(header, metadata, payload, minor_version, limits)
+        }
+        _ => {}
     }
     if let Some(dictionary) = header.dictionary {
         return Err(AceError::MissingDictionary(dictionary.id.0));
@@ -162,19 +170,7 @@ fn decode_segmented_block(
     minor_version: u8,
     limits: &DecodeLimits,
 ) -> AceResult<Vec<u8>> {
-    if minor_version < ace_core::FORMAT_MINOR_STORAGE {
-        return Err(AceError::UnsupportedVersion {
-            major: FORMAT_MAJOR,
-            minor: minor_version,
-        });
-    }
-    if header.entropy != EntropyCodecId::None
-        || !header.transforms.is_empty()
-        || header.dictionary.is_some()
-        || !metadata.is_empty()
-    {
-        return Err(AceError::Malformed("segmented block with stages of its own"));
-    }
+    check_bare_container(header, metadata, minor_version)?;
     let original_size = header.original_size as usize;
     let table = SegmentTable::parse(payload, original_size, limits)?;
     // `original_size` is within `max_block_size` (checked by the caller).
@@ -226,4 +222,87 @@ pub(crate) fn decode_inner_block(
     let (header, metadata, payload) =
         parse_inner_block(bytes, block_id, original_size, minor_version, limits)?;
     decode_encoded_block(&header, &metadata, &payload, minor_version, limits)
+}
+
+/// Checks that a container block (`SEG1` or `COL1`) is allowed in a file of `minor_version` and
+/// carries nothing besides its payload.
+///
+/// # Errors
+///
+/// [`AceError::UnsupportedVersion`] below Format 1.6 and [`AceError::Malformed`] for an entropy
+/// stage, transform, dictionary or metadata on the outer block.
+fn check_bare_container(
+    header: &BlockHeader,
+    metadata: &[u8],
+    minor_version: u8,
+) -> AceResult<()> {
+    if minor_version < ace_core::FORMAT_MINOR_STORAGE {
+        return Err(AceError::UnsupportedVersion {
+            major: FORMAT_MAJOR,
+            minor: minor_version,
+        });
+    }
+    if header.entropy != EntropyCodecId::None
+        || !header.transforms.is_empty()
+        || header.dictionary.is_some()
+        || !metadata.is_empty()
+    {
+        return Err(AceError::Malformed("container block with stages of its own"));
+    }
+    Ok(())
+}
+
+/// Decodes a columnar block (`COL1`, Format 1.6): validates the column table against the outer
+/// header and the limits, decodes every column stream as an inner block and interleaves the
+/// streams record by record before appending the tail.
+///
+/// The outer `payload_crc32c` covers the whole reconstructed block, so a table that was altered
+/// consistently still cannot produce output that passes.
+///
+/// # Errors
+///
+/// The conditions of [`check_bare_container`], [`ColumnTable::parse`] and
+/// [`parse_inner_block`]; the error of an inner block's own decoding;
+/// [`AceError::Malformed`] when the streams do not interleave into the declared block; and
+/// [`AceError::ChecksumMismatch`] for the outer checksum.
+fn decode_columnar_block(
+    header: &BlockHeader,
+    metadata: &[u8],
+    payload: &[u8],
+    minor_version: u8,
+    limits: &DecodeLimits,
+) -> AceResult<Vec<u8>> {
+    check_bare_container(header, metadata, minor_version)?;
+    let original_size = header.original_size as usize;
+    let table = ColumnTable::parse(payload, original_size, limits)?;
+    let mut streams = Vec::with_capacity(table.columns.len());
+    for (index, (stored, stream_size)) in table
+        .payload_ranges()
+        .into_iter()
+        .zip(table.stream_sizes())
+        .enumerate()
+    {
+        let bytes = payload
+            .get(stored)
+            .ok_or(AceError::Malformed("column outside the payload"))?;
+        streams.push(decode_inner_block(
+            bytes,
+            index as u64,
+            stream_size,
+            minor_version,
+            limits,
+        )?);
+    }
+    let widths: Vec<u16> = table.columns.iter().map(|column| column.spec.width).collect();
+    let tail = payload
+        .get(table.tail_range())
+        .ok_or(AceError::Malformed("column tail outside the payload"))?;
+    let out = join_columns(&streams, &widths, tail)?;
+    if out.len() != original_size {
+        return Err(AceError::Malformed("decoded block size mismatch"));
+    }
+    if checksum(&out) != header.payload_crc32c {
+        return Err(AceError::ChecksumMismatch(header.block_id));
+    }
+    Ok(out)
 }

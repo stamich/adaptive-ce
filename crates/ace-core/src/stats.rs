@@ -61,6 +61,10 @@ pub struct CompressionStats {
     pub segmented_blocks: u64,
     /// Segments inside those blocks.
     pub segments: u64,
+    /// Blocks stored as a columnar container (`COL1`).
+    pub columnar_blocks: u64,
+    /// Column streams inside those blocks.
+    pub column_streams: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
     /// Time spent in route prefilter/classification/full NumericFast validation.
@@ -100,7 +104,7 @@ impl CompressionStats {
             CodecId::TimeSeries => self.time_series_blocks += 1,
             // Container blocks are assembled by the engine after planning (never planned).
             CodecId::Segmented => self.segmented_blocks += 1,
-            CodecId::Columnar => {}
+            CodecId::Columnar => self.columnar_blocks += 1,
         }
         match plan.decoding.entropy {
             EntropyCodecId::Huffman => self.huffman_blocks += 1,

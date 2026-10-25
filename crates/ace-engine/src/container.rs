@@ -3,7 +3,7 @@
 use std::time::Instant;
 
 use ace_codecs::TimeSeriesMode;
-use ace_core::{AceResult, CompressionStats};
+use ace_core::{AceResult, CodecId, CompressionStats};
 use ace_format::{
     minimal_minor_version, AceWriter, FileHeader, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
 };
@@ -65,10 +65,15 @@ fn record_block(stats: &mut CompressionStats, block: &EncodedBlock) {
     stats.planning_time += timings.planning;
     stats.encoding_time += timings.encoding;
     stats.record_selected_plan(&block.plan);
-    // A segmented block also counts the plans of its inner blocks, so the codec and entropy
+    // A container block also counts the plans of its inner blocks, so the codec and entropy
     // counters keep describing the bytes actually stored.
-    stats.segments += block.segment_plans.len() as u64;
-    for plan in &block.segment_plans {
+    let inner_blocks = block.inner_plans.len() as u64;
+    match block.header.codec {
+        CodecId::Segmented => stats.segments += inner_blocks,
+        CodecId::Columnar => stats.column_streams += inner_blocks,
+        _ => {}
+    }
+    for plan in &block.inner_plans {
         stats.record_selected_plan(plan);
     }
     let telemetry = &block.planner_telemetry;

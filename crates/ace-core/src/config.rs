@@ -1,4 +1,4 @@
-use crate::{AccessHint, AceError, AceResult, BlockSizePolicy};
+use crate::{AccessHint, AceError, AceResult, BlockSizePolicy, Schema};
 
 /// Planner profile that changes the relative importance of compressed size and runtime cost.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,6 +105,10 @@ pub struct AceConfig {
     /// Adaptive segmentation (ACE 0.8, Format 1.6); `None` (the default) never segments, so the
     /// output keeps the bytes of 0.7.0.
     pub segmentation: Option<SegmentationConfig>,
+    /// Record layout for columnar blocks (ACE 0.8, Format 1.6); `None` (the default) never writes
+    /// a columnar block. The schema is never guessed: the caller states it. A columnar block is
+    /// stored only when it is smaller than the row-wise block by a margin.
+    pub schema: Option<Schema>,
 }
 
 /// Provides the documented default values of [`AceConfig`].
@@ -126,6 +130,7 @@ impl Default for AceConfig {
             enable_numeric_specialization: true,
             enable_float_specialization: true,
             segmentation: None,
+            schema: None,
         }
     }
 }
