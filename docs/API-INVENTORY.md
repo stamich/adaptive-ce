@@ -32,7 +32,7 @@ its `extern "C"` functions are the interface.
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 57 | 21 | 0 |
 | `ace-core` | internal | 38 | 34 | 0 |
-| `ace-corpus` | internal | 6 | 20 | 0 |
+| `ace-corpus` | internal | 6 | 21 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
 | `ace-dictionary` | internal | 8 | 9 | 0 |
 | `ace-engine` | internal | 9 | 24 | 0 |
@@ -481,10 +481,11 @@ its `extern "C"` functions are the interface.
 | `RecordWorkload` | item | `records.rs:27` | A deterministic table of fixed-size records. |
 | `ALL` | method | `records.rs:39` | Every record workload, in a fixed order. |
 | `name` | method | `records.rs:42` | Stable kebab-case identifier used in reports. |
-| `layout` | method | `records.rs:51` | The fields of one record as `(width in bytes, kind)`, in record order. |
-| `record_size` | method | `records.rs:77` | Bytes of one record: the sum of the layout widths. |
-| `generate_records` | method | `records.rs:86` | Generates `records` whole records. The same workload and count always give the same |
-| `generate` | method | `records.rs:97` | Generates about `bytes` bytes: as many whole records as fit. |
+| `from_name` | method | `records.rs:51` | The workload with this [`name`](Self::name), if there is one. |
+| `layout` | method | `records.rs:56` | The fields of one record as `(width in bytes, kind)`, in record order. |
+| `record_size` | method | `records.rs:82` | Bytes of one record: the sum of the layout widths. |
+| `generate_records` | method | `records.rs:91` | Generates `records` whole records. The same workload and count always give the same |
+| `generate` | method | `records.rs:102` | Generates about `bytes` bytes: as many whole records as fit. |
 | `XorShift32` | item | `rng.rs:5` | 32-bit xorshift (13, 17, 5) used by the historical `random` and `mixed` corpora. |
 | `new` | method | `rng.rs:12` | Creates a generator; a zero seed is replaced by a fixed non-zero constant. |
 | `next_u32` | method | `rng.rs:19` | Advances the state and returns it. |

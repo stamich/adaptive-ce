@@ -2,13 +2,13 @@
 //! the demo and scripts).
 //!
 //! ```text
-//! ace-corpus <workload> <bytes> <output>
+//! ace-corpus <workload> <bytes> <output>      (also records-trades, records-telemetry, records-events)
 //! ace-corpus --list
 //! ```
 
 use std::process::ExitCode;
 
-use ace_corpus::{FalsePositiveCase, Workload};
+use ace_corpus::{FalsePositiveCase, RecordWorkload, Workload};
 
 /// Parses arguments, generates the workload and writes it.
 fn main() -> ExitCode {
@@ -21,6 +21,9 @@ fn main() -> ExitCode {
             FalsePositiveCase::ALL
                 .iter()
                 .for_each(|case| println!("{}", case.name()));
+            RecordWorkload::ALL
+                .iter()
+                .for_each(|workload| println!("{}", workload.name()));
             ExitCode::SUCCESS
         }
         [name, bytes, output] => match generate(name, bytes, output) {
@@ -42,11 +45,15 @@ fn generate(name: &str, bytes: &str, output: &str) -> Result<(), String> {
     let bytes: usize = parse_size(bytes).ok_or_else(|| format!("invalid size `{bytes}`"))?;
     let data = match Workload::from_name(name) {
         Some(workload) => workload.generate(bytes),
-        None => FalsePositiveCase::ALL
-            .into_iter()
-            .find(|case| case.name() == name)
-            .ok_or_else(|| format!("unknown workload `{name}` (see --list)"))?
-            .generate(bytes),
+        None => match RecordWorkload::from_name(name) {
+            // Whole records: `bytes` is rounded down to a multiple of the record size.
+            Some(records) => records.generate(bytes),
+            None => FalsePositiveCase::ALL
+                .into_iter()
+                .find(|case| case.name() == name)
+                .ok_or_else(|| format!("unknown workload `{name}` (see --list)"))?
+                .generate(bytes),
+        },
     };
     std::fs::write(output, data).map_err(|error| format!("writing {output}: {error}"))
 }

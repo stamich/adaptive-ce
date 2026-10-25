@@ -53,3 +53,11 @@ fn first_records_are_fixed() {
     assert_eq!(&telemetry[16..18], &1u16.to_le_bytes());
     assert_eq!(&telemetry[32..34], &2u16.to_le_bytes());
 }
+
+#[test]
+fn workloads_are_found_by_name() {
+    for workload in RecordWorkload::ALL {
+        assert_eq!(RecordWorkload::from_name(workload.name()), Some(workload));
+    }
+    assert_eq!(RecordWorkload::from_name("trades"), None);
+}

@@ -224,6 +224,16 @@ integration tests carry an explicit file-level `allow`). The benchmark harness
 | `crates/ace-ffi/tests/golden.rs:95` | block |
 | `crates/ace-ffi/tests/golden.rs:126` | block |
 | `crates/ace-ffi/tests/golden.rs:158` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:53` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:108` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:127` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:140` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:150` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:172` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:177` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:187` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:191` | block |
+| `crates/ace-ffi/tests/golden_storage.rs:194` | block |
 | `crates/ace-ffi/tests/handles.rs:19` | block |
 | `crates/ace-ffi/tests/handles.rs:27` | block |
 | `crates/ace-ffi/tests/handles.rs:39` | block |

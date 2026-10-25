@@ -47,6 +47,11 @@ impl RecordWorkload {
         }
     }
 
+    /// The workload with this [`name`](Self::name), if there is one.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|workload| workload.name() == name)
+    }
+
     /// The fields of one record as `(width in bytes, kind)`, in record order.
     pub const fn layout(self) -> &'static [(u16, FieldKind)] {
         match self {

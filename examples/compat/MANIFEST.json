@@ -398,5 +398,39 @@
     "profile": "fast+balanced+dense",
     "release": "0.6.1",
     "sha256": "da16b06cc19a19994b08d7f3a58b1e032d548ebbd8b50710cb382288da99b1a4"
+  },
+  "0.8.0/trade-records-balanced.ace": {
+    "case": "trade-records",
+    "format_minor": 6,
+    "input_sha256": "50f8148fb738196b37f93af357150eae3ab689bd139a1d4cea1b93756ffef19a",
+    "profile": "balanced",
+    "release": "0.8.0",
+    "sha256": "cf3fd5fbec50b33fd2f707b57a7c368695daa648fbf1a6727ae07cdf1c278da2"
+  },
+  "0.8.0/mixed-regimes-balanced.ace": {
+    "case": "mixed-regimes",
+    "format_minor": 6,
+    "input_sha256": "3fb8394acfbf04c4de8824f589a09d6f8fc7f2a96bbd1dcd4f6e01088aa2221d",
+    "profile": "balanced",
+    "release": "0.8.0",
+    "sha256": "a0f98206cec82e426e49cd0d545c1832f2a9199a6de473dffa5468346dd35565"
+  },
+  "0.8.0/json-records-balanced.ace": {
+    "case": "json-records",
+    "format_minor": 6,
+    "input_sha256": "2b16383636af577785ba130ea7893216d13cdcd307fa87232b6d204a666fbe39",
+    "profile": "balanced",
+    "release": "0.8.0",
+    "sha256": "e9143416e2770cce5d555c0e212752054dfdb5316dd77bfd43d0d662477384c1"
+  },
+  "0.8.0/json-records-external-balanced.ace": {
+    "case": "json-records",
+    "dictionary": "0.8.0/json-records.dict",
+    "dictionary_sha256": "36bdfb4f4a858e6e14f82bf4ca134efcee8ca5f15dfd736ba44615172322dbb0",
+    "format_minor": 6,
+    "input_sha256": "2b16383636af577785ba130ea7893216d13cdcd307fa87232b6d204a666fbe39",
+    "profile": "balanced",
+    "release": "0.8.0",
+    "sha256": "eb488f84ca85c9854d044df535e3ddf549c0553ef3ecfb68c7d8207bf060a146"
   }
 }

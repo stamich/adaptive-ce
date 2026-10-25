@@ -12,13 +12,19 @@
 //!
 //! `ACE_COMPAT_WRITE_INPUTS=DIR cargo test -p ace-engine --test compat_fixtures -- --ignored`
 //! writes the inputs, which is how the fixtures were produced with each old release.
+//!
+//! Release 0.8.0 adds the first Format 1.6 files: a columnar table, a segmented block, and one
+//! file each with an embedded and an external preset dictionary. The external one comes with its
+//! dictionary (`json-records.dict`), which the manifest names; a reader that is not given it must
+//! refuse the file, which this test also checks.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use std::collections::BTreeMap;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
-use ace_core::DecodeLimits;
+use ace_core::{AceError, DecodeLimits, DictionaryScope};
+use ace_dictionary::{Dictionary, DictionaryRegistry};
 use ace_engine::{AceEngine, AceIndexedDecoder};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -27,7 +33,7 @@ use sha2::{Digest, Sha256};
 type Generator = fn() -> Vec<u8>;
 
 /// Fixture cases: name and input generator. Never change a generator; add a new case.
-const CASES: [(&str, Generator); 8] = [
+const CASES: [(&str, Generator); 11] = [
     ("text", text),
     ("u32-counter", u32_counter),
     ("binary-runs", binary_runs),
@@ -36,6 +42,9 @@ const CASES: [(&str, Generator); 8] = [
     ("random", random),
     ("u64-outliers", u64_outliers),
     ("f64-decimal", f64_decimal),
+    ("trade-records", trade_records),
+    ("mixed-regimes", mixed_regimes),
+    ("json-records", json_records),
 ];
 
 /// Deterministic xorshift64 generator (never change).
@@ -160,6 +169,75 @@ fn f64_decimal() -> Vec<u8> {
         .collect()
 }
 
+/// 12 000 trades of 21 bytes: `time u64 | price f64 | quantity u32 | side u8` (Format 1.6
+/// columnar blocks; the schema is in [`trade_schema`]).
+fn trade_records() -> Vec<u8> {
+    let mut rng = XorShift(0xACE0_0008);
+    let mut cents = 10_000i64;
+    let mut out = Vec::with_capacity(12_000 * 21);
+    for i in 0..12_000u64 {
+        let r = rng.next();
+        cents += (r % 5) as i64 - 2;
+        out.extend_from_slice(&(1_700_000_000_000 + i * 250 + (r >> 60)).to_le_bytes());
+        out.extend_from_slice(&(cents as f64 / 100.0).to_le_bytes());
+        out.extend_from_slice(&(((r >> 20) % 900) as u32 + 1).to_le_bytes());
+        out.push((r >> 40) as u8 & 1);
+    }
+    out
+}
+
+/// The layout of [`trade_records`].
+fn trade_schema() -> ace_core::Schema {
+    use ace_core::{ColumnKind, ColumnSpec};
+    let column = |width, kind| ColumnSpec { width, kind };
+    ace_core::Schema::new(vec![
+        column(8, ColumnKind::Unsigned),
+        column(8, ColumnKind::Float),
+        column(4, ColumnKind::Unsigned),
+        column(1, ColumnKind::Bytes),
+    ])
+    .unwrap()
+}
+
+/// 400 000 `u32` counters that step every other value, then 1 500 000 bytes of a multiplicative
+/// pattern: one 4 MiB block with two regimes (Format 1.6 segments); the golden case uses it too.
+fn mixed_regimes() -> Vec<u8> {
+    let mut out: Vec<u8> = (0..400_000u32).flat_map(|i| (i / 2).to_le_bytes()).collect();
+    out.extend((0..1_500_000u64).map(|i| ((i.wrapping_mul(2_654_435_761)) >> 13) as u8));
+    out
+}
+
+/// One record of [`json_records`].
+fn json_record(i: usize) -> Vec<u8> {
+    format!(
+        "{{\"sensor\":\"temperature_reading\",\"unit\":\"celsius\",\"site\":\"plant-{}\",\"value\":{}}}\n",
+        i % 7,
+        1000 + i * 13 % 97
+    )
+    .into_bytes()
+}
+
+/// 600 small JSON records: what preset dictionaries are for (Format 1.6).
+fn json_records() -> Vec<u8> {
+    (0..600).flat_map(json_record).collect()
+}
+
+/// The dictionary of the json-records fixtures: trained from the first 300 records. Only the
+/// writer helper trains it; the readers load the committed `json-records.dict`.
+fn train_json_dictionary() -> Vec<u8> {
+    let samples: Vec<Vec<u8>> = (0..300).map(json_record).collect();
+    let borrowed: Vec<&[u8]> = samples.iter().map(Vec::as_slice).collect();
+    ace_dictionary::train_dictionary(
+        &borrowed,
+        &ace_dictionary::TrainerConfig {
+            dictionary_size: 2048,
+            segment_len: 64,
+            ..ace_dictionary::TrainerConfig::default()
+        },
+    )
+    .unwrap()
+}
+
 /// One manifest entry.
 #[derive(Debug, Deserialize)]
 struct Entry {
@@ -175,6 +253,12 @@ struct Entry {
     sha256: String,
     /// SHA-256 of the input it must decode to.
     input_sha256: String,
+    /// Path (below `examples/compat`) of the external dictionary the file refers to, if any.
+    #[serde(default)]
+    dictionary: Option<String>,
+    /// SHA-256 of that dictionary file.
+    #[serde(default)]
+    dictionary_sha256: Option<String>,
 }
 
 /// Lower-case hex SHA-256 of `bytes`.
@@ -230,10 +314,27 @@ fn generators_are_frozen() {
 #[test]
 fn every_fixture_decodes_to_its_input() {
     let manifest = manifest();
-    assert!(manifest.len() >= 5 * CASES.len(), "fixtures missing");
-    let engine = AceEngine::default_engine();
+    assert!(manifest.len() >= 40 + 4, "fixtures missing");
+    let plain = AceEngine::default_engine();
     for (path, entry) in &manifest {
         let file = std::fs::read(compat_dir().join(path)).unwrap();
+        // A fixture with an external dictionary needs it; every other reader is the plain one.
+        let mut registry = DictionaryRegistry::new();
+        if let Some(dictionary) = &entry.dictionary {
+            let bytes = std::fs::read(compat_dir().join(dictionary)).unwrap();
+            assert_eq!(
+                Some(sha256(&bytes)),
+                entry.dictionary_sha256,
+                "{path}: dictionary was modified"
+            );
+            let id = ace_dictionary::dictionary_id_of(&bytes);
+            registry.insert(Dictionary::new(id, DictionaryScope::External, bytes));
+            assert!(
+                matches!(plain.decompress(&file), Err(AceError::MissingDictionary(_))),
+                "{path}: a reader without the dictionary must refuse the file"
+            );
+        }
+        let engine = AceEngine::default_engine().with_dictionaries(registry.clone());
         assert_eq!(sha256(&file), entry.sha256, "{path}: fixture was modified");
         assert_eq!(file[5], entry.format_minor, "{path}: format version");
         let expected = input(&entry.case);
@@ -242,9 +343,8 @@ fn every_fixture_decodes_to_its_input() {
             .decompress(&file)
             .unwrap_or_else(|e| panic!("{path} ({} {}): {e}", entry.release, entry.profile));
         assert!(decoded == expected, "{path}: decoded bytes differ");
-        if let Ok(mut indexed) =
-            AceIndexedDecoder::open(Cursor::new(&file), DecodeLimits::default())
-        {
+        if let Ok(indexed) = AceIndexedDecoder::open(Cursor::new(&file), DecodeLimits::default()) {
+            let mut indexed = indexed.with_dictionaries(registry);
             let ranged = indexed.read_range(0..expected.len() as u64).unwrap();
             assert!(ranged == expected, "{path}: indexed decode differs");
         }
@@ -308,5 +408,100 @@ fn write_fixtures_0_6_1() {
                 sha256(&file)
             );
         }
+    }
+}
+
+/// Writes the Format 1.6 fixtures of the *current* encoder to `$ACE_COMPAT_WRITE_FIXTURES` and
+/// prints their manifest entries. Used once, for release 0.8.0 (Balanced, one thread); the
+/// resulting files are then frozen like every other fixture.
+#[test]
+#[ignore = "fixture generation helper"]
+fn write_fixtures_0_8_0() {
+    use std::sync::Arc;
+
+    use ace_core::{AceConfig, EncoderDictionary, SegmentationConfig};
+    let Ok(dir) = std::env::var("ACE_COMPAT_WRITE_FIXTURES") else {
+        return;
+    };
+    std::fs::create_dir_all(&dir).unwrap();
+    let dictionary_bytes = train_json_dictionary();
+    let dictionary_id = ace_dictionary::dictionary_id_of(&dictionary_bytes);
+    std::fs::write(Path::new(&dir).join("json-records.dict"), &dictionary_bytes).unwrap();
+    let encoder_dictionary = |scope| EncoderDictionary {
+        id: dictionary_id,
+        scope,
+        bytes: Arc::from(dictionary_bytes.clone()),
+    };
+    let mut registry = DictionaryRegistry::new();
+    registry.insert(Dictionary::new(
+        dictionary_id,
+        DictionaryScope::External,
+        dictionary_bytes.clone(),
+    ));
+    let base = AceConfig {
+        threads: 1,
+        ..AceConfig::default()
+    };
+    let fixtures = [
+        (
+            "trade-records",
+            "trade-records-balanced",
+            AceConfig {
+                block_size: 65_536,
+                schema: Some(trade_schema()),
+                ..base.clone()
+            },
+        ),
+        (
+            "mixed-regimes",
+            "mixed-regimes-balanced",
+            AceConfig {
+                block_size: 4 << 20,
+                segmentation: Some(SegmentationConfig {
+                    min_segment_size: 131_072,
+                    ..SegmentationConfig::default()
+                }),
+                ..base.clone()
+            },
+        ),
+        (
+            "json-records",
+            "json-records-balanced",
+            AceConfig {
+                block_size: 4096,
+                dictionary: Some(encoder_dictionary(DictionaryScope::File)),
+                ..base.clone()
+            },
+        ),
+        (
+            "json-records",
+            "json-records-external-balanced",
+            AceConfig {
+                block_size: 4096,
+                dictionary: Some(encoder_dictionary(DictionaryScope::External)),
+                ..base.clone()
+            },
+        ),
+    ];
+    for (case, name, config) in fixtures {
+        let data = input(case);
+        let engine = AceEngine::new(config).unwrap().with_dictionaries(registry.clone());
+        let file = engine.compress(&data).unwrap();
+        assert!(engine.decompress(&file).unwrap() == data);
+        std::fs::write(Path::new(&dir).join(format!("{name}.ace")), &file).unwrap();
+        let dictionary = if name.contains("external") {
+            format!(
+                ", \"dictionary\": \"0.8.0/json-records.dict\", \"dictionary_sha256\": \"{}\"",
+                sha256(&dictionary_bytes)
+            )
+        } else {
+            String::new()
+        };
+        println!(
+            "\"0.8.0/{name}.ace\": {{\"case\": \"{case}\", \"format_minor\": {}, \"input_sha256\": \"{}\", \"profile\": \"balanced\", \"release\": \"0.8.0\", \"sha256\": \"{}\"{dictionary}}}",
+            file[5],
+            sha256(&data),
+            sha256(&file)
+        );
     }
 }
