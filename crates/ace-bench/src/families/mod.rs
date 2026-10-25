@@ -12,6 +12,7 @@ mod planner;
 mod public_corpus;
 mod random_access;
 mod release;
+mod storage;
 
 pub(crate) use allocation_profile::*;
 pub(crate) use chimp::*;
@@ -27,3 +28,4 @@ pub use public_corpus::{
 };
 pub(crate) use random_access::*;
 pub(crate) use release::*;
+pub(crate) use storage::*;

@@ -310,6 +310,35 @@ within 25 % of the best base size and only when 16-value chunks of some source d
 is at least half decimal-shaped. Without the ALP rule FAST encode of `f64-constant` fell to 4.4x
 the disabled lane (gate: 5x); with it 17x.
 
+### `storage` (0.8.0): columnar blocks and segmentation
+
+Family `storage` (`ace-bench storage`, about two minutes) measures the two Format 1.6 block
+containers against the block the planner would have chosen for the same bytes.
+
+* `columnar` rows: for every record workload of `ace-corpus` (`records-trades` 24 B,
+  `records-telemetry` 16 B, `records-events` 32 B; 4 MiB, deterministic) and every profile, the size
+  of the row-wise stream (no schema) and of the columnar stream (schema from the record layout),
+  the gain, the format minor version, the number of columnar blocks and column streams, and the
+  encode / decode timing of the columnar configuration. Every row asserts both round trips.
+* `segmented` row: one 3 MiB block made of 1 MiB JSON, 1 MiB counters and 1 MiB random bytes, with
+  and without `SegmentationConfig::default()`.
+* `summary` row: how many record cases are below the 1.10x target.
+
+Sizes are exact and do not depend on the machine. Gates (section `storage` of Regression V3):
+
+| Gate | Requirement | Measured (Balanced) |
+|---|---|---|
+| `storage.columnar_below_target` | 0 of 9 record cases below 1.10x (correctness) | 0 |
+| `storage.records-trades_gain` | >= 1.10x the row-wise block | 2.28x |
+| `storage.records-telemetry_gain` | >= 1.10x | 5.73x |
+| `storage.records-events_gain` | >= 1.10x | 1.52x |
+| `storage.segmented_gain`, `storage.segmented_used` | >= 1.2x and >= 2 segments (provisional) | 1.85x, 3 segments |
+| `storage.<workload>_<profile>_encode_mb_s` | diagnostic | — |
+
+The columnar encode speed is a diagnostic until the reference-machine run of 0.8.0 (task 28): the
+encoder plans every column and the row-wise block, so it costs about 2x the row-wise encode time.
+Fast gains 1.29x on `records-events` (the minimum) and 5.34x on `records-trades`.
+
 ### `ffi` (0.7.0): what the bindings cost
 
 Family `ffi` (`ace-bench ffi`) runs the same operations through the Rust facade (`ace::Engine`)

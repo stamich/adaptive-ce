@@ -8,6 +8,7 @@ Sections:
   determinism matrix, format readers, malformed matrix, ...);
 * ``quality``     -- Planner V4.3 policy recall/regret and compression ratios (unchanged);
 * ``format15``    -- Phase B (0.6.1): Patched FOR, ALP, small-delta RunDelta, DENSE <= BALANCED.
+* ``storage``     -- ACE 0.8.0: columnar blocks on the record corpus and the segmentation fixture.
 * ``float``       -- Planner V5 Float lane (0.5.0): zero false positives, Corpus V3 identity,
   zero FloatFast fallbacks, never larger than the disabled lane, ratio targets, estimator
   accuracy, codec-level TS1 speed and the FloatFast speedup measured in the same run;
@@ -80,6 +81,7 @@ class Inputs:
         self.float_estimator = ours("float-estimator")
         self.float_ablation = ours("float-ablation")
         self.format15 = ours("format-1-5")
+        self.storage = ours("storage")
         self.ffi = ours("ffi")
         legacy = baselines / "0.2.1-buildfix1"
         self.quality_compression = lib.load_doc(legacy / "benchmark-0.2.1-buildfix1-compression.json")
@@ -241,6 +243,36 @@ def format15_gates(data: Inputs) -> list[Row]:
                    float(lib.timing(patched_row, "decode")["median_mb_s"]), 300.0, True,
                    ">= 300 MB/s (provisional floor)", 6.0, "format15"),
     ]
+    return gates
+
+
+def storage_gates(data: Inputs) -> list[Row]:
+    """ACE 0.8.0: columnar blocks (>= 10 % smaller than row-wise) and segmentation."""
+    columnar = [r for r in data.storage["workloads"] if r.get("path") == "columnar"]
+    summary = lib.find_row(data.storage, workload_id="summary")
+    segmented = lib.find_row(data.storage, workload_id="segmented-mixed-3m")
+    gates = [
+        threshold("storage.columnar_below_target", "correctness",
+                  float(summary["below_target"]), 0.0, False,
+                  f"== 0 of {int(summary['cases_checked'])} record cases below the 1.10x target"),
+        threshold("storage.segmented_gain", "storage", float(segmented["gain_vs_plain"]), 1.2, True,
+                  ">= 1.2x the unsegmented block (JSON + counters + random, provisional)"),
+        threshold("storage.segmented_used", "storage", float(segmented["segments"]), 2.0, True,
+                  ">= 2 segments on the fixture"),
+    ]
+    for row in columnar:
+        if row["profile"] != "balanced":
+            continue
+        gates.append(threshold(
+            f"storage.{row['workload_id']}_gain", "storage", float(row["gain_vs_rowwise"]), 1.10, True,
+            ">= 1.10x the row-wise block (Balanced)"))
+    for row in columnar:
+        # Timings of the columnar configuration are reported, never gated (provisional until the
+        # reference-machine run of task 28).
+        encode = lib.timing(row, "encode")
+        gates.append(lib.gate(
+            f"storage.{row['workload_id']}_{row['profile']}_encode_mb_s", "storage", lib.DIAGNOSTIC,
+            float(encode["median_mb_s"]), None, "diagnostic: columnar encode speed"))
     return gates
 
 
@@ -407,6 +439,7 @@ def main(argv: list[str]) -> int:
     ab = lib.load_doc(args.ab) if args.ab else None
     jvm = lib.load_doc(args.jvm) if args.jvm and args.jvm.exists() else None
     gates = (correctness_gates(data, external) + quality_gates(data) + float_gates(data) + format15_gates(data)
+             + storage_gates(data)
              + ffi_gates(data, jvm)
              + performance_gates(data, ab)
              + stability_gates(data) + environment_rows(data))

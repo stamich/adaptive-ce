@@ -145,7 +145,7 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 | Lossless, bit-exact | every block carries the CRC-32C of its bytes; property tests over arbitrary inputs and float bit patterns |
 | Deterministic output | golden SHA-256 files (auto and scalar SIMD), determinism matrix (1 – 32 threads, API paths, processes) |
 | Old files stay readable | frozen files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0 and 0.6.1 decode on every build ([`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)) |
-| Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code (and none across the C ABI), 21 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
+| Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code (and none across the C ABI), 22 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
 | Minimal `unsafe` | only the audited SIMD / CRC kernels and the C ABI boundary (`ace-ffi`) ([`docs/UNSAFE-AUDIT.md`](docs/UNSAFE-AUDIT.md), [`docs/PANIC-AUDIT.md`](docs/PANIC-AUDIT.md)) |
 
 ## Development
@@ -168,7 +168,7 @@ gradle -p jvm build                                  # Java and Scala SDKs (JDK 
 | `examples/golden/` | golden SHA-256 (0.6.1, reproduced by 0.7.0; frozen 0.5.0 and 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
-| `fuzz/` | `cargo-fuzz` project, 21 targets ([`fuzz/README.md`](fuzz/README.md)) |
+| `fuzz/` | `cargo-fuzz` project, 22 targets ([`fuzz/README.md`](fuzz/README.md)) |
 | `jvm/`, `demo/jvm/` | Java (Panama) and Scala 3 SDKs over the C ABI, and their demos |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
 | `TASKS-0.7.0.md`, `MILESTONE-0.7.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |

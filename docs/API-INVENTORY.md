@@ -32,7 +32,7 @@ its `extern "C"` functions are the interface.
 | `ace-bitpack` | internal | 25 | 10 | 0 |
 | `ace-codecs` | internal | 54 | 21 | 0 |
 | `ace-core` | internal | 36 | 33 | 0 |
-| `ace-corpus` | internal | 4 | 14 | 0 |
+| `ace-corpus` | internal | 6 | 20 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
 | `ace-dictionary` | internal | 3 | 8 | 0 |
 | `ace-engine` | internal | 9 | 22 | 0 |
@@ -219,8 +219,8 @@ its `extern "C"` functions are the interface.
 | `public_corpus_family` | item | `families/public_corpus.rs:186` | Runs the family: one row per file and compressor, or nothing when no corpus is configured. |
 | `FamilyFn` | item | `lib.rs:31` | Signature shared by every benchmark family. |
 | `FAMILIES` | item | `lib.rs:34` | Every benchmark family in `all` order: `(name, runner)`. |
-| `select_families` | item | `lib.rs:73` | Resolves the command-line selection into the families to run. |
-| `run_family` | item | `lib.rs:89` | Runs one family and writes its document; returns the result path. |
+| `select_families` | item | `lib.rs:74` | Resolves the command-line selection into the families to run. |
+| `run_family` | item | `lib.rs:90` | Runs one family and writes its document; returns the result path. |
 | `QUICK_ENV` | item | `timing/plan.rs:6` | Environment variable enabling the quick (smoke) plan: one short batch per case. |
 | `MIN_SAMPLE_MS_ENV` | item | `timing/plan.rs:9` | Environment variable overriding the minimum duration of one sample, in milliseconds. |
 | `MAX_ITERATIONS_PER_SAMPLE` | item | `timing/plan.rs:12` | Upper bound on operation invocations folded into one sample (protects nanosecond ops). |
@@ -446,6 +446,14 @@ its `extern "C"` functions are the interface.
 | `ALL` | method | `false_positive.rs:29` | Every case, in report order. |
 | `name` | method | `false_positive.rs:39` | Stable kebab-case name. |
 | `generate` | method | `false_positive.rs:51` | Generates exactly `bytes` bytes of this case. |
+| `FieldKind` | item | `records.rs:14` | What a field of a record holds (mirrors `ace_core::ColumnKind`; this crate has no |
+| `RecordWorkload` | item | `records.rs:27` | A deterministic table of fixed-size records. |
+| `ALL` | method | `records.rs:39` | Every record workload, in a fixed order. |
+| `name` | method | `records.rs:42` | Stable kebab-case identifier used in reports. |
+| `layout` | method | `records.rs:51` | The fields of one record as `(width in bytes, kind)`, in record order. |
+| `record_size` | method | `records.rs:77` | Bytes of one record: the sum of the layout widths. |
+| `generate_records` | method | `records.rs:86` | Generates `records` whole records. The same workload and count always give the same |
+| `generate` | method | `records.rs:97` | Generates about `bytes` bytes: as many whole records as fit. |
 | `XorShift32` | item | `rng.rs:5` | 32-bit xorshift (13, 17, 5) used by the historical `random` and `mixed` corpora. |
 | `new` | method | `rng.rs:12` | Creates a generator; a zero seed is replaced by a fixed non-zero constant. |
 | `next_u32` | method | `rng.rs:19` | Advances the state and returns it. |

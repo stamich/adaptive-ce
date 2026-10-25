@@ -91,7 +91,7 @@ jobs:
           path: jvm/**/build/reports/tests
           if-no-files-found: ignore
   fuzz-smoke:
-    # 21 targets x 25 s on every push / PR. The corpus is kept between runs as a CI cache and
+    # 22 targets x 25 s on every push / PR. The corpus is kept between runs as a CI cache and
     # published as an artifact; it is never committed (fuzz/README.md, "Corpus policy").
     runs-on: ubuntu-latest
     steps:
