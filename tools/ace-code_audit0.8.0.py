@@ -233,6 +233,17 @@ DECODER_FIELDS = (
      "at least one block header; the sum equals the payload tail exactly (checked add)", "-",
      ("crates/ace-format/tests/segment.rs::table_is_validated_against_the_block",
       "crates/ace-format/tests/segment.rs::random_tables_tile_the_block")),
+    ("Index (AIDX)", "entry flags (u32)",
+     "only `INDEX_FLAG_SEGMENTED` may be set; any other bit is malformed; a flag on a block "
+     "that is not segmented is rejected when the range is read", "-",
+     ("crates/ace-format/tests/index_hardening.rs::only_the_segmented_flag_is_defined",
+      "crates/ace-engine/tests/segmented_range.rs::a_flag_on_a_block_that_is_not_segmented_is_rejected")),
+    ("Segment table (SEG1)", "table read by a range reader (prefix)",
+     "count from the 12-byte head against the limit first; table bytes `checked_mul`/`checked_add`; "
+     "sums checked against the outer `original_size` and `encoded_size` without the segments",
+     "`max_segments`",
+     ("crates/ace-format/tests/segment.rs::the_table_parses_from_a_prefix",
+      "crates/ace-engine/tests/segmented_range.rs::damage_is_local_to_the_touched_segments")),
     ("Column table (COL1)", "column count (u16)",
      "1 ..= limit before the table is read; wrong magic, version, flags and reserved fields are "
      "malformed",

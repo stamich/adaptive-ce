@@ -1,10 +1,10 @@
 //! Block index (AIDX) and trailer (ACET) validation against malformed input.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
-use ace_core::DecodeLimits;
+use ace_core::{AceError, DecodeLimits};
 use ace_format::{
     decode_index, decode_trailer, encode_index, encode_trailer, BlockIndex, BlockIndexEntry,
-    FileTrailer,
+    FileTrailer, INDEX_FLAG_SEGMENTED,
 };
 
 /// Builds a small valid index fixture used by malformed-index tests.
@@ -161,4 +161,30 @@ fn writer_rejects_more_than_255_transforms() {
         Err(ace_core::AceError::Malformed(_))
     ));
     assert_eq!(writer.bytes_written(), 0, "nothing may be written");
+}
+
+/// Format 1.6 defines one index entry flag (segmented block); every other bit is reserved and a
+/// reader refuses an entry that sets one, so the bits stay available for later minor versions.
+#[test]
+fn only_the_segmented_flag_is_defined() {
+    let entry = |flags| BlockIndexEntry {
+        block_id: 0,
+        original_offset: 0,
+        original_size: 10,
+        file_offset: 32,
+        encoded_span: 50,
+        flags,
+    };
+    let limits = DecodeLimits::default();
+    for flags in [0, INDEX_FLAG_SEGMENTED] {
+        let bytes = encode_index(&BlockIndex { entries: vec![entry(flags)] });
+        assert_eq!(decode_index(&bytes, &limits).unwrap().entries[0].flags, flags);
+    }
+    for flags in [0x2, 0x3, 0x8000_0000, u32::MAX] {
+        let bytes = encode_index(&BlockIndex { entries: vec![entry(flags)] });
+        assert!(
+            matches!(decode_index(&bytes, &limits), Err(AceError::Malformed(_))),
+            "{flags:#x}"
+        );
+    }
 }

@@ -4,8 +4,9 @@
 
 use ace_core::{AceError, CodecId, DecodeLimits, EntropyCodecId};
 use ace_format::{
-    checksum, encode_segment_payload, parse_inner_block, serialize_block, BlockHeader,
-    SegmentTable, BLOCK_HEADER_SIZE, SEGMENT_ENTRY_SIZE, SEGMENT_HEADER_SIZE, SEGMENT_MAGIC,
+    checksum, encode_segment_payload, parse_inner_block, read_block_header, serialize_block,
+    BlockHeader, SegmentTable, BLOCK_HEADER_SIZE, SEGMENT_ENTRY_SIZE, SEGMENT_HEADER_SIZE,
+    SEGMENT_MAGIC,
 };
 use proptest::prelude::*;
 
@@ -27,6 +28,11 @@ fn raw_block(id: u64, data: &[u8]) -> Vec<u8> {
         &[],
         data,
     )
+}
+
+/// Alias of [`payload_of`] with a clearer name for the prefix tests.
+fn payload_for_parts(parts: &[Vec<u8>]) -> (Vec<u8>, usize) {
+    payload_of(parts)
 }
 
 /// A payload of segments with the given contents.
@@ -176,6 +182,51 @@ fn inner_blocks_are_checked() {
         &[],
     );
     assert!(matches!(parse_inner_block(&nested, 0, 6, 6, &limits), Err(AceError::Malformed(_))));
+}
+
+/// A range reader holds only the head and the table: it learns the count from 12 bytes, fetches
+/// the table, and validates it against the outer payload length without the segments.
+#[test]
+fn the_table_parses_from_a_prefix() {
+    let parts = vec![vec![1u8; 300], vec![2u8; 700], vec![3u8; 90]];
+    let (payload, total) = payload_for_parts(&parts);
+    let limits = DecodeLimits::default();
+    let count = SegmentTable::count_from_head(&payload[..SEGMENT_HEADER_SIZE], &limits).unwrap();
+    assert_eq!(count, 3);
+    let table_len = SegmentTable::table_len(count).unwrap();
+    assert_eq!(table_len, SEGMENT_HEADER_SIZE + 3 * SEGMENT_ENTRY_SIZE);
+    let from_prefix =
+        SegmentTable::parse_prefix(&payload[..table_len], payload.len(), total, &limits).unwrap();
+    assert_eq!(from_prefix, SegmentTable::parse(&payload, total, &limits).unwrap());
+    // A wrong payload length is caught from the prefix alone; so is a prefix cut inside the table.
+    assert!(SegmentTable::parse_prefix(&payload[..table_len], payload.len() + 1, total, &limits).is_err());
+    assert!(SegmentTable::parse_prefix(&payload[..table_len], table_len - 1, total, &limits).is_err());
+    assert!(SegmentTable::parse_prefix(&payload[..table_len - 1], payload.len(), total, &limits).is_err());
+    // The head alone enforces the magic, the count range and the limit.
+    assert!(SegmentTable::count_from_head(&payload[..SEGMENT_HEADER_SIZE - 1], &limits).is_err());
+    let few = DecodeLimits { max_segments: 2, ..DecodeLimits::default() };
+    assert!(matches!(
+        SegmentTable::count_from_head(&payload[..SEGMENT_HEADER_SIZE], &few),
+        Err(AceError::ResourceLimitExceeded("segment count"))
+    ));
+    assert!(SegmentTable::table_len(usize::MAX).is_err());
+}
+
+/// The header-only read consumes the fixed header and its descriptors and stops there.
+#[test]
+fn the_block_header_can_be_read_without_the_payload() {
+    let block = raw_block(7, b"payload bytes");
+    let mut reader = std::io::Cursor::new(&block);
+    let (header, header_len) = read_block_header(&mut reader, 6, &DecodeLimits::default()).unwrap();
+    assert_eq!((header.block_id, header.original_size), (7, 13));
+    assert_eq!(header_len, BLOCK_HEADER_SIZE);
+    assert_eq!(reader.position() as usize, header_len);
+    let tiny = DecodeLimits { max_block_size: 4, ..DecodeLimits::default() };
+    assert!(matches!(
+        read_block_header(&mut std::io::Cursor::new(&block), 6, &tiny),
+        Err(AceError::ResourceLimitExceeded("block output size"))
+    ));
+    assert!(read_block_header(&mut std::io::Cursor::new(&block[..10]), 6, &DecodeLimits::default()).is_err());
 }
 
 proptest! {

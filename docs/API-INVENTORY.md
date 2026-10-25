@@ -38,8 +38,8 @@ its `extern "C"` functions are the interface.
 | `ace-engine` | internal | 9 | 22 | 0 |
 | `ace-entropy` | internal | 17 | 14 | 0 |
 | `ace-ffi` | internal | 40 | 0 | 0 |
-| `ace-format` | internal | 56 | 28 | 0 |
-| `ace-index` | internal | 1 | 3 | 0 |
+| `ace-format` | internal | 58 | 31 | 0 |
+| `ace-index` | internal | 1 | 5 | 0 |
 | `ace-planner` | internal | 64 | 28 | 0 |
 | `ace-runtime` | internal | 2 | 5 | 0 |
 | `ace-simd` | internal | 8 | 0 | 0 |
@@ -504,17 +504,17 @@ its `extern "C"` functions are the interface.
 | `decompress_from` | method | `engine.rs:210` | Reads, validates and sequentially decompresses ACE 1.0–1.5 blocks to a writer. |
 | `explain` | method | `engine.rs:262` | Produces deterministic planner explanations (every candidate fully evaluated) without |
 | `BlockExplanation` | item | `explain.rs:10` | Planner explanation for one input block. |
-| `RangeAccessMetrics` | item | `indexed.rs:9` | Physical work implied by one logical random-access range request. |
-| `physical_to_logical_ratio` | method | `indexed.rs:23` | Returns physical serialized bytes read divided by logical reconstructed bytes requested. |
-| `overread_ratio` | method | `indexed.rs:32` | Backward-compatible alias for the pre-0.3 metric name. |
-| `AceIndexedDecoder` | item | `indexed.rs:38` | High-level random-access decoder backed by the serialized ACE 1.1/1.2 block index. |
-| `open` | method | `indexed.rs:52` | Opens and validates an indexed ACE stream. |
-| `decode_block` | method | `indexed.rs:63` | Decodes exactly one independent block by stable block identifier. |
-| `range_metrics` | method | `indexed.rs:79` | Returns physical-read diagnostics for a logical range without decoding it. |
-| `read_range` | method | `indexed.rs:107` | Decodes only blocks intersecting the requested logical byte range and trims boundary blocks. |
-| `read_range_with_metrics` | method | `indexed.rs:122` | Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup. |
-| `original_size` | method | `indexed.rs:182` | Returns the total reconstructed size of the file in bytes. |
-| `block_count` | method | `indexed.rs:187` | Returns the number of indexed independent blocks. |
+| `RangeAccessMetrics` | item | `indexed.rs:10` | Physical work implied by one logical random-access range request. |
+| `physical_to_logical_ratio` | method | `indexed.rs:29` | Returns physical serialized bytes read divided by logical reconstructed bytes requested. |
+| `overread_ratio` | method | `indexed.rs:38` | Backward-compatible alias for the pre-0.3 metric name. |
+| `AceIndexedDecoder` | item | `indexed.rs:44` | High-level random-access decoder backed by the serialized ACE 1.1/1.2 block index. |
+| `open` | method | `indexed.rs:58` | Opens and validates an indexed ACE stream. |
+| `decode_block` | method | `indexed.rs:69` | Decodes exactly one independent block by stable block identifier. |
+| `range_metrics` | method | `indexed.rs:85` | Returns physical-read diagnostics for a logical range without decoding it. |
+| `read_range` | method | `indexed.rs:114` | Decodes only blocks intersecting the requested logical byte range and trims boundary blocks. |
+| `read_range_with_metrics` | method | `indexed.rs:129` | Decodes one logical byte range and returns the physical-read diagnostics from the same index lookup. |
+| `original_size` | method | `indexed.rs:281` | Returns the total reconstructed size of the file in bytes. |
+| `block_count` | method | `indexed.rs:286` | Returns the number of indexed independent blocks. |
 
 ### `ace-entropy` (internal)
 
@@ -603,8 +603,9 @@ its `extern "C"` functions are the interface.
 |---|---|---|---|
 | `SerializedBlock` | item | `block_io.rs:19` | One serialized block: parsed header, entropy metadata and encoded payload. |
 | `read_serialized_block` | item | `block_io.rs:34` | Reads one block from `reader` positioned at its first header byte. |
-| `serialize_block` | item | `block_io.rs:66` | Serializes one block exactly as [`crate::AceWriter::write_block`] writes it to a file: the |
-| `parse_inner_block` | item | `block_io.rs:82` | Parses one inner block of a segmented or columnar block (Format 1.6) from `bytes`. |
+| `read_block_header` | item | `block_io.rs:57` | Reads only the header of one block (fixed part and descriptors) from `reader` positioned at |
+| `serialize_block` | item | `block_io.rs:86` | Serializes one block exactly as [`crate::AceWriter::write_block`] writes it to a file: the |
+| `parse_inner_block` | item | `block_io.rs:102` | Parses one inner block of a segmented or columnar block (Format 1.6) from `bytes`. |
 | `checksum` | item | `checksum.rs:7` | Computes CRC32C for ACE headers, indexes and reconstructed block payloads. |
 | `COLUMN_MAGIC` | item | `column.rs:27` | Magic bytes that open a columnar payload. |
 | `COLUMN_HEADER_SIZE` | item | `column.rs:30` | Size of the fixed part of the payload. |
@@ -651,16 +652,17 @@ its `extern "C"` functions are the interface.
 | `INDEX_ENTRY_SIZE` | item | `index.rs:13` | Fixed serialized size of one block-index entry. |
 | `INDEX_HEADER_SIZE` | item | `index.rs:15` | Size of the index section header (magic + little-endian `u64` entry count). |
 | `TRAILER_SIZE` | item | `index.rs:17` | Fixed serialized trailer size. |
-| `BlockIndexEntry` | item | `index.rs:21` | Random-access metadata for one independent ACE block. |
-| `BlockIndex` | item | `index.rs:38` | Sorted collection of block index entries used by `AceIndexedReader`. |
-| `by_id` | method | `index.rs:46` | Finds one block by identifier using binary search. |
-| `intersecting` | method | `index.rs:54` | Returns entries intersecting the logical half-open byte range `[start, end)`. |
-| `intersecting_indices` | method | `index.rs:65` | Returns the contiguous index positions intersecting `[start, end)` without allocating. |
-| `FileTrailer` | item | `index.rs:84` | End-of-file pointer to the serialized block-index section. |
-| `encode_index` | item | `index.rs:94` | Serializes a complete block index section including its magic and entry count. |
-| `decode_index` | item | `index.rs:123` | Parses and validates a complete block-index section. |
-| `encode_trailer` | item | `index.rs:193` | Serializes an end-of-file trailer and protects its first 24 bytes with CRC32C. |
-| `decode_trailer` | item | `index.rs:210` | Parses and validates an end-of-file trailer. |
+| `INDEX_FLAG_SEGMENTED` | item | `index.rs:21` | Index entry flag (Format 1.6): the block is segmented (`SEG1`), so a range read can fetch its |
+| `BlockIndexEntry` | item | `index.rs:25` | Random-access metadata for one independent ACE block. |
+| `BlockIndex` | item | `index.rs:42` | Sorted collection of block index entries used by `AceIndexedReader`. |
+| `by_id` | method | `index.rs:50` | Finds one block by identifier using binary search. |
+| `intersecting` | method | `index.rs:58` | Returns entries intersecting the logical half-open byte range `[start, end)`. |
+| `intersecting_indices` | method | `index.rs:69` | Returns the contiguous index positions intersecting `[start, end)` without allocating. |
+| `FileTrailer` | item | `index.rs:88` | End-of-file pointer to the serialized block-index section. |
+| `encode_index` | item | `index.rs:98` | Serializes a complete block index section including its magic and entry count. |
+| `decode_index` | item | `index.rs:127` | Parses and validates a complete block-index section. |
+| `encode_trailer` | item | `index.rs:200` | Serializes an end-of-file trailer and protects its first 24 bytes with CRC32C. |
+| `decode_trailer` | item | `index.rs:217` | Parses and validates an end-of-file trailer. |
 | `AceReader` | item | `reader.rs:13` | Streaming ACE reader that validates structural limits before allocating block buffers. |
 | `new` | method | `reader.rs:27` | Creates a reader with explicit decoder resource limits. |
 | `read_file_header` | method | `reader.rs:44` | Reads and validates the fixed file header and records its minor format version. When the |
@@ -673,18 +675,21 @@ its `extern "C"` functions are the interface.
 | `SegmentEntry` | item | `segment.rs:34` | One row of the segment table. |
 | `SegmentTable` | item | `segment.rs:43` | A validated segment table with the positions it implies. |
 | `parse` | method | `segment.rs:60` | Parses and validates the table at the start of `payload`. |
-| `data_offset` | method | `segment.rs:128` | Offset of the first inner block in the payload. |
-| `logical_ranges` | method | `segment.rs:134` | The part of the reconstructed block produced by each segment, in order. |
-| `payload_ranges` | method | `segment.rs:148` | The bytes of each inner block within the payload, in order. |
-| `encode_segment_payload` | item | `segment.rs:171` | Builds a `SEG1` payload from serialized inner blocks. |
-| `AceWriter` | item | `writer.rs:17` | Streaming ACE writer: file header, blocks, then (optionally) block index and trailer. |
-| `new` | method | `writer.rs:31` | Creates a writer over an arbitrary byte sink. |
-| `write_file_header` | method | `writer.rs:45` | Writes the global file header. |
-| `write_dictionary_section` | method | `writer.rs:57` | Writes the dictionary section (`ADIC`, Format 1.6). Call it directly after |
-| `write_block` | method | `writer.rs:72` | Writes one block (header, entropy metadata, payload) and records its index entry. |
-| `bytes_written` | method | `writer.rs:103` | Number of bytes written so far. |
-| `finish` | method | `writer.rs:113` | Appends the block index and trailer when `write_index` is set, flushes and returns the |
-| `into_inner` | method | `writer.rs:129` | Returns the wrapped sink without writing an index. |
+| `count_from_head` | method | `segment.rs:76` | Validates the 12 fixed bytes at the start of a payload and returns the segment count. |
+| `table_len` | method | `segment.rs:102` | Bytes of the fixed head plus the table for `count` segments (the offset of the first |
+| `parse_prefix` | method | `segment.rs:117` | Like [`Self::parse`], for a reader that holds only the head and the table. |
+| `data_offset` | method | `segment.rs:171` | Offset of the first inner block in the payload. |
+| `logical_ranges` | method | `segment.rs:177` | The part of the reconstructed block produced by each segment, in order. |
+| `payload_ranges` | method | `segment.rs:191` | The bytes of each inner block within the payload, in order. |
+| `encode_segment_payload` | item | `segment.rs:214` | Builds a `SEG1` payload from serialized inner blocks. |
+| `AceWriter` | item | `writer.rs:18` | Streaming ACE writer: file header, blocks, then (optionally) block index and trailer. |
+| `new` | method | `writer.rs:32` | Creates a writer over an arbitrary byte sink. |
+| `write_file_header` | method | `writer.rs:46` | Writes the global file header. |
+| `write_dictionary_section` | method | `writer.rs:58` | Writes the dictionary section (`ADIC`, Format 1.6). Call it directly after |
+| `write_block` | method | `writer.rs:73` | Writes one block (header, entropy metadata, payload) and records its index entry. |
+| `bytes_written` | method | `writer.rs:108` | Number of bytes written so far. |
+| `finish` | method | `writer.rs:118` | Appends the block index and trailer when `write_index` is set, flushes and returns the |
+| `into_inner` | method | `writer.rs:134` | Returns the wrapped sink without writing an index. |
 
 ### `ace-index` (internal)
 
@@ -693,7 +698,9 @@ its `extern "C"` functions are the interface.
 | `AceIndexReader` | item | `index_reader.rs:30` | Seekable parser that loads the ACE block index once and can fetch individual encoded blocks. |
 | `open` | method | `index_reader.rs:49` | Opens a seekable ACE file, loads its trailer (Format 1.1 and later) and validates the block index. |
 | `read_encoded_block` | method | `index_reader.rs:125` | Reads one indexed encoded block without decoding its compression pipeline. |
-| `into_inner` | method | `index_reader.rs:146` | Returns the wrapped seekable reader. |
+| `read_block_header_only` | method | `index_reader.rs:153` | Reads only the header of an indexed block (fixed part and descriptors) and returns it with |
+| `read_within_block` | method | `index_reader.rs:180` | Reads `len` bytes that start `offset` bytes after the first byte of an indexed block. |
+| `into_inner` | method | `index_reader.rs:207` | Returns the wrapped seekable reader. |
 
 ### `ace-planner` (internal)
 

@@ -10,8 +10,9 @@ use ace_core::{AceError, AceResult};
 use crate::{
     checksum, encode_block_header, encode_dictionary_section, encode_file_header, encode_index,
     encode_trailer, BlockHeader, BlockIndex, BlockIndexEntry, EmbeddedDictionary, FileHeader,
-    FileTrailer,
+    FileTrailer, INDEX_FLAG_SEGMENTED,
 };
+use ace_core::CodecId;
 
 /// Streaming ACE writer: file header, blocks, then (optionally) block index and trailer.
 pub struct AceWriter<W: Write> {
@@ -90,7 +91,11 @@ impl<W: Write> AceWriter<W> {
             original_size: header.original_size,
             file_offset,
             encoded_span: span,
-            flags: 0,
+            flags: if header.codec == CodecId::Segmented {
+                INDEX_FLAG_SEGMENTED
+            } else {
+                0
+            },
         });
         self.original_offset = self
             .original_offset

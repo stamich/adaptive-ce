@@ -190,17 +190,10 @@ fn decode_segmented_block(
             .ok_or(AceError::Malformed("segment outside the payload"))?;
         let segment_size = u32::try_from(logical.len())
             .map_err(|_| AceError::ResourceLimitExceeded("segment size"))?;
-        let (inner_header, inner_metadata, inner_payload) = parse_inner_block(
+        out.extend_from_slice(&decode_inner_block(
             bytes,
             index as u64,
             segment_size,
-            minor_version,
-            limits,
-        )?;
-        out.extend_from_slice(&decode_encoded_block(
-            &inner_header,
-            &inner_metadata,
-            &inner_payload,
             minor_version,
             limits,
         )?);
@@ -212,4 +205,25 @@ fn decode_segmented_block(
         return Err(AceError::ChecksumMismatch(header.block_id));
     }
     Ok(out)
+}
+
+/// Parses and decodes one inner block of a container (`SEG1` segment): the serialized block must
+/// carry id `block_id` and reconstruct `original_size` bytes, and must not be a container itself.
+///
+/// The indexed reader calls this for the segments a range touches, so the check of an inner block
+/// is the same on every read path.
+///
+/// # Errors
+///
+/// The conditions of [`parse_inner_block`] and of [`decode_encoded_block`].
+pub(crate) fn decode_inner_block(
+    bytes: &[u8],
+    block_id: u64,
+    original_size: u32,
+    minor_version: u8,
+    limits: &DecodeLimits,
+) -> AceResult<Vec<u8>> {
+    let (header, metadata, payload) =
+        parse_inner_block(bytes, block_id, original_size, minor_version, limits)?;
+    decode_encoded_block(&header, &metadata, &payload, minor_version, limits)
 }

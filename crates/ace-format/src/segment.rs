@@ -62,8 +62,20 @@ impl SegmentTable {
         block_original_size: usize,
         limits: &DecodeLimits,
     ) -> AceResult<Self> {
-        let (head, rest) = payload
-            .split_first_chunk::<SEGMENT_HEADER_SIZE>()
+        Self::parse_prefix(payload, payload.len(), block_original_size, limits)
+    }
+
+    /// Validates the 12 fixed bytes at the start of a payload and returns the segment count.
+    ///
+    /// A range reader calls this on the first [`SEGMENT_HEADER_SIZE`] bytes, learns how many
+    /// table bytes to fetch ([`Self::table_len`]) and then calls [`Self::parse_prefix`].
+    ///
+    /// # Errors
+    /// [`AceError::Malformed`] for a short head, a wrong magic, a non-zero reserved word or fewer
+    /// than two segments; [`AceError::ResourceLimitExceeded`] above `limits.max_segments`.
+    pub fn count_from_head(head: &[u8], limits: &DecodeLimits) -> AceResult<usize> {
+        let head = head
+            .first_chunk::<SEGMENT_HEADER_SIZE>()
             .ok_or(AceError::Malformed("truncated segment table"))?;
         if head[..4] != SEGMENT_MAGIC {
             return Err(AceError::Malformed("missing SEG1 magic"));
@@ -79,11 +91,42 @@ impl SegmentTable {
         if count > limits.max_segments {
             return Err(AceError::ResourceLimitExceeded("segment count"));
         }
-        let table_bytes = count
+        Ok(count)
+    }
+
+    /// Bytes of the fixed head plus the table for `count` segments (the offset of the first
+    /// inner block in the payload).
+    ///
+    /// # Errors
+    /// [`AceError::Malformed`] on overflow.
+    pub fn table_len(count: usize) -> AceResult<usize> {
+        count
             .checked_mul(SEGMENT_ENTRY_SIZE)
-            .ok_or(AceError::Malformed("segment table size overflow"))?;
-        let (table, data) = rest
-            .split_at_checked(table_bytes)
+            .and_then(|table| table.checked_add(SEGMENT_HEADER_SIZE))
+            .ok_or(AceError::Malformed("segment table size overflow"))
+    }
+
+    /// Like [`Self::parse`], for a reader that holds only the head and the table.
+    ///
+    /// `prefix` starts at the first payload byte and covers at least the table; `payload_len` is
+    /// the length of the whole payload (the outer header's `encoded_size`), against which the
+    /// serialized lengths are summed.
+    ///
+    /// # Errors
+    /// The conditions of [`Self::parse`].
+    pub fn parse_prefix(
+        prefix: &[u8],
+        payload_len: usize,
+        block_original_size: usize,
+        limits: &DecodeLimits,
+    ) -> AceResult<Self> {
+        let count = Self::count_from_head(prefix, limits)?;
+        let table_end = Self::table_len(count)?;
+        let table = prefix
+            .get(SEGMENT_HEADER_SIZE..table_end)
+            .ok_or(AceError::Malformed("truncated segment table"))?;
+        let data_len = payload_len
+            .checked_sub(table_end)
             .ok_or(AceError::Malformed("truncated segment table"))?;
         let mut entries = Vec::with_capacity(count);
         let mut original_total = 0usize;
@@ -118,7 +161,7 @@ impl SegmentTable {
         if original_total != block_original_size {
             return Err(AceError::Malformed("segment sizes do not add up to the block"));
         }
-        if serialized_total != data.len() {
+        if serialized_total != data_len {
             return Err(AceError::Malformed("segment lengths do not add up to the payload"));
         }
         Ok(Self { entries })

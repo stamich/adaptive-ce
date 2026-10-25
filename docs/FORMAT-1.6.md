@@ -66,6 +66,15 @@ that overlap the range ([`RANDOM-ACCESS.md`](RANDOM-ACCESS.md)).
 block is written only when it is smaller than the block the planner chose for the same bytes by at
 least `max(min_gain_bytes, 1 %)`. A block of one segment is never written (`n >= 2`).
 
+### Index flag
+
+Every AIDX entry has a 32-bit `flags` field. Format 1.6 defines bit 0 (`INDEX_FLAG_SEGMENTED`,
+`0x1`): the block is a `SEG1` block, so a range reader can fetch the header, the segment table and
+only the needed segments ([`RANDOM-ACCESS.md`](RANDOM-ACCESS.md)). The writer sets it for every
+codec-5 block. All other bits are reserved and zero; a reader rejects an entry that sets one
+(`Malformed`). A flag on a block whose header is not a bare `SEG1` container is `Malformed` when the
+block is read; a missing flag only costs the optimisation.
+
 ## COL1 – columnar block
 
 Outer block header as for `SEG1` with codec `6`.

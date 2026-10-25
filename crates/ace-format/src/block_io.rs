@@ -36,6 +36,29 @@ pub fn read_serialized_block<R: Read>(
     minor_version: u8,
     limits: &DecodeLimits,
 ) -> AceResult<SerializedBlock> {
+    let (header, _header_len) = read_block_header(reader, minor_version, limits)?;
+    let mut metadata = vec![0u8; header.metadata_size as usize];
+    reader.read_exact(&mut metadata)?;
+    let mut payload = vec![0u8; header.encoded_size as usize];
+    reader.read_exact(&mut payload)?;
+    Ok((header, metadata, payload))
+}
+
+/// Reads only the header of one block (fixed part and descriptors) from `reader` positioned at
+/// its first byte, and returns it with the number of bytes consumed.
+///
+/// The declared sizes are checked against `limits` exactly as [`read_serialized_block`] checks
+/// them, before anything is allocated for the metadata or the payload. A range read of a
+/// segmented block uses this to learn the payload size without reading the payload.
+///
+/// # Errors
+///
+/// The conditions of [`read_serialized_block`] up to the end of the header.
+pub fn read_block_header<R: Read>(
+    reader: &mut R,
+    minor_version: u8,
+    limits: &DecodeLimits,
+) -> AceResult<(BlockHeader, usize)> {
     let mut fixed = [0u8; BLOCK_HEADER_SIZE];
     reader.read_exact(&mut fixed)?;
     if fixed[TRANSFORM_COUNT_OFFSET] as usize > limits.max_transforms {
@@ -53,11 +76,8 @@ pub fn read_serialized_block<R: Read>(
     if total > limits.max_encoded_block_size {
         return Err(AceError::ResourceLimitExceeded("encoded block size"));
     }
-    let mut metadata = vec![0u8; header.metadata_size as usize];
-    reader.read_exact(&mut metadata)?;
-    let mut payload = vec![0u8; header.encoded_size as usize];
-    reader.read_exact(&mut payload)?;
-    Ok((header, metadata, payload))
+    let header_len = BLOCK_HEADER_SIZE.saturating_add(descriptors.len());
+    Ok((header, header_len))
 }
 
 /// Serializes one block exactly as [`crate::AceWriter::write_block`] writes it to a file: the
