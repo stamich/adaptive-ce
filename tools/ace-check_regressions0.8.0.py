@@ -289,6 +289,14 @@ def ffi_gates(data: Inputs, jvm: Row | None) -> list[Row]:
             continue
         gates.append(_ffi_ratio_gate(name, facade, float(wanted[0]["median_ns"]), float(wanted[0]["mad_percent"]),
                                      0.90, ">= 0.90x of the Rust facade (zero-copy path)", FFI_JVM_MAD_LIMIT))
+    # Diagnostic (0.8.0): decompression into a caller-owned segment. The gate above uses the
+    # library-owned buffer; the difference between the two is the cost of that buffer.
+    into = [r for r in (jvm or {}).get("workloads", []) if r["path"] == "decompress" and r["mode"] == "into"]
+    if into:
+        facade_ns = lib.median_of_medians(lib.timing(rows[("decompress", "mixed_16m")], "timing_facade"))
+        gates.append(lib.gate("ffi.jvm_into.decompress_16m", "ffi", lib.DIAGNOSTIC,
+                              facade_ns / float(into[0]["median_ns"]), None,
+                              "speed relative to the Rust facade, caller-owned output (diagnostic)"))
     # Call overhead: reported, not gated (the floors above are on the large buffers).
     for (path, workload), row in sorted(rows.items()):
         if not path.startswith("small_"):

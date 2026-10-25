@@ -326,7 +326,7 @@ host that wraps the buffer does not copy either); copying 16 MiB would measure `
 JVM side is measured by `FfiBenchmark` (`gradle -p jvm :ace-native:ffiBenchmark -PffiOut=<file>`),
 whose JSON is passed to Regression V3 with `--jvm` (`ace-benchmark0.8.0.sh all` runs it when
 Gradle is installed). It reports the zero-copy path (off-heap input, result left in the native
-buffer, the gated one) and the `byte[]` path (copies 16 MiB in and out; informational).
+buffer, the gated one), the `into` path (decompression into a caller-owned segment, so there is no per-call library-owned buffer; diagnostic since 0.8.0) and the `byte[]` path (copies 16 MiB in and out; informational).
 
 Gates (section `ffi`, speed relative to the Rust facade):
 
@@ -335,6 +335,7 @@ Gates (section `ffi`, speed relative to the Rust facade):
 | `ffi.output_identical` | the C ABI writes and restores the same bytes in every row |
 | `ffi.c_abi_vs_facade.compress_16m`, `.decompress_16m` | ≥ 0.97× |
 | `ffi.jvm_vs_facade.compress_16m`, `.decompress_16m` (zero-copy path) | ≥ 0.90× (skipped without `--jvm`: the verdict is then `incomplete`) |
+| `ffi.jvm_into.decompress_16m` | diagnostic (0.8.0): the same ratio with a caller-owned output segment |
 | `ffi.overhead.small_*` | diagnostic: C ABI time ÷ facade time per call |
 
 A ratio whose batch MAD exceeds 5 % (JVM: 10 %) is reported `unstable`, not as a failure. The
