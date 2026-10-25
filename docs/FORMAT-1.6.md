@@ -115,6 +115,13 @@ size against the limits before it allocates.
 guesses one) and only when it is smaller than the row-wise block by the same margin as `SEG1`.
 Blocks are cut at multiples of the record size, so only the last block of a file can have a tail.
 
+*Codec selection per column (ACE 0.8.0).* Each column stream is planned like a block, with the
+configuration narrowed by the column kind: `Bytes` searches the generic codecs only (no NUM1, no
+TS1); `Unsigned` and `Signed` keep NUM1 and the integer TS1 modes but never try the bits as floats;
+`Float` keeps every candidate. A specialization that the block configuration disabled stays
+disabled. The rule is a pure function of the configuration and the kind, so it does not affect
+determinism; the format itself does not depend on it (every inner block is self-describing).
+
 ## ADIC – dictionary section
 
 File header flag `0x0002` (`HAS_DICTIONARIES`) says that the section follows the 32-byte file

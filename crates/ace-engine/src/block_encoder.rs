@@ -7,9 +7,8 @@ use ace_codecs::{
     numeric_encode_estimated, numeric_encode_fixed_step, ts1_encode_with, TimeSeriesLayout,
 };
 use ace_core::{
-    AceConfig, AceError, AceResult, BlockProfile, CodecId, ColumnSpec, CompressionProfile,
-    EntropyCodecId,
-    PhysicalCompressionPlan, Schema, SegmentationConfig,
+    AceConfig, AceError, AceResult, BlockProfile, CodecId, ColumnKind, ColumnSpec,
+    CompressionProfile, EntropyCodecId, PhysicalCompressionPlan, Schema, SegmentationConfig,
 };
 use ace_format::{
     checksum, encode_column_payload, encode_segment_payload, serialize_block, split_columns,
@@ -17,8 +16,8 @@ use ace_format::{
 };
 use ace_planner::{
     apply_time_series_policy, encode_plan_payload, evaluate_candidates_v4_with_route,
-    float_fast_decision, numeric_fast_decision_from_route, same_plan_semantics,
-    segment_boundaries, DefaultCompressionPlanner, FloatFastOutcome, PlannerDecision, PlannerRoute, PlannerTelemetry,
+    float_fast_decision, numeric_fast_decision_from_route, same_plan_semantics, segment_boundaries,
+    DefaultCompressionPlanner, FloatFastOutcome, PlannerDecision, PlannerRoute, PlannerTelemetry,
     PlanningContext, TimeSeriesSelection,
 };
 
@@ -155,10 +154,10 @@ struct InnerBlocks {
     timings: BlockTimings,
 }
 
-/// Encodes `parts` as inner blocks whose ids are their positions (`docs/FORMAT-1.6.md`).
+/// Encodes `parts` as inner blocks whose ids are their positions (`docs/FORMAT-1.6.md`); every
+/// part is planned with the configuration it comes with.
 fn encode_inner_blocks<'a>(
-    config: &AceConfig,
-    parts: impl IntoIterator<Item = &'a [u8]>,
+    parts: impl IntoIterator<Item = (&'a [u8], &'a AceConfig)>,
     plain_timings: BlockTimings,
 ) -> AceResult<InnerBlocks> {
     let mut inner_blocks = InnerBlocks {
@@ -166,7 +165,7 @@ fn encode_inner_blocks<'a>(
         plans: Vec::new(),
         timings: plain_timings,
     };
-    for (index, part) in parts.into_iter().enumerate() {
+    for (index, (part, config)) in parts.into_iter().enumerate() {
         let inner = encode_block_plain(config, index as u64, part)?;
         let timings = &mut inner_blocks.timings;
         timings.route_classify += inner.timings.route_classify;
@@ -239,8 +238,7 @@ fn try_segmented(
         return Ok(None);
     }
     let inner = encode_inner_blocks(
-        config,
-        ranges.iter().map(|range| &input[range.clone()]),
+        ranges.iter().map(|range| (&input[range.clone()], config)),
         plain.timings,
     )?;
     let payload = encode_segment_payload(&inner.serialized)?;
@@ -257,6 +255,31 @@ fn try_segmented(
         plain,
     )
     .map(Some)
+}
+
+/// The configuration a column stream is planned with: the block configuration narrowed by what
+/// the schema says the column holds.
+///
+/// * [`ColumnKind::Bytes`]: no numeric and no float specialization — the stream is searched with
+///   the generic candidates only (RAW, RLE, LZ, entropy), which is faster and cannot mistake
+///   identifiers or text for numbers.
+/// * [`ColumnKind::Unsigned`] / [`ColumnKind::Signed`]: the float lane is off, because the bit
+///   patterns of integers must not be tried as floats; NUM1 and the integer TS1 modes stay on.
+/// * [`ColumnKind::Float`]: the configuration is unchanged (the float lane and NUM1 compete).
+///
+/// A specialization the block configuration already disabled stays disabled. The result is a
+/// pure function of the configuration and the kind, so the choice is deterministic.
+fn column_config(config: &AceConfig, kind: ColumnKind) -> AceConfig {
+    let mut narrowed = config.clone();
+    match kind {
+        ColumnKind::Bytes => {
+            narrowed.enable_numeric_specialization = false;
+            narrowed.enable_float_specialization = false;
+        }
+        ColumnKind::Unsigned | ColumnKind::Signed => narrowed.enable_float_specialization = false,
+        ColumnKind::Float => {}
+    }
+    narrowed
 }
 
 /// The columnar form of block `id` under `schema`, or `None` when the block holds no whole
@@ -278,9 +301,13 @@ fn try_columnar(
     let (streams, tail) = split_columns(input, &schema.widths())?;
     let record_count = u32::try_from(input.len() / record_size)
         .map_err(|_| AceError::ResourceLimitExceeded("record count"))?;
+    let column_configs: Vec<AceConfig> = schema
+        .columns()
+        .iter()
+        .map(|column| column_config(config, column.kind))
+        .collect();
     let inner = encode_inner_blocks(
-        config,
-        streams.iter().map(Vec::as_slice),
+        streams.iter().map(Vec::as_slice).zip(column_configs.iter()),
         plain.timings,
     )?;
     let columns: Vec<(ColumnSpec, Vec<u8>)> = schema

@@ -30,18 +30,18 @@ fn trade_schema() -> Schema {
     .unwrap()
 }
 
-/// `records` trade records followed by `tail` extra bytes of an incomplete record.
+/// `records` trade records followed by `tail` extra bytes of an incomplete record. The prices
+/// are the corpus workload of decimal prices (ALP-friendly), the rest is generated here.
 fn trades(records: usize, tail: usize) -> Vec<u8> {
+    let prices = ace_corpus::Workload::F64DecimalPrice.generate(records * 8);
     let mut out = Vec::with_capacity(records * 24 + tail);
     let mut seed = 0x2545_F491_4F6C_DD1Du64;
-    let mut price = 100.0f64;
     for i in 0..records {
         seed ^= seed << 13;
         seed ^= seed >> 7;
         seed ^= seed << 17;
-        price += ((seed >> 40) % 7) as f64 * 0.01 - 0.03;
         out.extend_from_slice(&(1_700_000_000_000u64 + i as u64 * 250).to_le_bytes());
-        out.extend_from_slice(&((price * 100.0).round() / 100.0).to_le_bytes());
+        out.extend_from_slice(&prices[i * 8..i * 8 + 8]);
         out.extend_from_slice(&(((seed >> 20) % 50) as u32).to_le_bytes());
         out.extend_from_slice(&[b'A' + (i % 3) as u8, 0, 0, 1]);
     }
@@ -150,6 +150,55 @@ fn segmentation_and_schema_together_keep_the_smallest() {
         .compress(&input)
         .unwrap();
     assert_eq!(AceEngine::default_engine().decompress(&file).unwrap(), input);
+}
+
+/// The schema's kinds steer the codec of each column (`block_encoder::column_config`).
+#[test]
+fn the_kind_of_a_column_selects_its_codec() {
+    let input = trades(20_000, 0);
+    let stats_for = |kinds: [ColumnKind; 4]| {
+        let schema = Schema::new(vec![
+            spec(8, kinds[0]),
+            spec(8, kinds[1]),
+            spec(4, kinds[2]),
+            spec(4, kinds[3]),
+        ])
+        .unwrap();
+        let engine = AceEngine::new(config(Some(schema))).unwrap();
+        let (file, stats) = engine.compress_with_stats(&input).unwrap();
+        assert_eq!(engine.decompress(&file).unwrap(), input, "{kinds:?}");
+        (file.len(), stats)
+    };
+    use ColumnKind::{Bytes, Float, Unsigned};
+    let (typed_len, typed) = stats_for([Unsigned, Float, Unsigned, Bytes]);
+    assert_eq!(typed.columnar_blocks, 1);
+    // The counter column gets NUM1 and the decimal price column a TS1 float mode.
+    assert!(typed.numeric_blocks >= 1, "{typed:?}");
+    assert!(typed.time_series_blocks >= 1, "{typed:?}");
+
+    // Declaring everything opaque disables both specializations: only generic codecs remain.
+    let (opaque_len, opaque) = stats_for([Bytes; 4]);
+    assert_eq!(opaque.numeric_blocks + opaque.time_series_blocks, 0, "{opaque:?}");
+    assert!(typed_len < opaque_len, "typed {typed_len} !< opaque {opaque_len}");
+
+    // Integers are never tried as floats: no Gorilla / ALP block for an all-integer schema.
+    let (_, integers) = stats_for([Unsigned; 4]);
+    assert_eq!(integers.ts1_gorilla_f64_blocks + integers.ts1_gorilla_f32_blocks + integers.ts1_alp_blocks, 0);
+}
+
+/// Disabling a specialization in the block configuration also disables it for every column.
+#[test]
+fn a_disabled_specialization_stays_disabled_in_the_columns() {
+    let input = trades(20_000, 0);
+    let engine = AceEngine::new(AceConfig {
+        enable_numeric_specialization: false,
+        enable_float_specialization: false,
+        ..config(Some(trade_schema()))
+    })
+    .unwrap();
+    let (file, stats) = engine.compress_with_stats(&input).unwrap();
+    assert_eq!(stats.numeric_blocks + stats.time_series_blocks, 0, "{stats:?}");
+    assert_eq!(engine.decompress(&file).unwrap(), input);
 }
 
 #[test]
