@@ -135,29 +135,64 @@ pub fn lz_encode(input: &[u8], mode: LzMode) -> Vec<u8> {
 /// Produces exactly the bytes of [`lz_encode`] for every input; it is the reference the reuse of
 /// the per-thread tables is tested against.
 pub fn lz_encode_allocating(input: &[u8], mode: LzMode) -> Vec<u8> {
+    lz_encode_from(input, 0, mode)
+}
+
+/// Encodes `input` with `dictionary` as history that precedes it (Format 1.6).
+///
+/// The token stream is the ordinary one: a match may point back into the last 65 535 bytes of
+/// `dictionary ‖ output`, so the first bytes of the input can already be matches against the
+/// dictionary. Decode with [`lz_decode_with_dictionary`] and the same dictionary. An empty
+/// dictionary gives exactly the bytes of [`lz_encode`].
+pub fn lz_encode_with_dictionary(input: &[u8], dictionary: &[u8], mode: LzMode) -> Vec<u8> {
+    if dictionary.is_empty() {
+        return lz_encode(input, mode);
+    }
+    if input.is_empty() {
+        return Vec::new();
+    }
+    let mut history = Vec::with_capacity(dictionary.len() + input.len());
+    history.extend_from_slice(dictionary);
+    history.extend_from_slice(input);
+    lz_encode_from(&history, dictionary.len(), mode)
+}
+
+/// Encodes `data[start..]`; `data[..start]` is history that is indexed but not emitted.
+///
+/// With `start == 0` this is the plain encoder. The tables are allocated for the call.
+fn lz_encode_from(data: &[u8], start: usize, mode: LzMode) -> Vec<u8> {
     let mut head = vec![usize::MAX; HASH_SIZE];
-    let mut prev = vec![usize::MAX; input.len()];
-    let mut out = Vec::with_capacity(input.len());
-    let mut literal_start = 0usize;
-    let mut i = 0usize;
-    while i < input.len() {
-        let best = if i + MIN_MATCH <= input.len() {
-            let h = hash4(&input[i..i + 4]);
+    let mut prev = vec![usize::MAX; data.len()];
+    // Index the history so that matches can start in it. A position whose four bytes run into
+    // the input is fine: the bytes exist in `data` and in the decoder's output buffer.
+    for p in 0..start {
+        if p + MIN_MATCH <= data.len() {
+            let h = hash4(&data[p..p + 4]);
+            prev[p] = head[h];
+            head[h] = p;
+        }
+    }
+    let mut out = Vec::with_capacity(data.len() - start);
+    let mut literal_start = start;
+    let mut i = start;
+    while i < data.len() {
+        let best = if i + MIN_MATCH <= data.len() {
+            let h = hash4(&data[i..i + 4]);
             let candidate = head[h];
             prev[i] = candidate;
             head[h] = i;
-            find_best(input, i, candidate, &prev, mode)
+            find_best(data, i, candidate, &prev, mode)
         } else {
             None
         };
         if let Some((distance, len)) = best {
-            flush_literals(&mut out, &input[literal_start..i]);
+            flush_literals(&mut out, &data[literal_start..i]);
             let encoded_len = len - MIN_MATCH;
             out.push(0x80 | encoded_len as u8);
             out.extend_from_slice(&(distance as u16).to_le_bytes());
             for p in i + 1..i + len {
-                if p + MIN_MATCH <= input.len() {
-                    let h = hash4(&input[p..p + 4]);
+                if p + MIN_MATCH <= data.len() {
+                    let h = hash4(&data[p..p + 4]);
                     prev[p] = head[h];
                     head[h] = p;
                 }
@@ -168,7 +203,7 @@ pub fn lz_encode_allocating(input: &[u8], mode: LzMode) -> Vec<u8> {
             i += 1;
         }
     }
-    flush_literals(&mut out, &input[literal_start..]);
+    flush_literals(&mut out, &data[literal_start..]);
     out
 }
 
@@ -214,7 +249,36 @@ fn lz_encode_with(input: &[u8], mode: LzMode, scratch: &mut LzScratch) -> Vec<u8
 /// `expected_size` bytes; [`AceError::InvalidLzReference`] for a zero or out-of-range match
 /// distance.
 pub fn lz_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
-    let mut out = Vec::with_capacity(expected_size.min(1024 * 1024));
+    lz_decode_after(input, &[], expected_size)
+}
+
+/// Decodes a token stream that was encoded with `dictionary` as preset history
+/// ([`lz_encode_with_dictionary`]).
+///
+/// The decoder starts with the dictionary as the first bytes of its output buffer, so a
+/// reference may reach back into it, and removes it at the end. A reference that would reach
+/// before the start of the dictionary, or farther than 65 535 bytes, is invalid. An empty
+/// dictionary is [`lz_decode`].
+///
+/// # Errors
+///
+/// The errors of [`lz_decode`]; the distance check counts the dictionary as output.
+pub fn lz_decode_with_dictionary(
+    input: &[u8],
+    dictionary: &[u8],
+    expected_size: usize,
+) -> AceResult<Vec<u8>> {
+    lz_decode_after(input, dictionary, expected_size)
+}
+
+/// The decoder: `history` is the (possibly empty) dictionary the output continues.
+fn lz_decode_after(input: &[u8], history: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
+    let base = history.len();
+    let limit = base
+        .checked_add(expected_size)
+        .ok_or(AceError::Malformed("LZ expected size overflow"))?;
+    let mut out = Vec::with_capacity(limit.min(1024 * 1024).max(base));
+    out.extend_from_slice(history);
     let mut i = 0usize;
     while i < input.len() {
         let control = input[i];
@@ -227,7 +291,7 @@ pub fn lz_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
             let lit = input
                 .get(i..end)
                 .ok_or(AceError::Malformed("truncated LZ literal"))?;
-            if out.len() + len > expected_size {
+            if out.len() + len > limit {
                 return Err(AceError::Malformed("LZ literal exceeds expected output"));
             }
             out.extend_from_slice(lit);
@@ -242,14 +306,17 @@ pub fn lz_decode(input: &[u8], expected_size: usize) -> AceResult<Vec<u8>> {
             if distance == 0 || distance > out.len() || distance > WINDOW {
                 return Err(AceError::InvalidLzReference);
             }
-            if out.len() + len > expected_size {
+            if out.len() + len > limit {
                 return Err(AceError::Malformed("LZ match exceeds expected output"));
             }
             copy_match(&mut out, distance, len);
         }
     }
-    if out.len() != expected_size {
+    if out.len() != limit {
         return Err(AceError::Malformed("LZ decoded size mismatch"));
+    }
+    if base > 0 {
+        out.drain(..base);
     }
     Ok(out)
 }

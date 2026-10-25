@@ -30,7 +30,7 @@ its `extern "C"` functions are the interface.
 | `ace-analysis` | internal | 39 | 13 | 0 |
 | `ace-bench` | internal | 34 | 10 | 0 |
 | `ace-bitpack` | internal | 25 | 10 | 0 |
-| `ace-codecs` | internal | 54 | 21 | 0 |
+| `ace-codecs` | internal | 56 | 21 | 0 |
 | `ace-core` | internal | 36 | 33 | 0 |
 | `ace-corpus` | internal | 6 | 20 | 0 |
 | `ace-cost` | internal | 18 | 7 | 0 |
@@ -295,7 +295,9 @@ its `extern "C"` functions are the interface.
 | `lz_leave_scratch_dirty` | item | `lz.rs:96` | Test hook: leaves this thread's hash tables dirty, exactly as an encode that unwound would. |
 | `lz_encode` | item | `lz.rs:109` | Encodes a byte slice into a simple LZ token stream. |
 | `lz_encode_allocating` | item | `lz.rs:137` | The encoder with hash tables allocated for this call (the path of inputs above |
-| `lz_decode` | item | `lz.rs:216` | Decodes a simple LZ token stream with strict reference and output validation. |
+| `lz_encode_with_dictionary` | item | `lz.rs:147` | Encodes `input` with `dictionary` as history that precedes it (Format 1.6). |
+| `lz_decode` | item | `lz.rs:251` | Decodes a simple LZ token stream with strict reference and output validation. |
+| `lz_decode_with_dictionary` | item | `lz.rs:266` | Decodes a token stream that was encoded with `dictionary` as preset history |
 | `numeric_decode` | item | `numeric/decode.rs:25` | Decodes a NUM1 payload to exactly `expected_size` bytes. |
 | `numeric_encode` | item | `numeric/encode.rs:21` | Encodes bytes with the smallest deterministic FOR/Delta/DoD+BitPack representation. |
 | `numeric_encode_with` | item | `numeric/encode.rs:35` | Encodes bytes with an explicitly chosen lane width and mode. |
