@@ -8,6 +8,7 @@ use ace_format::{
     encode_file_header, minimal_minor_version, AceReader, AceWriter, FileHeader, SerializedBlock,
     FILE_FLAG_HAS_INDEX, FORMAT_MINOR_BASE,
 };
+use ace_core::{DictionaryScope, FORMAT_MINOR_STORAGE};
 
 use crate::{StreamLimits, StreamingStats};
 
@@ -23,8 +24,8 @@ use crate::{StreamLimits, StreamingStats};
 ///
 /// # Errors
 ///
-/// [`AceError::InvalidConfig`] for an automatic block-size policy or an invalid fixed block
-/// size, [`AceError::ResourceLimitExceeded`] when `size` or the block count exceeds the
+/// [`AceError::InvalidConfig`] for an automatic block-size policy, an invalid fixed block
+/// size or an embedded (`File`) dictionary, [`AceError::ResourceLimitExceeded`] when `size` or the block count exceeds the
 /// stream limits, [`AceError::Malformed`] when `reader` ends before `size` bytes or yields
 /// more, [`AceError::Io`] from `reader` or `writer`, and block encoding errors.
 ///
@@ -66,6 +67,9 @@ pub fn compress_reader_known_size<R: Read, W: Write + Seek>(
         let (mut header, metadata, payload) = encode_single_block(&engine, source)?;
         header.block_id = block_id;
         minor_needed = minor_needed.max(block_format_minor(header.codec, header.entropy, &payload));
+        if header.dictionary.is_some() {
+            minor_needed = minor_needed.max(FORMAT_MINOR_STORAGE);
+        }
         ace.write_block(&header, &metadata, &payload)?;
         stats.peak_source_buffer_bytes = stats.peak_source_buffer_bytes.max(remaining);
         stats.input_bytes += remaining as u64;
@@ -107,6 +111,18 @@ fn validate_stream(
     if config.block_size == 0 || config.block_size > u32::MAX as usize {
         return Err(AceError::InvalidConfig(
             "stream block size must fit u32 and be non-zero",
+        ));
+    }
+    // An embedded dictionary sits in front of the first block and is written only when the
+    // blocks together save more than it costs; a stream cannot know that before it has seen
+    // them, so it supports external dictionaries only.
+    if config
+        .dictionary
+        .as_ref()
+        .is_some_and(|dictionary| dictionary.scope == DictionaryScope::File)
+    {
+        return Err(AceError::InvalidConfig(
+            "streaming supports external dictionaries only; embed with compress()",
         ));
     }
     let block_size = config.aligned_block_size(config.block_size);

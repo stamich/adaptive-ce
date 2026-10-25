@@ -65,6 +65,17 @@ ace decode-block out.ace 7 block.bin
 ace version
 ```
 
+Storage engine (0.8.0, Format 1.6; the default writes the bytes of 0.7.0):
+
+```bash
+ace compress table.bin t.ace --schema u64,f64,u32,b4        # 24-byte records, stored column by column
+ace compress mixed.bin m.ace --segments                     # split blocks that mix kinds of data
+ace train dict.bin samples/*.json --size 4096               # deterministic preset dictionary
+ace compress msg.json m.ace --dictionary dict.bin --block-size 4096   # embedded when it pays
+ace compress msg.json m.ace --dictionary dict.bin --external-dictionary
+ace decompress m.ace out.json --dictionary dict.bin         # external dictionaries are passed back
+```
+
 Exit status: 0 success (also when the output pipe is closed early, e.g. `ace explain … | head`),
 1 error (message on stderr), 2 usage error. An output path that names the input file is refused.
 

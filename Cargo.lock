@@ -9,6 +9,7 @@ dependencies = [
  "ace",
  "ace-core",
  "ace-corpus",
+ "ace-dictionary",
  "ace-engine",
  "ace-stream",
  "serde",

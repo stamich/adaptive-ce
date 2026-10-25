@@ -3,9 +3,10 @@
 use std::io::{Read, Seek};
 use std::ops::Range;
 
+use ace_dictionary::DictionaryRegistry;
 use ace_engine::AceIndexedDecoder;
 
-use crate::{DecodeLimits, Engine, Error, Result};
+use crate::{DecodeLimits, Dictionary, Engine, Error, Result};
 
 /// The work one range read did.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -83,6 +84,40 @@ impl<R: Read + Seek> RangeReader<R> {
     pub fn open_with_limits(reader: R, limits: &DecodeLimits) -> Result<Self> {
         let inner =
             AceIndexedDecoder::open(reader, limits.core().clone()).map_err(Error::from_core)?;
+        Ok(Self { inner })
+    }
+
+    /// Opens `reader` under the given limits with the external dictionaries the file may refer
+    /// to (Format 1.6). Dictionaries embedded in the file need no help.
+    ///
+    /// # Errors
+    ///
+    /// As [`open`](Self::open).
+    pub fn open_with_dictionaries(
+        reader: R,
+        limits: &DecodeLimits,
+        dictionaries: impl IntoIterator<Item = Dictionary>,
+    ) -> Result<Self> {
+        let mut registry = DictionaryRegistry::new();
+        for dictionary in dictionaries {
+            registry.insert(ace_dictionary::Dictionary::new(
+                ace_core::DictionaryId(dictionary.id()),
+                ace_core::DictionaryScope::External,
+                dictionary.as_bytes().to_vec(),
+            ));
+        }
+        Self::open_with_registry(reader, limits, registry)
+    }
+
+    /// Opens `reader` with a ready registry.
+    pub(crate) fn open_with_registry(
+        reader: R,
+        limits: &DecodeLimits,
+        registry: DictionaryRegistry,
+    ) -> Result<Self> {
+        let inner = AceIndexedDecoder::open(reader, limits.core().clone())
+            .map_err(Error::from_core)?
+            .with_dictionaries(registry);
         Ok(Self { inner })
     }
 
@@ -164,6 +199,6 @@ impl Engine {
     ///
     /// As [`RangeReader::open`].
     pub fn open_range_reader<R: Read + Seek>(&self, reader: R) -> Result<RangeReader<R>> {
-        RangeReader::open_with_limits(reader, self.decode_limits())
+        RangeReader::open_with_registry(reader, self.decode_limits(), self.dictionary_registry())
     }
 }

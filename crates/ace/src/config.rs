@@ -2,10 +2,11 @@
 
 use ace_core::{
     AccessHint as CoreAccess, AceConfig, BlockSizePolicy as CorePolicy, CompressionProfile,
+    DictionaryScope,
 };
 use ace_engine::AceEngine;
 
-use crate::{Error, Result, Schema};
+use crate::{Dictionary, Error, Result, Schema, Segmentation};
 
 /// How much encoder effort to spend to make the output smaller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -88,6 +89,29 @@ impl Config {
     #[must_use]
     pub fn schema(&self) -> Option<Schema> {
         self.inner.schema.clone().map(Schema::from_core)
+    }
+
+    /// The segmentation settings, if segmentation is enabled.
+    #[must_use]
+    pub fn segmentation(&self) -> Option<Segmentation> {
+        self.inner.segmentation.map(Segmentation::from_core)
+    }
+
+    /// The preset dictionary, if one was set.
+    #[must_use]
+    pub fn dictionary(&self) -> Option<Dictionary> {
+        self.inner.dictionary.as_ref().map(Dictionary::from_core)
+    }
+
+    /// `true` when the dictionary is stored in the file, `false` when only its id is stored
+    /// (and readers need [`Engine::with_dictionaries`](crate::Engine::with_dictionaries)). Also
+    /// `false` when there is no dictionary.
+    #[must_use]
+    pub fn dictionary_is_embedded(&self) -> bool {
+        self.inner
+            .dictionary
+            .as_ref()
+            .is_some_and(|dictionary| dictionary.scope == DictionaryScope::File)
     }
 
     /// Whether a block index is written (needed for random access).
@@ -191,6 +215,36 @@ impl ConfigBuilder {
     #[must_use]
     pub fn schema(mut self, schema: Schema) -> Self {
         self.inner.schema = Some(schema.core().clone());
+        self
+    }
+
+    /// Splits blocks that mix kinds of data into segments that get their own codecs (default:
+    /// no segmentation). A segmented block is stored only when it is smaller than the
+    /// unsegmented one by a margin. See [`Segmentation`].
+    #[must_use]
+    pub fn segmentation(mut self, segmentation: Segmentation) -> Self {
+        self.inner.segmentation = Some(segmentation.core());
+        self
+    }
+
+    /// Uses `dictionary` and **embeds it in the file** when that pays (default: no
+    /// dictionary). The file is then self-contained; the dictionary is stored once, only if the
+    /// blocks save more than it costs. Use a small dictionary (1 – 4 KiB) for small files, or
+    /// [`external_dictionary`](Self::external_dictionary).
+    #[must_use]
+    pub fn dictionary(mut self, dictionary: Dictionary) -> Self {
+        self.inner.dictionary = Some(dictionary.to_core(DictionaryScope::File));
+        self
+    }
+
+    /// Uses `dictionary` but stores **only its id** in the file. Whoever reads the file needs
+    /// the same dictionary ([`Engine::with_dictionaries`](crate::Engine::with_dictionaries)),
+    /// otherwise decoding fails with
+    /// [`ErrorKind::Unsupported`](crate::ErrorKind::Unsupported). This is the right choice when
+    /// many small files share one dictionary.
+    #[must_use]
+    pub fn external_dictionary(mut self, dictionary: Dictionary) -> Self {
+        self.inner.dictionary = Some(dictionary.to_core(DictionaryScope::External));
         self
     }
 

@@ -15,7 +15,7 @@ pub struct Cli {
 /// Supported ACE command-line operations.
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Compresses one file into ACE Format 1.3 (1.4 when a block uses TS1) using Planner V5.
+    /// Compresses one file into an ACE file (Format 1.3 to 1.6, the lowest the blocks need).
     Compress {
         /// Source file.
         input: String,
@@ -36,6 +36,15 @@ pub enum Command {
         /// Disables the Float lane and TS1 (0.4.6 decisions, always Format 1.3).
         #[arg(long)]
         disable_float: bool,
+        #[command(flatten)]
+        storage: StorageArgs,
+        /// Preset dictionary made by `ace train`; embedded in the file when it pays.
+        #[arg(long, value_name = "FILE")]
+        dictionary: Option<String>,
+        /// Store only the id of `--dictionary`; readers must pass the same file to
+        /// `--dictionary` of `decompress`.
+        #[arg(long, requires = "dictionary")]
+        external_dictionary: bool,
     },
     /// Compresses a file through the bounded-memory streaming path.
     CompressStream {
@@ -46,9 +55,34 @@ pub enum Command {
         /// Disables the Float lane and TS1 (0.4.6 decisions, always Format 1.3).
         #[arg(long)]
         disable_float: bool,
+        #[command(flatten)]
+        storage: StorageArgs,
+        /// External preset dictionary made by `ace train` (streams cannot embed one).
+        #[arg(long, value_name = "FILE")]
+        dictionary: Option<String>,
+    },
+    /// Trains a preset dictionary from sample files (one sample per file, or per chunk).
+    Train {
+        /// Destination dictionary file (the raw dictionary bytes).
+        output: String,
+        /// Sample files; the more alike the data you will compress, the better.
+        #[arg(required = true)]
+        samples: Vec<String>,
+        /// Dictionary size in bytes (64 to 65535).
+        #[arg(long, default_value_t = 4096)]
+        size: usize,
+        /// Cut every sample file into samples of this many bytes (for a few large files).
+        #[arg(long, value_name = "BYTES")]
+        chunk_size: Option<usize>,
     },
     /// Decompresses one ACE 1.0 – 1.6 file.
-    Decompress { input: String, output: String },
+    Decompress {
+        input: String,
+        output: String,
+        /// External dictionary file the input was compressed with (repeatable).
+        #[arg(long, value_name = "FILE")]
+        dictionary: Vec<String>,
+    },
     /// Prints file and per-block physical metadata without decoding payloads.
     Inspect {
         input: String,
@@ -65,12 +99,20 @@ pub enum Command {
         disable_float: bool,
     },
     /// Fully decodes and checks every block checksum while discarding the reconstructed bytes.
-    Verify { input: String },
+    Verify {
+        input: String,
+        /// External dictionary file the input was compressed with (repeatable).
+        #[arg(long, value_name = "FILE")]
+        dictionary: Vec<String>,
+    },
     /// Decodes one indexed block without reading preceding blocks.
     DecodeBlock {
         input: String,
         block_id: u64,
         output: String,
+        /// External dictionary file the input was compressed with (repeatable).
+        #[arg(long, value_name = "FILE")]
+        dictionary: Vec<String>,
     },
     /// Decodes only indexed blocks intersecting a logical byte range.
     ReadRange {
@@ -78,9 +120,30 @@ pub enum Command {
         offset: u64,
         length: u64,
         output: String,
+        /// External dictionary file the input was compressed with (repeatable).
+        #[arg(long, value_name = "FILE")]
+        dictionary: Vec<String>,
     },
     /// Prints the version, git revision, supported formats, SIMD / CRC backends and toolchain.
     Version,
+}
+
+/// Block size and the storage-engine options (ACE 0.8.0: schemas, segments) shared by `compress`
+/// and `compress-stream`.
+#[derive(Debug, Clone, Default, clap::Args)]
+pub struct StorageArgs {
+    /// Block size in bytes (default 256 KiB; rounded to whole records with `--schema`). Small
+    /// blocks suit random access and make a dictionary pay off for small inputs.
+    #[arg(long, value_name = "BYTES")]
+    pub block_size: Option<usize>,
+    /// Record layout of a table of fixed-size records, stored column by column. Comma-separated
+    /// fields: `u8 u16 u32 u64` (unsigned), `i8 i16 i32 i64` (signed), `f32 f64` (float) and
+    /// `bN` (N opaque bytes). Example: `u64,f64,u32,b4` is a 24-byte record.
+    #[arg(long, value_name = "FIELDS")]
+    pub schema: Option<String>,
+    /// Splits blocks that mix kinds of data into segments with their own codecs.
+    #[arg(long)]
+    pub segments: bool,
 }
 
 /// CLI representation of the three deterministic ACE cost profiles.

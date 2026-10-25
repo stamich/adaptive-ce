@@ -248,3 +248,177 @@ fn newer_format_is_refused_with_a_clear_message() {
         assert_clean_failure(&args, "written by a newer ACE release");
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Storage engine (ACE 0.8.0): schemas, segments and dictionaries.
+// ---------------------------------------------------------------------------------------------
+
+/// A table of 24-byte records (`time u64 | price f64 | id u32 | flags [u8; 4]`).
+fn table(dir: &Path) -> PathBuf {
+    let path = dir.join("table.bin");
+    let mut bytes = Vec::new();
+    for i in 0..40_000usize {
+        bytes.extend_from_slice(&(1_700_000_000_000u64 + i as u64 * 100).to_le_bytes());
+        bytes.extend_from_slice(&(20.0f64 + (i % 50) as f64 * 0.25).to_le_bytes());
+        bytes.extend_from_slice(&((i % 40) as u32).to_le_bytes());
+        bytes.extend_from_slice(&[1, 0, 0, (i % 2) as u8]);
+    }
+    std::fs::write(&path, bytes).unwrap();
+    path
+}
+
+/// Text of one JSON-like record.
+fn json_record(i: usize) -> String {
+    format!(
+        "{{\"event\":\"temperature_reading\",\"device_id\":{i},\"unit\":\"celsius\",\
+         \"value\":{},\"firmware\":\"release-2.7.1\"}}\n",
+        (i * 7919) % 400
+    )
+}
+
+/// Writes one sample file per record into `dir/samples` and returns their paths.
+fn sample_files(dir: &Path, count: usize) -> Vec<PathBuf> {
+    let samples = dir.join("samples");
+    std::fs::create_dir_all(&samples).unwrap();
+    (1000..1000 + count)
+        .map(|i| {
+            let path = samples.join(format!("s{i}.json"));
+            std::fs::write(&path, json_record(i)).unwrap();
+            path
+        })
+        .collect()
+}
+
+#[test]
+fn a_schema_stores_the_table_by_columns() {
+    let dir = scratch("schema");
+    let input = table(&dir);
+    let (rowwise, columnar, out) = (dir.join("r.ace"), dir.join("c.ace"), dir.join("out"));
+    assert!(run(&["compress", s(&input), s(&rowwise)]).status.success());
+    let output = run(&["compress", s(&input), s(&columnar), "--schema", "u64,f64,u32,b4"]);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.contains("columnar=") && !text.contains("columnar=0 "), "{text}");
+    assert!(text.contains("format=1.6"), "{text}");
+    assert!(std::fs::metadata(&columnar).unwrap().len() < std::fs::metadata(&rowwise).unwrap().len());
+    for args in [
+        vec!["verify", s(&columnar)],
+        vec!["decompress", s(&columnar), s(&out)],
+    ] {
+        assert!(run(&args).status.success(), "{args:?}");
+    }
+    assert_eq!(std::fs::read(&out).unwrap(), std::fs::read(&input).unwrap());
+    // The streaming path writes the same bytes.
+    let streamed = dir.join("s.ace");
+    assert!(run(&["compress-stream", s(&input), s(&streamed), "--schema", "u64,f64,u32,b4", "--profile", "balanced"])
+        .status
+        .success());
+    assert!(run(&["decompress", s(&streamed), s(&out)]).status.success());
+    assert_eq!(std::fs::read(&out).unwrap(), std::fs::read(&input).unwrap());
+}
+
+#[test]
+fn schema_errors_are_clean() {
+    let dir = scratch("schema-errors");
+    let input = sample(&dir);
+    let out = dir.join("out.ace");
+    assert_clean_failure(&["compress", s(&input), s(&out), "--schema", "u64,q9"], "unknown schema field");
+    assert_clean_failure(&["compress", s(&input), s(&out), "--schema", "b0"], "unknown schema field");
+    assert_clean_failure(&["compress", s(&input), s(&out), "--schema", ""], "unknown schema field");
+}
+
+#[test]
+fn segments_are_accepted() {
+    let dir = scratch("segments");
+    let input = sample(&dir);
+    let (packed, out) = (dir.join("a.ace"), dir.join("out"));
+    assert!(run(&["compress", s(&input), s(&packed), "--segments"]).status.success());
+    assert!(run(&["decompress", s(&packed), s(&out)]).status.success());
+    assert_eq!(std::fs::read(&out).unwrap(), std::fs::read(&input).unwrap());
+}
+
+#[test]
+fn a_dictionary_is_trained_embedded_and_external() {
+    let dir = scratch("dictionary");
+    let samples = sample_files(&dir, 150);
+    let dictionary = dir.join("dict.bin");
+    let mut args = vec!["train", s(&dictionary), "--size", "1024"];
+    args.extend(samples.iter().map(|path| s(path)));
+    let trained = run(&args);
+    assert!(trained.status.success(), "{}", String::from_utf8_lossy(&trained.stderr));
+    assert!(String::from_utf8_lossy(&trained.stdout).contains("trained dictionary"));
+    let size = std::fs::metadata(&dictionary).unwrap().len();
+    assert!(size > 0 && size <= 1024, "{size}");
+
+    // Small blocks: the first bytes of every block are where a dictionary helps.
+    let input = dir.join("records.json");
+    let text: String = (0..6000).map(json_record).collect();
+    std::fs::write(&input, &text).unwrap();
+    let (plain, embedded, external, streamed, out) = (
+        dir.join("p.ace"),
+        dir.join("e.ace"),
+        dir.join("x.ace"),
+        dir.join("s.ace"),
+        dir.join("out"),
+    );
+    let common = ["--block-size", "4096", "--threads", "1"];
+    let compress = |output: &Path, extra: &[&str]| {
+        let mut args = vec!["compress", s(&input), s(output)];
+        args.extend(common);
+        args.extend(extra);
+        let result = run(&args);
+        assert!(result.status.success(), "{args:?}: {}", String::from_utf8_lossy(&result.stderr));
+        String::from_utf8_lossy(&result.stdout).into_owned()
+    };
+    compress(&plain, &[]);
+    let text_out = compress(&embedded, &["--dictionary", s(&dictionary)]);
+    assert!(text_out.contains("format=1.6") && !text_out.contains("dictionary=0 "), "{text_out}");
+    compress(&external, &["--dictionary", s(&dictionary), "--external-dictionary"]);
+    let (plain_len, embedded_len, external_len) = (
+        std::fs::metadata(&plain).unwrap().len(),
+        std::fs::metadata(&embedded).unwrap().len(),
+        std::fs::metadata(&external).unwrap().len(),
+    );
+    assert!(external_len < embedded_len && embedded_len < plain_len, "{plain_len} {embedded_len} {external_len}");
+
+    // The embedded file is self-contained and shows its dictionary.
+    assert!(run(&["decompress", s(&embedded), s(&out)]).status.success());
+    assert_eq!(std::fs::read(&out).unwrap(), text.as_bytes());
+    let inspect = run(&["inspect", s(&embedded), "--blocks"]);
+    let listing = String::from_utf8_lossy(&inspect.stdout);
+    assert!(listing.contains("(embedded)") && listing.contains("scope=File"), "{listing}");
+    // The external file needs the dictionary, and says so when it is missing.
+    assert_clean_failure(&["decompress", s(&external), s(&out)], "dictionary");
+    for args in [
+        vec!["decompress", s(&external), s(&out), "--dictionary", s(&dictionary)],
+        vec!["verify", s(&external), "--dictionary", s(&dictionary)],
+        vec!["decode-block", s(&external), "1", s(&out), "--dictionary", s(&dictionary)],
+        vec!["read-range", s(&external), "10", "5000", s(&out), "--dictionary", s(&dictionary)],
+    ] {
+        let result = run(&args);
+        assert!(result.status.success(), "{args:?}: {}", String::from_utf8_lossy(&result.stderr));
+    }
+    assert_eq!(std::fs::read(&out).unwrap(), &text.as_bytes()[10..5010]);
+    // `compress-stream` takes an external dictionary and writes the bytes `compress` writes.
+    let result = run(&[
+        "compress-stream", s(&input), s(&streamed), "--block-size", "4096",
+        "--dictionary", s(&dictionary),
+    ]);
+    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    assert!(run(&["decompress", s(&streamed), s(&out), "--dictionary", s(&dictionary)])
+        .status
+        .success());
+    assert_eq!(std::fs::read(&out).unwrap(), text.as_bytes());
+}
+
+#[test]
+fn train_errors_are_clean() {
+    let dir = scratch("train-errors");
+    let one = dir.join("one.txt");
+    std::fs::write(&one, b"just one short sample").unwrap();
+    let out = dir.join("dict.bin");
+    assert_clean_failure(&["train", s(&out), s(&one)], "samples");
+    assert_clean_failure(&["train", s(&out), s(&one), "--chunk-size", "0"], "chunk-size");
+    assert_clean_failure(&["train", s(&out), s(&dir.join("missing.txt"))], "reading");
+    assert_clean_failure(&["compress", s(&one), s(&out), "--dictionary", s(&dir.join("none.bin"))], "reading");
+}

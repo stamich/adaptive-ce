@@ -61,31 +61,56 @@ fn run(command: Command) -> Result<()> {
             block_policy,
             access_hint,
             disable_float,
+            storage,
+            dictionary,
+            external_dictionary,
         } => commands::compress(
             &input,
             &output,
-            Config::builder()
-                .threads(threads)
-                .profile(profile.into())
-                .block_size_policy(block_policy.into())
-                .access_hint(access_hint.into())
-                .float_specialization(!disable_float)
-                .build()?,
+            commands::storage_options(
+                Config::builder()
+                    .threads(threads)
+                    .profile(profile.into())
+                    .block_size_policy(block_policy.into())
+                    .access_hint(access_hint.into())
+                    .float_specialization(!disable_float),
+                &storage,
+                dictionary.as_deref(),
+                external_dictionary,
+            )?
+            .build()?,
         ),
         Command::CompressStream {
             input,
             output,
             profile,
             disable_float,
+            storage,
+            dictionary,
         } => commands::compress_stream(
             &input,
             &output,
-            Config::builder()
-                .profile(profile.into())
-                .float_specialization(!disable_float)
-                .build()?,
+            commands::storage_options(
+                Config::builder()
+                    .profile(profile.into())
+                    .float_specialization(!disable_float),
+                &storage,
+                dictionary.as_deref(),
+                true,
+            )?
+            .build()?,
         ),
-        Command::Decompress { input, output } => commands::decompress(&input, &output),
+        Command::Train {
+            output,
+            samples,
+            size,
+            chunk_size,
+        } => commands::train(&output, &samples, size, chunk_size),
+        Command::Decompress {
+            input,
+            output,
+            dictionary,
+        } => commands::decompress(&input, &output, &dictionary),
         Command::Inspect { input, blocks } => commands::inspect(&input, blocks),
         Command::Explain {
             input,
@@ -99,18 +124,20 @@ fn run(command: Command) -> Result<()> {
                 ..AceConfig::default()
             },
         ),
-        Command::Verify { input } => commands::verify(&input),
+        Command::Verify { input, dictionary } => commands::verify(&input, &dictionary),
         Command::DecodeBlock {
             input,
             block_id,
             output,
-        } => commands::decode_block(&input, block_id, &output),
+            dictionary,
+        } => commands::decode_block(&input, block_id, &output, &dictionary),
         Command::ReadRange {
             input,
             offset,
             length,
             output,
-        } => commands::read_range(&input, offset, length, &output),
+            dictionary,
+        } => commands::read_range(&input, offset, length, &output, &dictionary),
         Command::Version => commands::version(),
     }
 }
