@@ -1,7 +1,8 @@
-//! Dictionary abstractions (registry, identity and validation only).
+//! Dictionaries: the registry, the lookup seam and the deterministic trainer.
 //!
-//! Training, adaptive reuse and semantic dictionaries are deferred; this crate defines the
-//! stable seam ([`DictionaryProvider`]) that codecs will depend on.
+//! [`DictionaryProvider`] is the seam that codecs and the engine depend on,
+//! [`DictionaryRegistry`] the in-memory implementation, and [`train_dictionary`] builds a preset
+//! dictionary for the LZ codec from sample inputs (ACE 0.8.0, `docs/FORMAT-1.6.md`).
 //!
 //! **Stability:** internal building block of ACE (not published). Its public items exist for the
 //! other ACE crates, the benchmark harness and the fuzz targets and may change in any release.
@@ -10,7 +11,9 @@
 mod dictionary;
 mod provider;
 mod registry;
+mod trainer;
 
 pub use dictionary::*;
 pub use provider::*;
 pub use registry::*;
+pub use trainer::*;

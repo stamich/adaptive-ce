@@ -1,16 +1,16 @@
-//! Format 1.2/1.3/1.4 header compatibility.
+//! Format 1.2/1.3/1.4/1.5/1.6 header compatibility.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // test code: a panic is a failing test
 
 use ace_format::{
     checksum, decode_file_header, encode_file_header, FileHeader, FORMAT_MINOR, FORMAT_MINOR_BASE,
 };
 
-/// The writer emits the requested minor version (1.3 base, 1.5 maximum) in the unchanged
+/// The writer emits the requested minor version (1.3 base, 1.6 maximum) in the unchanged
 /// fixed header shape; values above the maximum are capped.
 #[test]
 fn writer_emits_requested_minor_version() {
-    assert_eq!((FORMAT_MINOR_BASE, FORMAT_MINOR), (3, 5));
-    for (requested, written) in [(3u8, 3u8), (4, 4), (5, 5), (9, 5)] {
+    assert_eq!((FORMAT_MINOR_BASE, FORMAT_MINOR), (3, 6));
+    for (requested, written) in [(3u8, 3u8), (4, 4), (5, 5), (6, 6), (9, 6)] {
         let header = FileHeader {
             minor_version: requested,
             flags: 0,
@@ -67,5 +67,6 @@ fn minimal_minor_version_is_the_highest_block_requirement() {
     assert_eq!(minimal_minor_version([0, 3, 3, 0]), 3);
     assert_eq!(minimal_minor_version([3, 4, 3]), 4);
     assert_eq!(minimal_minor_version([4, 5, 3]), 5);
-    assert_eq!(minimal_minor_version([9]), 5);
+    assert_eq!(minimal_minor_version([5, 6, 3]), 6);
+    assert_eq!(minimal_minor_version([9]), 6);
 }

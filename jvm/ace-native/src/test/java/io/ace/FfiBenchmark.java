@@ -17,9 +17,11 @@ import java.util.Locale;
  * (the ace-corpus binary) and {@code ace.native.path}. Run it with {@code gradle -p jvm
  * :ace-native:ffiBenchmark}.
  *
- * <p>Two paths are measured for the large workload: {@code zero_copy} (off-heap input, result
- * left in the native buffer; the gated path) and {@code byte_array} (the convenience API, which
- * copies 16 MiB in and out).
+ * <p>Three paths are measured for the large workload: {@code zero_copy} (off-heap input, result
+ * left in a library-owned {@link NativeBuffer}; the gated path), {@code into} (decompression into
+ * a caller-owned segment, so no library-owned buffer and no per-call shared arena; reported as a
+ * diagnostic) and {@code byte_array} (the convenience API, which copies 16 MiB in and out).
+ * Comparing {@code zero_copy} with {@code into} shows what the library-owned buffer costs.
  */
 public final class FfiBenchmark {
     private static final int LARGE_BYTES = 16 * 1024 * 1024;
@@ -118,6 +120,13 @@ public final class FfiBenchmark {
                     if (out.size() != large.length) {
                         throw new IllegalStateException();
                     }
+                }
+            })));
+            // Caller-owned output: the buffer is allocated once, so the call measures the engine only.
+            MemorySegment target = arena.allocate(large.length);
+            rows.add(row("decompress", "into", large.length, time(samples, 1, () -> {
+                if (engine.decompressInto(packedSegment, target) != large.length) {
+                    throw new IllegalStateException();
                 }
             })));
             rows.add(row("compress", "byte_array", large.length, time(samples, 1, () -> engine.compress(large))));

@@ -24,6 +24,7 @@ mod policy;
 mod policy_oracle;
 mod route;
 mod route_policy;
+mod segmenter;
 
 pub use budget::*;
 pub use confidence::*;
@@ -43,3 +44,4 @@ pub use policy::*;
 pub use policy_oracle::*;
 pub use route::*;
 pub use route_policy::*;
+pub use segmenter::*;

@@ -1,6 +1,6 @@
 # JVM demos
 
-Two small programs on the ACE 0.7.0 SDK. They need JDK 22 or newer and a Rust toolchain (Gradle
+Two small programs on the ACE 0.8.0 SDK. They need JDK 22 or newer and a Rust toolchain (Gradle
 builds `libace_ffi` for you).
 
 ```bash

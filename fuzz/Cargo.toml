@@ -157,3 +157,17 @@ path = "fuzz_targets/ffi_handles.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "seg_decode"
+path = "fuzz_targets/seg_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "col_decode"
+path = "fuzz_targets/col_decode.rs"
+test = false
+doc = false
+bench = false

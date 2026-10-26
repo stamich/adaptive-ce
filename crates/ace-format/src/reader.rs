@@ -5,7 +5,8 @@ use std::io::Read;
 use ace_core::{AceError, AceResult, DecodeLimits};
 
 use crate::{
-    decode_file_header, read_serialized_block, FileHeader, SerializedBlock, FILE_HEADER_SIZE,
+    decode_file_header, read_dictionary_section, read_serialized_block, EmbeddedDictionary,
+    FileHeader, SerializedBlock, FILE_FLAG_HAS_DICTIONARIES, FILE_HEADER_SIZE,
 };
 
 /// Streaming ACE reader that validates structural limits before allocating block buffers.
@@ -16,6 +17,8 @@ pub struct AceReader<R: Read> {
     limits: DecodeLimits,
     /// Minor version of the file header (selects the block-descriptor layout).
     minor_version: u8,
+    /// Dictionaries of the file's dictionary section (empty without `HAS_DICTIONARIES`).
+    dictionaries: Vec<EmbeddedDictionary>,
 }
 
 /// Inherent methods of [`AceReader`].
@@ -26,14 +29,18 @@ impl<R: Read> AceReader<R> {
             inner,
             limits,
             minor_version: 0,
+            dictionaries: Vec::new(),
         }
     }
 
-    /// Reads and validates the fixed file header and records its minor format version.
+    /// Reads and validates the fixed file header and records its minor format version. When the
+    /// header has `HAS_DICTIONARIES`, the dictionary section that follows it is read too (see
+    /// [`Self::dictionaries`]).
     ///
     /// # Errors
     ///
-    /// The conditions of [`crate::decode_file_header`] and [`AceError::Io`].
+    /// The conditions of [`crate::decode_file_header`], of
+    /// [`crate::read_dictionary_section`] and [`AceError::Io`].
     pub fn read_file_header(&mut self) -> AceResult<FileHeader> {
         let mut bytes = [0u8; FILE_HEADER_SIZE];
         self.inner.read_exact(&mut bytes)?;
@@ -42,7 +49,18 @@ impl<R: Read> AceReader<R> {
             return Err(AceError::ResourceLimitExceeded("file output size"));
         }
         self.minor_version = header.minor_version;
+        self.dictionaries = if header.flags & FILE_FLAG_HAS_DICTIONARIES != 0 {
+            read_dictionary_section(&mut self.inner, &self.limits)?
+        } else {
+            Vec::new()
+        };
         Ok(header)
+    }
+
+    /// The dictionaries of the file's dictionary section, in id order; empty before
+    /// [`Self::read_file_header`] and for files without one.
+    pub fn dictionaries(&self) -> &[EmbeddedDictionary] {
+        &self.dictionaries
     }
 
     /// Reads one block and returns header, entropy metadata and encoded payload.

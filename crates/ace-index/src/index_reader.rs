@@ -9,9 +9,10 @@ use std::io::{Read, Seek, SeekFrom};
 
 use ace_core::{AceError, AceResult, DecodeLimits};
 use ace_format::{
-    checksum, decode_file_header, decode_index, decode_trailer, read_serialized_block, BlockIndex,
-    FileHeader, SerializedBlock, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE, INDEX_ENTRY_SIZE,
-    INDEX_HEADER_SIZE, TRAILER_SIZE,
+    checksum, decode_file_header, decode_index, decode_trailer, read_block_header,
+    read_dictionary_section, read_serialized_block, BlockHeader, BlockIndex, EmbeddedDictionary,
+    FileHeader, SerializedBlock, FILE_FLAG_HAS_DICTIONARIES, FILE_FLAG_HAS_INDEX, FILE_HEADER_SIZE,
+    INDEX_ENTRY_SIZE, INDEX_HEADER_SIZE, TRAILER_SIZE,
 };
 
 /// Seek offset of the trailer from the end of the file.
@@ -34,6 +35,8 @@ pub struct AceIndexReader<R: Read + Seek> {
     pub file_header: FileHeader,
     /// Validated sorted block index.
     pub index: BlockIndex,
+    /// Dictionaries of the file's dictionary section (Format 1.6); empty for files without one.
+    pub dictionaries: Vec<EmbeddedDictionary>,
     /// Limits applied while parsing blocks.
     limits: DecodeLimits,
 }
@@ -59,6 +62,13 @@ impl<R: Read + Seek> AceIndexReader<R> {
         if file_header.original_size > limits.max_output_size {
             return Err(AceError::ResourceLimitExceeded("file output size"));
         }
+        // The section sits right behind the file header; block offsets are absolute, so the
+        // index is not affected by it.
+        let dictionaries = if file_header.flags & FILE_FLAG_HAS_DICTIONARIES != 0 {
+            read_dictionary_section(&mut reader, &limits)?
+        } else {
+            Vec::new()
+        };
         if file_header.block_count > limits.max_block_count() {
             return Err(AceError::ResourceLimitExceeded("block count"));
         }
@@ -112,6 +122,7 @@ impl<R: Read + Seek> AceIndexReader<R> {
             reader,
             file_header,
             index,
+            dictionaries,
             limits,
         })
     }
@@ -140,6 +151,70 @@ impl<R: Read + Seek> AceIndexReader<R> {
             ));
         }
         Ok(block)
+    }
+
+    /// Reads only the header of an indexed block (fixed part and descriptors) and returns it with
+    /// its length in bytes. The payload is not read.
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::BlockNotFound`] for an unknown `block_id`, the header and limit errors of
+    /// [`ace_format::read_block_header`], [`AceError::Malformed`] when the stored id differs from
+    /// the index and [`AceError::Io`].
+    pub fn read_block_header_only(&mut self, block_id: u64) -> AceResult<(BlockHeader, usize)> {
+        let file_offset = self
+            .index
+            .by_id(block_id)
+            .ok_or(AceError::BlockNotFound(block_id))?
+            .file_offset;
+        self.reader.seek(SeekFrom::Start(file_offset))?;
+        let (header, header_len) = read_block_header(
+            &mut self.reader,
+            self.file_header.minor_version,
+            &self.limits,
+        )?;
+        if header.block_id != block_id {
+            return Err(AceError::Malformed(
+                "index block id does not match serialized block",
+            ));
+        }
+        Ok((header, header_len))
+    }
+
+    /// Reads `len` bytes that start `offset` bytes after the first byte of an indexed block.
+    ///
+    /// The window must lie inside the block's indexed span, so a forged length cannot make the
+    /// reader allocate more than the index allows (the span is itself bounded by the limits when
+    /// the block header is read).
+    ///
+    /// # Errors
+    ///
+    /// [`AceError::BlockNotFound`] for an unknown `block_id`, [`AceError::Malformed`] for a
+    /// window outside the span and [`AceError::Io`].
+    pub fn read_within_block(
+        &mut self,
+        block_id: u64,
+        offset: u64,
+        len: usize,
+    ) -> AceResult<Vec<u8>> {
+        let entry = self
+            .index
+            .by_id(block_id)
+            .ok_or(AceError::BlockNotFound(block_id))?;
+        let end = offset
+            .checked_add(len as u64)
+            .ok_or(AceError::Malformed("block window overflow"))?;
+        if end > u64::from(entry.encoded_span) {
+            return Err(AceError::Malformed("block window lies outside the block"));
+        }
+        let start = entry
+            .file_offset
+            .checked_add(offset)
+            .ok_or(AceError::Malformed("block window overflow"))?;
+        self.reader.seek(SeekFrom::Start(start))?;
+        let mut bytes = vec![0u8; len];
+        self.reader.read_exact(&mut bytes)?;
+        Ok(bytes)
     }
 
     /// Returns the wrapped seekable reader.

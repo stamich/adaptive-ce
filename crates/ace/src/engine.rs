@@ -2,10 +2,12 @@
 
 use std::io::{Read, Seek, Write};
 
+use ace_core::{DictionaryId, DictionaryScope};
+use ace_dictionary::DictionaryRegistry;
 use ace_engine::AceEngine;
 use ace_stream::{compress_reader_known_size, StreamLimits};
 
-use crate::{Config, DecodeLimits, Error, Result, Stats};
+use crate::{Config, DecodeLimits, Dictionary, Error, Result, Stats};
 
 /// Compresses and decompresses ACE files.
 ///
@@ -31,6 +33,8 @@ pub struct Engine {
     config: Config,
     limits: DecodeLimits,
     inner: AceEngine,
+    /// External dictionaries readers resolve (see [`Engine::with_dictionaries`]).
+    dictionaries: DictionaryRegistry,
 }
 
 impl Default for Engine {
@@ -39,6 +43,7 @@ impl Default for Engine {
             config: Config::default(),
             limits: DecodeLimits::default(),
             inner: AceEngine::default_engine(),
+            dictionaries: DictionaryRegistry::new(),
         }
     }
 }
@@ -56,6 +61,7 @@ impl Engine {
             config,
             limits: DecodeLimits::default(),
             inner,
+            dictionaries: DictionaryRegistry::new(),
         })
     }
 
@@ -65,6 +71,60 @@ impl Engine {
         self.inner = self.inner.with_decode_limits(limits.core().clone());
         self.limits = limits;
         self
+    }
+
+    /// Supplies the dictionaries that files written with
+    /// [`ConfigBuilder::external_dictionary`](crate::ConfigBuilder::external_dictionary) refer to.
+    ///
+    /// A file names its external dictionary by id only; reading it needs the same bytes under
+    /// that id. A dictionary the file needs and the engine lacks fails with
+    /// [`ErrorKind::Unsupported`](crate::ErrorKind::Unsupported), naming the id. Dictionaries
+    /// embedded in a file need nothing, and the dictionary of this engine's own configuration is
+    /// always available. Applies to every reading method, including
+    /// [`open_range_reader`](Self::open_range_reader).
+    ///
+    /// ```
+    /// use ace::{Config, Dictionary, Engine};
+    ///
+    /// let dictionary = Dictionary::new(b"temperature_reading celsius release-2.7.1".to_vec())?;
+    /// let writer = Engine::new(Config::builder().external_dictionary(dictionary.clone()).build()?)?;
+    /// let input = b"temperature_reading celsius release-2.7.1 21.5\n".repeat(30);
+    /// let packed = writer.compress(&input)?;
+    ///
+    /// assert!(Engine::default().decompress(&packed).is_err(), "the id alone is not enough");
+    /// let reader = Engine::default().with_dictionaries([dictionary]);
+    /// assert_eq!(reader.decompress(&packed)?, input);
+    /// # Ok::<(), ace::Error>(())
+    /// ```
+    #[must_use]
+    pub fn with_dictionaries(mut self, dictionaries: impl IntoIterator<Item = Dictionary>) -> Self {
+        let mut registry = DictionaryRegistry::new();
+        for dictionary in dictionaries {
+            registry.insert(ace_dictionary::Dictionary::new(
+                DictionaryId(dictionary.id()),
+                DictionaryScope::External,
+                dictionary.as_bytes().to_vec(),
+            ));
+        }
+        self.inner = self.inner.with_dictionaries(registry.clone());
+        self.dictionaries = registry;
+        self
+    }
+
+    /// The registry a reader opened by this engine resolves external dictionaries from: the
+    /// supplied ones and the one of the configuration.
+    pub(crate) fn dictionary_registry(&self) -> DictionaryRegistry {
+        let mut registry = self.dictionaries.clone();
+        if let Some(dictionary) = self.config.core().dictionary.as_ref() {
+            if dictionary.scope == DictionaryScope::External {
+                registry.insert(ace_dictionary::Dictionary::new(
+                    dictionary.id,
+                    DictionaryScope::External,
+                    dictionary.bytes.to_vec(),
+                ));
+            }
+        }
+        registry
     }
 
     #[cfg(feature = "explain")]

@@ -72,7 +72,7 @@ fn io_errors_keep_their_source() {
 
 #[test]
 fn newer_format_message_mentions_a_newer_release() {
-    let error = error_from_core(AceError::UnsupportedVersion { major: 1, minor: 6 });
+    let error = error_from_core(AceError::UnsupportedVersion { major: 1, minor: 7 });
     assert_eq!(error.kind(), ErrorKind::Unsupported);
     assert!(error.to_string().contains("newer ACE release"), "{error}");
 }

@@ -64,10 +64,10 @@ size, so a forged value cannot change what is decoded (tested).
 | TS1 header and stream fields one by one (magic, version, mode, lane, flags, reserved, counts, `stream_bits`, `L + M > W`, missing terminator, trailing bits) | `crates/ace-codecs/src/time_series/tests.rs`, `crates/ace-codecs/tests/ts1_properties.rs` |
 | resource limits and forged `original_size` (no large pre-allocation) | same file |
 | property tests (budget via `PROPTEST_CASES`; release 10 000) | `ace-engine/tests/properties.rs`, `ace-codecs/tests/num1_properties.rs`, `ace-codecs/tests/ts1_properties.rs` (arbitrary f64 / f32 bits incl. NaN payloads, ±0, subnormals), `ace-bitpack/tests/property.rs` |
-| 20 fuzz targets (0.5.0: `ts1_decode`, `ts1_roundtrip`, `bitstream_roundtrip`; 0.7.0: `ffi_decode`, `ffi_handles`) | `fuzz/README.md` |
+| 22 fuzz targets (0.5.0: `ts1_decode`, `ts1_roundtrip`, `bitstream_roundtrip`; 0.7.0: `ffi_decode`, `ffi_handles`; 0.8.0: `seg_decode`, `col_decode`) | `fuzz/README.md` |
 | 10 000 random ranges, concurrent readers, out-of-bounds ranges | `ace-engine/tests/random_access_stress.rs` |
 | 1 GiB streaming and 256 MiB indexed files (`--ignored`) | `ace-stream/tests/large_files.rs` |
-| `unsafe` confined to audited kernels and the C ABI crate | [`UNSAFE-AUDIT.md`](UNSAFE-AUDIT.md), `tools/ace-code_audit0.7.0.py` |
+| `unsafe` confined to audited kernels and the C ABI crate | [`UNSAFE-AUDIT.md`](UNSAFE-AUDIT.md), `tools/ace-code_audit0.8.0.py` |
 | (0.7.0) C ABI: no panic crosses the boundary, null pointers, null-with-nonzero-length, bad `struct_size` and oversized lengths rejected with a status; releasing `NULL` is a no-op while a double release is undefined and documented; decode limits across the boundary | `crates/ace-ffi/tests/boundary.rs`, `handles.rs`, [`PANIC-AUDIT.md`](PANIC-AUDIT.md) (C ABI table), [`NATIVE-INTEROP.md`](NATIVE-INTEROP.md) |
 | no `unwrap` / `expect` / `panic!` / `unreachable!` in production code | [`PANIC-AUDIT.md`](PANIC-AUDIT.md), workspace clippy lints |
 | (0.5.1) checked arithmetic and explicit narrowing in every parser module | `clippy::arithmetic_side_effects` + `cast_possible_truncation` per module, [`DECODER-AUDIT.md`](DECODER-AUDIT.md) |

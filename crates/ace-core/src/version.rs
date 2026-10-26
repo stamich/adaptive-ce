@@ -5,13 +5,18 @@ use std::fmt;
 /// Current major format version.
 pub const FORMAT_MAJOR: u8 = 1;
 /// Highest minor format version this build reads and writes (1.4 adds the TS1 codec, 1.5 the
-/// NUM1 and TS1 mode 4 payloads).
-pub const FORMAT_MINOR: u8 = 5;
+/// NUM1 and TS1 mode 4 payloads, 1.6 the segmented and columnar block codecs and the dictionary
+/// section).
+pub const FORMAT_MINOR: u8 = 6;
+
+/// First minor version that has segmented (`SEG1`) and columnar (`COL1`) blocks and the
+/// dictionary section (`ADIC`).
+pub const FORMAT_MINOR_STORAGE: u8 = 6;
 
 /// The ACE release that first reads format `major.minor`, for the versions that are known to be
 /// planned but not readable by this build (`None` for every other version).
 ///
-/// Format 1.5 was the last planned version and ACE 0.6.1 reads it, so no newer version is
+/// Format 1.6 was the last planned version and ACE 0.8.0 reads it, so no newer version is
 /// announced: an unreadable file is reported as written by "a newer ACE release". An entry is
 /// added here when a release plan fixes the number of the next format.
 #[must_use]

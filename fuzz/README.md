@@ -25,13 +25,15 @@ toolchain and `cargo install cargo-fuzz`).
 | `numeric_patched_decode` | NUM1 Patched FOR payloads with fuzzer-placed outliers and byte mutations (0.6.1) | valid payload round-trips; mutated exception section rejected or decoded, never panic |
 | `ffi_decode` | the C ABI: `ace_decompress`, `ace_decompress_into`, `ace_range_*` (0.7.0) | arbitrary bytes under a 4 MiB output limit: any status except a contained panic or internal error; failing calls leave outputs null |
 | `ffi_handles` | the C ABI: random scripts of create / compress / decompress / open / read / free / invalid-argument calls (0.7.0) | no panic or internal error status, handle and status always agree, every handle released |
+| `seg_decode` | segmented blocks (`SEG1`): the payload behind a valid container, read by `decompress`, `read_range` and `decode_block` under every minor version 1.5 – 1.8 (0.8.0) | rejected or decoded to exactly the declared size, never panic or unbounded allocation |
+| `col_decode` | columnar blocks (`COL1`): the payload behind a valid container, read by `decompress`, `read_range` and `decode_block` under every minor version 1.5 – 1.8 (0.8.0) | rejected or decoded to exactly the declared size, never panic or unbounded allocation |
 
 ## Policy
 
 | When | What | Command | Gate |
 |---|---|---|---|
-| every push / PR (CI job `fuzz-smoke`) | 20 targets x 25 s | `ACE_FUZZ_REQUIRED=1 ./ace-ci0.7.0.sh fuzz-smoke` | no crash, no timeout, no OOM |
-| before every release (reference machine) | 20 targets x 10 min, then `cmin` | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.7.0.sh fuzz` | no crash; result recorded in `examples/baselines/<version>/FUZZ.md` |
+| every push / PR (CI job `fuzz-smoke`) | 22 targets x 25 s | `ACE_FUZZ_REQUIRED=1 ./ace-ci0.8.0.sh fuzz-smoke` | no crash, no timeout, no OOM |
+| before every release (reference machine) | 22 targets x 10 min, then `cmin` | `ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.8.0.sh fuzz` | no crash; result recorded in `examples/baselines/<version>/FUZZ.md` |
 | any time | one target | `cargo +nightly fuzz run --fuzz-dir fuzz <target> -- -max_total_time=600` | — |
 
 * `fuzz-smoke` / `fuzz` skip with a log line when nightly or `cargo-fuzz` is missing; CI sets
@@ -55,6 +57,6 @@ Example (local):
 
 ```bash
 rustup toolchain install nightly && cargo install cargo-fuzz
-./ace-ci0.7.0.sh fuzz-smoke                                  # 20 x 25 s
-ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.7.0.sh fuzz   # release campaign
+./ace-ci0.8.0.sh fuzz-smoke                                  # 20 x 25 s
+ACE_FUZZ_SECONDS=600 ACE_FUZZ_CMIN=1 ./ace-ci0.8.0.sh fuzz   # release campaign
 ```

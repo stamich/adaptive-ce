@@ -1,4 +1,4 @@
-//! ACE container format 1.0–1.5: headers, block index, trailer, checksums and block I/O.
+//! ACE container format 1.0–1.6: headers, block index, trailer, checksums and block I/O.
 //!
 //! * `header` — file and block headers (encode/decode).
 //! * `index` — AIDX block index and ACET trailer.
@@ -13,14 +13,20 @@
 
 mod block_io;
 mod checksum;
+mod column;
+mod dictionary_section;
 mod header;
 mod index;
 mod reader;
+mod segment;
 mod writer;
 
 pub use block_io::*;
 pub use checksum::*;
+pub use column::*;
+pub use dictionary_section::*;
 pub use header::*;
 pub use index::*;
 pub use reader::*;
+pub use segment::*;
 pub use writer::*;

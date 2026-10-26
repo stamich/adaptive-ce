@@ -40,7 +40,7 @@ tasks.jar {
 }
 
 // gradle -p jvm :ace-native:ffiBenchmark [-PffiOut=<file>]: the JVM side of the `ffi` benchmark
-// family (see tools/ace-check_regressions0.7.0.py, section ffi).
+// family (see tools/ace-check_regressions0.8.0.py, section ffi).
 tasks.register<JavaExec>("ffiBenchmark") {
     group = "verification"
     description = "Measures the JVM binding on the ffi benchmark workloads and writes JSON."
@@ -49,6 +49,9 @@ tasks.register<JavaExec>("ffiBenchmark") {
     mainClass.set("io.ace.FfiBenchmark")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     systemProperty("ace.native.path", aceNativeDir)
-    systemProperty("ace.corpus.bin", rootDir.parentFile.resolve("target/release/ace-corpus").path)
+    systemProperty("ace.corpus.bin", if (System.getProperty("os.name").lowercase().contains("win"))
+        rootDir.parentFile.resolve("target/release/ace-corpus.exe").path
+    else
+        rootDir.parentFile.resolve("target/release/ace-corpus").path)
     args(providers.gradleProperty("ffiOut").orElse(layout.buildDirectory.file("ffi-jvm.json").get().asFile.path).get())
 }

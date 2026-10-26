@@ -1,6 +1,6 @@
 # Generates include/ace.h from crates/ace-ffi (docs/FFI.md).
 #   cbindgen --config cbindgen.toml --crate ace-ffi --output include/ace.h
-# CI regenerates the header and fails when the committed file differs (tools/ace-check_header0.7.0.sh).
+# CI regenerates the header and fails when the committed file differs (tools/ace-check_header0.8.0.sh).
 language = "C"
 header = """
 /*

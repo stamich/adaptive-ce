@@ -3,6 +3,8 @@ package io.ace.sdk
 import io.ace.{AceException, BufferTooSmallException, Status}
 import io.ace.{AccessHint => JAccess, BlockSizePolicy => JPolicy, Config => JConfig}
 import io.ace.{DecodeLimits => JLimits, Profile => JProfile, RangeStats => JRange, Stats => JStats}
+import io.ace.{Column => JColumn, ColumnKind => JColumnKind, Dictionary => JDictionary, Schema => JSchema}
+import io.ace.{Segmentation => JSegmentation}
 import io.ace.model.*
 
 import scala.jdk.CollectionConverters.*
@@ -11,7 +13,7 @@ import scala.jdk.CollectionConverters.*
 object Convert:
 
   def config(c: AceConfig): JConfig =
-    JConfig
+    val builder = JConfig
       .builder()
       .profile(c.profile match
         case Profile.Fast     => JProfile.FAST
@@ -30,7 +32,41 @@ object Convert:
       .writeIndex(c.writeIndex)
       .numericSpecialization(c.numericSpecialization)
       .floatSpecialization(c.floatSpecialization)
-      .build()
+    c.schema.foreach(s => builder.schema(schema(s)))
+    c.dictionary.foreach { use =>
+      val dictionary = javaDictionary(use.dictionary)
+      use.scope match
+        case DictionaryScope.Embedded => builder.dictionary(dictionary)
+        case DictionaryScope.External => builder.externalDictionary(dictionary)
+    }
+    c.segmentation.foreach { s =>
+      builder.segmentation(
+        JSegmentation.defaults()
+          .withWindowSize(s.windowSize)
+          .withMinSegmentSize(s.minSegmentSize)
+          .withMaxSegmentSize(s.maxSegmentSize)
+          .withMaxSegments(s.maxSegments)
+      )
+    }
+    builder.build()
+
+  def schema(s: Schema): JSchema =
+    JSchema(s.columns.map(column).asJava)
+
+  private def column(c: Column): JColumn =
+    JColumn(
+      c.kind match
+        case ColumnKind.Bytes    => JColumnKind.BYTES
+        case ColumnKind.Unsigned => JColumnKind.UNSIGNED
+        case ColumnKind.Signed   => JColumnKind.SIGNED
+        case ColumnKind.Float    => JColumnKind.FLOAT,
+      c.width
+    )
+
+  /** The Java dictionary for `d`; the native library validates the size. */
+  def javaDictionary(d: AceDictionary): JDictionary = JDictionary.of(d.id, d.bytes)
+
+  def dictionary(d: JDictionary): AceDictionary = AceDictionary(d.id, d.bytes)
 
   def limits(l: DecodeLimits): JLimits =
     JLimits
@@ -55,7 +91,10 @@ object Convert:
       s.numericBlocks,
       s.timeSeriesBlocks,
       s.ratio,
-      s.planDistribution.asScala.view.mapValues(_.longValue).toMap
+      s.planDistribution.asScala.view.mapValues(_.longValue).toMap,
+      s.segmentedBlocks,
+      s.columnarBlocks,
+      s.dictionaryBlocks
     )
 
   def rangeStats(s: JRange): RangeReadStats = RangeReadStats(s.logicalBytes, s.physicalBytes, s.blocks)

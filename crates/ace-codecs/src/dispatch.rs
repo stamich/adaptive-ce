@@ -14,6 +14,9 @@ const FIRST_FORMAT_1_5_MODE: u8 = 4;
 /// the lane / version byte).
 const PAYLOAD_MODE_OFFSET: usize = 5;
 
+/// Minor version that introduced the `SEG1` and `COL1` container codecs.
+const FORMAT_1_6: u8 = 6;
+
 /// Lowest minor format version whose readers can decode `primary`, the stream `codec` produced.
 ///
 /// RAW, RLE and LZ streams are readable by every version (`0`); a NUM1 stream needs 1.3 and a
@@ -25,6 +28,8 @@ const PAYLOAD_MODE_OFFSET: usize = 5;
 pub fn payload_minor_version(codec: CodecId, primary: &[u8]) -> u8 {
     let (base, magic): (u8, &[u8]) = match codec {
         CodecId::Raw | CodecId::Rle | CodecId::Lz => return 0,
+        // Container codecs exist only in Format 1.6; their payload does not name a mode.
+        CodecId::Segmented | CodecId::Columnar => return FORMAT_1_6,
         CodecId::Numeric => (3, b"NUM1"),
         CodecId::TimeSeries => (4, b"TS1\0"),
     };
@@ -55,6 +60,7 @@ pub fn encode_codec(id: CodecId, lz_mode: Option<LzMode>, input: &[u8]) -> AceRe
         CodecId::Lz => Ok(lz_encode(input, lz_mode.unwrap_or(LzMode::Fast))),
         CodecId::Numeric => numeric_encode(input),
         CodecId::TimeSeries => ts1_encode(input),
+        CodecId::Segmented | CodecId::Columnar => Err(container_codec_error()),
     }
 }
 
@@ -72,5 +78,12 @@ pub fn decode_codec(id: CodecId, input: &[u8], expected_size: usize) -> AceResul
         CodecId::Lz => lz_decode(input, expected_size),
         CodecId::Numeric => numeric_decode(input, expected_size),
         CodecId::TimeSeries => ts1_decode(input, expected_size),
+        CodecId::Segmented | CodecId::Columnar => Err(container_codec_error()),
     }
+}
+
+/// The error for `SEG1` / `COL1`: their payload is a sequence of inner blocks, which only the
+/// engine can encode and decode (it owns the block pipeline), so this dispatcher refuses them.
+fn container_codec_error() -> ace_core::AceError {
+    ace_core::AceError::Malformed("segmented and columnar blocks are handled by the engine")
 }

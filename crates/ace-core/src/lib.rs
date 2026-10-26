@@ -13,6 +13,7 @@ mod limits;
 mod numeric;
 mod plan;
 mod profile;
+mod schema;
 mod stats;
 mod version;
 
@@ -25,5 +26,6 @@ pub use limits::*;
 pub use numeric::*;
 pub use plan::*;
 pub use profile::*;
+pub use schema::*;
 pub use stats::*;
 pub use version::*;

@@ -31,6 +31,14 @@ pub fn inspect(input: &str, show_blocks: bool) -> Result<()> {
         file.block_count,
         file.flags & FILE_FLAG_HAS_INDEX != 0
     )?;
+    for dictionary in reader.dictionaries() {
+        writeln!(
+            out,
+            "dictionary id={:016x} bytes={} (embedded)",
+            dictionary.id.0,
+            dictionary.bytes.len()
+        )?;
+    }
     let (mut numeric_blocks, mut numeric_original, mut numeric_payload) = (0u64, 0u64, 0u64);
     let (mut ts1_blocks, mut ts1_original, mut ts1_payload) = (0u64, 0u64, 0u64);
     for _ in 0..file.block_count {
@@ -59,6 +67,13 @@ pub fn inspect(input: &str, show_blocks: bool) -> Result<()> {
         }
         if show_blocks {
             writeln!(out, "block={} original={} codec={:?} entropy={:?} transforms={:?} metadata={} payload={}", header.block_id, header.original_size, header.codec, header.entropy, header.transforms, metadata.len(), payload.len())?;
+            if let Some(dictionary) = header.dictionary {
+                writeln!(
+                    out,
+                    "  dictionary id={:016x} scope={:?}",
+                    dictionary.id.0, dictionary.scope
+                )?;
+            }
             if let Some(info) = numeric {
                 writeln!(out,
                     "  numeric width={:?} mode={} bit_width={} values={} tail={} bits_per_value={:.2}",

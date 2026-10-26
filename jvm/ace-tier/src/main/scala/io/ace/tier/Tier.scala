@@ -107,12 +107,19 @@ final class TierCodec private (policy: TierPolicy, codecs: Map[Tier, AceCodec]) 
 final case class TieredResult(bytes: Array[Byte], metrics: TierMetrics)
 
 object TierCodec:
-  def open(policy: TierPolicy = TierPolicy.Default): Either[AceError, TierCodec] =
+  /**
+   * Opens one codec per tier. `dictionaries` are the external dictionaries the codecs resolve
+   * when they read files written with [[DictionaryScope.External]].
+   */
+  def open(
+      policy: TierPolicy = TierPolicy.Default,
+      dictionaries: Seq[AceDictionary] = Nil
+  ): Either[AceError, TierCodec] =
     Tier.values.toList.foldLeft[Either[AceError, Map[Tier, AceCodec]]](Right(Map.empty)) { (acc, tier) =>
       acc match
         case Left(error) => Left(error)
         case Right(opened) =>
-          Ace.open(policy.configFor(tier)) match
+          Ace.open(policy.configFor(tier), DecodeLimits.Default, dictionaries) match
             case Right(codec) => Right(opened + (tier -> codec))
             case Left(error) =>
               opened.values.foreach(_.close())

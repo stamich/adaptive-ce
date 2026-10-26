@@ -8,8 +8,9 @@ directory; a new format version adds new files. `MANIFEST.json` records for ever
 release, the input case, the writer profile(s) that produced exactly these bytes, the declared
 format minor version, the file's SHA-256 and the SHA-256 of the input it must decode to.
 
-The inputs are not stored. The test regenerates them with integer-only generators (eight cases:
-text, u32 counter, byte runs, f64 series, sparse u64, random, and since 0.6.1 u64 outliers and f64 decimals) and checks their SHA-256 against
+The inputs are not stored. The test regenerates them with integer-only generators (eleven cases:
+text, u32 counter, byte runs, f64 series, sparse u64, random, since 0.6.1 u64 outliers and f64 decimals,
+and since 0.8.0 trade records, mixed regimes and JSON records) and checks their SHA-256 against
 the manifest, so a changed generator cannot silently weaken the fixtures.
 
 | Directory | Written by | Format versions |
@@ -20,6 +21,7 @@ the manifest, so a changed generator cannot silently weaken the fixtures.
 | `0.4.6/` | 0.4.6 (`e51bd1d`) | 1.3 |
 | `0.5.0/` | 0.5.0 (`d07a0a2`, tag `v0.5.0`) | 1.3 and 1.4 (TS1 Gorilla, TS1 RunDelta) |
 | `0.6.1/` | 0.6.1 (`ace-engine` `write_fixtures_0_6_1`) | 1.5 (NUM1 Patched FOR, TS1 ALP); only the two cases added in 0.6.1 |
+| `0.8.0/` | 0.8.0 (`ace-engine` `write_fixtures_0_8_0`) | 1.6 (columnar blocks, segmented blocks, embedded and external preset dictionaries); only the three cases added in 0.8.0 |
 
 Format 1.0 is covered by a synthetic file in `crates/ace-engine/tests/format_1_0_compat.rs`
 (no released encoder wrote 1.0 with the current block layout).
@@ -40,3 +42,14 @@ the release is the one being added): `ACE_COMPAT_WRITE_FIXTURES=/tmp/fx cargo te
 --test compat_fixtures -- --ignored write_fixtures_0_6_1 --nocapture`, same block size, one
 thread, profiles FAST / BALANCED / DENSE (identical outputs stored once). They decode with every
 reader from 0.6.1 on; older readers reject them as written by a newer format.
+
+The `0.8.0/` files were produced the same way (`ACE_COMPAT_WRITE_FIXTURES=/tmp/fx cargo test -p
+ace-engine --test compat_fixtures -- --ignored write_fixtures_0_8_0 --nocapture`), but only with
+the Balanced profile and one thread, because each file exercises one Format 1.6 feature rather
+than a profile: `trade-records-balanced.ace` (a schema, so columnar blocks),
+`mixed-regimes-balanced.ace` (one 4 MiB block split into segments),
+`json-records-balanced.ace` (a dictionary embedded in the file) and
+`json-records-external-balanced.ace` (a dictionary the file only names). The external file needs
+`json-records.dict`, which the manifest lists next to it (`dictionary`, `dictionary_sha256`); the
+test supplies it and also checks that a reader without it refuses the file with
+`MissingDictionary`. Older readers reject all four as written by a newer format.

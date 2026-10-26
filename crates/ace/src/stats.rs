@@ -16,8 +16,9 @@ pub struct Stats {
     pub input_bytes: u64,
     /// Bytes of the ACE file written.
     pub output_bytes: u64,
-    /// Minor version of the file format written (`1.<minor>`): 3, or 4 when a block uses the
-    /// floating-point and time-series codec.
+    /// Minor version of the file format written (`1.<minor>`): 3 for the generic codecs, 4 when
+    /// a block uses the time-series codec, 5 for the newer numeric and float modes, 6 when the
+    /// file has a segmented or columnar block or uses a dictionary.
     pub format_minor: u8,
     /// Number of blocks.
     pub blocks: u64,
@@ -31,6 +32,12 @@ pub struct Stats {
     pub numeric_blocks: u64,
     /// Blocks coded with the floating-point and time-series codec.
     pub time_series_blocks: u64,
+    /// Blocks stored as a segmented container (Format 1.6).
+    pub segmented_blocks: u64,
+    /// Blocks stored as a columnar container (Format 1.6).
+    pub columnar_blocks: u64,
+    /// Blocks, segments and columns stored with a preset dictionary (Format 1.6).
+    pub dictionary_blocks: u64,
     /// How many blocks use each pipeline, keyed by its label (for example `"lz+huffman"`).
     pub plan_distribution: BTreeMap<String, u64>,
 }
@@ -57,6 +64,9 @@ impl Stats {
             lz_blocks: stats.lz_blocks,
             numeric_blocks: stats.numeric_blocks,
             time_series_blocks: stats.time_series_blocks,
+            segmented_blocks: stats.segmented_blocks,
+            columnar_blocks: stats.columnar_blocks,
+            dictionary_blocks: stats.dictionary_blocks,
             plan_distribution: stats.plan_distribution.clone(),
         }
     }

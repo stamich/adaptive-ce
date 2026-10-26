@@ -18,6 +18,9 @@ import java.util.Map;
  * @param timeSeriesBlocks blocks coded with the floating-point and time-series codec
  * @param ratio {@code inputBytes / outputBytes}; 1.0 when nothing was written
  * @param planDistribution how many blocks use each pipeline, keyed by its label
+ * @param segmentedBlocks blocks stored as segments with different codecs (Format 1.6)
+ * @param columnarBlocks blocks stored column by column (Format 1.6)
+ * @param dictionaryBlocks blocks compressed with a preset dictionary (Format 1.6)
  */
 public record Stats(
         long inputBytes,
@@ -30,11 +33,31 @@ public record Stats(
         long numericBlocks,
         long timeSeriesBlocks,
         double ratio,
-        Map<String, Long> planDistribution) {
+        Map<String, Long> planDistribution,
+        long segmentedBlocks,
+        long columnarBlocks,
+        long dictionaryBlocks) {
 
     /** Makes the distribution unmodifiable. */
     public Stats {
         planDistribution = Collections.unmodifiableMap(new LinkedHashMap<>(planDistribution));
+    }
+
+    /** The statistics of 0.7.0, with the Format 1.6 counters at 0. */
+    public Stats(
+            long inputBytes,
+            long outputBytes,
+            int formatMinor,
+            long blocks,
+            long rawBlocks,
+            long rleBlocks,
+            long lzBlocks,
+            long numericBlocks,
+            long timeSeriesBlocks,
+            double ratio,
+            Map<String, Long> planDistribution) {
+        this(inputBytes, outputBytes, formatMinor, blocks, rawBlocks, rleBlocks, lzBlocks, numericBlocks,
+                timeSeriesBlocks, ratio, planDistribution, 0, 0, 0);
     }
 
     /** Parses the JSON that {@code ace_compress} returns. */
@@ -58,7 +81,10 @@ public record Stats(
                 number(root, "numeric_blocks"),
                 number(root, "time_series_blocks"),
                 ((Number) root.getOrDefault("ratio", 1.0)).doubleValue(),
-                plans);
+                plans,
+                number(root, "segmented_blocks"),
+                number(root, "columnar_blocks"),
+                number(root, "dictionary_blocks"));
     }
 
     private static long number(Map<String, Object> root, String key) {

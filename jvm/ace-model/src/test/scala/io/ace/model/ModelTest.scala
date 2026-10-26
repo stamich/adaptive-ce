@@ -49,3 +49,36 @@ class ModelTest:
       case AceError.Unavailable(_)         => "unavailable"
     assertEquals("checksum 7", describe(AceError.ChecksumMismatch("m", Some(7))))
     assertEquals("small 10", describe(AceError.BufferTooSmall("m", 10)))
+
+  @Test def storageOptionsAreOffByDefault(): Unit =
+    val config = AceConfig.Default
+    assertEquals(None, config.schema)
+    assertEquals(None, config.dictionary)
+    assertEquals(None, config.segmentation)
+
+  @Test def schemasAreValidated(): Unit =
+    assertEquals(Nil, Schema.of(Column.unsigned(8), Column.float(8), Column.bytes(5)).validate)
+    assertEquals(21, Schema.of(Column.unsigned(8), Column.float(8), Column.bytes(5)).recordSize)
+    assertEquals(1, Schema(Nil).validate.size)
+    assertEquals(1, Schema.of(Column.unsigned(3)).validate.size)
+    assertEquals(1, Schema.of(Column.float(2)).validate.size)
+    assertEquals(1, Schema.of(Column.bytes(0)).validate.size)
+
+  @Test def dictionariesCompareByContent(): Unit =
+    val a = AceDictionary(7L, Array[Byte](1, 2, 3))
+    assertEquals(a, AceDictionary(7L, Array[Byte](1, 2, 3)))
+    assertEquals(a.hashCode, AceDictionary(7L, Array[Byte](1, 2, 3)).hashCode)
+    assertNotEquals(a, AceDictionary(8L, Array[Byte](1, 2, 3)))
+    assertNotEquals(a, AceDictionary(7L, Array[Byte](1, 2, 4)))
+    assertEquals(Nil, a.validate)
+    assertEquals(1, AceDictionary(0L, Array[Byte](1)).validate.size)
+    assertEquals(1, AceDictionary(1L, Array.emptyByteArray).validate.size)
+    assertEquals(1, AceDictionary(1L, new Array[Byte](AceDictionary.MaxSize + 1)).validate.size)
+
+  @Test def configValidationIncludesTheStorageOptions(): Unit =
+    val config = AceConfig(
+      schema = Some(Schema(Nil)),
+      dictionary = Some(DictionaryUse(AceDictionary(0L, Array[Byte](1)))),
+      segmentation = Some(Segmentation(maxSegments = -1))
+    )
+    assertEquals(3, config.validate.size)

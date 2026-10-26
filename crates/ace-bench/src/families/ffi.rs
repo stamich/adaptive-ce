@@ -8,7 +8,7 @@
 //!
 //! The JVM side is measured by `FfiBenchmark` (`jvm/ace-native`), on the same operations. The gates
 //! (C ABI >= 0.97x of the facade on 16 MiB, JVM >= 0.90x) live in
-//! `tools/ace-check_regressions0.7.0.py` (section `ffi`).
+//! `tools/ace-check_regressions0.8.0.py` (section `ffi`).
 
 use std::ptr;
 

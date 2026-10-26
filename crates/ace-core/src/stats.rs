@@ -57,6 +57,16 @@ pub struct CompressionStats {
     pub ts1_run_delta_blocks: u64,
     /// Stored TS1 blocks in ALP mode (Format 1.5).
     pub ts1_alp_blocks: u64,
+    /// Blocks stored as a segmented container (`SEG1`).
+    pub segmented_blocks: u64,
+    /// Segments inside those blocks.
+    pub segments: u64,
+    /// Blocks stored as a columnar container (`COL1`).
+    pub columnar_blocks: u64,
+    /// Column streams inside those blocks.
+    pub column_streams: u64,
+    /// Blocks (including segments and columns) stored with a preset dictionary.
+    pub dictionary_blocks: u64,
     /// Stable physical-plan label to selected-block count mapping.
     pub plan_distribution: BTreeMap<String, u64>,
     /// Time spent in route prefilter/classification/full NumericFast validation.
@@ -94,12 +104,18 @@ impl CompressionStats {
             CodecId::Lz => self.lz_blocks += 1,
             CodecId::Numeric => self.numeric_blocks += 1,
             CodecId::TimeSeries => self.time_series_blocks += 1,
+            // Container blocks are assembled by the engine after planning (never planned).
+            CodecId::Segmented => self.segmented_blocks += 1,
+            CodecId::Columnar => self.columnar_blocks += 1,
         }
         match plan.decoding.entropy {
             EntropyCodecId::Huffman => self.huffman_blocks += 1,
             EntropyCodecId::Rans => self.rans_blocks += 1,
             EntropyCodecId::Rans4x => self.rans4x_blocks += 1,
             EntropyCodecId::None => {}
+        }
+        if plan.decoding.dictionary.is_some() {
+            self.dictionary_blocks += 1;
         }
         if plan.decoding.transforms.contains(&TransformId::DeltaByte) {
             self.delta_blocks += 1;

@@ -50,7 +50,12 @@ pub fn stats_json(stats: &Stats) -> String {
         push_string(&mut out, label);
         let _ = write!(out, ":{count}");
     }
-    out.push_str("}}");
+    // ABI 1.1 members are appended, so a consumer written against 1.0 sees the old keys first.
+    let _ = write!(
+        out,
+        "}},\"segmented_blocks\":{},\"columnar_blocks\":{},\"dictionary_blocks\":{}}}",
+        stats.segmented_blocks, stats.columnar_blocks, stats.dictionary_blocks
+    );
     out
 }
 

@@ -1,6 +1,6 @@
 # ACE architecture
 
-Canonical description of the current release (0.7.0). Earlier versions of this document:
+Canonical description of the current release (0.8.0). Earlier versions of this document:
 [`history/`](history/) (`ARCHITECTURE-0.4.6.md`, `ARCHITECTURE-0.5.0.md`).
 
 ACE is a deterministic, block-based lossless compressor. Every block is planned and encoded
@@ -36,7 +36,7 @@ public API and with `--document-private-items`). Public fallible functions docum
 | `ace-cost` | internal | analytical estimators, deterministic sampling, quality envelope, TS1 estimators |
 | `ace-planner` | internal | routes (Generic, NumericGeneral, NumericFast, FloatGeneral, FloatFast), candidate generation, V4.3 evaluator, TS1 policy, telemetry |
 | `ace-runtime` | internal | bounded parallel runtime configuration, worker scratch |
-| `ace-simd` | internal | runtime-dispatched AVX2 scans and SSE4.2 CRC-32C (`ACE_SIMD=scalar` override); `unsafe` |
+| `ace-simd` | internal | runtime-dispatched AVX2 / NEON scans and SSE4.2 / ARMv8 CRC-32C (`ACE_SIMD=scalar` override); `unsafe` |
 | `ace-ffi` | C ABI | `cdylib` + `staticlib` + `rlib` exporting the 26 `ace_*` functions of `include/ace.h` over the `ace` facade (status codes, thread-local last error, opaque handles, `catch_unwind` guards); the other place with production `unsafe` ([`FFI.md`](FFI.md), [`NATIVE-INTEROP.md`](NATIVE-INTEROP.md)) |
 | `ace-dictionary` | internal | dictionary identity / registry seam (no trained dictionaries yet) |
 | `ace-corpus` | internal | deterministic synthetic workloads (Corpus V3 + V4, false-positive corpus) |
@@ -95,7 +95,7 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
 | Compatibility fixtures | the reader | `examples/compat/` — files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0 and 0.6.1, never regenerated ([`COMPATIBILITY.md`](COMPATIBILITY.md)) |
 | Determinism matrix | thread / API independence | workloads × profiles × 1 – 32 workers × in-flight batch sizes × `compress` / `compress_to` / streaming |
 | Planner invariants | Planner V5 rules | property tests: TS1 ⇔ selection + dominance rule, NumericFast without Float evidence, selected ∈ candidates, zero full trial encodes, fixed tie-breaks |
-| Malformed input | the decoder | malformed matrix, per-field tests, limits tests, 20 fuzz targets (smoke on every PR, 20 × 10 min per release) |
+| Malformed input | the decoder | malformed matrix, per-field tests, limits tests, 22 fuzz targets (smoke on every PR, 22 × 10 min per release) |
 | Benchmarks | performance | Harness V3, Regression V3, interleaved A/B, three-run repeatability ([`BENCHMARKS.md`](BENCHMARKS.md)) |
 
 ## 6. Testing layers
@@ -106,13 +106,13 @@ Planner details: [`PLANNER-V5.md`](PLANNER-V5.md). Codec details: [`TS1-CODEC.md
 | facade internals | `crates/ace/tests/` with feature `internal-testing` | the hidden `ace::internal` conversions |
 | CLI | `crates/ace-cli/tests/cli.rs` | the `ace` binary: round trips, invalid input, closed pipes |
 | golden / compat | `crates/ace-engine/tests/golden.rs`, `compat_fixtures.rs` | bytes on disk |
-| C ABI | `crates/ace-ffi/tests/` | every exported function through `extern "C"`, misuse, panics, golden bytes; `tests/c/smoke.c` built by `tools/ace-check_c0.7.0.sh` |
+| C ABI | `crates/ace-ffi/tests/` | every exported function through `extern "C"`, misuse, panics, golden bytes; `tests/c/smoke.c` built by `tools/ace-check_c0.8.0.sh` |
 | JVM | `jvm/<module>/src/test/` | round trips, misuse, leaks, packaging, golden bytes (Java and Scala) |
 | fuzz | `fuzz/` | arbitrary input ([`../fuzz/README.md`](../fuzz/README.md)) |
 
 ### Test layout
 
-No file under `crates/*/src` contains `#[cfg(test)]` (enforced by `tools/ace-code_audit0.7.0.py`).
+No file under `crates/*/src` contains `#[cfg(test)]` (enforced by `tools/ace-code_audit0.8.0.py`).
 A test of `crates/ace-cost/src/quality.rs` lives in `crates/ace-cost/tests/quality.rs` and calls
 public items only. When a test needs a private helper, one of three things happens, in this order
 of preference: the test restates the helper (a bit reader is ten lines), the helper becomes `pub`

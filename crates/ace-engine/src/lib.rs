@@ -4,6 +4,7 @@
 //! * `block_encoder` — plans and encodes one independent block (planner → payload).
 //! * `block_pipeline` — the reversible per-block pipeline framing (entropy metadata prefix,
 //!   decode + checksum verification).
+//! * `dictionaries` — resolves the dictionaries a block refers to (Format 1.6).
 //! * `container` — assembles encoded blocks into a container and aggregates statistics.
 //! * `indexed` — random-access decoder over the block index.
 //! * `chunker`, `explain` — fixed-size block splitting and planner explanations.
@@ -47,6 +48,7 @@ mod block_encoder;
 mod block_pipeline;
 mod chunker;
 mod container;
+mod dictionaries;
 mod engine;
 mod explain;
 mod indexed;

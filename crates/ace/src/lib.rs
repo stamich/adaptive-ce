@@ -43,6 +43,9 @@
 //! | [`Config`], [`ConfigBuilder`], [`Profile`], [`BlockSizePolicy`], [`AccessHint`] | compression settings, validated by `build()` |
 //! | [`Engine`] | compress, decompress, stream |
 //! | [`RangeReader`], [`RangeStats`] | read a byte range without decompressing the rest |
+//! | [`Schema`], [`Column`], [`ColumnKind`] | the record layout of a table, stored column by column |
+//! | [`Segmentation`] | split mixed blocks into segments with their own codecs |
+//! | [`Dictionary`] | preset history for small, similar inputs (trained, embedded or external) |
 //! | `BlockReport` (feature `explain`) | why the planner chose a pipeline, per block |
 //! | [`DecodeLimits`], [`DecodeLimitsBuilder`] | upper bounds enforced while decoding untrusted files |
 //! | [`Stats`] | what a compression run did: sizes, ratio, blocks per codec |
@@ -56,21 +59,27 @@
 //! them.
 
 mod config;
+mod dictionary;
 mod engine;
 mod error;
 #[cfg(feature = "explain")]
 mod explain;
 mod limits;
 mod range;
+mod schema;
+mod segmentation;
 mod stats;
 
 pub use config::{AccessHint, BlockSizePolicy, Config, ConfigBuilder, Profile};
+pub use dictionary::Dictionary;
 pub use engine::Engine;
 pub use error::{Error, ErrorKind, Result};
 #[cfg(feature = "explain")]
 pub use explain::BlockReport;
 pub use limits::{DecodeLimits, DecodeLimitsBuilder};
 pub use range::{RangeReader, RangeStats};
+pub use schema::{Column, ColumnKind, Schema};
+pub use segmentation::Segmentation;
 pub use stats::Stats;
 
 /// Conversions between the facade types and the internal crates, for the test suite of this

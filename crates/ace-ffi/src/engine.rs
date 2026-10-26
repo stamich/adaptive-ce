@@ -5,6 +5,7 @@ use ace::Engine;
 use crate::args::{handle_ref, input_bytes};
 use crate::buffer::{buffer_into_raw, AceBuffer};
 use crate::config::{config_from_raw, limits_from_raw, AceConfig, AceLimits};
+use crate::dictionary::{collect, AceDictionary};
 use crate::guard::{guard, guard_value};
 use crate::handle::{clear_out, publish, release};
 use crate::json::{explain_json, stats_json};
@@ -18,7 +19,8 @@ pub struct AceEngine {
 
 /// Creates an engine.
 ///
-/// `config` and `limits` may be null for the defaults. On failure `*out` is null.
+/// `config` and `limits` may be null for the defaults. On failure `*out` is null. Equivalent to
+/// [`ace_engine_new_ex`] without external dictionaries.
 ///
 /// # Safety
 ///
@@ -28,6 +30,36 @@ pub struct AceEngine {
 pub unsafe extern "C" fn ace_engine_new(
     config: *const AceConfig,
     limits: *const AceLimits,
+    out: *mut *mut AceEngine,
+) -> AceStatus {
+    guard(|| {
+        // SAFETY: the contract of this function is the contract of `ace_engine_new_ex` with no
+        // dictionaries.
+        unsafe { ace_engine_new_ex(config, limits, std::ptr::null(), 0, out) }
+    })
+}
+
+/// Creates an engine that also knows external dictionaries (ABI 1.1).
+///
+/// A file written with `ACE_DICTIONARY_EXTERNAL` names its dictionary by id only; reading it
+/// needs a dictionary with that id, which this engine looks up among the `count` handles in
+/// `dictionaries`. The dictionary of `config` is always available to its own engine. Handles are
+/// copied, so they may be released after the call. Applies to every reading function, including
+/// the range readers opened from the engine.
+///
+/// `config`, `limits` and (with `count` 0) `dictionaries` may be null. On failure `*out` is null.
+///
+/// # Safety
+///
+/// `config` and `limits` must be null or point to readable structs of at least their
+/// `struct_size` bytes; `dictionaries` must be valid for reads of `count` handles, each live;
+/// `out` must be valid for a write of one pointer.
+#[no_mangle]
+pub unsafe extern "C" fn ace_engine_new_ex(
+    config: *const AceConfig,
+    limits: *const AceLimits,
+    dictionaries: *const *const AceDictionary,
+    count: usize,
     out: *mut *mut AceEngine,
 ) -> AceStatus {
     guard(|| {
@@ -45,13 +77,20 @@ pub unsafe extern "C" fn ace_engine_new(
             Ok(limits) => limits,
             Err(status) => return status,
         };
+        // SAFETY: valid and live by the caller's contract.
+        let dictionaries = match unsafe { collect(dictionaries, count) } {
+            Ok(dictionaries) => dictionaries,
+            Err(status) => return status,
+        };
         match Engine::new(config) {
             // SAFETY: `out` was validated above.
             Ok(engine) => unsafe {
                 publish(
                     out,
                     AceEngine {
-                        engine: engine.with_decode_limits(limits),
+                        engine: engine
+                            .with_decode_limits(limits)
+                            .with_dictionaries(dictionaries),
                     },
                 )
             },

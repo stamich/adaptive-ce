@@ -7,8 +7,8 @@
 | **0.6.0** | API & Performance (Phase A) | one `ace` facade crate (`Engine`, `Config` and `ConfigBuilder`, `DecodeLimits` with a builder, `RangeReader`, `Stats`, `Error`), internal crates hidden, deprecated items removed, MSRV 1.98.1, readers name the ACE version a newer file needs, decode and allocation recovery, public-corpus benchmark family | 1.3 / 1.4, bytes = 0.5.1 |
 | **0.6.1** ✅ | Numeric & Float II (Phase B) | RunDelta / NUM1 for small non-zero deltas; Patched FOR; ALP decimal floats; Chimp / Chimp128 measured at codec level and kept only if at least 5 % more blocks shrink than with the best existing choice; earlier TS1 decision; DENSE never larger than BALANCED (see `docs/BENCHMARKS.md`); Chimp not added (0 of 144 blocks), see `docs/RELEASE-NOTES-0.6.1.md` | **1.5** (new modes) |
 | **0.7.0** ✅ | Embedding | `ace-ffi` (C ABI v1, opaque handles, error codes, `catch_unwind` at the boundary, generated `include/ace.h`), Java SDK on Panama (JDK 22+, tested on 22 and 25), Scala 3 SDK (model, Either-based API, streams, tier policy), native packaging in the JAR, `ffi` benchmark gates, native aarch64 CI (scalar kernels). Not in 0.7.0: NEON backend, macOS / Windows native builds | unchanged, bytes = 0.6.1 |
-| **0.8.0** | Storage-engine features | adaptive segmentation (codec per segment inside a block), columnar blocks (several streams per block, optional schema hints), `WorkerScratch` reuse, trained dictionaries, context shared between blocks of a segment (random access kept) | **2.0** (consider the major version then) |
-| **0.9.0** | Platform integration | page / segment codec API for AdaptiveDB, profiles per storage tier, async / streaming API, metrics (`tracing` / OpenTelemetry), deterministic mode for GraphNet | unchanged |
+| **0.8.0** ✅ | Storage engine | adaptive segmentation (codec per segment inside a block), columnar blocks (a schema of fixed-size records, a codec per column), trained preset dictionaries (embedded or external), `WorkerScratch` reuse, C ABI 1.1, dictionaries and schemas in the Java and Scala SDKs, `ace-schema`, NEON backend, macOS and Windows natives. Moved to 0.9.0: context shared between blocks (it conflicts with independent blocks and random access) | **1.6** (additive; the default writes the bytes of 0.7.0) |
+| **0.9.0** | Platform integration | shared context between blocks (design first), page / segment codec API for AdaptiveDB, profiles per storage tier, async / streaming API, metrics (`tracing` / OpenTelemetry), deterministic mode for GraphNet | unchanged |
 | **1.0.0** | Stable | frozen Rust API, C ABI v1 and format; LTS policy for 1.x; crates.io / Maven Central | stable |
 
 ## Platform: ACE + AdaptiveDB + GraphNet
@@ -31,6 +31,17 @@ segments, which needs ACE's deterministic bytes).
 
 The integration concept itself (module boundaries, existing APIs, CDC format) is a separate
 document written after reviewing the AdaptiveDB and GraphNet repositories.
+
+## 0.8.0 - Storage engine (done)
+
+Segmented blocks, columnar blocks and preset dictionaries as Format 1.6, with the default
+configuration writing the bytes of 0.7.0. Reproduced through the Rust engine, the C ABI (1.1), the
+Java SDK and the Scala SDK by `examples/golden/0.8.0/`; frozen fixtures in `examples/compat/0.8.0/`;
+fuzz targets `seg_decode` and `col_decode`; benchmark family `storage` with Regression V3 gates.
+Also in this release: encoder buffer reuse, the NEON backend and native libraries for macOS and
+Windows. Left for later: shared context between blocks (0.9.0), a dictionary for entropy stages,
+automatic schema detection, Maven Central (1.0). Reference run: see `docs/RELEASE-NOTES-0.8.0.md`; the tag is the
+maintainer's.
 
 ## 0.7.0 - Embedding (done)
 

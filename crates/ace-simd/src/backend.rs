@@ -17,12 +17,16 @@ pub enum SimdBackend {
     Scalar,
     /// x86_64 AVX2 implementation.
     Avx2,
+    /// aarch64 NEON implementation (0.8.0).
+    Neon,
 }
 
 /// Returns the SIMD backend selected on this host (after the override).
 pub fn selected_backend() -> SimdBackend {
     if avx2_available() {
         SimdBackend::Avx2
+    } else if neon_available() {
+        SimdBackend::Neon
     } else {
         SimdBackend::Scalar
     }
@@ -42,6 +46,18 @@ pub(crate) fn avx2_available() -> bool {
     !scalar_forced() && cpu_has_avx2()
 }
 
+/// True when the NEON kernels may be called.
+#[inline]
+pub(crate) fn neon_available() -> bool {
+    !scalar_forced() && cpu_has_neon()
+}
+
+/// True when the ARMv8 CRC32C instructions may be used.
+#[inline]
+pub(crate) fn armv8_crc_available() -> bool {
+    !scalar_forced() && cpu_has_armv8_crc()
+}
+
 /// True when the SSE4.2 CRC32C kernel may be called.
 #[inline]
 pub(crate) fn sse42_available() -> bool {
@@ -56,6 +72,32 @@ fn cpu_has_avx2() -> bool {
         std::arch::is_x86_feature_detected!("avx2")
     }
     #[cfg(not(target_arch = "x86_64"))]
+    {
+        false
+    }
+}
+
+/// Raw CPU capability check for NEON (the detection macro caches its result).
+#[inline(always)]
+fn cpu_has_neon() -> bool {
+    #[cfg(target_arch = "aarch64")]
+    {
+        std::arch::is_aarch64_feature_detected!("neon")
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        false
+    }
+}
+
+/// Raw CPU capability check for the ARMv8 CRC32 instructions.
+#[inline(always)]
+fn cpu_has_armv8_crc() -> bool {
+    #[cfg(target_arch = "aarch64")]
+    {
+        std::arch::is_aarch64_feature_detected!("crc")
+    }
+    #[cfg(not(target_arch = "aarch64"))]
     {
         false
     }

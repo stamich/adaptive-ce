@@ -15,6 +15,10 @@ pub const INDEX_ENTRY_SIZE: usize = 40;
 pub const INDEX_HEADER_SIZE: usize = 12;
 /// Fixed serialized trailer size.
 pub const TRAILER_SIZE: usize = 28;
+/// Index entry flag (Format 1.6): the block is segmented (`SEG1`), so a range read can fetch its
+/// segment table and only the segments it needs instead of the whole block. The writer sets it
+/// for every codec-5 block; a reader treats a missing flag as "read the whole block".
+pub const INDEX_FLAG_SEGMENTED: u32 = 0x1;
 
 /// Random-access metadata for one independent ACE block.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,7 +33,7 @@ pub struct BlockIndexEntry {
     pub file_offset: u64,
     /// Entire serialized block span including header, descriptors, metadata and payload.
     pub encoded_span: u32,
-    /// Reserved per-entry flags.
+    /// Per-entry flags: [`INDEX_FLAG_SEGMENTED`]; every other bit is reserved and zero.
     pub flags: u32,
 }
 
@@ -156,6 +160,9 @@ pub fn decode_index(bytes: &[u8], limits: &DecodeLimits) -> AceResult<BlockIndex
         let file_offset = u64::from_le_bytes(field(record, 20)?);
         let encoded_span = u32::from_le_bytes(field(record, 28)?);
         let flags = u32::from_le_bytes(field(record, 32)?);
+        if flags & !INDEX_FLAG_SEGMENTED != 0 {
+            return Err(AceError::Malformed("unknown block index flag"));
+        }
         if previous_id.map(|id| block_id <= id).unwrap_or(false) {
             return Err(AceError::Malformed("block ids are not strictly increasing"));
         }

@@ -1,6 +1,6 @@
 # ACE benchmarks (Harness V3, schema 2.2)
 
-Canonical methodology of the current release (0.7.0; the methodology is that of 0.5.1, families and gates of later releases are marked). Earlier versions:
+Canonical methodology of the current release (0.8.0; the methodology is that of 0.5.1, families and gates of later releases are marked). Earlier versions:
 [`history/`](history/) (`BENCHMARK-METHODOLOGY-0.4.6.md`, `BENCHMARK-METHODOLOGY-0.5.0.md`).
 Harness V3 dates from 0.4.6, the Float lane families and gates from 0.5.0; 0.5.1 adds
 schema 2.2, three-run repeatability, the governor gate and the `allocation-profile` family
@@ -9,10 +9,10 @@ schema 2.2, three-run repeatability, the governor gate and the `allocation-profi
 ## Running
 
 ```bash
-./ace-benchmark0.7.0.sh all                     # every family + validation + Regression V3
-./ace-benchmark0.7.0.sh all --repeat 3          # release baseline: three runs, repeatability, medians
-./ace-benchmark0.7.0.sh release-performance --quick   # smoke (1 batch; never a release verdict)
-./ace-ab0.7.0.sh /path/to/ace-0.6.1             # interleaved A/B against the previous release
+./ace-benchmark0.8.0.sh all                     # every family + validation + Regression V3
+./ace-benchmark0.8.0.sh all --repeat 3          # release baseline: three runs, repeatability, medians
+./ace-benchmark0.8.0.sh release-performance --quick   # smoke (1 batch; never a release verdict)
+./ace-ab0.8.0.sh /path/to/ace-0.7.0             # interleaved A/B against the previous release
 ```
 
 ## Why (0.4.6)
@@ -284,7 +284,7 @@ geometric delta 1.47x, FAST encode 34.8x the disabled lane, ALP 335 / 1093 MB/s,
 735 / 1261 MB/s. All `format15` gates pass there. The ALP and Patched speed floors (150 / 300 and
 200 / 300 MB/s) stay as set; they can be raised with the next baseline.
 
-Interleaved A/B against 0.6.0 (0.6.1; the tool is now `tools/ace-ab0.7.0.py`, base tag `v0.6.0`) gets cases for every
+Interleaved A/B against 0.6.0 (0.6.1; the tool is now `tools/ace-ab0.8.0.py`, base tag `v0.6.0`) gets cases for every
 path whose planning changed. Byte-identical cases keep the 0.95 floor; cases whose bytes change
 on purpose are flagged `output_changes` (no identity check) and carry the documented price of
 the change:
@@ -310,6 +310,40 @@ within 25 % of the best base size and only when 16-value chunks of some source d
 is at least half decimal-shaped. Without the ALP rule FAST encode of `f64-constant` fell to 4.4x
 the disabled lane (gate: 5x); with it 17x.
 
+### `storage` (0.8.0): columnar blocks, segmentation and dictionaries
+
+Family `storage` (`ace-bench storage`, about two minutes) measures the Format 1.6 features against
+the block the planner would have chosen for the same bytes.
+
+* `columnar` rows: for every record workload of `ace-corpus` (`records-trades` 24 B,
+  `records-telemetry` 16 B, `records-events` 32 B; 4 MiB, deterministic) and every profile, the size
+  of the row-wise stream (no schema) and of the columnar stream (schema from the record layout),
+  the gain, the format minor version, the number of columnar blocks and column streams, and the
+  encode / decode timing of the columnar configuration. Every row asserts both round trips.
+* `segmented` row: one 3 MiB block made of 1 MiB JSON, 1 MiB counters and 1 MiB random bytes, with
+  and without `SegmentationConfig::default()`.
+* `dictionary` rows (`json-4k-embedded`, `json-4k-external`): 768 KiB of `StructuredJson` in 4 KiB
+  blocks with and without a 4 KiB dictionary trained (`segment_len` 64) from a different 256 KiB of
+  the same workload; both round trips are asserted.
+* `summary` row: how many record cases are below the 1.10x target.
+
+Sizes are exact and do not depend on the machine. Gates (section `storage` of Regression V3):
+
+| Gate | Requirement | Measured (Balanced) |
+|---|---|---|
+| `storage.columnar_below_target` | 0 of 9 record cases below 1.10x (correctness) | 0 |
+| `storage.records-trades_gain` | >= 1.10x the row-wise block | 2.28x |
+| `storage.records-telemetry_gain` | >= 1.10x | 5.73x |
+| `storage.records-events_gain` | >= 1.10x | 1.52x |
+| `storage.segmented_gain`, `storage.segmented_used` | >= 1.2x and >= 2 segments (provisional) | 1.85x, 3 segments |
+| `storage.json-4k-embedded_gain`, `storage.json-4k-external_gain` | >= 1.5x the same blocks without a dictionary (provisional) | 2.25x, 2.27x |
+| `storage.json-4k-<scope>_used` | every 4 KiB block coded with the dictionary | 192 of 192 |
+| `storage.<workload>_<profile>_encode_mb_s` | diagnostic | — |
+
+The columnar encode speed is a diagnostic until the reference-machine run of 0.8.0 (task 28): the
+encoder plans every column and the row-wise block, so it costs about 2x the row-wise encode time.
+Fast gains 1.29x on `records-events` (the minimum) and 5.34x on `records-trades`.
+
 ### `ffi` (0.7.0): what the bindings cost
 
 Family `ffi` (`ace-bench ffi`) runs the same operations through the Rust facade (`ace::Engine`)
@@ -324,9 +358,9 @@ and compares the bytes:
 The C ABI side reads the length of the output buffer and releases it without copying the bytes (a
 host that wraps the buffer does not copy either); copying 16 MiB would measure `memcpy`. The
 JVM side is measured by `FfiBenchmark` (`gradle -p jvm :ace-native:ffiBenchmark -PffiOut=<file>`),
-whose JSON is passed to Regression V3 with `--jvm` (`ace-benchmark0.7.0.sh all` runs it when
+whose JSON is passed to Regression V3 with `--jvm` (`ace-benchmark0.8.0.sh all` runs it when
 Gradle is installed). It reports the zero-copy path (off-heap input, result left in the native
-buffer, the gated one) and the `byte[]` path (copies 16 MiB in and out; informational).
+buffer, the gated one), the `into` path (decompression into a caller-owned segment, so there is no per-call library-owned buffer; diagnostic since 0.8.0) and the `byte[]` path (copies 16 MiB in and out; informational).
 
 Gates (section `ffi`, speed relative to the Rust facade):
 
@@ -335,6 +369,7 @@ Gates (section `ffi`, speed relative to the Rust facade):
 | `ffi.output_identical` | the C ABI writes and restores the same bytes in every row |
 | `ffi.c_abi_vs_facade.compress_16m`, `.decompress_16m` | ≥ 0.97× |
 | `ffi.jvm_vs_facade.compress_16m`, `.decompress_16m` (zero-copy path) | ≥ 0.90× (skipped without `--jvm`: the verdict is then `incomplete`) |
+| `ffi.jvm_into.decompress_16m` | diagnostic (0.8.0): the same ratio with a caller-owned output segment |
 | `ffi.overhead.small_*` | diagnostic: C ABI time ÷ facade time per call |
 
 A ratio whose batch MAD exceeds 5 % (JVM: 10 %) is reported `unstable`, not as a failure. The

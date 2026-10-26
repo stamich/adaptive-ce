@@ -16,7 +16,7 @@ pub fn compress(input: &str, output: &str, config: Config) -> Result<()> {
     files::write(output, &encoded)?;
     writeln!(
         out,
-        "ACE {} compressed {} -> {} bytes ratio={:.3} blocks={} raw={} rle={} lz={} numeric={} ts1={} format=1.{}",
+        "ACE {} compressed {} -> {} bytes ratio={:.3} blocks={} raw={} rle={} lz={} numeric={} ts1={} segmented={} columnar={} dictionary={} format=1.{}",
         env!("CARGO_PKG_VERSION"),
         stats.input_bytes,
         stats.output_bytes,
@@ -27,6 +27,9 @@ pub fn compress(input: &str, output: &str, config: Config) -> Result<()> {
         stats.lz_blocks,
         stats.numeric_blocks,
         stats.time_series_blocks,
+        stats.segmented_blocks,
+        stats.columnar_blocks,
+        stats.dictionary_blocks,
         stats.format_minor
     )?;
     Ok(())

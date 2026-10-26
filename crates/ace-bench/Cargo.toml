@@ -9,6 +9,7 @@ rust-version.workspace = true
 
 [dependencies]
 ace-core = { path = "../ace-core" }
+ace-dictionary = { path = "../ace-dictionary" }
 ace-cost = { path = "../ace-cost" }
 ace-analysis = { path = "../ace-analysis" }
 ace-bitpack = { path = "../ace-bitpack" }

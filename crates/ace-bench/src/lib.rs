@@ -62,6 +62,7 @@ pub const FAMILIES: &[(&str, FamilyFn)] = &[
     ("chimp-evaluation", chimp_evaluation_family),
     ("format-1-5", format15_family),
     ("public-corpus", public_corpus_family),
+    ("storage", storage_family),
     ("ffi", ffi_family),
 ];
 

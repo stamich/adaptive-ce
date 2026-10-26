@@ -56,28 +56,31 @@ fn x_pow_bytes(bytes: usize) -> u32 {
     result
 }
 
-/// Returns the CRC32C of `bytes` using SSE4.2, or `None` when the CPU lacks SSE4.2 or
-/// `ACE_SIMD=scalar` is set (callers then use a portable implementation).
+/// Returns the CRC32C of `bytes` with the hardware instructions of this CPU (SSE4.2 on x86_64,
+/// the ARMv8 CRC extension on aarch64), or `None` when the CPU lacks them or `ACE_SIMD=scalar`
+/// is set (callers then use a portable implementation).
 pub fn crc32c_hardware(bytes: &[u8]) -> Option<u32> {
-    if !crate::backend::sse42_available() {
-        return None;
-    }
     #[cfg(target_arch = "x86_64")]
-    {
+    if crate::backend::sse42_available() {
         // SAFETY: SSE4.2 support was verified at runtime; the kernel reads only `bytes`.
-        Some(!unsafe { sse42::crc32c_raw(!0, bytes) })
+        return Some(!unsafe { sse42::crc32c_raw(!0, bytes) });
     }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        let _ = bytes;
-        None
+    #[cfg(target_arch = "aarch64")]
+    if crate::backend::armv8_crc_available() {
+        // SAFETY: the CRC extension was verified at runtime; the kernel reads only `bytes`.
+        return Some(!unsafe { armv8::crc32c_raw(!0, bytes) });
     }
+    let _ = bytes;
+    None
 }
 
-/// Name of the CRC32C implementation in use (`"sse4.2-3way"` or `"portable"`), for telemetry.
+/// Name of the CRC32C implementation in use (`"sse4.2-3way"`, `"armv8-crc-3way"` or
+/// `"portable"`), for telemetry.
 pub fn crc32c_backend_name() -> &'static str {
     if crate::backend::sse42_available() {
         "sse4.2-3way"
+    } else if cfg!(target_arch = "aarch64") && crate::backend::armv8_crc_available() {
+        "armv8-crc-3way"
     } else {
         "portable"
     }
@@ -132,6 +135,63 @@ mod sse42 {
         }
         for &byte in words.remainder() {
             state = _mm_crc32_u8(state, byte);
+        }
+        state
+    }
+
+    /// Loads 8 little-endian bytes.
+    #[inline(always)]
+    fn word(chunk: &[u8]) -> u64 {
+        let mut word = [0u8; 8];
+        word.copy_from_slice(chunk);
+        u64::from_le_bytes(word)
+    }
+}
+
+/// ARMv8 CRC32C kernels (`#[target_feature]`; callers must check CPU support first).
+///
+/// The same three-stripe layout as the SSE4.2 kernel: the `crc32c` instructions have a latency
+/// of a few cycles and a throughput of one per cycle, so three interleaved chains keep the unit
+/// busy and [`merge_stripes`] joins them. The result equals every other CRC32C implementation.
+#[cfg(target_arch = "aarch64")]
+mod armv8 {
+    use std::arch::aarch64::{__crc32cb, __crc32cd};
+
+    use super::{merge_stripes, MIN_STRIPE_BYTES};
+
+    /// Updates a raw CRC32C state (no pre- or post-inversion) with `bytes`.
+    ///
+    /// # Safety
+    /// The CPU must support the ARMv8 CRC32 instructions.
+    #[target_feature(enable = "crc")]
+    // See the note on the SSE4.2 kernel: `chunks_exact` keeps the structure of the audited kernel.
+    #[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)]
+    pub(super) unsafe fn crc32c_raw(state: u32, bytes: &[u8]) -> u32 {
+        let stripe = (bytes.len() / 3) & !7;
+        let (mut state, rest) = if stripe >= MIN_STRIPE_BYTES {
+            let (a, tail) = bytes.split_at(stripe);
+            let (b, tail) = tail.split_at(stripe);
+            let (c, rest) = tail.split_at(stripe);
+            let (mut s0, mut s1, mut s2) = (state, 0u32, 0u32);
+            for ((wa, wb), wc) in a
+                .chunks_exact(8)
+                .zip(b.chunks_exact(8))
+                .zip(c.chunks_exact(8))
+            {
+                s0 = __crc32cd(s0, word(wa));
+                s1 = __crc32cd(s1, word(wb));
+                s2 = __crc32cd(s2, word(wc));
+            }
+            (merge_stripes(s0, s1, s2, stripe), rest)
+        } else {
+            (state, bytes)
+        };
+        let mut words = rest.chunks_exact(8);
+        for chunk in &mut words {
+            state = __crc32cd(state, word(chunk));
+        }
+        for &byte in words.remainder() {
+            state = __crc32cb(state, byte);
         }
         state
     }

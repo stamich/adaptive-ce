@@ -1,6 +1,6 @@
 # Adaptive Compression Engine (ACE)
 
-[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.7.0.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.7.0.yml)
+[![Build Status](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.8.0.yml/badge.svg?branch=main)](https://github.com/stamich/adaptive-ce/actions/workflows/ace-ci0.8.0.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=coverage)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=stamich_adaptive-ce&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=stamich_adaptive-ce)
@@ -17,12 +17,13 @@ stores the result in a self-describing container with a block index for random a
 The same input and configuration always produce the same bytes, on every machine, thread count
 and SIMD backend. Every byte read from a file is validated before it is trusted.
 
-**Current release: 0.7.0 — Embedding.** A C ABI (`include/ace.h`, `libace_ffi`), a Java SDK on
-Panama and a Scala 3 SDK let JVM and C programs use ACE. The bytes are those of 0.6.1 (Format 1.5:
-Patched frame-of-reference for integers with outliers, ALP for decimal floats, small-delta
-RunDelta, DENSE never larger than BALANCED), reproduced through every binding. Files written by
-every earlier version stay readable. See [`docs/RELEASE-NOTES-0.7.0.md`](docs/RELEASE-NOTES-0.7.0.md)
-and, coming from 0.6.1, [`docs/MIGRATION-0.6.1-TO-0.7.0.md`](docs/MIGRATION-0.6.1-TO-0.7.0.md).
+**Current release: 0.8.0 — Storage engine.** Blocks that mix kinds of data are split into segments,
+fixed-size records are stored column by column, and trained preset dictionaries shrink small blocks
+(Format 1.6, additive). Without these options ACE writes exactly the bytes of 0.7.0, reproduced
+through every binding (Rust, C ABI 1.1, Java, Scala). Files written by every earlier version stay
+readable; older readers reject only a file that actually uses a 1.6 feature. See
+[`docs/RELEASE-NOTES-0.8.0.md`](docs/RELEASE-NOTES-0.8.0.md) and, coming from 0.7.0,
+[`docs/MIGRATION-0.7.0-TO-0.8.0.md`](docs/MIGRATION-0.7.0-TO-0.8.0.md).
 
 ## What it does well
 
@@ -34,8 +35,12 @@ and, coming from 0.6.1, [`docs/MIGRATION-0.6.1-TO-0.7.0.md`](docs/MIGRATION-0.6.
 | rarely changing values | TS1 RunDelta (Elias-gamma runs + ZigZag deltas) | sparse-change integers: ≈ 235× |
 | incompressible data | stored RAW (never larger than the input plus framing) | random: 1.0× |
 
+| fixed-size records (tables, telemetry, events) | with a schema: transposed, one codec per column (Format 1.6) | 1.5× – 5.7× smaller than the row-wise block |
+| small blocks of similar data (JSON messages) | LZ with a preset dictionary, embedded or external (Format 1.6) | 4 KiB JSON blocks: ≈ 2.3× smaller |
+
 Measured numbers and methodology: [`docs/PERFORMANCE-0.7.0.md`](docs/PERFORMANCE-0.7.0.md)
-(reference machine AMD Ryzen 9 5950X; 0.7.0 writes the same bytes), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+(reference machine AMD Ryzen 9 5950X), [`docs/PERFORMANCE-0.8.0.md`](docs/PERFORMANCE-0.8.0.md)
+(0.8.0 writes the same bytes by default), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start
 
@@ -44,7 +49,7 @@ cargo build --release                                  # builds the `ace` binary
 ./target/release/ace compress data.bin data.ace        # --profile fast | balanced | dense
 ./target/release/ace decompress data.ace restored.bin
 ./target/release/ace version                           # version, formats, backends, git revision
-./demo/ace-run-demo0.7.0.sh                            # one-minute product tour
+./demo/ace-run-demo0.8.0.sh                            # one-minute product tour
 ```
 
 Requirements: Rust 1.98.1 or newer (MSRV); the repository pins the build toolchain to 1.98.1
@@ -63,6 +68,17 @@ ace explain in.bin                                           # routes and planne
 ace read-range out.ace 1000000 65536 part.bin                # random access: decodes only the touched blocks
 ace decode-block out.ace 7 block.bin
 ace version
+```
+
+Storage engine (0.8.0, Format 1.6; the default writes the bytes of 0.7.0):
+
+```bash
+ace compress table.bin t.ace --schema u64,f64,u32,b4        # 24-byte records, stored column by column
+ace compress mixed.bin m.ace --segments                     # split blocks that mix kinds of data
+ace train dict.bin samples/*.json --size 4096               # deterministic preset dictionary
+ace compress msg.json m.ace --dictionary dict.bin --block-size 4096   # embedded when it pays
+ace compress msg.json m.ace --dictionary dict.bin --external-dictionary
+ace decompress m.ace out.json --dictionary dict.bin         # external dictionaries are passed back
 ```
 
 Exit status: 0 success (also when the output pipe is closed early, e.g. `ace explain … | head`),
@@ -145,40 +161,41 @@ without reading the blocks before it. Details: [`docs/ARCHITECTURE.md`](docs/ARC
 | Lossless, bit-exact | every block carries the CRC-32C of its bytes; property tests over arbitrary inputs and float bit patterns |
 | Deterministic output | golden SHA-256 files (auto and scalar SIMD), determinism matrix (1 – 32 threads, API paths, processes) |
 | Old files stay readable | frozen files written by 0.2.1, 0.3.0, 0.4.4, 0.4.6, 0.5.0 and 0.6.1 decode on every build ([`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)) |
-| Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code (and none across the C ABI), 20 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
+| Hostile input is safe | `DecodeLimits` checked before every allocation, checked arithmetic in every parser, no panic in production code (and none across the C ABI), 22 fuzz targets ([`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DECODER-AUDIT.md`](docs/DECODER-AUDIT.md)) |
 | Minimal `unsafe` | only the audited SIMD / CRC kernels and the C ABI boundary (`ace-ffi`) ([`docs/UNSAFE-AUDIT.md`](docs/UNSAFE-AUDIT.md), [`docs/PANIC-AUDIT.md`](docs/PANIC-AUDIT.md)) |
 
 ## Development
 
 ```bash
-./ace-build0.7.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
-./ace-ci0.7.0.sh pr | aarch64 | jvm | fuzz-smoke | fuzz   # CI entry points (GitHub Actions wraps them)
-./ace-benchmark0.7.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
-./ace-ab0.7.0.sh /path/to/ace-0.6.1                  # interleaved A/B against the previous release
-./ace-benchmark-compare0.7.0.sh OLD NEW              # any two result files or directories
-./ace-release0.7.0.sh /path/to/ace-0.6.1             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
+./ace-build0.8.0.sh                                  # fmt, clippy, tests, release build, rustdoc (incl. private items), demo
+./ace-ci0.8.0.sh pr | aarch64 | jvm | fuzz-smoke | fuzz   # CI entry points (GitHub Actions wraps them)
+./ace-benchmark0.8.0.sh all [--quick] [--repeat 3]   # Harness V3 + Regression V3
+./ace-ab0.8.0.sh /path/to/ace-0.7.0                  # interleaved A/B against the previous release
+./ace-benchmark-compare0.8.0.sh OLD NEW              # any two result files or directories
+./ace-release0.8.0.sh /path/to/ace-0.7.0             # release pipeline ([`docs/RELEASE.md`](docs/RELEASE.md))
 gradle -p jvm build                                  # Java and Scala SDKs (JDK 22+, builds libace_ffi)
 ```
 
 | Path | Content |
 |---|---|
 | `crates/` | 20 crates: the `ace` facade, 18 internal ones and `ace-ffi` (the C ABI) ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) |
-| `ace-*0.7.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
+| `ace-*0.8.0.sh`, `demo/`, `tools/` | build, benchmark, A/B, release and CI entry points; Python tools |
 | `include/` | `ace.h`, the C header (generated, drift-checked in CI) |
-| `examples/golden/` | golden SHA-256 (0.6.1, reproduced by 0.7.0; frozen 0.5.0 and 0.4.6) |
+| `examples/golden/` | golden SHA-256 (0.6.1 and 0.8.0, reproduced by 0.8.0; frozen 0.5.0 and 0.4.6) |
 | `examples/compat/` | frozen compatibility files of earlier releases |
 | `examples/baselines/` | accepted benchmark results per release (`BASELINE.json`) |
-| `fuzz/` | `cargo-fuzz` project, 20 targets ([`fuzz/README.md`](fuzz/README.md)) |
+| `fuzz/` | `cargo-fuzz` project, 22 targets ([`fuzz/README.md`](fuzz/README.md)) |
 | `jvm/`, `demo/jvm/` | Java (Panama) and Scala 3 SDKs over the C ABI, and their demos |
 | `docs/` | current documentation; `docs/history/` keeps earlier versions |
-| `TASKS-0.7.0.md`, `MILESTONE-0.7.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
+| `TASKS-0.8.0.md`, `MILESTONE-0.8.0.json` | implementation order and machine-readable summary of this release (earlier ones in `docs/history/`) |
 
 ## Roadmap
 
 0.6.0 — the `ace` API facade, decode and allocation recovery; 0.6.1 — decimal floats (ALP), Patched FOR,
 RunDelta for small deltas, DENSE never larger than BALANCED, Format 1.5;
-0.7.0 — C ABI, Java (Panama) and Scala SDK (this release); 0.8 — adaptive segmentation and columnar blocks
-(Format 2.0); 0.9 — integration with AdaptiveDB and GraphNet; 1.0 — stable API and format.
+0.7.0 — C ABI, Java (Panama) and Scala SDK; 0.8.0 — segments, columnar blocks and preset dictionaries,
+Format 1.6 (this release); 0.9 — integration with AdaptiveDB and GraphNet, shared context between
+blocks; 1.0 — stable API and format.
 See [`ROADMAP.md`](ROADMAP.md) and [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License

@@ -152,7 +152,11 @@ impl DominancePolicy {
                     CandidatePreference::Preferred,
                     DominanceReason::RandomAccessPreference,
                 ),
-                CodecId::Numeric | CodecId::TimeSeries | CodecId::Lz => (
+                CodecId::Numeric
+                | CodecId::TimeSeries
+                | CodecId::Lz
+                | CodecId::Segmented
+                | CodecId::Columnar => (
                     CandidatePreference::Penalized,
                     DominanceReason::RandomAccessPreference,
                 ),

@@ -1,7 +1,7 @@
 package io.ace;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import io.ace.ffi.AceBindings;
 import java.util.Objects;
@@ -24,6 +24,10 @@ public final class Config {
     private final AccessHint accessHint;
     private final boolean numericSpecialization;
     private final boolean floatSpecialization;
+    private final Schema schema;
+    private final Dictionary dictionary;
+    private final boolean dictionaryExternal;
+    private final Segmentation segmentation;
 
     private Config(Builder b) {
         this.profile = b.profile;
@@ -35,6 +39,10 @@ public final class Config {
         this.accessHint = b.accessHint;
         this.numericSpecialization = b.numericSpecialization;
         this.floatSpecialization = b.floatSpecialization;
+        this.schema = b.schema;
+        this.dictionary = b.dictionary;
+        this.dictionaryExternal = b.dictionaryExternal;
+        this.segmentation = b.segmentation;
     }
 
     /** The default settings. */
@@ -92,9 +100,36 @@ public final class Config {
         return floatSpecialization;
     }
 
-    /** Writes this configuration as an {@code AceConfig} struct. */
-    MemorySegment toNative(SegmentAllocator allocator) {
-        MemorySegment config = allocator.allocate(AceBindings.ACE_CONFIG);
+    /** The record layout used for columnar blocks, or {@code null} for row-wise storage only. */
+    public Schema schema() {
+        return schema;
+    }
+
+    /** The preset dictionary, or {@code null} for none. */
+    public Dictionary dictionary() {
+        return dictionary;
+    }
+
+    /**
+     * True when only the id of {@link #dictionary()} is stored in files, so readers must be given
+     * the dictionary. False when it is embedded, and when there is no dictionary.
+     */
+    public boolean dictionaryIsExternal() {
+        return dictionary != null && dictionaryExternal;
+    }
+
+    /** The segmentation settings, or {@code null} when segmentation is off. */
+    public Segmentation segmentation() {
+        return segmentation;
+    }
+
+    /**
+     * Writes this configuration as an {@code AceConfig} struct. Native handles the struct points
+     * to (schema, dictionary) are registered in {@code temporaries}; the engine copies them, so
+     * they only have to outlive the call that creates the engine.
+     */
+    MemorySegment toNative(Arena arena, Temporaries temporaries) {
+        MemorySegment config = arena.allocate(AceBindings.ACE_CONFIG);
         config.set(ValueLayout.JAVA_LONG, AceBindings.ACE_CONFIG_STRUCT_SIZE, AceBindings.ACE_CONFIG_SIZE);
         config.set(ValueLayout.JAVA_INT, AceBindings.ACE_CONFIG_PROFILE, profile.code());
         config.set(ValueLayout.JAVA_LONG, AceBindings.ACE_CONFIG_BLOCK_SIZE, blockSize);
@@ -107,6 +142,22 @@ public final class Config {
                 (byte) (numericSpecialization ? 1 : 0));
         config.set(ValueLayout.JAVA_BYTE, AceBindings.ACE_CONFIG_FLOAT_SPECIALIZATION,
                 (byte) (floatSpecialization ? 1 : 0));
+        if (schema != null) {
+            config.set(ValueLayout.ADDRESS, AceBindings.ACE_CONFIG_SCHEMA, schema.toNative(arena, temporaries));
+        }
+        if (dictionary != null) {
+            config.set(ValueLayout.ADDRESS, AceBindings.ACE_CONFIG_DICTIONARY,
+                    dictionary.toNative(arena, temporaries));
+            config.set(ValueLayout.JAVA_INT, AceBindings.ACE_CONFIG_DICTIONARY_SCOPE,
+                    dictionaryExternal ? AceBindings.ACE_DICTIONARY_EXTERNAL : AceBindings.ACE_DICTIONARY_EMBEDDED);
+        }
+        if (segmentation != null) {
+            config.set(ValueLayout.JAVA_INT, AceBindings.ACE_CONFIG_SEGMENTATION, 1);
+            config.set(ValueLayout.JAVA_LONG, AceBindings.ACE_CONFIG_SEGMENT_WINDOW, segmentation.windowSize());
+            config.set(ValueLayout.JAVA_LONG, AceBindings.ACE_CONFIG_SEGMENT_MIN, segmentation.minSegmentSize());
+            config.set(ValueLayout.JAVA_LONG, AceBindings.ACE_CONFIG_SEGMENT_MAX, segmentation.maxSegmentSize());
+            config.set(ValueLayout.JAVA_LONG, AceBindings.ACE_CONFIG_MAX_SEGMENTS, segmentation.maxSegments());
+        }
         return config;
     }
 
@@ -115,7 +166,8 @@ public final class Config {
         return "Config[profile=" + profile + ", blockSize=" + blockSize + ", threads=" + threads
                 + ", memoryBudget=" + memoryBudget + ", writeIndex=" + writeIndex + ", blockSizePolicy="
                 + blockSizePolicy + ", accessHint=" + accessHint + ", numeric=" + numericSpecialization
-                + ", float=" + floatSpecialization + "]";
+                + ", float=" + floatSpecialization + ", schema=" + schema + ", dictionary=" + dictionary
+                + (dictionaryExternal ? " (external)" : "") + ", segmentation=" + segmentation + "]";
     }
 
     /** Builds a {@link Config}. */
@@ -129,6 +181,10 @@ public final class Config {
         private AccessHint accessHint = AccessHint.BALANCED;
         private boolean numericSpecialization = true;
         private boolean floatSpecialization = true;
+        private Schema schema;
+        private Dictionary dictionary;
+        private boolean dictionaryExternal;
+        private Segmentation segmentation;
 
         private Builder() {}
 
@@ -183,6 +239,43 @@ public final class Config {
         /** Enables the floating-point pipelines (default true). */
         public Builder floatSpecialization(boolean enabled) {
             this.floatSpecialization = enabled;
+            return this;
+        }
+
+        /**
+         * Describes the records of the input so that blocks can also be stored column by column
+         * (default: none, row-wise only). Readers need no schema.
+         */
+        public Builder schema(Schema value) {
+            this.schema = value;
+            return this;
+        }
+
+        /**
+         * Uses {@code value} as a preset dictionary and embeds it in the file when that pays
+         * (default: none). The file stays self-contained; use a small dictionary (1 to 4 KiB)
+         * for small files, or {@link #externalDictionary(Dictionary)}.
+         */
+        public Builder dictionary(Dictionary value) {
+            this.dictionary = value;
+            this.dictionaryExternal = false;
+            return this;
+        }
+
+        /**
+         * Uses {@code value} as a preset dictionary but stores only its id in the file. Readers
+         * need the same dictionary: {@link Engine#create(Config, DecodeLimits,
+         * java.util.Collection)}. The right choice when many small files share one dictionary.
+         */
+        public Builder externalDictionary(Dictionary value) {
+            this.dictionary = value;
+            this.dictionaryExternal = true;
+            return this;
+        }
+
+        /** Lets blocks be split into segments with different codecs (default: off). */
+        public Builder segmentation(Segmentation value) {
+            this.segmentation = value;
             return this;
         }
 

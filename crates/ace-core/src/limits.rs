@@ -11,7 +11,10 @@
 /// | [`max_encoded_block_size`](Self::max_encoded_block_size) | every block header | every block header |
 /// | [`max_transforms`](Self::max_transforms) | every block header | every block header |
 /// | [`max_index_entries`](Self::max_index_entries) | block count of the file header ([`max_block_count`](Self::max_block_count)) | index entry count, index byte size, block count |
-/// | [`max_dictionary_size`](Self::max_dictionary_size) | reserved: Format 1.x embeds no dictionary bytes | reserved |
+/// | [`max_dictionary_size`](Self::max_dictionary_size) | dictionary section of the file header (Format 1.6), each dictionary | dictionary section |
+/// | [`max_dictionaries`](Self::max_dictionaries) | dictionary section | dictionary section |
+/// | [`max_segments`](Self::max_segments) | segment table of every `SEG1` block, before the table is read | same |
+/// | [`max_columns`](Self::max_columns) | column table of every `COL1` block, before the table is read | same |
 ///
 /// # Invariants
 ///
@@ -27,9 +30,16 @@ pub struct DecodeLimits {
     pub max_encoded_block_size: usize,
     /// Maximum number of transforms attached to one block.
     pub max_transforms: usize,
-    /// Maximum embedded dictionary size accepted by the parser (reserved: Format 1.x stores
-    /// dictionary references, never dictionary bytes).
+    /// Maximum size of one dictionary accepted from the dictionary section of a file or from an
+    /// external registry. The format itself never allows more than 65 535 bytes (the LZ window),
+    /// so the smaller of the two applies.
     pub max_dictionary_size: usize,
+    /// Maximum number of dictionaries in the dictionary section of one file (Format 1.6).
+    pub max_dictionaries: usize,
+    /// Maximum number of segments of one segmented block (Format 1.6).
+    pub max_segments: usize,
+    /// Maximum number of columns of one columnar block (Format 1.6).
+    pub max_columns: usize,
     /// Maximum number of serialized block-index entries; also the maximum number of blocks
     /// any reader accepts (see [`Self::max_block_count`]).
     pub max_index_entries: usize,
@@ -58,6 +68,9 @@ impl Default for DecodeLimits {
             max_encoded_block_size: 8 * 1024 * 1024,
             max_transforms: 8,
             max_dictionary_size: 16 * 1024 * 1024,
+            max_dictionaries: 16,
+            max_segments: 1024,
+            max_columns: 256,
             max_index_entries: 16_000_000,
         }
     }
