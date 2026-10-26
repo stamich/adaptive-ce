@@ -75,7 +75,7 @@ machine.
 |---|---|---|---|
 | 26 ✅ | Golden `0.8.0/`, compat fixtures for 1.6, fuzz targets in CI, audits (unsafe, panic, decoder) | "Adds golden, compatibility fixtures and audits for Format 1.6" | all green; `examples/compat/` older files untouched |
 | 27 ✅ | Benchmarks (family `storage`), Regression V3 gates, A/B vs 0.7.0, release notes, migration guide, README, CHANGELOG, ROADMAP | "Documents 0.8.0 and adds the storage gates" | A/B ≥ 0.95× per case on unchanged paths |
-| 28 ⏩ | Release run, fuzz campaign (22 targets), baseline `examples/baselines/0.8.0/`, `docs/PERFORMANCE-0.8.0.md`, tag `v0.8.0` | [`docs/RELEASE.md`](docs/RELEASE.md) | Regression V3 pass; A/B vs 0.7.0 pass |
+| 28 ⏩ (results in, see release notes) | Release run, fuzz campaign (22 targets), baseline `examples/baselines/0.8.0/`, `docs/PERFORMANCE-0.8.0.md`, tag `v0.8.0` | [`docs/RELEASE.md`](docs/RELEASE.md) | Regression V3 pass; A/B vs 0.7.0 pass |
 
 ## Decisions recorded here
 

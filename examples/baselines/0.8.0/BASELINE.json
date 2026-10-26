@@ -1,0 +1,36 @@
+{
+  "version": "0.8.0",
+  "accepted": false,
+  "purpose": "baseline of 0.8.0 (stored-result diagnostics; release gates use the interleaved A/B against the 0.7.0 source tree). Not accepted yet: repeatability failed one timing check, see verdict.repeatability",
+  "machine_fingerprint": {
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "physical_cores": 16,
+    "logical_cpus": 32,
+    "memory": "128 GiB",
+    "os": "linux",
+    "arch": "x86_64",
+    "simd_backend": "Avx2",
+    "crc32c_backend": "sse4.2-3way",
+    "cpu_governor": "performance",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (gentoo)"
+  },
+  "git_revision": "23fa0a455ebd376e07442e5fc0dce75d22f7828a",
+  "methodology": "schema 2.2, Harness V3 (5 warm-ups, 3 x 7 batches, >= 50 ms per sample, median-of-medians), repeatability over 3 complete runs x the families of the run, interleaved A/B vs the 0.7.0 source tree (3 batches per side, alternating order), JVM side of the ffi gates from `gradle -p jvm :ace-native:ffiBenchmark`",
+  "verdict": {
+    "regression_v3": "pass",
+    "gates": {
+      "pass": 109,
+      "diagnostic": 22,
+      "fail": 0,
+      "unstable": 0,
+      "skipped": 0
+    },
+    "repeatability": "FAIL on 1 of 35 checks: macro.numeric_general.delta_variable.decompression_alloc spread 41.1 % over 3 runs (medians 9.03 / 12.42 / 8.71 ms, limit 15 %); 31 checks pass, 3 diagnostic. Deterministic values identical.",
+    "ab_vs_0_7_0": "pass, 20 / 20 cases, minimum speed ratio 0.961 (numeric_general.delta_variable encode), maximum 1.035, byte-identical output on every case",
+    "storage": "columnar gains 2.28x trades, 5.73x telemetry, 1.52x events (Balanced; target 1.10x); segmentation 1.85x; dictionaries 2.25x embedded, 2.27x external on 4 KiB JSON blocks",
+    "ffi": "pass; C ABI vs Rust facade on 16 MiB: compress 0.993x, decompress 1.016x (gate >= 0.97x); JVM zero-copy vs facade: compress 0.972x, decompress 0.979x (gate >= 0.90x); JVM decompressInto 0.801x (diagnostic)",
+    "fuzz": "22 / 22 targets, no crash (4,203,636,005 executions, FUZZ.md)"
+  },
+  "files": "benchmark-0.8.0-<family>.json (incl. regression, repeatability, ffi), ab-0.8.0-vs-0.7.0.json and ffi-jvm-0.8.0.json, unchanged from the run",
+  "note": "reference run of the 0.8.0 release on the author's workstation (performance governor), code revision 23fa0a4 with a dirty working tree as recorded by the harness (git_dirty = true). Default-configuration output is byte-identical to 0.7.0, so the A/B compares speed only."
+}

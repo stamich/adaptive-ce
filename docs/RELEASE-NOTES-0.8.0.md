@@ -141,19 +141,25 @@ conflicts with independent blocks and random access); it is a candidate for 0.9.
 
 ## Qualification
 
-**Release run (task 28): pending.** It belongs to the maintainer and runs on the reference machine
-(`performance` governor); it produces `examples/baselines/0.8.0/`, `PERFORMANCE-0.8.0.md` and the
-22-target fuzz campaign.
+Release run on the reference machine (AMD Ryzen 9 5950X, `performance` governor, rustc 1.98.1,
+revision 23fa0a4; the harness recorded a dirty working tree). Details in
+[`PERFORMANCE-0.8.0.md`](PERFORMANCE-0.8.0.md), data in `examples/baselines/0.8.0/`.
 
-**Indicative A/B run during development** (interleaved, `tools/ace-ab0.8.0.py` against a `v0.7.0`
-worktree; a 2-core virtual machine without a frequency governor, so this is not a release verdict):
-
-| Result | Value |
+| Check | Verdict |
 |---|---|
-| Output bytes, 20 of 20 cases | identical to 0.7.0 |
-| Verdicts | 14 pass, 6 unstable (noise above the case limit), 0 fail |
-| Median speed ratio, lowest / highest | 0.919 (`compression.fast.decode`, upper bound 0.972) / 1.272 |
-| Cases with a median ratio below 0.95 | 1 of 20 (`compression.fast.decode`; `random_access.warm_64k`, 0.956, has a 0.909 requirement) |
+| Regression V3 | **pass**: 109 pass, 22 diagnostic, 0 fail / unstable / skipped |
+| Interleaved A/B vs 0.7.0 | **pass**, 20 / 20 cases, minimum ratio 0.961 (`numeric_general.delta_variable` encode), maximum 1.035, byte-identical output |
+| Repeatability (3 runs) | **fail**: 31 checks pass, 3 diagnostic, 1 fails (see below). Deterministic values identical |
+| Columnar vs row-wise (Balanced) | trades 2.28×, telemetry 5.73×, events 1.52× (target 1.10×) |
+| Segmentation / dictionaries | 1.85× (3 segments); 2.25× embedded, 2.27× external on 4 KiB JSON blocks |
+| C ABI vs Rust facade (16 MiB) | compress 0.993×, decompress 1.016× (gate ≥ 0.97×) |
+| JVM zero-copy vs facade (16 MiB) | compress 0.972×, decompress 0.979× (gate ≥ 0.90×); `decompressInto` 0.801× (diagnostic) |
+| Fuzz | 22 / 22 targets × 600 s, no crash, 4.20 × 10⁹ executions ([`FUZZ.md`](../examples/baselines/0.8.0/FUZZ.md)) |
 
-Treat the one case below 0.95 as open until the reference run: the gate passes only because its
-upper bound clears 0.970, and the unstable cases could flip either way on a quiet machine.
+**Open item: repeatability.** `macro.numeric_general.delta_variable.decompression_alloc` varied by
+41.1 % across the three runs (medians 9.03, 12.42 and 8.71 ms; limit 15 %). It is a decompression
+timing of an allocation-profile case; the compression and A/B results for the same workload are
+within their limits, and the other 34 checks do not fail. The cause has not been investigated, so
+the baseline is marked `"accepted": false` until the maintainer decides to accept it, re-run the
+three runs, or investigate. Encoder allocation reuse (task 22) touched the neighbouring code paths,
+so the allocation profile is the first place to look.

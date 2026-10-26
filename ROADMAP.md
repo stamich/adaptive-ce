@@ -32,7 +32,7 @@ segments, which needs ACE's deterministic bytes).
 The integration concept itself (module boundaries, existing APIs, CDC format) is a separate
 document written after reviewing the AdaptiveDB and GraphNet repositories.
 
-## 0.8.0 - Storage engine (done, release run pending)
+## 0.8.0 - Storage engine (done)
 
 Segmented blocks, columnar blocks and preset dictionaries as Format 1.6, with the default
 configuration writing the bytes of 0.7.0. Reproduced through the Rust engine, the C ABI (1.1), the
@@ -40,7 +40,7 @@ Java SDK and the Scala SDK by `examples/golden/0.8.0/`; frozen fixtures in `exam
 fuzz targets `seg_decode` and `col_decode`; benchmark family `storage` with Regression V3 gates.
 Also in this release: encoder buffer reuse, the NEON backend and native libraries for macOS and
 Windows. Left for later: shared context between blocks (0.9.0), a dictionary for entropy stages,
-automatic schema detection, Maven Central (1.0). Task 28 (reference-machine run, tag) is the
+automatic schema detection, Maven Central (1.0). Reference run: see `docs/RELEASE-NOTES-0.8.0.md`; the tag is the
 maintainer's.
 
 ## 0.7.0 - Embedding (done)

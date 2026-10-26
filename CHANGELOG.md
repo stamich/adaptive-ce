@@ -40,9 +40,13 @@ a columnar block or a dictionary. Task order: `TASKS-0.8.0.md`; notes:
 - Tests moved out of `src/` into `crates/<crate>/tests/`; the code audit enforces it.
 
 ### Release qualification (manual, reference machine)
-- Pending (task 28): Regression V3 pass, interleaved A/B against 0.7.0, three-run repeatability,
-  22-target fuzz campaign, baseline `examples/baselines/0.8.0/`, `docs/PERFORMANCE-0.8.0.md`,
-  tag `v0.8.0`.
+Revision 23fa0a4; data in `examples/baselines/0.8.0/`, report `docs/PERFORMANCE-0.8.0.md`.
+- Regression V3 pass (109 pass, 22 diagnostic, 0 fail), interleaved A/B against 0.7.0 pass (20 / 20,
+  minimum ratio 0.961, byte-identical output), fuzz 22 / 22 targets with no crash
+  (4.2 x 10^9 executions).
+- **Repeatability fails one of 35 checks**: `numeric_general.delta_variable` decompression
+  allocation timing spread 41.1 % over 3 runs (limit 15 %). The baseline is marked not accepted.
+- Tag `v0.8.0`: pending the maintainer's decision.
 
 ## 0.7.0 - Embedding (C ABI, Java / Scala SDK)
 

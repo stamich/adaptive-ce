@@ -39,8 +39,8 @@ readable; older readers reject only a file that actually uses a 1.6 feature. See
 | small blocks of similar data (JSON messages) | LZ with a preset dictionary, embedded or external (Format 1.6) | 4 KiB JSON blocks: ≈ 2.3× smaller |
 
 Measured numbers and methodology: [`docs/PERFORMANCE-0.7.0.md`](docs/PERFORMANCE-0.7.0.md)
-(reference machine AMD Ryzen 9 5950X; 0.8.0 writes the same bytes by default; the 0.8.0 reference run
-is pending), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+(reference machine AMD Ryzen 9 5950X), [`docs/PERFORMANCE-0.8.0.md`](docs/PERFORMANCE-0.8.0.md)
+(0.8.0 writes the same bytes by default), [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ## Quick start
 
